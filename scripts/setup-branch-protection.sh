@@ -58,8 +58,17 @@ printf '%s✓%s Auto-merge, squash-only y borrado de rama al mergear\n' "$GREEN"
 # humano. Si más adelante configuras AI_REVIEWER_TOKEN con un usuario
 # máquina, súbelo a 1.
 #
-# `enforce_admins: false` para que puedas desbloquearte si el revisor se
-# cae. Es una puerta trasera consciente: úsala y déjalo anotado en la PR.
+# `enforce_admins` se envía aquí por completitud, pero este PUT lo acepta
+# y no lo aplica: se activa de verdad en la sección 3, con su endpoint.
+#
+# `required_conversation_resolution: false` porque choca de frente con
+# tener un revisor automático. Cada comentario inline de Claude abre un
+# hilo, y un solo hilo sin resolver deja la PR en BLOCKED aunque el
+# veredicto sea `approve` y todos los checks estén verdes. El auto-merge
+# no puede entrar y el error de GitHub —"the base branch policy prohibits
+# the merge"— no menciona los hilos por ningún lado. La barrera la pone
+# el check `Claude review`; exigir además resolver hilos convierte cada
+# comentario menor en trabajo manual que se despacha sin leer.
 # ------------------------------------------------------------------ #
 if ! gh api -X PUT "repos/$REPO/branches/$BRANCH/protection" --input - <<'JSON'
 {
@@ -124,7 +133,8 @@ Lo que acaba de cambiar:
   · No se puede empujar directamente a main. Todo pasa por PR.
   · Una PR sólo se puede mergear con "CI passed" y "Claude review" en verde.
   · Sólo squash. Historial lineal. Sin force-push ni borrado de main.
-  · Los hilos de conversación abiertos bloquean el merge.
+  · Los comentarios del revisor NO bloquean el merge: quien decide es el
+    veredicto del check "Claude review".
 
 Flujo de una tarea a partir de ahora:
 
