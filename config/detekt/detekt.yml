@@ -1,0 +1,43 @@
+build:
+  maxIssues: 0
+
+complexity:
+  LongMethod:
+    threshold: 60
+  LongParameterList:
+    functionThreshold: 7
+    constructorThreshold: 8
+  TooManyFunctions:
+    thresholdInClasses: 20
+    ignorePrivate: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+  SwallowedException:
+    active: true
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: true
+
+naming:
+  FunctionNaming:
+    # Los composables van en PascalCase
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][_A-Za-z0-9]*'
+
+style:
+  MagicNumber:
+    ignoreAnnotated: ['Composable', 'Preview']
+    ignorePropertyDeclaration: true
+  MaxLineLength:
+    maxLineLength: 120
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - reason: 'Usa DispatcherProvider, no un dispatcher hardcodeado'
+        value: 'kotlinx.coroutines.Dispatchers.IO'
+      - reason: 'println filtra datos y no se ve en producción; usa el logger'
+        value: 'kotlin.io.println'
+  ReturnCount:
+    max: 4

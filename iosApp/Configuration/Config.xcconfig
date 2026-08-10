@@ -1,0 +1,9 @@
+TEAM_ID=
+
+PRODUCT_NAME=KitchenAI
+// Debe coincidir EXACTAMENTE con el bundle id registrado en Firebase
+// y con el applicationId de :androidApp.
+PRODUCT_BUNDLE_IDENTIFIER=com.kitchenai.app
+
+CURRENT_PROJECT_VERSION=1
+MARKETING_VERSION=1.0
