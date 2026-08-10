@@ -45,6 +45,10 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_sticky_comment: true
+          # TEMPORAL — sólo para diagnosticar el is_error:true en el turno 1.
+          # Quitar en cuanto el revisor funcione: imprime la transcripción entera
+          # en el log del job, que en un repo público es visible para cualquiera.
+          show_full_output: true
           # Permisos en `settings`, no en --allowedTools: claude_args se parsea
           # como línea de shell y los paréntesis de `Bash(git diff:*)` rompen
           # el resto de la lista.
@@ -63,8 +67,9 @@ jobs:
                 "deny": ["Write", "Edit", "Bash(git push:*)", "Bash(git commit:*)"]
               }
             }
+          # Sin --model: dejamos el modelo por defecto del action. `claude-sonnet-5`
+          # es el candidato número uno del fallo instantáneo y descartarlo es gratis.
           claude_args: |
-            --model claude-sonnet-5
             --max-turns 30
           prompt: |
             Eres el revisor de código del proyecto KitchenAI (Kotlin Multiplatform + Compose Multiplatform + Firebase).
