@@ -71,7 +71,11 @@ class AppResultExtTest {
         var llamadas = 0
         val result: AppResult<Int> = AppResult.Success(42)
 
-        val valor = result.getOrElse { llamadas++; 0 }
+        val valor =
+            result.getOrElse {
+                llamadas++
+                0
+            }
 
         assertEquals(42, valor)
         assertEquals(0, llamadas)
