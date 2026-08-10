@@ -48,31 +48,22 @@ jobs:
           # push, en vez de acumular uno por ejecución. `use_sticky_comment` no
           # hace nada en modo agente: es de los modos que responden a @claude.
           track_progress: true
-          # El revisor NO publica nada por su cuenta: en modo agente es Claude
-          # quien tiene que comentar. Sin estas dos herramientas produce la
-          # revisión y se la queda para sí — que es exactamente lo que pasó.
+          # Sólo denegaciones aquí. La lista de permitidas va en --allowedTools:
+          # `settings.permissions.allow` no llega al SDK cuando track_progress
+          # impone su propio conjunto de herramientas, y Claude se come cuatro
+          # denegaciones seguidas intentando comentar.
           settings: |
             {
               "permissions": {
-                "allow": [
-                  "Read",
-                  "Grep",
-                  "Glob",
-                  "Bash(git diff:*)",
-                  "Bash(git log:*)",
-                  "Bash(gh pr view:*)",
-                  "Bash(gh pr diff:*)",
-                  "Bash(gh pr comment:*)",
-                  "Bash(gh issue view:*)",
-                  "mcp__github_inline_comment__create_inline_comment"
-                ],
                 "deny": ["Write", "Edit", "Bash(git push:*)", "Bash(git commit:*)"]
               }
             }
-          # Sin --model: dejamos el modelo por defecto del action. `claude-sonnet-5`
-          # es el candidato número uno del fallo instantáneo y descartarlo es gratis.
+          # Sin --model: dejamos el modelo por defecto del action.
+          # --allowedTools se suma a las herramientas que ya aporta track_progress
+          # (entre ellas mcp__github_comment__update_claude_comment).
           claude_args: |
             --max-turns 30
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*),Read,Grep,Glob"
           prompt: |
             Eres el revisor de código del proyecto KitchenAI (Kotlin Multiplatform + Compose Multiplatform + Firebase).
 
@@ -89,8 +80,9 @@ jobs:
 
             - Para cada problema concreto: `mcp__github_inline_comment__create_inline_comment`
               con `confirmed: true`, en el fichero y la línea exactos.
-            - Un único comentario de resumen con `gh pr comment`, listando los hallazgos
-              bloqueantes y el veredicto.
+            - El resumen va en el comentario de seguimiento, con
+              `mcp__github_comment__update_claude_comment`. No abras un comentario nuevo
+              con `gh pr comment` salvo que la herramienta anterior falle.
 
             Prioriza, en este orden:
 

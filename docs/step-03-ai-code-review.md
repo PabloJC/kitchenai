@@ -127,11 +127,25 @@ contexto completo de la PR.
 **`concurrency` con `cancel-in-progress`.** Si haces tres pushes seguidos sólo se paga la
 última revisión. Con tokens de por medio esto importa.
 
-**Permisos en `settings`, no en `--allowedTools`.** El revisor puede leer y hacer `git diff`,
-`gh pr view`, `gh issue view` — no puede editar ficheros ni hacer push. Un revisor que puede
-modificar el código que revisa no es un revisor. Van en el bloque `settings` porque
-`claude_args` se parsea como una línea de shell y los paréntesis de `Bash(git diff:*)`
-son terreno resbaladizo.
+**Las herramientas permitidas van en `--allowedTools`; `settings` sólo deniega.** El revisor
+puede leer, hacer `git diff` y comentar — no puede editar ficheros ni hacer push. Un revisor
+que puede modificar el código que revisa no es un revisor.
+
+El reparto entre los dos sitios no es estético. Con `track_progress: true`, el action
+construye su propia lista de `allowedTools` y **`settings.permissions.allow` no llega al
+SDK**: el log lo enseña sin ambigüedad.
+
+```
+"allowedTools": ["Glob","Grep","LS","Read","mcp__github_comment__update_claude_comment", ...]
+"permission_denials_count": 4
+```
+
+Cuatro denegaciones = Claude intentando comentar cuatro veces con herramientas que creía
+tener. La lista de `--allowedTools` sí se suma a la que aporta `track_progress`. Las
+denegaciones de `settings` sí se respetan, así que ahí se queda el `deny`.
+
+Y las comillas importan: `--allowedTools "a,Bash(x:*),b"` se parsea como **un solo
+argumento**, paréntesis incluidos.
 
 **Evento `pull_request`, no `pull_request_target`.** `pull_request_target` ejecuta el
 workflow de `main` con secrets sobre código no confiable: en un repo con forks es un vector
