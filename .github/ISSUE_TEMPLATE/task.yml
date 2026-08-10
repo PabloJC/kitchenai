@@ -1,29 +1,57 @@
-name: Tarea de desarrollo
-description: Unidad de trabajo con plan de desarrollo, para que un agente la implemente de principio a fin
-title: "[área] "
-labels: ["type:feature"]
+name: Development task
+description: A unit of work with its own plan, ready for an agent to implement
+labels: ["task"]
 body:
-  - type: textarea
-    id: context
+  - type: markdown
     attributes:
-      label: Contexto
-      description: Qué problema resuelve y por qué ahora. Enlaza specs o diseños.
+      value: |
+        One issue = one branch = one pull request. If filling this in reveals two
+        separate things, they are two issues.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: "Sets the branch prefix and the commit type — `feat/12-recipe-list`, `feat(domain): ...`"
+      options:
+        - feat
+        - fix
+        - chore
+        - docs
     validations:
       required: true
 
   - type: dropdown
     id: layer
     attributes:
-      label: Capa principal
-      options: [domain, data, presentation, infra/CI, cross-cutting]
+      label: Layer
+      options:
+        - domain
+        - data
+        - presentation
+        - infra
+        - docs
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What problem this solves and why now. Not how it is solved.
+      placeholder: |
+        The recipe screen has nowhere to read data from: neither the repository port
+        nor its Firestore implementation exist yet.
     validations:
       required: true
 
   - type: textarea
     id: plan
     attributes:
-      label: Plan de desarrollo
-      description: Pasos ordenados y concretos. Un agente debe poder ejecutarlos sin preguntar.
+      label: Development plan
+      description: |
+        The concrete steps, in order. Each step must be verifiable on its own.
+        An agent will follow this, so ambiguity here gets paid for later.
       value: |
         1.
         2.
@@ -34,44 +62,43 @@ body:
   - type: textarea
     id: files
     attributes:
-      label: Ficheros afectados
-      description: Ruta exacta de cada fichero a crear o modificar. Sirve para detectar colisiones entre tareas paralelas.
-      value: |
-        - `shared/src/commonMain/kotlin/com/kitchenai/shared/...`
+      label: Files affected
+      description: |
+        One per line, with its path. This is what makes parallel work possible:
+        two issues touching the same file cannot be developed at the same time.
+      placeholder: |
+        shared/src/commonMain/kotlin/com/kitchenai/shared/domain/port/RecipeRepository.kt
+        shared/src/commonMain/kotlin/com/kitchenai/shared/data/repository/RecipeRepositoryImpl.kt
+        shared/src/commonTest/kotlin/com/kitchenai/shared/data/repository/RecipeRepositoryImplTest.kt
     validations:
       required: true
 
   - type: textarea
     id: acceptance
     attributes:
-      label: Criterios de aceptación
-      description: Verificables y objetivos. El revisor IA los comprueba uno a uno.
+      label: Acceptance criteria
+      description: |
+        As a checkable list. The reviewer takes these literally when deciding whether
+        the pull request delivers what it claims to close.
       value: |
         - [ ]
         - [ ]
-    validations:
-      required: true
-
-  - type: textarea
-    id: tests
-    attributes:
-      label: Tests requeridos
-      value: |
-        - `shared/src/commonTest/kotlin/com/kitchenai/shared/...`
     validations:
       required: true
 
   - type: input
-    id: blocked_by
+    id: dependencies
     attributes:
-      label: Bloqueada por
-      description: "Issues que deben cerrarse antes. Vacío = puede ejecutarse en paralelo."
-      placeholder: "#12, #14"
+      label: Dependencies
+      description: Issues that must be done first. Leave empty if there are none.
+      placeholder: "Blocked by #4, #7"
 
-  - type: dropdown
-    id: size
+  - type: checkboxes
+    id: preflight
     attributes:
-      label: Tamaño estimado
-      options: ["XS (<1h)", "S (1-3h)", "M (3-8h)", "L (>1 día — divídela)"]
-    validations:
-      required: true
+      label: Before opening
+      options:
+        - label: No open issue already claims any of the files listed above
+          required: true
+        - label: The plan does not depend on decisions that have not been made yet
+          required: true

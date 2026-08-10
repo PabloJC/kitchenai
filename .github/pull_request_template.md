@@ -2,31 +2,31 @@
 
 Closes #
 
-## Qué cambia
+## What changes
 
-<!-- 2–3 frases. Qué hace ahora el código que antes no hacía. -->
+<!-- 2-3 sentences. What the code does now that it did not do before. -->
 
-## Alcance
+## Scope
 
-- Módulos tocados: <!-- :shared / :composeApp / iosApp -->
-- Capas tocadas: <!-- domain / data / presentation -->
-- Ficheros fuera del plan de la issue: <!-- ninguno, o justifícalos -->
+- Modules touched: <!-- :shared / :composeApp / :androidApp / iosApp -->
+- Layers touched: <!-- domain / data / presentation / infra / docs -->
+- Files outside the issue plan: <!-- none, or justify them -->
 
-## Criterios de aceptación
+## Acceptance criteria
 
-<!-- Copia los de la issue y marca los cumplidos -->
+<!-- Copy them from the issue and tick the ones this PR delivers -->
 
 - [ ]
 - [ ]
 
-## Verificación
+## Verification
 
-- [ ] `./gradlew :shared:check` en verde
-- [ ] `./gradlew :androidApp:assembleDebug` en verde
-- [ ] Probado en Android
-- [ ] Probado en iOS
-- [ ] Sin secretos ni ficheros de configuración de Firebase en el diff
+- [ ] `./gradlew :shared:check` green
+- [ ] `./gradlew :androidApp:assembleDebug` green
+- [ ] Tested on Android
+- [ ] Tested on iOS
+- [ ] No secrets or Firebase config files in the diff
 
-## Riesgos / notas para el revisor
+## Risks / notes for the reviewer
 
-<!-- Decisiones no obvias, deuda asumida a propósito, qué mirar con lupa -->
+<!-- Non-obvious decisions, debt taken on purpose, what to look at closely -->

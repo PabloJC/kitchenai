@@ -1,115 +1,119 @@
-# KitchenAI — Contexto para agentes
+# KitchenAI — context for agents
 
-Aplicación **Kotlin Multiplatform** (Android + iOS) con **Compose Multiplatform** y **Firebase**.
-Este fichero es normativo: lo leen tanto el agente que implementa las issues como el que revisa las PRs.
+**Kotlin Multiplatform** application (Android + iOS) using **Compose Multiplatform** and
+**Firebase**. This file is normative: it is read both by the agent implementing issues and
+by the agent reviewing pull requests.
 
 ---
 
-## Módulos
+## Modules
 
-| Módulo | Plugin Android | Contiene | Puede depender de |
+| Module | Android plugin | Contains | May depend on |
 |---|---|---|---|
-| `:shared` | `com.android.kotlin.multiplatform.library` | `domain` (modelos, puertos, casos de uso) y `data` (Firebase, caché, mappers) | nada del proyecto |
-| `:composeApp` | `com.android.kotlin.multiplatform.library` | `presentation` (ViewModels, UiState, composables), navegación, design system. Paquete `com.kitchenai.ui` | `:shared` |
-| `:androidApp` | `com.android.application` | `MainActivity`, `Application`, manifest, recursos e iconos. Paquete `com.kitchenai.app`. **Sin lógica** | `:composeApp`, `:shared` |
-| `iosApp` | — | Xcode wrapper, `FirebaseApp.configure()` | framework `ComposeApp` |
+| `:shared` | `com.android.kotlin.multiplatform.library` | `domain` (models, ports, use cases) and `data` (Firebase, cache, mappers) | nothing in the project |
+| `:composeApp` | `com.android.kotlin.multiplatform.library` | `presentation` (ViewModels, UiState, composables), navigation, design system. Package `com.kitchenai.ui` | `:shared` |
+| `:androidApp` | `com.android.application` | `MainActivity`, `Application`, manifest, resources and icons. Package `com.kitchenai.app`. **No logic** | `:composeApp`, `:shared` |
+| `iosApp` | — | Xcode wrapper, `FirebaseApp.configure()` | `ComposeApp` framework |
 
-Desde AGP 9 el plugin de KMP es incompatible con `com.android.application` en el mismo
-módulo: por eso `:androidApp` existe y sólo contiene el punto de entrada. Cualquier PR que
-meta lógica de negocio o composables ahí es un rechazo.
+Since AGP 9 the KMP plugin is incompatible with `com.android.application` in the same
+module: that is why `:androidApp` exists and holds nothing but the entry point. Any PR that
+puts business logic or composables there is a rejection.
 
-### Regla de dependencias (bloqueante)
+### Dependency rule (blocking)
 
 ```
 androidApp               →  composeApp, shared   ✅
 composeApp.presentation  →  shared.domain        ✅
 shared.data              →  shared.domain        ✅
-shared.domain            →  cualquier otra cosa  ❌
+shared.domain            →  anything else        ❌
 composeApp               →  shared.data          ❌
 composeApp / shared      →  androidApp           ❌
 ```
 
-`shared/domain` es **Kotlin puro**: sin Firebase, sin Android, sin iOS, sin Compose, sin Ktor.
-Si un fichero bajo `domain/` importa algo de `dev.gitlive`, `android.`, `androidx.`, `platform.` o
-`kotlinx.coroutines.Dispatchers`, es un rechazo automático.
+`shared/domain` is **pure Kotlin**: no Firebase, no Android, no iOS, no Compose, no Ktor.
+If a file under `domain/` imports anything from `dev.gitlive`, `android.`, `androidx.`,
+`platform.` or `kotlinx.coroutines.Dispatchers`, that is an automatic rejection.
 
 ### Source sets
 
-- `commonMain` — código multiplataforma. Prohibido `java.*`, `android.*`, `platform.*`.
-- `androidMain` / `iosMain` — implementaciones `actual` y sólo eso.
-- La API pública de `:shared` hacia iOS debe evitar genéricos complejos, `sealed` anidados
-  profundos y `Flow` sin envolver: Objective-C interop no los traduce bien.
+- `commonMain` — multiplatform code. `java.*`, `android.*` and `platform.*` are forbidden.
+- `androidMain` / `iosMain` — `actual` implementations and nothing else.
+- The public API of `:shared` towards iOS must avoid complex generics, deeply nested
+  `sealed` hierarchies and unwrapped `Flow`: Objective-C interop translates them poorly.
 
 ---
 
-## Convenciones
+## Conventions
 
-**Errores.** Ninguna excepción cruza una frontera de capa. Todo lo que sale de `data` y `domain`
-va en `AppResult<T>` (`core/AppResult.kt`). Los `catch` mapean a `AppError`, nunca se tragan.
+**Errors.** No exception crosses a layer boundary. Everything leaving `data` and `domain`
+travels in `AppResult<T>` (`core/AppResult.kt`). `catch` blocks map to `AppError`; they
+never swallow.
 
-**Concurrencia.** Nada de `Dispatchers.IO` hardcodeado: se inyecta `DispatcherProvider`.
-Prohibido `GlobalScope` y `runBlocking` fuera de tests.
+**Concurrency.** No hardcoded `Dispatchers.IO`: inject `DispatcherProvider`. `GlobalScope`
+and `runBlocking` are forbidden outside tests.
 
-**Casos de uso.** Una clase = una operación, con `operator fun invoke`. Nombre en imperativo:
+**Use cases.** One class = one operation, with `operator fun invoke`. Imperative names:
 `GetRecipeById`, `SaveShoppingList`.
 
-**ViewModels.** Exponen un único `StateFlow<XxxUiState>`. Sin lógica de negocio: orquestan
-casos de uso. Los eventos de un solo disparo van por `Channel`, no por estado.
+**ViewModels.** They expose a single `StateFlow<XxxUiState>`. No business logic: they
+orchestrate use cases. One-shot events go through a `Channel`, not through state.
 
-**Inyección.** Koin. Cada capa declara su módulo en `di/`; nada de singletons a mano ni
-`object` con estado mutable.
+**Injection.** Koin. Each layer declares its module under `di/`; no hand-rolled singletons
+and no `object` holding mutable state.
 
-**Nombres de ficheros.** Un tipo público por fichero, con el mismo nombre.
+**File names.** One public type per file, named after it.
 
 ---
 
 ## Tests
 
-- Todo caso de uso nuevo o modificado necesita test en `shared/src/commonTest`.
-- Repositorios: test contra fakes de los puertos, nunca contra Firebase real.
+- Every new or modified use case needs a test in `shared/src/commonTest`.
+- Repositories: tested against fakes of the ports, never against real Firebase.
 - Flows: `app.cash.turbine`.
-- Los ViewModels se testean con `kotlinx-coroutines-test` y `DispatcherProvider` de test.
-- Cobertura no es un objetivo; ramas de error sin cubrir sí son un hallazgo.
+- ViewModels are tested with `kotlinx-coroutines-test` and a test `DispatcherProvider`.
+- Coverage is not a goal; uncovered error branches are a finding.
 
 ---
 
-## Seguridad
+## Security
 
-- `androidApp/google-services.json` y `GoogleService-Info.plist` **nunca** se commitean (están en `.gitignore`).
-  En CI se restauran desde secrets base64.
-- Sin claves, tokens ni endpoints hardcodeados en el código.
-- Reglas de Firestore en `firebase/firestore.rules`, versionadas y con tests.
-  Ninguna regla puede quedar como `allow read, write: if true`.
-- Nada de PII (emails, ubicaciones, contenido de usuario) en `println` ni en Crashlytics.
-
----
-
-## Flujo de trabajo (spec-driven)
-
-1. Cada unidad de trabajo es una **issue** con: contexto, plan de desarrollo paso a paso,
-   ficheros afectados, criterios de aceptación y dependencias (`Blocked by #N`).
-2. Rama por issue: `feat/<n>-slug`, `fix/<n>-slug`, `chore/<n>-slug`.
-3. Commits en [Conventional Commits](https://www.conventionalcommits.org): `feat(domain): ...`.
-4. La PR referencia la issue con `Closes #N` y no toca nada fuera de su alcance.
-5. CI + revisión de Claude deben estar en verde antes del merge.
-6. Merge en `main` con squash; la issue pasa a **Done** automáticamente.
-
-Las issues sin dependencias entre sí pueden desarrollarse en paralelo: por eso cada issue
-declara explícitamente los ficheros que va a tocar, para detectar colisiones antes de empezar.
+- `androidApp/google-services.json` and `iosApp/GoogleService-Info.plist` are **never**
+  committed (they are in `.gitignore`). CI restores them from base64 secrets.
+- No keys, tokens or endpoints hardcoded in the source.
+- Firestore rules live in `firebase/firestore.rules`, versioned and tested. No rule may be
+  left as `allow read, write: if true`.
+- No PII (emails, locations, user content) in `println` or in Crashlytics.
 
 ---
 
-## Criterios de revisión (para el agente revisor)
+## Workflow (spec-driven)
 
-Bloqueante:
+1. Every unit of work is an **issue** carrying: context, a step-by-step development plan,
+   the files it will touch, acceptance criteria and dependencies (`Blocked by #N`).
+2. One branch per issue: `feat/<n>-slug`, `fix/<n>-slug`, `chore/<n>-slug`.
+3. Commits follow [Conventional Commits](https://www.conventionalcommits.org):
+   `feat(domain): ...`.
+4. The PR references the issue with `Closes #N` and touches nothing outside its scope.
+5. CI and Claude's review must both be green before merging.
+6. Squash merge into `main`; the issue moves to **Done** automatically.
 
-- Violación de la regla de dependencias o fuga de plataforma en `commonMain`.
-- Caso de uso nuevo sin test.
-- Secreto, clave o fichero de configuración de Firebase commiteado.
-- Excepción propagándose fuera de `data`/`domain` sin envolver en `AppResult`.
-- Regla de Firestore permisiva.
-- La PR no cumple los criterios de aceptación de la issue que dice cerrar.
+Issues with no dependencies between them can be developed in parallel: that is why each
+issue declares the files it will touch, so collisions surface before any work starts.
 
-No bloqueante (comentar, no bloquear): duplicación menor, naming mejorable, TODOs con issue asociada.
+---
 
-No comentar nunca: formato (lo cubre ktlint), preferencias de estilo, elogios genéricos.
+## Review criteria (for the reviewing agent)
+
+Blocking:
+
+- Any violation of the dependency rule, or a platform leak in `commonMain`.
+- A new use case without a test.
+- A secret, key or Firebase config file committed.
+- An exception escaping `data`/`domain` without being wrapped in `AppResult`.
+- A permissive Firestore rule.
+- The PR does not meet the acceptance criteria of the issue it claims to close.
+
+Non-blocking (comment, do not block): minor duplication, naming that could be better,
+TODOs with an associated issue.
+
+Never comment on: formatting (ktlint covers it), style preferences, generic praise.

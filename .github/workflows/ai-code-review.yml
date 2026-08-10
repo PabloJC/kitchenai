@@ -61,14 +61,14 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # Mantiene un único comentario de seguimiento que se actualiza en cada
-          # push, en vez de acumular uno por ejecución. `use_sticky_comment` no
-          # hace nada en modo agente: es de los modos que responden a @claude.
-          track_progress: true
+          # Sin `track_progress`: es lo que genera el comentario de seguimiento
+          # con casillas marcables. Una revisión no es una lista de tareas, y
+          # esas casillas invitan a tocarlas como si significaran algo. Sin él,
+          # la revisión son los comentarios en el código y un resumen breve.
+          #
           # Sólo denegaciones aquí. La lista de permitidas va en --allowedTools:
-          # `settings.permissions.allow` no llega al SDK cuando track_progress
-          # impone su propio conjunto de herramientas, y Claude se come cuatro
-          # denegaciones seguidas intentando comentar.
+          # `settings.permissions.allow` no siempre llega al SDK, y Claude
+          # acaba comiéndose denegaciones al intentar comentar.
           settings: |
             {
               "permissions": {
@@ -76,8 +76,6 @@ jobs:
               }
             }
           # Sin --model: dejamos el modelo por defecto del action.
-          # --allowedTools se suma a las herramientas que ya aporta track_progress
-          # (entre ellas mcp__github_comment__update_claude_comment).
           claude_args: |
             --max-turns 30
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*),Read,Grep,Glob"
@@ -95,11 +93,21 @@ jobs:
             CÓMO PUBLICAR LA REVISIÓN — esto no es opcional. Tu respuesta en el chat no la
             lee nadie; si no publicas en GitHub, la revisión no existe.
 
-            - Para cada problema concreto: `mcp__github_inline_comment__create_inline_comment`
-              con `confirmed: true`, en el fichero y la línea exactos.
-            - El resumen va en el comentario de seguimiento, con
-              `mcp__github_comment__update_claude_comment`. No abras un comentario nuevo
-              con `gh pr comment` salvo que la herramienta anterior falle.
+            - El grueso de la revisión son **comentarios en el código**:
+              `mcp__github_inline_comment__create_inline_comment` con `confirmed: true`,
+              en el fichero y la línea exactos. Un hallazgo sin línea concreta casi siempre
+              significa que no lo has localizado del todo.
+            - Después, **un único** comentario con `gh pr comment`: dos o tres frases sobre
+              qué hace la PR y, si los hay, la lista de hallazgos bloqueantes. Nada más.
+
+            PROHIBIDO en lo que publiques:
+
+            - Listas de tareas o casillas marcables (`- [ ]`, `- [x]`) de cualquier tipo,
+              tanto de tu proceso de revisión como de comprobaciones pendientes. No estás
+              llevando un plan: estás revisando código.
+            - Narrar lo que vas haciendo ("Leyendo CLAUDE.md", "Obteniendo el diff").
+            - Repetir en el resumen lo que ya has dicho en un comentario en línea.
+            - Elogios genéricos.
 
             Prioriza, en este orden:
 

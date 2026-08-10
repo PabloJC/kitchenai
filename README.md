@@ -1,63 +1,64 @@
 # KitchenAI
 
-App **Kotlin Multiplatform** (Android + iOS) con **Compose Multiplatform** y **Firebase**.
+**Kotlin Multiplatform** app (Android + iOS) built with **Compose Multiplatform** and
+**Firebase**.
 
 ```
-:shared        domain (Kotlin puro) + data (Firebase, caché, mappers)
+:shared        domain (pure Kotlin) + data (Firebase, cache, mappers)
 :composeApp    presentation (ViewModels, UiState, composables) + design system
-:androidApp    entry point Android: MainActivity, Application, manifest, recursos
-iosApp         wrapper Xcode
+:androidApp    Android entry point: MainActivity, Application, manifest, resources
+iosApp         Xcode wrapper
 ```
 
-`:androidApp` está separado porque desde AGP 9 el plugin de Kotlin Multiplatform no puede
-convivir con `com.android.application` en el mismo módulo.
+`:androidApp` is a separate module because since AGP 9 the Kotlin Multiplatform plugin
+cannot coexist with `com.android.application` in the same module.
 
-Las reglas de arquitectura, convenciones y criterios de revisión están en [`CLAUDE.md`](CLAUDE.md).
-Son normativas: las aplica el agente que implementa y las verifica el que revisa las PRs.
+Architecture rules, conventions and review criteria live in [`CLAUDE.md`](CLAUDE.md). They
+are normative: the implementing agent applies them and the reviewing agent verifies them.
 
-## Arranque
+## Getting started
 
-Necesitas los ficheros de configuración de Firebase, que no están en el repositorio:
-`androidApp/google-services.json` y `iosApp/GoogleService-Info.plist`. Después:
+You need the Firebase config files, which are not in the repository:
+`androidApp/google-services.json` and `iosApp/GoogleService-Info.plist`. Then:
 
 ```bash
 ./gradlew :shared:check
 ./gradlew :androidApp:assembleDebug
 ```
 
-El montaje de CI, revisión, protección de rama y tablero está en
-[`docs/infra.md`](docs/infra.md), junto con las trampas que conviene conocer antes de
-tocarlo.
+CI, automated review, branch protection and the project board are documented in
+[`docs/infra.md`](docs/infra.md), along with the traps worth knowing before touching any
+of it.
 
-## Comandos habituales
+## Common commands
 
-| Qué | Comando |
+| What | Command |
 |---|---|
-| Tests del código compartido | `./gradlew :shared:check` |
-| Enlazado del framework iOS | `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64` |
-| APK debug | `./gradlew :androidApp:assembleDebug` |
-| Framework para Xcode | `./gradlew :composeApp:embedAndSignAppleFrameworkForXcode` |
-| Ver nombres reales de tareas de test | `./gradlew :shared:tasks --group verification` |
-| Análisis estático | `./gradlew detekt ktlintCheck` |
-| Autoformato | `./gradlew ktlintFormat` |
-| Emuladores de Firebase | `firebase emulators:start` |
+| Shared code tests | `./gradlew :shared:check` |
+| Link the iOS framework | `./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64` |
+| Debug APK | `./gradlew :androidApp:assembleDebug` |
+| Framework for Xcode | `./gradlew :composeApp:embedAndSignAppleFrameworkForXcode` |
+| Real test task names | `./gradlew :shared:tasks --group verification` |
+| Static analysis | `./gradlew detekt ktlintCheck` |
+| Auto-format | `./gradlew ktlintFormat` |
+| Firebase emulators | `firebase emulators:start` |
 
 ## Stack
 
-| Pieza | Versión |
+| Piece | Version |
 |---|---|
 | Kotlin | 2.4.10 |
 | Compose Multiplatform | 1.11.1 |
 | Android Gradle Plugin | 9.0.1 |
 | Gradle | 9.1.0 |
-| Firebase (GitLive KMP) | 2.5.0 &nbsp;<sub>2.6.0 está roto en Maven Central</sub> |
+| Firebase (GitLive KMP) | 2.5.0 &nbsp;<sub>2.6.0 is broken on Maven Central</sub> |
 | Koin | 4.1.0 |
 | minSdk / compileSdk | 26 / 36 |
-| iOS mínimo | 14 (sólo arm64) |
+| Minimum iOS | 14 (arm64 only) |
 
-> Compose Multiplatform 1.11 eliminó los targets Apple x86_64: no declares `iosX64()`.
+> Compose Multiplatform 1.11 dropped the Apple x86_64 targets: do not declare `iosX64()`.
 
-## Flujo de trabajo
+## Workflow
 
-Issue con plan de desarrollo → rama `feat/<n>-slug` → PR con `Closes #N` →
-CI verde + revisión de Claude → squash merge en `main` → issue a *Done*.
+Issue with a development plan → `feat/<n>-slug` branch → PR with `Closes #N` →
+green CI + Claude review → squash merge into `main` → issue moves to *Done*.

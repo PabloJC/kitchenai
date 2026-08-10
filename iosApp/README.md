@@ -1,23 +1,23 @@
 # iosApp
 
-`iosApp.xcodeproj` ya trae la Run Script Phase que embebe el framework de Kotlin y el
-`User Script Sandboxing = No`.
+`iosApp.xcodeproj` already carries the Run Script Phase that embeds the Kotlin framework,
+and `User Script Sandboxing = No`.
 
-## Si clonas el repositorio de cero
+## Cloning from scratch
 
-`GoogleService-Info.plist` no está versionado. Descárgalo de la consola de Firebase y
-arrástralo al target `iosApp` → *Copy items if needed* + *Add to target*.
+`GoogleService-Info.plist` is not versioned. Download it from the Firebase console and drag
+it onto the `iosApp` target → *Copy items if needed* + *Add to target*.
 
-Las dependencias de Firebase van por Swift Package Manager: *File → Add Package
+Firebase dependencies come through Swift Package Manager: *File → Add Package
 Dependencies…* → `https://github.com/firebase/firebase-ios-sdk` → *Up to Next Major* →
 `FirebaseAuth`, `FirebaseFirestore`, `FirebaseStorage`.
 
-Si el build falla con `Unable to resolve module dependency: 'FirebaseCore'`, es que los
-productos del paquete no están enlazados al target, aunque el paquete aparezca en el
-navegador: revísalo en *General → Frameworks, Libraries, and Embedded Content*.
+If the build fails with `Unable to resolve module dependency: 'FirebaseCore'`, the package
+products are not linked to the target even though the package shows up in the navigator.
+Check *General → Frameworks, Libraries, and Embedded Content*.
 
-## Nota sobre los frameworks
+## About the frameworks
 
-Xcode enlaza un único framework, `ComposeApp`, que exporta también `:shared`
-(`export(projects.shared)` en `composeApp/build.gradle.kts`). Por eso los `.swift`
-hacen `import ComposeApp` y nunca `import Shared`.
+Xcode links a single framework, `ComposeApp`, which also exports `:shared`
+(`export(projects.shared)` in `composeApp/build.gradle.kts`). That is why the `.swift` files
+`import ComposeApp` and never `import Shared`.
