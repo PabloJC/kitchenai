@@ -64,4 +64,3 @@ Guías detalladas:
 
 Issue con plan de desarrollo → rama `feat/<n>-slug` → PR con `Closes #N` →
 CI verde + revisión de Claude → squash merge en `main` → issue a *Done*.
-// prueba
