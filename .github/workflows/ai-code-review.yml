@@ -107,8 +107,9 @@ jobs:
             ni nombres que sean simplemente distintos a los que tú elegirías. Nada de elogios
             genéricos. Si el código está bien, dilo en una línea.
 
-            IMPORTANTE — termina tu respuesta con una única línea, exactamente en este formato
-            y sin nada más después:
+            IMPORTANTE — termina tu RESPUESTA EN EL CHAT con una única línea, exactamente en
+            este formato y sin nada más después. Esta línea es fontanería para el workflow:
+            no la incluyas en los comentarios que publicas en GitHub.
 
             VEREDICTO: request_changes
 
