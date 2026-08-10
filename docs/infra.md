@@ -174,14 +174,29 @@ even when the verdict is `approve` and every check is green. GitHub answers *"th
 policy prohibits the merge"* without mentioning threads anywhere. It is disabled on purpose:
 the gate is the `Claude review` check.
 
-### The board needs a classic token with `project` and `read:org`
+### The board needs a classic token with `project`
 
 The Actions `GITHUB_TOKEN` cannot reach Projects, which lives outside the repository. Neither
 can fine-grained tokens: their account permission list does not include `Projects`. It has to
-be a classic token with `project` **and** `read:org` — without the second one `gh` cannot
-resolve whether the owner is a user or an organisation and fails with `unknown owner type`.
+be a classic token with `project`.
+
+`read:org` is only needed for a board owned by an organisation. `gh project` demanded it even
+for personal boards, because it resolves the owner type before anything else and fails with
+`unknown owner type` — a message that mentions neither the token nor the board — when it
+cannot. `scripts/project-item-status.sh` therefore talks to GraphQL directly: it asks for
+`user` and `organization` in the same query and keeps whichever answers.
+
+The issue's node id is read with the Actions `GITHUB_TOKEN` (`REPO_TOKEN` in the workflow),
+so the PAT does not need `repo` either.
 
 Column names are compared case-insensitively, so `In Progress` and `In progress` both work.
+
+If the board drifts — a failed run, an issue created before the board existed — put the card
+back by hand:
+
+```bash
+gh workflow run project-sync.yml -f issue=11 -f status="In progress"
+```
 
 ---
 
