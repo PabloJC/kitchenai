@@ -23,6 +23,7 @@ iosApp/*.xcodeproj/project.xcworkspace/
 
 # --- Firebase: NUNCA se commitean ---
 androidApp/google-services.json
+iosApp/GoogleService-Info.plist
 iosApp/iosApp/GoogleService-Info.plist
 firebase-debug.log
 .firebase/

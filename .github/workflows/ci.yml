@@ -147,8 +147,14 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
         run: |
+          # Ojo con la ruta: el fichero vive en iosApp/, no en iosApp/iosApp/.
+          # Con la ruta mal, este paso no hace nada y el job pasa igualmente
+          # porque el fichero estaba commiteado — verde por el motivo equivocado.
           if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
-            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/iosApp/GoogleService-Info.plist
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/GoogleService-Info.plist
+          else
+            echo "::error::Falta el secret GOOGLE_SERVICE_INFO_PLIST."
+            exit 1
           fi
 
       # Sólo enlazado: los tests de Kotlin/Native están desactivados porque el
