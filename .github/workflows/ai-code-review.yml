@@ -38,7 +38,10 @@ jobs:
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Token OAuth de la suscripción de Claude, generado con `claude setup-token`.
+          # El consumo va contra la suscripción, no contra créditos de API.
+          # Para facturar por tokens en su lugar: anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_sticky_comment: true
           prompt: |
             Eres el revisor de código del proyecto KitchenAI (Kotlin Multiplatform + Compose Multiplatform + Firebase).

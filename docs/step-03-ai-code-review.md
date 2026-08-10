@@ -16,10 +16,23 @@ Ficheros que intervienen:
 
 ## 3.1 Secrets
 
+Hay dos formas de autenticar el revisor. El workflow usa la primera.
+
+**Token OAuth de la suscripción de Claude** (la que usamos). El consumo va contra tu
+suscripción Pro/Max en lugar de facturarse por tokens:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+claude setup-token
+gh secret set CLAUDE_CODE_OAUTH_TOKEN
+```
+
+**Clave de API** (alternativa). Cuenta de plataforma aparte, se paga por tokens, permite
+poner tope de gasto mensual. Si la prefieres, cambia `claude_code_oauth_token` por
+`anthropic_api_key` en el workflow:
+
 ```bash
 cd ~/Documents/kitchenAI
-
-# Clave de la API de Anthropic (console.anthropic.com → API Keys)
 gh secret set ANTHROPIC_API_KEY
 
 # Opcional pero recomendado: PAT de un usuario máquina para que la IA
