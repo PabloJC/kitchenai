@@ -92,15 +92,50 @@ jobs:
         id: verdict
         run: |
           OUT='${{ steps.claude.outputs.structured_output }}'
-          echo "$OUT" | jq . || { echo "::error::Claude no devolvió JSON válido"; exit 1; }
+          # Diagnóstico: qué devolvió realmente el action.
+          echo "--- structured_output en crudo (${#OUT} caracteres) ---"
+          echo "$OUT"
+          echo "--- fin ---"
 
-          VERDICT=$(echo "$OUT" | jq -r '.verdict')
+          # `jq .` sobre cadena vacía NO da error: hay que comprobarlo aparte.
+          if [ -z "$OUT" ]; then
+            echo "::error::structured_output vino vacío. Claude terminó sin producir el veredicto."
+            exit 1
+          fi
+          echo "$OUT" | jq . > /dev/null || { echo "::error::Claude no devolvió JSON válido"; exit 1; }
+
+          VERDICT=$(echo "$OUT" | jq -r '.verdict // empty')
+
+          # Un veredicto ausente no es un rechazo: es una revisión rota. Distinguirlo
+          # importa, porque si no toda avería del revisor parece un hallazgo real.
+          case "$VERDICT" in
+            approve|request_changes) ;;
+            *)
+              echo "::error::Veredicto inesperado: '$VERDICT'. La revisión no es concluyente."
+              exit 1
+              ;;
+          esac
           RISK=$(echo "$OUT" | jq -r '.risk')
           SUMMARY=$(echo "$OUT" | jq -r '.summary')
 
           {
             echo "verdict=$VERDICT"
             echo "risk=$RISK"
+          } >> "$GITHUB_OUTPUT"
+
+          # El cuerpo del comentario, para el paso siguiente. Delimitador aleatorio
+          # porque el resumen es texto libre y puede contener casi cualquier cosa.
+          EOF_MARK="EOF_$(openssl rand -hex 8)"
+          {
+            echo "body<<$EOF_MARK"
+            echo "## Revisión de Claude"
+            echo ""
+            echo "**Veredicto:** \`$VERDICT\` · **Riesgo:** \`$RISK\`"
+            echo ""
+            echo "$SUMMARY"
+            echo ""
+            echo "$OUT" | jq -r '.blocking_findings[]? | "- ⛔ " + .'
+            echo "$EOF_MARK"
           } >> "$GITHUB_OUTPUT"
 
           {
@@ -125,21 +160,21 @@ jobs:
           HAS_PAT: ${{ secrets.AI_REVIEWER_TOKEN != '' }}
           PR: ${{ github.event.pull_request.number }}
           VERDICT: ${{ steps.verdict.outputs.verdict }}
+          BODY: ${{ steps.verdict.outputs.body }}
         run: |
+          # El veredicto se publica SIEMPRE como comentario, con o sin PAT.
+          # Antes la rama de request_changes sin PAT no publicaba nada y el
+          # motivo del rechazo sólo aparecía en el resumen del job.
+          gh pr comment "$PR" --body "$BODY"
+
           if [ "$VERDICT" = "approve" ]; then
-            if [ "$HAS_PAT" = "true" ]; then
-              gh pr review "$PR" --approve --body "✅ Revisión automática de Claude: sin hallazgos bloqueantes."
-              gh pr edit "$PR" --add-label "ai-review:approved"
-            else
-              gh pr comment "$PR" --body "✅ Revisión automática de Claude: sin hallazgos bloqueantes."
-              gh pr edit "$PR" --add-label "ai-review:approved"
-            fi
+            gh pr edit "$PR" --add-label "ai-review:approved"
+            [ "$HAS_PAT" = "true" ] && gh pr review "$PR" --approve --body "Sin hallazgos bloqueantes."
           else
             gh pr edit "$PR" --remove-label "ai-review:approved" || true
-            if [ "$HAS_PAT" = "true" ]; then
-              gh pr review "$PR" --request-changes --body "⛔ Claude encontró problemas bloqueantes. Detalle en los comentarios inline."
-            fi
+            [ "$HAS_PAT" = "true" ] && gh pr review "$PR" --request-changes --body "Hallazgos bloqueantes; detalle en el comentario."
           fi
+          exit 0
 
       # ------------------------------------------------------------ #
       # Este step hace que el job falle si hay bloqueantes, de modo que
