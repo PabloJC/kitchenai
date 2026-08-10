@@ -27,9 +27,31 @@ PROJECT_NUMBER=$(gh project list --owner "$OWNER" --format json \
 
 if [ "${1:-}" = "--show" ]; then
     [ -n "$PROJECT_NUMBER" ] || { echo "No existe ningún tablero '$TITLE'."; exit 1; }
-    gh project view "$PROJECT_NUMBER" --owner "$OWNER"
-    echo
-    gh project field-list "$PROJECT_NUMBER" --owner "$OWNER"
+    gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json \
+        --jq '"Tablero: \(.title)\nURL:     \(.url)\nItems:   \(.items.totalCount)"'
+
+    # `gh project field-list` no muestra las opciones de los campos de
+    # selección, que es justo lo único que hay que verificar aquí: el
+    # workflow compara los nombres de las columnas letra a letra.
+    FIELDS=$(gh project field-list "$PROJECT_NUMBER" --owner "$OWNER" --format json)
+
+    printf '\n%sColumnas (Status)%s\n' "$BOLD" "$OFF"
+    echo "$FIELDS" | jq -r '.fields[] | select(.name == "Status") | .options[]?.name' \
+        | while read -r c; do
+            case "$c" in
+                "Todo"|"In progress"|"In review"|"Done") printf '  %s✓%s %s\n' "$GREEN" "$OFF" "$c" ;;
+                *)                                       printf '  %s?%s %s  <- el workflow no la reconoce\n' "$YELLOW" "$OFF" "$c" ;;
+            esac
+          done
+
+    for C in "Todo" "In progress" "In review" "Done"; do
+        echo "$FIELDS" | jq -r '.fields[] | select(.name == "Status") | .options[]?.name' \
+            | grep -qxF "$C" || printf '  %s✗ falta:%s %s\n' "$RED" "$OFF" "$C"
+    done
+
+    printf '\n%sOtros campos de selección%s\n' "$BOLD" "$OFF"
+    echo "$FIELDS" | jq -r '.fields[] | select(.options != null and .name != "Status")
+                            | "  \(.name): " + ([.options[].name] | join(", "))'
     exit 0
 fi
 
