@@ -77,7 +77,7 @@ if ! gh api -X PUT "repos/$REPO/branches/$BRANCH/protection" --input - <<'JSON'
   "required_linear_history": true,
   "allow_force_pushes": false,
   "allow_deletions": false,
-  "required_conversation_resolution": true,
+  "required_conversation_resolution": false,
   "block_creations": false,
   "lock_branch": false,
   "allow_fork_syncing": false
