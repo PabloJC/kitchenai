@@ -61,8 +61,7 @@ printf '%s✓%s Auto-merge, squash-only y borrado de rama al mergear\n' "$GREEN"
 # `enforce_admins: false` para que puedas desbloquearte si el revisor se
 # cae. Es una puerta trasera consciente: úsala y déjalo anotado en la PR.
 # ------------------------------------------------------------------ #
-gh api -X PUT "repos/$REPO/branches/$BRANCH/protection" \
-    --input - <<'JSON'
+if ! gh api -X PUT "repos/$REPO/branches/$BRANCH/protection" --input - <<'JSON'
 {
   "required_status_checks": {
     "strict": false,
@@ -84,6 +83,21 @@ gh api -X PUT "repos/$REPO/branches/$BRANCH/protection" \
   "allow_fork_syncing": false
 }
 JSON
+then
+    printf '\n%s✗ No se pudo aplicar la protección de rama.%s\n\n' "$YELLOW" "$OFF"
+    cat <<'WHY'
+Si el error es un 403 con "Upgrade to GitHub Pro or make this repository public",
+no hay nada que arreglar aquí: la protección de rama no existe para repositorios
+privados en plan Free. GitHub acepta la llamada y no aplica nada.
+
+Salidas:
+  · hacer el repositorio público  -> gh repo edit --visibility public
+  · pasar a GitHub Pro
+  · quedarte sin protección       -> el workflow auto-merge.yml cubre el merge
+                                     automático; ver docs/step-04-branch-protection.md
+WHY
+    exit 1
+fi
 
 printf '%s✓%s Protección aplicada a %s\n\n' "$GREEN" "$OFF" "$BRANCH"
 

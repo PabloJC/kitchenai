@@ -3,16 +3,72 @@
 > Objetivo: que `main` sólo acepte código que ha pasado el CI **y** la revisión de Claude,
 > y que una tarea terminada se mergee sola en cuanto ambos estén en verde.
 
-Hasta ahora los dos checks existían pero eran decorativos: podías ignorar un `request_changes`
-y mergear igual. Este paso los convierte en una barrera real.
+## ⚠️ Estado en este repositorio
+
+**La protección de rama no está activa.** `PabloJC/kitchenai` es privado en plan Free, y en
+esa combinación GitHub no ofrece la función:
+
+```
+403 Upgrade to GitHub Pro or make this repository public to enable this feature.
+```
+
+Lo importante es que la API **acepta la llamada sin aplicar nada** si no controlas el código
+de salida. Si `git push` a `main` no te devuelve un rechazo, comprueba antes que nada:
 
 ```bash
+./scripts/setup-branch-protection.sh --show
+```
+
+Consecuencias prácticas:
+
+| | Estado |
+|---|---|
+| CI y revisión de Claude | ✅ funcionan y comentan en cada PR |
+| Push directo a `main` | ⚠️ permitido |
+| Mergear con checks en rojo | ⚠️ permitido |
+| Merge automático al terminar | ✅ vía `.github/workflows/auto-merge.yml` |
+
+La disciplina de trabajar siempre por PR la pones tú; el remoto no la impone. Para
+recuperarla hay dos caminos, y `scripts/setup-branch-protection.sh` queda listo para
+cualquiera de los dos:
+
+```bash
+gh repo edit --visibility public --accept-visibility-change-consequences
 ./scripts/setup-branch-protection.sh
 ```
 
+o bien contratar GitHub Pro y ejecutar el script tal cual. Hacerlo público tiene además una
+ventaja nada menor: los minutos de Actions pasan a ser ilimitados, y en privado los runners
+de macOS —que usa el job `build-ios`— consumen la cuota **x10**.
+
 ---
 
-## 4.1 Qué configura
+## 4.0 Merge automático sin protección de rama
+
+El auto-merge nativo de GitHub depende de la protección de rama, así que aquí tampoco está
+disponible. Lo cubre `.github/workflows/auto-merge.yml`:
+
+1. Pones la etiqueta **`ready-to-merge`** en la PR.
+2. El workflow comprueba que no es borrador, que no tiene conflictos y que **todos** los
+   checks están en verde (`gh pr checks` falla tanto si algo va mal como si sigue pendiente).
+3. Si es así, mergea con squash y borra la rama.
+
+Se dispara al etiquetar y también cada vez que terminan `CI` o `AI Code Review`, así que da
+igual el orden: si etiquetas antes de que acaben los checks, el último en terminar lo
+reintenta. Si algo falla, corriges, empujas y se vuelve a intentar solo al ponerse verde.
+
+```bash
+gh pr create --fill
+gh pr edit --add-label ready-to-merge     # "esta tarea está terminada"
+```
+
+La diferencia con la protección de rama es de naturaleza, no de grado: esto **automatiza** el
+merge cuando todo está bien, pero no **impide** que mergees a mano ignorando los checks. Es
+una comodidad, no una barrera.
+
+---
+
+## 4.1 Qué configuraría el script (cuando esté disponible)
 
 | Ajuste | Valor | Por qué |
 |---|---|---|
@@ -124,9 +180,17 @@ Y comprueba la configuración efectiva:
 
 ## ✅ Checklist Paso 4
 
+Con la configuración actual (privado, plan Free):
+
+- [ ] Una PR etiquetada `ready-to-merge` con todo en verde se mergea sola
+- [ ] La rama se borra al mergear
+- [ ] Una PR etiquetada con checks en rojo **no** se mergea
+- [ ] Al corregir y ponerse verde, el merge se reintenta sin volver a etiquetar
+- [ ] Una PR con `skip-ai-review` **no** se queda esperando un check que nunca llega
+- [ ] Una PR que toca `.github/workflows/` tampoco
+
+Si algún día el repositorio pasa a público o a Pro:
+
+- [ ] `./scripts/setup-branch-protection.sh` termina sin error
 - [ ] `git push` directo a `main` es rechazado
 - [ ] Una PR con `Claude review` en rojo no ofrece el botón de merge
-- [ ] Una PR con ambos checks en verde y `--auto` se mergea sola
-- [ ] La rama se borra al mergear
-- [ ] Una PR con `skip-ai-review` **no** se queda bloqueada esperando el check
-- [ ] Una PR que toca `.github/workflows/` tampoco se queda bloqueada
