@@ -38,6 +38,8 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           PR_NUM: ${{ github.event.pull_request.number }}
           LABEL: ready-to-merge
+          # Tiene que coincidir exactamente con el `name:` del job de abajo.
+          SELF: Mergear si todo está en verde
         run: |
           set -euo pipefail
 
@@ -80,15 +82,23 @@ jobs:
             fi
 
             # ---------------------------------------------------------- #
-            # 2. Todos los checks en verde.
+            # 2. Todos los checks en verde, excepto el nuestro.
             #
-            # `gh pr checks` devuelve != 0 si algo falla O si algo sigue
-            # pendiente. Las dos situaciones significan lo mismo aquí:
-            # todavía no. Si acaban en verde, este workflow se vuelve a
-            # disparar por `workflow_run` y reintenta.
+            # Cuando el disparador es `pull_request`, este propio job
+            # aparece como un check de la PR. Preguntar "¿están todos los
+            # checks en verde?" con `gh pr checks` a secas se responde a sí
+            # mismo que no: está en curso. Hay que excluirse del recuento.
+            #
+            # `skipping` cuenta como bueno: es lo que sale cuando un job se
+            # salta por condición y no significa que falte nada.
             # ---------------------------------------------------------- #
-            if ! gh pr checks "$PR"; then
-              echo "Checks fallando o pendientes. No se mergea."
+            PENDIENTES=$(gh pr checks "$PR" --json name,bucket --jq \
+              "[.[] | select(.name != \"$SELF\") | select(.bucket != \"pass\" and .bucket != \"skipping\")] | length")
+
+            if [ "$PENDIENTES" != "0" ]; then
+              echo "Hay $PENDIENTES check(s) fallando o pendientes. No se mergea."
+              gh pr checks "$PR" --json name,bucket --jq \
+                '.[] | select(.bucket != "pass" and .bucket != "skipping") | "  \(.bucket)\t\(.name)"'
               echo "::endgroup::"; continue
             fi
 
