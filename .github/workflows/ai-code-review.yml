@@ -81,10 +81,34 @@ jobs:
             - `verdict: "approve"` sólo si no hay ningún hallazgo bloqueante.
             - `verdict: "request_changes"` si hay al menos uno.
             - `blocking_findings` describe cada bloqueante en una frase, con fichero y línea.
+          # Los permisos de herramientas van en `settings`, NO en --allowedTools.
+          # claude_args se parsea como línea de shell y los paréntesis de
+          # `Bash(git diff:*)` se interpretan como operadores, lo que rompe el
+          # resto de la lista: --json-schema no llegaba al CLI y structured_output
+          # salía vacío sin ningún error visible.
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Read",
+                  "Grep",
+                  "Glob",
+                  "Bash(git diff:*)",
+                  "Bash(git log:*)",
+                  "Bash(gh pr view:*)",
+                  "Bash(gh issue view:*)"
+                ],
+                "deny": [
+                  "Write",
+                  "Edit",
+                  "Bash(git push:*)",
+                  "Bash(git commit:*)"
+                ]
+              }
+            }
           claude_args: |
             --model claude-sonnet-5
             --max-turns 30
-            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(gh pr view:*),Bash(gh issue view:*)"
             --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["approve","request_changes"]},"summary":{"type":"string"},"blocking_findings":{"type":"array","items":{"type":"string"}},"risk":{"type":"string","enum":["low","medium","high"]}},"required":["verdict","summary","blocking_findings","risk"]}'
 
       # ------------------------------------------------------------ #
