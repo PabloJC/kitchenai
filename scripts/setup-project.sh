@@ -35,18 +35,20 @@ if [ "${1:-}" = "--show" ]; then
     # workflow compara los nombres de las columnas letra a letra.
     FIELDS=$(gh project field-list "$PROJECT_NUMBER" --owner "$OWNER" --format json)
 
-    printf '\n%sColumnas (Status)%s\n' "$BOLD" "$OFF"
-    echo "$FIELDS" | jq -r '.fields[] | select(.name == "Status") | .options[]?.name' \
-        | while read -r c; do
-            case "$c" in
-                "Todo"|"In progress"|"In review"|"Done") printf '  %s✓%s %s\n' "$GREEN" "$OFF" "$c" ;;
-                *)                                       printf '  %s?%s %s  <- el workflow no la reconoce\n' "$YELLOW" "$OFF" "$c" ;;
-            esac
-          done
+    # Igual que en project-item-status.sh: la comparación ignora mayúsculas.
+    COLUMNAS=$(echo "$FIELDS" | jq -r '.fields[] | select(.name == "Status") | .options[]?.name')
 
-    for C in "Todo" "In progress" "In review" "Done"; do
-        echo "$FIELDS" | jq -r '.fields[] | select(.name == "Status") | .options[]?.name' \
-            | grep -qxF "$C" || printf '  %s✗ falta:%s %s\n' "$RED" "$OFF" "$C"
+    printf '\n%sColumnas (Status)%s\n' "$BOLD" "$OFF"
+    echo "$COLUMNAS" | while read -r c; do
+        case "$(echo "$c" | tr '[:upper:]' '[:lower:]')" in
+            "todo"|"in progress"|"in review"|"done") printf '  %s✓%s %s\n' "$GREEN" "$OFF" "$c" ;;
+            *)                                       printf '  %s?%s %s  <- el workflow no la usa\n' "$YELLOW" "$OFF" "$c" ;;
+        esac
+    done
+
+    for C in "todo" "in progress" "in review" "done"; do
+        echo "$COLUMNAS" | tr '[:upper:]' '[:lower:]' | grep -qxF "$C" \
+            || printf '  %s✗ falta:%s %s\n' "$RED" "$OFF" "$C"
     done
 
     printf '\n%sOtros campos de selección%s\n' "$BOLD" "$OFF"

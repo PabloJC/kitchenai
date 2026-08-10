@@ -50,8 +50,13 @@ fi
 FIELDS=$(gh project field-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json)
 
 FIELD_ID=$(echo "$FIELDS" | jq -r '.fields[] | select(.name == "Status") | .id')
+
+# La comparación ignora mayúsculas a propósito. Projects crea la columna como
+# «In Progress» y es muy fácil acabar con «In progress» tras un renombrado;
+# hacer que el tablero deje de funcionar por una letra sería absurdo.
 OPTION_ID=$(echo "$FIELDS" | jq -r --arg s "$STATUS" \
-            '.fields[] | select(.name == "Status") | .options[]? | select(.name == $s) | .id')
+            '.fields[] | select(.name == "Status") | .options[]?
+             | select((.name | ascii_downcase) == ($s | ascii_downcase)) | .id')
 
 if [ -z "$OPTION_ID" ] || [ "$OPTION_ID" = "null" ]; then
     echo "::error::La columna '$STATUS' no existe en el tablero."
