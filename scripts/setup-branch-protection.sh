@@ -8,7 +8,7 @@
 # Idempotente: puedes ejecutarlo tantas veces como quieras.
 set -euo pipefail
 
-GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BOLD=$'\033[1m'; OFF=$'\033[0m'
+GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RED=$'\033[31m'; BOLD=$'\033[1m'; OFF=$'\033[0m'
 
 REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 BRANCH="main"
@@ -99,7 +99,24 @@ WHY
     exit 1
 fi
 
-printf '%s✓%s Protección aplicada a %s\n\n' "$GREEN" "$OFF" "$BRANCH"
+printf '%s✓%s Protección aplicada a %s\n' "$GREEN" "$OFF" "$BRANCH"
+
+# ------------------------------------------------------------------ #
+# 3. enforce_admins, por su endpoint propio.
+#
+# El PUT de arriba acepta "enforce_admins": true, responde 200 y lo deja
+# en false. Hay que activarlo con su endpoint dedicado. Y hay que
+# comprobarlo: sin esto la protección parece puesta y al owner —la única
+# persona que iba a empujar— no le aplica nada.
+# ------------------------------------------------------------------ #
+gh api -X POST "repos/$REPO/branches/$BRANCH/protection/enforce_admins" >/dev/null
+
+ADMINS=$(gh api "repos/$REPO/branches/$BRANCH/protection" --jq .enforce_admins.enabled)
+if [ "$ADMINS" != "true" ]; then
+    printf '%s✗ enforce_admins sigue en false.%s La protección no te aplicará a ti.\n' "$RED" "$OFF"
+    exit 1
+fi
+printf '%s✓%s enforce_admins activo: la protección también te aplica a ti\n\n' "$GREEN" "$OFF"
 
 cat <<'NEXT'
 Lo que acaba de cambiar:
