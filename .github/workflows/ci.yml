@@ -1,0 +1,168 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false
+
+jobs:
+  # ---------------------------------------------------------------- #
+  # Análisis estático: rápido, falla pronto.
+  # ---------------------------------------------------------------- #
+  static-analysis:
+    name: Lint & Detekt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Restore google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > androidApp/google-services.json
+          else
+            cp androidApp/google-services.json.template androidApp/google-services.json
+          fi
+
+      - run: ./gradlew detekt --continue
+      - run: ./gradlew ktlintCheck --continue
+
+      - name: Publicar reportes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-analysis-reports
+          path: '**/build/reports/**'
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------- #
+  # Tests JVM del código compartido.
+  # `check` en vez de un nombre de tarea concreto: con el plugin
+  # com.android.kotlin.multiplatform.library las tareas de test cambiaron
+  # de nombre y `check` resuelve las que existan en cada módulo.
+  # ---------------------------------------------------------------- #
+  shared-tests:
+    name: Tests (JVM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > androidApp/google-services.json
+          else
+            cp androidApp/google-services.json.template androidApp/google-services.json
+          fi
+
+      - run: ./gradlew :shared:check :composeApp:check -x detekt -x ktlintCheck -x ktlintMainSourceSetCheck
+
+      - name: Publicar resultados de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/build/test-results/**/*.xml'
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------- #
+  build-android:
+    name: Build Android (debug)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > androidApp/google-services.json
+          else
+            cp androidApp/google-services.json.template androidApp/google-services.json
+          fi
+
+      - run: ./gradlew :androidApp:assembleDebug
+
+  # ---------------------------------------------------------------- #
+  # macOS es caro en minutos: sólo compila y testea los targets Apple.
+  # ---------------------------------------------------------------- #
+  build-ios:
+    name: Build iOS framework
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore GoogleService-Info.plist
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+        run: |
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/iosApp/GoogleService-Info.plist
+          fi
+
+      # Sólo enlazado: los tests de Kotlin/Native están desactivados porque el
+      # linker no encuentra los frameworks de Firebase para iOS (los aporta Xcode
+      # vía SPM). Ver docs/step-01c-agp9-structure.md.
+      - run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+
+  # ---------------------------------------------------------------- #
+  # Check agregado: es el único que se marca como "required" en main.
+  # ---------------------------------------------------------------- #
+  ci-passed:
+    name: CI passed
+    if: always()
+    needs: [static-analysis, shared-tests, build-android, build-ios]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar que todos los jobs pasaron
+        run: |
+          echo '${{ toJSON(needs) }}' | jq -e 'all(.[]; .result == "success")' > /dev/null \
+            || { echo "::error::Algún job de CI falló"; exit 1; }
+          echo "Todos los jobs de CI en verde."

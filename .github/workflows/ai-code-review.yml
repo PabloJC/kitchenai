@@ -1,0 +1,149 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main, develop]
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write        # necesario para el action de Claude
+
+jobs:
+  review:
+    name: Claude review
+    # No revisamos borradores ni PRs del bot de dependencias
+    if: >-
+      github.event.pull_request.draft == false &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-ai-review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0        # Claude necesita el historial para el diff
+
+      # ------------------------------------------------------------ #
+      # Claude revisa el diff contra las reglas de CLAUDE.md y devuelve
+      # un veredicto estructurado que usamos en los pasos siguientes.
+      # ------------------------------------------------------------ #
+      - name: Revisión con Claude
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_sticky_comment: true
+          prompt: |
+            Eres el revisor de código del proyecto KitchenAI (Kotlin Multiplatform + Compose Multiplatform + Firebase).
+
+            REPO: ${{ github.repository }}
+            PR: #${{ github.event.pull_request.number }} — "${{ github.event.pull_request.title }}"
+            BASE: ${{ github.event.pull_request.base.ref }}
+
+            Lee `CLAUDE.md` y `docs/architecture.md` antes de opinar: contienen las reglas
+            vinculantes de este repositorio.
+
+            Revisa ÚNICAMENTE el diff de esta PR. Para cada problema real deja un comentario
+            inline en la línea concreta. Prioriza, en este orden:
+
+            1. **Violaciones de la regla de dependencias.** `shared/domain` no puede importar
+               nada de `data`, `presentation`, Firebase, Android ni iOS. `composeApp` no puede
+               importar `shared.data` directamente. Esto es bloqueante siempre.
+            2. **Fugas de plataforma en `commonMain`.** Nada de `android.*`, `java.*`,
+               `platform.Foundation.*` fuera de `androidMain`/`iosMain`.
+            3. **Corrección y concurrencia.** Dispatchers hardcodeados en vez de
+               `DispatcherProvider`, corrutinas sin scope, `runBlocking` en producción,
+               `GlobalScope`, estado mutable compartido.
+            4. **Seguridad.** Claves, tokens o URLs de Firebase hardcodeadas; reglas de
+               Firestore permisivas; PII en logs; `google-services.json` commiteado.
+            5. **Manejo de errores.** Excepciones cruzando fronteras de capa en vez de
+               `AppResult`; `catch (e: Exception)` vacíos.
+            6. **Tests.** Todo caso de uso nuevo o modificado en `domain` necesita test en
+               `commonTest`. Sin test => bloqueante.
+            7. **Criterios de aceptación de la issue.** Si el cuerpo de la PR referencia una
+               issue (`Closes #N`), léela y comprueba que se cumplen todos sus criterios.
+
+            NO comentes sobre: formato (lo cubre ktlint), preferencias de estilo subjetivas,
+            ni nombres que sean simplemente distintos a los que tú elegirías. Nada de elogios
+            genéricos. Si el código está bien, dilo en una línea.
+
+            Al terminar, devuelve el veredicto en el esquema JSON indicado.
+            - `verdict: "approve"` sólo si no hay ningún hallazgo bloqueante.
+            - `verdict: "request_changes"` si hay al menos uno.
+            - `blocking_findings` describe cada bloqueante en una frase, con fichero y línea.
+          claude_args: |
+            --model claude-sonnet-5
+            --max-turns 30
+            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(gh pr view:*),Bash(gh issue view:*)"
+            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["approve","request_changes"]},"summary":{"type":"string"},"blocking_findings":{"type":"array","items":{"type":"string"}},"risk":{"type":"string","enum":["low","medium","high"]}},"required":["verdict","summary","blocking_findings","risk"]}'
+
+      # ------------------------------------------------------------ #
+      - name: Interpretar veredicto
+        id: verdict
+        run: |
+          OUT='${{ steps.claude.outputs.structured_output }}'
+          echo "$OUT" | jq . || { echo "::error::Claude no devolvió JSON válido"; exit 1; }
+
+          VERDICT=$(echo "$OUT" | jq -r '.verdict')
+          RISK=$(echo "$OUT" | jq -r '.risk')
+          SUMMARY=$(echo "$OUT" | jq -r '.summary')
+
+          {
+            echo "verdict=$VERDICT"
+            echo "risk=$RISK"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Revisión de Claude"
+            echo ""
+            echo "**Veredicto:** \`$VERDICT\` · **Riesgo:** \`$RISK\`"
+            echo ""
+            echo "$SUMMARY"
+            echo ""
+            echo "$OUT" | jq -r '.blocking_findings[]? | "- ⛔ " + .'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------ #
+      # Review formal en la PR. Requiere un token distinto al del actor
+      # que abrió la PR: GitHub no permite auto-aprobarse.
+      # Usa AI_REVIEWER_TOKEN (PAT fine-grained de un usuario máquina) si
+      # existe; si no, cae a GITHUB_TOKEN y sólo deja comentario.
+      # ------------------------------------------------------------ #
+      - name: Publicar review en la PR
+        env:
+          GH_TOKEN: ${{ secrets.AI_REVIEWER_TOKEN || secrets.GITHUB_TOKEN }}
+          HAS_PAT: ${{ secrets.AI_REVIEWER_TOKEN != '' }}
+          PR: ${{ github.event.pull_request.number }}
+          VERDICT: ${{ steps.verdict.outputs.verdict }}
+        run: |
+          if [ "$VERDICT" = "approve" ]; then
+            if [ "$HAS_PAT" = "true" ]; then
+              gh pr review "$PR" --approve --body "✅ Revisión automática de Claude: sin hallazgos bloqueantes."
+              gh pr edit "$PR" --add-label "ai-review:approved"
+            else
+              gh pr comment "$PR" --body "✅ Revisión automática de Claude: sin hallazgos bloqueantes."
+              gh pr edit "$PR" --add-label "ai-review:approved"
+            fi
+          else
+            gh pr edit "$PR" --remove-label "ai-review:approved" || true
+            if [ "$HAS_PAT" = "true" ]; then
+              gh pr review "$PR" --request-changes --body "⛔ Claude encontró problemas bloqueantes. Detalle en los comentarios inline."
+            fi
+          fi
+
+      # ------------------------------------------------------------ #
+      # Este step hace que el job falle si hay bloqueantes, de modo que
+      # "AI Code Review / Claude review" sirva como required status check.
+      # ------------------------------------------------------------ #
+      - name: Bloquear si hay hallazgos
+        if: steps.verdict.outputs.verdict != 'approve'
+        run: |
+          echo "::error::La revisión de Claude encontró problemas bloqueantes."
+          exit 1

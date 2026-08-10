@@ -1,0 +1,69 @@
+[versions]
+# --- Toolchain ---------------------------------------------------------------
+kotlin              = "2.4.10"
+agp                 = "8.13.0"
+composeMultiplatform = "1.11.1"
+jvmTarget           = "17"
+
+# --- Android -----------------------------------------------------------------
+androidCompileSdk   = "36"
+androidMinSdk       = "26"
+androidTargetSdk    = "36"
+androidxActivity    = "1.11.0"
+androidxLifecycle   = "2.9.4"
+
+# --- Librerías ---------------------------------------------------------------
+gitliveFirebase     = "2.6.0"
+firebaseBom         = "34.1.0"
+googleServices      = "4.4.3"
+koin                = "4.1.0"
+coroutines          = "1.10.2"
+kotlinxDatetime     = "0.7.1"
+kotlinxSerialization = "1.9.0"
+
+# --- Test --------------------------------------------------------------------
+turbine             = "1.2.1"
+
+# --- Calidad -----------------------------------------------------------------
+detekt              = "1.23.8"
+ktlint              = "12.1.2"
+
+[libraries]
+# GitLive: API única de Firebase para commonMain
+gitlive-firebase-common    = { module = "dev.gitlive:firebase-common",    version.ref = "gitliveFirebase" }
+gitlive-firebase-auth      = { module = "dev.gitlive:firebase-auth",      version.ref = "gitliveFirebase" }
+gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitliveFirebase" }
+gitlive-firebase-storage   = { module = "dev.gitlive:firebase-storage",   version.ref = "gitliveFirebase" }
+
+# Firebase nativo Android (analytics/crashlytics no están en GitLive)
+firebase-bom         = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-analytics   = { module = "com.google.firebase:firebase-analytics" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+
+koin-core             = { module = "io.insert-koin:koin-core",                version.ref = "koin" }
+koin-android          = { module = "io.insert-koin:koin-android",             version.ref = "koin" }
+koin-compose          = { module = "io.insert-koin:koin-compose",             version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel",  version.ref = "koin" }
+
+kotlinx-coroutines-core    = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test    = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-datetime           = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+
+androidx-activity-compose   = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
+androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
+androidx-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
+
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+
+[plugins]
+androidApplication   = { id = "com.android.application", version.ref = "agp" }
+androidLibrary       = { id = "com.android.library", version.ref = "agp" }
+kotlinMultiplatform  = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinSerialization  = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+composeCompiler      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+googleServices       = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+detekt               = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+ktlint               = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }

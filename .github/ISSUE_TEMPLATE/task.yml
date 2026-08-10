@@ -1,0 +1,77 @@
+name: Tarea de desarrollo
+description: Unidad de trabajo con plan de desarrollo, para que un agente la implemente de principio a fin
+title: "[área] "
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: Qué problema resuelve y por qué ahora. Enlaza specs o diseños.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Capa principal
+      options: [domain, data, presentation, infra/CI, cross-cutting]
+    validations:
+      required: true
+
+  - type: textarea
+    id: plan
+    attributes:
+      label: Plan de desarrollo
+      description: Pasos ordenados y concretos. Un agente debe poder ejecutarlos sin preguntar.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Ficheros afectados
+      description: Ruta exacta de cada fichero a crear o modificar. Sirve para detectar colisiones entre tareas paralelas.
+      value: |
+        - `shared/src/commonMain/kotlin/com/kitchenai/shared/...`
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: Verificables y objetivos. El revisor IA los comprueba uno a uno.
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: Tests requeridos
+      value: |
+        - `shared/src/commonTest/kotlin/com/kitchenai/shared/...`
+    validations:
+      required: true
+
+  - type: input
+    id: blocked_by
+    attributes:
+      label: Bloqueada por
+      description: "Issues que deben cerrarse antes. Vacío = puede ejecutarse en paralelo."
+      placeholder: "#12, #14"
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Tamaño estimado
+      options: ["XS (<1h)", "S (1-3h)", "M (3-8h)", "L (>1 día — divídela)"]
+    validations:
+      required: true

@@ -1,0 +1,33 @@
+# Gradle / build
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+*.hprof
+captures/
+
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+iosApp/Pods/
+iosApp/*.xcodeproj/project.xcworkspace/
+
+# --- Firebase: NUNCA se commitean ---
+androidApp/google-services.json
+iosApp/iosApp/GoogleService-Info.plist
+firebase-debug.log
+.firebase/
+
+# Firmas
+*.keystore
+*.jks
+keystore.properties
