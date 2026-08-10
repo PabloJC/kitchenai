@@ -80,6 +80,20 @@ And it **skips silently**: the step stays green and publishes no outputs at all.
 action output comes back empty, look for `workflow validation` in that step's log before
 debugging whatever consumes the output.
 
+The consequence for a PR that edits that file is that the review cannot produce a verdict,
+the `Claude review` check goes red and — being required — the PR is stuck. The way out is
+the `skip-ai-review` label, but it has to be there **when the workflow runs**:
+`ai-code-review.yml` triggers on `opened` and `synchronize`, not on `labeled`, so adding the
+label afterwards changes nothing on its own.
+
+```bash
+gh pr create --fill --label skip-ai-review     # label it from the start
+git commit --allow-empty -m "chore: re-run"    # or force a new run if you forgot
+```
+
+The `labeled` event is deliberately not a trigger: it would run — and pay for — a full
+review every time any label is added, `ready-to-merge` included.
+
 ### A required check that never reports blocks just like a red one
 
 That is why the review skip (the `skip-ai-review` label, drafts) does not live in the job's
