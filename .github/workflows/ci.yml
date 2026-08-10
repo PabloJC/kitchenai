@@ -86,7 +86,11 @@ jobs:
             cp androidApp/google-services.json.template androidApp/google-services.json
           fi
 
-      - run: ./gradlew :shared:check :composeApp:check -x detekt -x ktlintCheck -x ktlintMainSourceSetCheck
+      # Sin exclusiones: `check` vuelve a ejecutar detekt y ktlint, que ya corren
+      # en el job anterior. Es un minuto de más a cambio de no depender de nombres
+      # de tarea que con KMP cambian por source set (ktlintCommonMainSourceSetCheck,
+      # ktlintAndroidMainSourceSetCheck, ...) y hacen fallar el comando por ambigüedad.
+      - run: ./gradlew :shared:check :composeApp:check
 
       - name: Publicar resultados de tests
         if: always()
