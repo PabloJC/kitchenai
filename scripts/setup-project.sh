@@ -100,11 +100,14 @@ ${BOLD}${GREEN}Falta una cosa que no puedo hacer por ti${OFF}
 El GITHUB_TOKEN de Actions no puede tocar Projects. Crea un PAT con scope
 \`project\` y guárdalo como secret:
 
-  https://github.com/settings/tokens?type=beta
-    Repository access : Only select repositories -> $REPO
-    Permissions       : Projects  -> Read and write
-                        Issues    -> Read-only
-                        Metadata  -> Read-only
+  Tiene que ser un token CLÁSICO. Los fine-grained no sirven: su lista de
+  permisos de cuenta no incluye Projects, así que no hay forma de darles
+  acceso a un tablero que cuelga de un usuario.
+
+  https://github.com/settings/tokens/new
+
+    Note   : kitchenai-project
+    Scopes : project      (Full control of projects)   <-- sólo ése
 
   gh secret set PROJECT_TOKEN --repo $REPO
 

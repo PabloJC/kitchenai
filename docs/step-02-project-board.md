@@ -38,8 +38,18 @@ Y el token, que es la parte que no se puede automatizar:
 gh secret set PROJECT_TOKEN
 ```
 
-Un *fine-grained PAT* con acceso sólo a este repositorio y permisos `Projects: Read and
-write`, `Issues: Read-only`, `Metadata: Read-only`.
+Tiene que ser un **token clásico** con el scope `project`, creado en
+<https://github.com/settings/tokens/new>.
+
+Los *fine-grained* no valen, y conviene saber por qué antes de perder media hora buscando la
+casilla: un tablero de Projects v2 cuelga de la cuenta —`github.com/users/<tú>/projects/N`—,
+y [la lista de permisos de cuenta de los tokens fine-grained](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens)
+no incluye `Projects`. El permiso `Projects` que sí aparece, bajo *Repository permissions*,
+es el de los proyectos clásicos del repositorio y no da acceso a Projects v2.
+
+El precio es que un token clásico es de cuenta entera: no se puede limitar a un repositorio.
+Si eso te incomoda, la alternativa es mover el tablero a una organización, donde `Projects`
+sí existe como permiso de organización para tokens fine-grained.
 
 **Por qué hace falta un PAT.** El `GITHUB_TOKEN` de Actions está limitado al repositorio, y
 un Project vive fuera de él —cuelga del usuario o de la organización—. No hay permiso que
