@@ -18,7 +18,7 @@ permissions:
 jobs:
   review:
     name: Claude review
-    # No revisamos borradores ni PRs del bot de dependencias
+    # No revisamos borradores ni PRs marcadas para saltarse la revisión.
     if: >-
       github.event.pull_request.draft == false &&
       !contains(github.event.pull_request.labels.*.name, 'skip-ai-review')
@@ -31,18 +31,41 @@ jobs:
           fetch-depth: 0        # Claude necesita el historial para el diff
 
       # ------------------------------------------------------------ #
-      # Claude revisa el diff contra las reglas de CLAUDE.md y devuelve
-      # un veredicto estructurado que usamos en los pasos siguientes.
+      # Claude revisa el diff contra CLAUDE.md, deja comentarios inline
+      # y publica su propio comentario resumen (lo hace el action).
+      #
+      # El veredicto viaja como una línea centinela al final de su
+      # respuesta, no como structured_output: `--json-schema` devolvía
+      # siempre vacío, sin error, y no conseguimos averiguar por qué.
+      # Un centinela de texto es inmune al formato de la transcripción.
       # ------------------------------------------------------------ #
       - name: Revisión con Claude
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
-          # Token OAuth de la suscripción de Claude, generado con `claude setup-token`.
-          # El consumo va contra la suscripción, no contra créditos de API.
-          # Para facturar por tokens: anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_sticky_comment: true
+          # Permisos en `settings`, no en --allowedTools: claude_args se parsea
+          # como línea de shell y los paréntesis de `Bash(git diff:*)` rompen
+          # el resto de la lista.
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Read",
+                  "Grep",
+                  "Glob",
+                  "Bash(git diff:*)",
+                  "Bash(git log:*)",
+                  "Bash(gh pr view:*)",
+                  "Bash(gh issue view:*)"
+                ],
+                "deny": ["Write", "Edit", "Bash(git push:*)", "Bash(git commit:*)"]
+              }
+            }
+          claude_args: |
+            --model claude-sonnet-5
+            --max-turns 30
           prompt: |
             Eres el revisor de código del proyecto KitchenAI (Kotlin Multiplatform + Compose Multiplatform + Firebase).
 
@@ -50,8 +73,7 @@ jobs:
             PR: #${{ github.event.pull_request.number }} — "${{ github.event.pull_request.title }}"
             BASE: ${{ github.event.pull_request.base.ref }}
 
-            Lee `CLAUDE.md` y `docs/architecture.md` antes de opinar: contienen las reglas
-            vinculantes de este repositorio.
+            Lee `CLAUDE.md` antes de opinar: contiene las reglas vinculantes de este repositorio.
 
             Revisa ÚNICAMENTE el diff de esta PR. Para cada problema real deja un comentario
             inline en la línea concreta. Prioriza, en este orden:
@@ -77,135 +99,83 @@ jobs:
             ni nombres que sean simplemente distintos a los que tú elegirías. Nada de elogios
             genéricos. Si el código está bien, dilo en una línea.
 
-            Al terminar, devuelve el veredicto en el esquema JSON indicado.
-            - `verdict: "approve"` sólo si no hay ningún hallazgo bloqueante.
-            - `verdict: "request_changes"` si hay al menos uno.
-            - `blocking_findings` describe cada bloqueante en una frase, con fichero y línea.
-          # Los permisos de herramientas van en `settings`, NO en --allowedTools.
-          # claude_args se parsea como línea de shell y los paréntesis de
-          # `Bash(git diff:*)` se interpretan como operadores, lo que rompe el
-          # resto de la lista: --json-schema no llegaba al CLI y structured_output
-          # salía vacío sin ningún error visible.
-          settings: |
-            {
-              "permissions": {
-                "allow": [
-                  "Read",
-                  "Grep",
-                  "Glob",
-                  "Bash(git diff:*)",
-                  "Bash(git log:*)",
-                  "Bash(gh pr view:*)",
-                  "Bash(gh issue view:*)"
-                ],
-                "deny": [
-                  "Write",
-                  "Edit",
-                  "Bash(git push:*)",
-                  "Bash(git commit:*)"
-                ]
-              }
-            }
-          claude_args: |
-            --model claude-sonnet-5
-            --max-turns 30
-            --json-schema '{"type":"object","properties":{"verdict":{"type":"string","enum":["approve","request_changes"]},"summary":{"type":"string"},"blocking_findings":{"type":"array","items":{"type":"string"}},"risk":{"type":"string","enum":["low","medium","high"]}},"required":["verdict","summary","blocking_findings","risk"]}'
+            IMPORTANTE — termina tu respuesta con una única línea, exactamente en este formato
+            y sin nada más después:
 
+            VEREDICTO: request_changes
+
+            o bien:
+
+            VEREDICTO: approve
+
+            Usa `approve` sólo si no hay ningún hallazgo bloqueante.
+
+      # ------------------------------------------------------------ #
+      # Extrae el veredicto de la transcripción. grep sobre el fichero
+      # es agnóstico al formato: si el texto está, lo encuentra.
       # ------------------------------------------------------------ #
       - name: Interpretar veredicto
         id: verdict
+        env:
+          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+          CONCLUSION: ${{ steps.claude.outputs.conclusion }}
         run: |
-          OUT='${{ steps.claude.outputs.structured_output }}'
-          # Diagnóstico: qué devolvió realmente el action.
-          echo "--- structured_output en crudo (${#OUT} caracteres) ---"
-          echo "$OUT"
-          echo "--- fin ---"
+          echo "conclusion del action: '$CONCLUSION'"
+          echo "execution_file: '$EXEC_FILE'"
 
-          # `jq .` sobre cadena vacía NO da error: hay que comprobarlo aparte.
-          if [ -z "$OUT" ]; then
-            echo "::error::structured_output vino vacío. Claude terminó sin producir el veredicto."
+          if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ]; then
+            echo "::error::No hay fichero de ejecución. La revisión no llegó a completarse."
             exit 1
           fi
-          echo "$OUT" | jq . > /dev/null || { echo "::error::Claude no devolvió JSON válido"; exit 1; }
 
-          VERDICT=$(echo "$OUT" | jq -r '.verdict // empty')
+          echo "--- últimos 2000 caracteres de la transcripción ---"
+          tail -c 2000 "$EXEC_FILE"
+          echo ""
+          echo "--- fin ---"
 
-          # Un veredicto ausente no es un rechazo: es una revisión rota. Distinguirlo
-          # importa, porque si no toda avería del revisor parece un hallazgo real.
+          # El último centinela gana: si Claude se corrige a sí mismo, vale el final.
+          VERDICT=$(grep -oE 'VEREDICTO: (approve|request_changes)' "$EXEC_FILE" \
+                    | tail -1 | awk '{print $2}')
+
           case "$VERDICT" in
-            approve|request_changes) ;;
+            approve|request_changes)
+              echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+              echo "Veredicto: $VERDICT"
+              ;;
             *)
-              echo "::error::Veredicto inesperado: '$VERDICT'. La revisión no es concluyente."
+              # Un veredicto ausente NO es un rechazo: es una revisión rota.
+              # Distinguirlo importa; si no, toda avería parece un hallazgo real.
+              echo "::error::Claude no emitió un veredicto reconocible. Revisión no concluyente."
               exit 1
               ;;
           esac
-          RISK=$(echo "$OUT" | jq -r '.risk')
-          SUMMARY=$(echo "$OUT" | jq -r '.summary')
-
-          {
-            echo "verdict=$VERDICT"
-            echo "risk=$RISK"
-          } >> "$GITHUB_OUTPUT"
-
-          # El cuerpo del comentario, para el paso siguiente. Delimitador aleatorio
-          # porque el resumen es texto libre y puede contener casi cualquier cosa.
-          EOF_MARK="EOF_$(openssl rand -hex 8)"
-          {
-            echo "body<<$EOF_MARK"
-            echo "## Revisión de Claude"
-            echo ""
-            echo "**Veredicto:** \`$VERDICT\` · **Riesgo:** \`$RISK\`"
-            echo ""
-            echo "$SUMMARY"
-            echo ""
-            echo "$OUT" | jq -r '.blocking_findings[]? | "- ⛔ " + .'
-            echo "$EOF_MARK"
-          } >> "$GITHUB_OUTPUT"
-
-          {
-            echo "## Revisión de Claude"
-            echo ""
-            echo "**Veredicto:** \`$VERDICT\` · **Riesgo:** \`$RISK\`"
-            echo ""
-            echo "$SUMMARY"
-            echo ""
-            echo "$OUT" | jq -r '.blocking_findings[]? | "- ⛔ " + .'
-          } >> "$GITHUB_STEP_SUMMARY"
 
       # ------------------------------------------------------------ #
-      # Review formal en la PR. Requiere un token distinto al del actor
-      # que abrió la PR: GitHub no permite auto-aprobarse.
-      # Usa AI_REVIEWER_TOKEN (PAT fine-grained de un usuario máquina) si
-      # existe; si no, cae a GITHUB_TOKEN y sólo deja comentario.
+      # La etiqueta refleja el veredicto. El comentario con el detalle
+      # lo publica el propio action (use_sticky_comment), así que aquí
+      # no duplicamos nada.
       # ------------------------------------------------------------ #
-      - name: Publicar review en la PR
+      - name: Etiquetar la PR
         env:
           GH_TOKEN: ${{ secrets.AI_REVIEWER_TOKEN || secrets.GITHUB_TOKEN }}
           HAS_PAT: ${{ secrets.AI_REVIEWER_TOKEN != '' }}
           PR: ${{ github.event.pull_request.number }}
           VERDICT: ${{ steps.verdict.outputs.verdict }}
-          BODY: ${{ steps.verdict.outputs.body }}
         run: |
-          # El veredicto se publica SIEMPRE como comentario, con o sin PAT.
-          # Antes la rama de request_changes sin PAT no publicaba nada y el
-          # motivo del rechazo sólo aparecía en el resumen del job.
-          gh pr comment "$PR" --body "$BODY"
-
           if [ "$VERDICT" = "approve" ]; then
             gh pr edit "$PR" --add-label "ai-review:approved"
             [ "$HAS_PAT" = "true" ] && gh pr review "$PR" --approve --body "Sin hallazgos bloqueantes."
           else
             gh pr edit "$PR" --remove-label "ai-review:approved" || true
-            [ "$HAS_PAT" = "true" ] && gh pr review "$PR" --request-changes --body "Hallazgos bloqueantes; detalle en el comentario."
+            [ "$HAS_PAT" = "true" ] && gh pr review "$PR" --request-changes --body "Hallazgos bloqueantes; detalle en los comentarios."
           fi
           exit 0
 
       # ------------------------------------------------------------ #
-      # Este step hace que el job falle si hay bloqueantes, de modo que
-      # "AI Code Review / Claude review" sirva como required status check.
+      # Hace que "Claude review" sirva como required status check.
       # ------------------------------------------------------------ #
       - name: Bloquear si hay hallazgos
-        if: steps.verdict.outputs.verdict != 'approve'
+        if: steps.verdict.outputs.verdict == 'request_changes'
         run: |
           echo "::error::La revisión de Claude encontró problemas bloqueantes."
           exit 1
