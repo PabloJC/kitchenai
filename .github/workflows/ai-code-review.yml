@@ -18,15 +18,31 @@ permissions:
 jobs:
   review:
     name: Claude review
-    # No revisamos borradores ni PRs marcadas para saltarse la revisión.
-    if: >-
-      github.event.pull_request.draft == false &&
-      !contains(github.event.pull_request.labels.*.name, 'skip-ai-review')
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
+      # ------------------------------------------------------------ #
+      # El salto NO puede vivir en `if:` a nivel de job. Este job es un
+      # required status check: si no se ejecuta, no reporta, y una PR
+      # con un check obligatorio que nunca llega se queda bloqueada
+      # para siempre. Así el job siempre termina, en verde, sin revisar.
+      # ------------------------------------------------------------ #
+      - name: ¿Hay que revisar?
+        id: gate
+        env:
+          DRAFT: ${{ github.event.pull_request.draft }}
+          SKIP_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'skip-ai-review') }}
+        run: |
+          if [ "$DRAFT" = "true" ] || [ "$SKIP_LABEL" = "true" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Borrador o etiqueta skip-ai-review: no se revisa."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v5
+        if: steps.gate.outputs.skip != 'true'
         with:
           fetch-depth: 0        # Claude necesita el historial para el diff
 
@@ -41,6 +57,7 @@ jobs:
       # ------------------------------------------------------------ #
       - name: Revisión con Claude
         id: claude
+        if: steps.gate.outputs.skip != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -125,6 +142,7 @@ jobs:
       # ------------------------------------------------------------ #
       - name: Interpretar veredicto
         id: verdict
+        if: steps.gate.outputs.skip != 'true'
         env:
           EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
           CONCLUSION: ${{ steps.claude.outputs.conclusion }}
@@ -165,6 +183,7 @@ jobs:
       # no duplicamos nada.
       # ------------------------------------------------------------ #
       - name: Etiquetar la PR
+        if: steps.gate.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.AI_REVIEWER_TOKEN || secrets.GITHUB_TOKEN }}
           HAS_PAT: ${{ secrets.AI_REVIEWER_TOKEN != '' }}
