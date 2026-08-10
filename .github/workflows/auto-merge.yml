@@ -1,0 +1,108 @@
+name: Auto-merge
+
+# Sustituye al auto-merge nativo de GitHub, que requiere protección de rama
+# y por tanto no está disponible en repositorios privados con plan Free.
+#
+# Contrato: pones la etiqueta `ready-to-merge` en una PR y, en cuanto CI y la
+# revisión de Claude estén en verde, se mergea sola con squash y se borra la
+# rama. Si algún check falla, no pasa nada: corriges, empujas, y al volver a
+# ponerse todo en verde este workflow lo reintenta solo.
+
+on:
+  # Cuando terminan CI o la revisión: puede que ese fuera el último check pendiente.
+  workflow_run:
+    workflows: ["CI", "AI Code Review"]
+    types: [completed]
+  # Cuando etiquetas la PR: puede que los checks ya estuvieran verdes.
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-${{ github.event.workflow_run.head_sha || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    name: Mergear si todo está en verde
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluar y mergear
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          LABEL: ready-to-merge
+          # Tiene que coincidir exactamente con el `name:` del job de abajo.
+          SELF: Mergear si todo está en verde
+        run: |
+          set -euo pipefail
+
+          # ---------------------------------------------------------- #
+          # 1. Qué PRs mirar.
+          #
+          # En `pull_request` la sabemos. En `workflow_run` sólo tenemos el
+          # SHA, así que buscamos las PRs abiertas cuyo head coincida.
+          # ---------------------------------------------------------- #
+          if [ "$EVENT" = "pull_request" ]; then
+            PRS="$PR_NUM"
+          else
+            PRS=$(gh pr list --state open --json number,headRefOid \
+                  --jq "[.[] | select(.headRefOid == \"$HEAD_SHA\") | .number] | .[]")
+          fi
+
+          if [ -z "$PRS" ]; then
+            echo "Ninguna PR abierta corresponde a este evento."
+            exit 0
+          fi
+
+          for PR in $PRS; do
+            echo "::group::PR #$PR"
+
+            DATA=$(gh pr view "$PR" --json isDraft,labels,mergeable,state)
+            STATE=$(echo "$DATA" | jq -r .state)
+            DRAFT=$(echo "$DATA" | jq -r .isDraft)
+            MERGEABLE=$(echo "$DATA" | jq -r .mergeable)
+            HAS_LABEL=$(echo "$DATA" | jq -r --arg l "$LABEL" \
+                        '[.labels[].name] | index($l) != null')
+
+            if [ "$STATE" != "OPEN" ];    then echo "No está abierta."; echo "::endgroup::"; continue; fi
+            if [ "$HAS_LABEL" != "true" ]; then echo "Sin la etiqueta '$LABEL': no se toca."; echo "::endgroup::"; continue; fi
+            if [ "$DRAFT" = "true" ];      then echo "Es un borrador."; echo "::endgroup::"; continue; fi
+
+            if [ "$MERGEABLE" = "CONFLICTING" ]; then
+              echo "Tiene conflictos con la base. Resuélvelos y vuelve a etiquetar."
+              gh pr comment "$PR" --body "Auto-merge detenido: la rama tiene conflictos con \`main\`."
+              echo "::endgroup::"; continue
+            fi
+
+            # ---------------------------------------------------------- #
+            # 2. Todos los checks en verde, excepto el nuestro.
+            #
+            # Cuando el disparador es `pull_request`, este propio job
+            # aparece como un check de la PR. Preguntar "¿están todos los
+            # checks en verde?" con `gh pr checks` a secas se responde a sí
+            # mismo que no: está en curso. Hay que excluirse del recuento.
+            #
+            # `skipping` cuenta como bueno: es lo que sale cuando un job se
+            # salta por condición y no significa que falte nada.
+            # ---------------------------------------------------------- #
+            PENDIENTES=$(gh pr checks "$PR" --json name,bucket --jq \
+              "[.[] | select(.name != \"$SELF\") | select(.bucket != \"pass\" and .bucket != \"skipping\")] | length")
+
+            if [ "$PENDIENTES" != "0" ]; then
+              echo "Hay $PENDIENTES check(s) fallando o pendientes. No se mergea."
+              gh pr checks "$PR" --json name,bucket --jq \
+                '.[] | select(.bucket != "pass" and .bucket != "skipping") | "  \(.bucket)\t\(.name)"'
+              echo "::endgroup::"; continue
+            fi
+
+            echo "Todo en verde. Mergeando."
+            gh pr merge "$PR" --squash --delete-branch
+            echo "::endgroup::"
+          done

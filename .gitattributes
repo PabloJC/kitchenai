@@ -1,0 +1,19 @@
+# Normaliza finales de línea a LF en el repositorio, con dos excepciones.
+* text=auto eol=lf
+
+# gradlew.bat necesita CRLF o cmd.exe no lo ejecuta.
+*.bat text eol=crlf
+
+# El wrapper de Unix debe quedarse en LF pase lo que pase.
+gradlew text eol=lf
+
+# Binarios: que git no intente convertir nada.
+*.jar   binary
+*.png   binary
+*.jpg   binary
+*.webp  binary
+*.keystore binary
+*.jks   binary
+
+# El .pbxproj de Xcode: sin conversiones y con diff legible en las PRs.
+*.pbxproj text eol=lf -merge=union

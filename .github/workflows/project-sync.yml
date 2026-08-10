@@ -1,0 +1,102 @@
+name: Project board
+
+# Mantiene el tablero sincronizado con lo que pasa de verdad en el repositorio:
+#
+#   issue creada          -> Todo
+#   PR abierta            -> In progress   (para las issues que la PR cierra)
+#   revisión aprobada     -> In review
+#   PR mergeada           -> Done
+#
+# El GITHUB_TOKEN de Actions no puede tocar Projects: hace falta un PAT con
+# scope `project` en el secret PROJECT_TOKEN. Ver docs/infra.md.
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened, ready_for_review, labeled, closed]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: project-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sincronizar tablero
+    runs-on: ubuntu-latest
+    # Sin PAT no hay nada que hacer: mejor saltarse el job que fallar en cada
+    # evento del repositorio con un error de permisos.
+    if: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'ai-review:approved' }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Mover la tarjeta
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER || github.repository_owner }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN:-}" ] || [ -z "${PROJECT_NUMBER:-}" ]; then
+            echo "Falta PROJECT_TOKEN o la variable PROJECT_NUMBER. No se toca el tablero."
+            exit 0
+          fi
+
+          chmod +x scripts/project-item-status.sh
+
+          # ---------------------------------------------------------- #
+          # Issues: entran en Todo.
+          # ---------------------------------------------------------- #
+          if [ "$EVENT" = "issues" ]; then
+            ./scripts/project-item-status.sh "$ISSUE_NUM" "Todo"
+            exit 0
+          fi
+
+          # ---------------------------------------------------------- #
+          # PRs: la columna depende de qué ha pasado.
+          #
+          # `closed` sin merge no mueve nada: la issue sigue viva y su
+          # tarjeta debe quedarse donde estaba, no volver atrás.
+          # ---------------------------------------------------------- #
+          case "$ACTION" in
+            opened|reopened|ready_for_review) DESTINO="In progress" ;;
+            labeled)                          DESTINO="In review"   ;;
+            closed)
+              if [ "$PR_MERGED" = "true" ]; then DESTINO="Done"; else
+                echo "PR cerrada sin mergear: la tarjeta se queda como está."
+                exit 0
+              fi
+              ;;
+            *) echo "Acción '$ACTION' sin efecto en el tablero."; exit 0 ;;
+          esac
+
+          # ---------------------------------------------------------- #
+          # Qué issues cierra esta PR. Sólo las palabras que GitHub
+          # reconoce como cierre; una mención suelta a #7 no significa
+          # que la PR resuelva la issue 7.
+          # ---------------------------------------------------------- #
+          ISSUES=$(printf '%s' "$PR_BODY" \
+                   | grep -oiE '(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed)) +#[0-9]+' \
+                   | grep -oE '[0-9]+' | sort -u || true)
+
+          if [ -z "$ISSUES" ]; then
+            echo "La PR no declara cerrar ninguna issue (Closes #N). Nada que mover."
+            exit 0
+          fi
+
+          for N in $ISSUES; do
+            ./scripts/project-item-status.sh "$N" "$DESTINO"
+          done
