@@ -22,6 +22,7 @@ These are decided here so that 22 issues do not each re-decide them.
 | **Everything user-owned lives under `users/{uid}`.** That is what keeps the Firestore rules a two-line owner check. | #38, #33 |
 | **"Synchronised" means across one user's devices**, not shared with other people. Household sharing needs a top-level collection and a membership model — post-MVP. | #37, #43 |
 | **No unit conversion in the MVP.** Mismatched units are `unverifiable`, never silently converted. | #31, #39 |
+| **Observers stream data, not results.** Every `observeX` returns a bare `Flow<T>`; a listener that fails ends its stream and publishes on the port's `streamErrors(): Flow<AppError>`. Read-modify-write goes through a one-shot `getX(): AppResult<…>`, never the first emission of a listener. Decided in #68 after wave 2 shipped both shapes. | #39, #41, #42, #43, #44, #47 |
 
 ### Firestore layout (normative)
 
@@ -154,6 +155,16 @@ Found the hard way in wave 1. Both cost a failed build before they cost anything
   `org.jetbrains.compose.ui:ui-tooling-preview` coordinates via the version catalog, in an
   `androidMain` dependency block. #32 added both entries; #44 inherits them.
 
+Wave 2 added one more, and it is the reason every ceiling in §6 moved:
+
+- **`ktlint_official` rejects a multi-parameter signature on one line.** A port method or an
+  `invoke` with two parameters costs four to six lines, not one, and `ktlintFormat` will not
+  collapse it back. Combined with one public type per file — a `package` line and an import
+  block repeated per file — the mechanical floor of a domain issue is several hundred lines
+  before any logic. Three of the five wave-2 branches broke their budget on that alone, and
+  each of their agents spent a round trimming tests before reporting the overrun. Do not trim
+  tests to fit: say so in the pull request.
+
 ---
 
 ## 5. Shared-file collision matrix
@@ -162,7 +173,7 @@ Issues in the same wave that touch the same file, and the mitigation:
 
 | File | Touched by | Mitigation |
 |---|---|---|
-| `shared/di/SharedModule.kt` | almost every domain and data issue | Each issue creates its own `di/<Feature>Module.kt` and appends **one line** to the `sharedModules` list, in alphabetical order. Conflicts are one line. |
+| `shared/di/SharedModule.kt` | almost every domain and data issue | Each issue creates its own `di/<Feature>Module.kt` and appends **one line** to the `sharedModules` list, in alphabetical order. The list is one module per line with a trailing comma since #38 — wave 2 cost four rebase rounds because it was a single `listOf(…)` line and five branches appended to it. Conflicts are one line, but only if two modules are not alphabetically adjacent. |
 | `composeApp/di/PresentationModule.kt` | #44 (rewrites), #48/#49/#52/#50 (one line each) | Same pattern: per-feature module file, one appended line. |
 | `composeApp/navigation/KitchenAiNavHost.kt` | #44 (creates), #48/#49/#50 (one line each), #52 (two) | Keep each route entry to a single line. |
 | `firebase/firestore.indexes.json` | #33 (wave 1, structure), #42 and #43 (wave 3, one index each) | #33 lands first; the two wave-3 issues append sibling objects. |
@@ -181,8 +192,16 @@ The reviewing agent reads the diff, the issue and the conventions. Three levers 
 affordable, and every issue body applies all three:
 
 1. **A declared diff budget** — a target and a hard ceiling in files and lines. Ceilings run
-   from ~300 lines (#40) to ~950 (#52). A branch that breaches its ceiling is not one issue any
+   from ~400 lines (#40) to ~1190 (#52). A branch that breaches its ceiling is not one issue any
    more; split it and open a follow-up rather than pushing a diff that gets skimmed.
+
+   Those numbers are the second calibration. The first was set before anything had been
+   written and did not account for the ktlint signature rule in §4: it charged a port method
+   one line where the formatter charges five. Every ceiling from #39 to #52 was raised by
+   roughly a quarter, plus two files, once wave 2 had measured the real cost. If a branch
+   still does not fit, the honest move is to report the overrun in the pull request — a use
+   case shipped without its test is a blocking review finding, so the test is never what
+   gives.
 2. **The implementation resolved in advance.** Type signatures, the wire contract, the error
    mappings and the named test cases are all in the issue body. The review is then a
    comparison against a stated design, not a reconstruction of one — which is the expensive
