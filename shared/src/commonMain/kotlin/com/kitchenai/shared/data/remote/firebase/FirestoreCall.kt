@@ -26,6 +26,7 @@ suspend fun <T> firestoreCall(
 
 /**
  * The snapshot-flow counterpart of [firestoreCall]. The stream carries data only, so a listener
- * error ends it and is published on the port's `streamErrors` instead of riding an emission.
+ * error ends it and is published on the port's matching error stream instead of riding an
+ * emission. One shared flow per keyed listener, never one per port.
  */
 fun <T> Flow<T>.reportingErrorsTo(errors: MutableSharedFlow<AppError>): Flow<T> = catch { errors.emit(it.toAppError()) }

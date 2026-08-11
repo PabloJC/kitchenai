@@ -35,11 +35,11 @@ class FakePantryPort(
     val removed = mutableListOf<PantryItemId>()
     val items: List<PantryItem> get() = state.value
 
-    // A failing listener stops emitting and reports on streamErrors, which is what the real
-    // adapter does with a Firestore snapshot error.
+    // A failing listener stops emitting and reports on its keyed error stream, which is what
+    // the real adapter does with a Firestore snapshot error.
     override fun observePantry(userId: UserId): Flow<List<PantryItem>> = if (readError == null) state else emptyFlow()
 
-    override fun streamErrors(): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
+    override fun pantryErrors(userId: UserId): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
 
     override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> =
         readError?.let { AppResult.Failure(it) } ?: AppResult.Success(state.value)

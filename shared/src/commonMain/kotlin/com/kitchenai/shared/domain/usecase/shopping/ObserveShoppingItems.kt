@@ -18,7 +18,10 @@ class ObserveShoppingItems(
     ): Flow<List<ShoppingItem>> = shoppingList.observeItems(userId, listId).map(::order)
 
     /** The listener's failures, collected alongside the stream above. */
-    fun errors(): Flow<AppError> = shoppingList.streamErrors()
+    fun errors(
+        userId: UserId,
+        listId: ShoppingListId,
+    ): Flow<AppError> = shoppingList.itemErrors(userId, listId)
 
     // Unchecked first and least recently touched first inside each group: ticking a line sends
     // it to the bottom without reshuffling the lines above it in a supermarket aisle.

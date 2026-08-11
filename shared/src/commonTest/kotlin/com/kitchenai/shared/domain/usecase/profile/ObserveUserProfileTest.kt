@@ -39,7 +39,7 @@ class ObserveUserProfileTest {
             val useCase = ObserveUserProfile(FakeProfilePort(emptyFlow(), error))
 
             useCase(user).test { awaitComplete() }
-            useCase.errors().test {
+            useCase.errors(user).test {
                 assertEquals(error, awaitItem())
                 awaitComplete()
             }
@@ -52,7 +52,7 @@ private class FakeProfilePort(
 ) : UserProfilePort {
     override fun observeProfile(userId: UserId): Flow<UserProfile> = stream
 
-    override fun streamErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+    override fun profileErrors(userId: UserId): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> = AppResult.Success(Unit)
 }

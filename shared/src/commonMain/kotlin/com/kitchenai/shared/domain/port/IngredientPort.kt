@@ -11,7 +11,7 @@ interface IngredientPort {
     fun observeIngredients(): Flow<List<Ingredient>>
 
     /** Failures of the listener above, which stops emitting rather than throwing. */
-    fun streamErrors(): Flow<AppError>
+    fun ingredientErrors(): Flow<AppError>
 
     suspend fun getIngredient(id: IngredientId): AppResult<Ingredient>
 }

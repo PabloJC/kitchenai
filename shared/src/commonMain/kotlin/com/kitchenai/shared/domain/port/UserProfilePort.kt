@@ -11,7 +11,7 @@ interface UserProfilePort {
     fun observeProfile(userId: UserId): Flow<UserProfile>
 
     /** Failures of the listener above, which stops emitting rather than throwing. */
-    fun streamErrors(): Flow<AppError>
+    fun profileErrors(userId: UserId): Flow<AppError>
 
     suspend fun save(profile: UserProfile): AppResult<Unit>
 }

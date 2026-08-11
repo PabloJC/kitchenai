@@ -42,7 +42,7 @@ class ObservePantryTest {
             val useCase = ObservePantry(FakePantryPort(readError = AppError.Unauthorized()))
 
             useCase(user).test { awaitComplete() }
-            useCase.errors().test {
+            useCase.errors(user).test {
                 assertTrue(awaitItem() is AppError.Unauthorized)
                 awaitComplete()
             }

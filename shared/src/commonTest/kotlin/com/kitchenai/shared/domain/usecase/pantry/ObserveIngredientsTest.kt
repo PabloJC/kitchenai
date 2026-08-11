@@ -44,7 +44,7 @@ class ObserveIngredientsTest {
     ) : IngredientPort {
         override fun observeIngredients(): Flow<List<Ingredient>> = if (failure == null) flowOf(answer) else emptyFlow()
 
-        override fun streamErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+        override fun ingredientErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
 
         // Unused here: this use case reads the catalogue stream and nothing else.
         override suspend fun getIngredient(id: IngredientId): AppResult<Ingredient> =

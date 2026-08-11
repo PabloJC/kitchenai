@@ -28,6 +28,8 @@ import kotlin.time.Instant
  */
 class FakeShoppingListPort(
     private val failure: AppError? = null,
+    // Which item listener broke. Null means all of them, which is what most tests want.
+    private val failingList: ShoppingListId? = null,
 ) : ShoppingListPort {
     private val lists = MutableStateFlow<List<ShoppingList>>(emptyList())
     private val items = MutableStateFlow<Map<String, List<ShoppingItem>>>(emptyMap())
@@ -44,16 +46,24 @@ class FakeShoppingListPort(
         items.value = items.value + (listId.value to seeded.toList())
     }
 
-    // A failing listener stops emitting and reports on streamErrors, which is what the real
-    // adapter does with a Firestore snapshot error.
+    // A failing listener stops emitting and reports on its keyed error stream, which is what
+    // the real adapter does with a Firestore snapshot error.
     override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = if (failure == null) lists else emptyFlow()
 
     override fun observeItems(
         userId: UserId,
         listId: ShoppingListId,
-    ): Flow<List<ShoppingItem>> = if (failure == null) items.map { it[listId.value].orEmpty() } else emptyFlow()
+    ): Flow<List<ShoppingItem>> = if (broken(listId)) emptyFlow() else items.map { it[listId.value].orEmpty() }
 
-    override fun streamErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+    override fun listErrors(userId: UserId): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+
+    override fun itemErrors(
+        userId: UserId,
+        listId: ShoppingListId,
+    ): Flow<AppError> = if (broken(listId)) flowOf(failure!!) else emptyFlow()
+
+    private fun broken(listId: ShoppingListId): Boolean =
+        failure != null && (failingList == null || failingList == listId)
 
     override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> = read(lists.value)
 

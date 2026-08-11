@@ -12,7 +12,7 @@ interface PantryPort {
     fun observePantry(userId: UserId): Flow<List<PantryItem>>
 
     /** Failures of the listener above, which stops emitting rather than throwing. */
-    fun streamErrors(): Flow<AppError>
+    fun pantryErrors(userId: UserId): Flow<AppError>
 
     /**
      * One-shot read for the read-modify-write use cases: taking the first emission of the

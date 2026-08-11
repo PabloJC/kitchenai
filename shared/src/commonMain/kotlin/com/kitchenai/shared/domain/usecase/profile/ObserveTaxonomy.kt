@@ -18,5 +18,5 @@ class ObserveTaxonomy(
         taxonomies.observeTaxonomy(id).map { terms -> terms.sortedBy(Term::order) }
 
     /** The listener's failures, collected alongside the stream above. */
-    fun errors(): Flow<AppError> = taxonomies.streamErrors()
+    fun errors(id: TaxonomyId): Flow<AppError> = taxonomies.taxonomyErrors(id)
 }

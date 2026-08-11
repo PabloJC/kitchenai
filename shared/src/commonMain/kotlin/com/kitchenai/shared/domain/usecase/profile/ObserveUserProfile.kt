@@ -13,5 +13,5 @@ class ObserveUserProfile(
     operator fun invoke(userId: UserId): Flow<UserProfile> = profiles.observeProfile(userId)
 
     /** The listener's failures, collected alongside the stream above. */
-    fun errors(): Flow<AppError> = profiles.streamErrors()
+    fun errors(userId: UserId): Flow<AppError> = profiles.profileErrors(userId)
 }

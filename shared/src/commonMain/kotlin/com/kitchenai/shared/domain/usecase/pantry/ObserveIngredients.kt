@@ -15,5 +15,5 @@ class ObserveIngredients(
     operator fun invoke(): Flow<List<Ingredient>> = catalogue.observeIngredients()
 
     /** The listener's failures, collected alongside the stream above. */
-    fun errors(): Flow<AppError> = catalogue.streamErrors()
+    fun errors(): Flow<AppError> = catalogue.ingredientErrors()
 }

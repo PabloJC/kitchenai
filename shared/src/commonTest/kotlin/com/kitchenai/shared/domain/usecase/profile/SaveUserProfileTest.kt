@@ -111,7 +111,7 @@ private class RecordingProfilePort : UserProfilePort {
 
     override fun observeProfile(userId: UserId): Flow<UserProfile> = flowOf()
 
-    override fun streamErrors(): Flow<AppError> = emptyFlow()
+    override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
         saved = profile
@@ -126,7 +126,9 @@ private class FakeTaxonomyPort(
 
     override fun observeTaxonomies(): Flow<List<Taxonomy>> = flowOf((catalogue as? AppResult.Success)?.data.orEmpty())
 
-    override fun streamErrors(): Flow<AppError> = emptyFlow()
+    override fun taxonomyErrors(id: TaxonomyId): Flow<AppError> = emptyFlow()
+
+    override fun taxonomiesErrors(): Flow<AppError> = emptyFlow()
 
     // The one-shot read is what SaveUserProfile validates against, so this is where the
     // catalogue failure has to surface.

@@ -37,7 +37,7 @@ class ObserveTaxonomyTest {
             val useCase = ObserveTaxonomy(StubTaxonomyPort(failure = error))
 
             useCase(first.ref.taxonomy).test { awaitComplete() }
-            useCase.errors().test {
+            useCase.errors(first.ref.taxonomy).test {
                 assertEquals(error, awaitItem())
                 awaitComplete()
             }
@@ -57,7 +57,9 @@ private class StubTaxonomyPort(
 
     override fun observeTaxonomies(): Flow<List<Taxonomy>> = flowOf(emptyList())
 
-    override fun streamErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+    override fun taxonomyErrors(id: TaxonomyId): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+
+    override fun taxonomiesErrors(): Flow<AppError> = emptyFlow()
 
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(emptyList())
 }

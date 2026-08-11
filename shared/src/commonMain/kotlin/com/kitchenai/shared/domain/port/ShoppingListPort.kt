@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.Flow
  * Storage for one user's shopping lists, as the domain needs it. `data` implements it.
  *
  * The observers emit data only and a failing listener stops emitting: it never throws, and the
- * failure travels on [streamErrors]. Every mutation is an upsert of a whole document, which is
+ * failure travels on the error stream keyed like the observer it belongs to, so one list's
+ * broken listener is not reported to another. Every mutation is an upsert of a whole document, which is
  * what makes a repeated write harmless.
  */
 interface ShoppingListPort {
@@ -24,8 +25,13 @@ interface ShoppingListPort {
         listId: ShoppingListId,
     ): Flow<List<ShoppingItem>>
 
-    /** Failures of the listeners above, which stop emitting rather than throwing. */
-    fun streamErrors(): Flow<AppError>
+    /** Failures of the listeners above, keyed like them: a broken list is not every list. */
+    fun listErrors(userId: UserId): Flow<AppError>
+
+    fun itemErrors(
+        userId: UserId,
+        listId: ShoppingListId,
+    ): Flow<AppError>
 
     /**
      * One-shot reads for the read-modify-write use cases: taking the first emission of a

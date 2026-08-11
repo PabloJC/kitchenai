@@ -22,5 +22,5 @@ class ObservePantry(
         pantry.observePantry(userId).map { items -> items.sortedWith(urgentFirst) }
 
     /** The listener's failures, collected alongside the stream above. */
-    fun errors(): Flow<AppError> = pantry.streamErrors()
+    fun errors(userId: UserId): Flow<AppError> = pantry.pantryErrors(userId)
 }

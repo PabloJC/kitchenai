@@ -38,9 +38,17 @@ class ObserveShoppingItemsTest {
             val useCase = ObserveShoppingItems(FakeShoppingListPort(AppError.Network()))
 
             useCase(user, list).test { awaitComplete() }
-            useCase.errors().test {
+            useCase.errors(user, list).test {
                 assertTrue(awaitItem() is AppError.Network)
                 awaitComplete()
             }
+        }
+
+    @Test
+    fun `one list's broken listener is not reported on another list's errors`() =
+        runTest {
+            val port = FakeShoppingListPort(AppError.Network(), failingList = listId("other"))
+
+            ObserveShoppingItems(port).errors(user, list).test { awaitComplete() }
         }
 }
