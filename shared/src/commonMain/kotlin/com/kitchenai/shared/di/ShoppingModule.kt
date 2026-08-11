@@ -9,7 +9,7 @@ import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemChecked
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
-/** Shopping list use cases. The `ShoppingListPort` binding comes with the Firestore adapter. */
+/** Shopping use cases. Both port bindings come with the Firestore adapter. */
 val shoppingModule: Module =
     module {
         factory { AddShoppingItem(get(), get(), get()) }

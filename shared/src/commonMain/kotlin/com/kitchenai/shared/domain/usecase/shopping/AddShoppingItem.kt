@@ -10,7 +10,7 @@ import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.ShoppingListPort
+import com.kitchenai.shared.domain.port.ShoppingItemPort
 import com.kitchenai.shared.domain.port.TimeProvider
 
 /**
@@ -20,7 +20,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
  * twice must leave one line, not two that a second device then has to reconcile.
  */
 class AddShoppingItem(
-    private val shoppingList: ShoppingListPort,
+    private val shoppingItems: ShoppingItemPort,
     private val ids: IdGenerator,
     private val time: TimeProvider,
 ) {
@@ -32,7 +32,7 @@ class AddShoppingItem(
         quantity: Quantity? = null,
         sourceRecipe: RecipeId? = null,
     ): AppResult<ShoppingItem> {
-        val snapshot = shoppingList.getItems(userId, listId)
+        val snapshot = shoppingItems.getItems(userId, listId)
         if (snapshot is AppResult.Failure) return snapshot
         val current = (snapshot as AppResult.Success).data
         val duplicate = ingredient?.let { known -> current.firstOrNull { it.absorbs(known, quantity) } }
@@ -44,7 +44,7 @@ class AddShoppingItem(
             }
         if (built is AppResult.Failure) return built
         val item = (built as AppResult.Success).data
-        return shoppingList.upsertItems(userId, listId, listOf(item)).map { item }
+        return shoppingItems.upsertItems(userId, listId, listOf(item)).map { item }
     }
 
     // A free-text line never merges: two people write "the good bread" in two different ways,

@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 class SetShoppingItemCheckedTest {
     private val list = listId()
     private val user = userId()
-    private val port = FakeShoppingListPort()
+    private val port = FakeShoppingItemPort()
     private val useCase = SetShoppingItemChecked(port, fixedTime(2_000))
 
     @Test
