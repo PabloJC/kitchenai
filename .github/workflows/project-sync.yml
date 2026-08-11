@@ -15,6 +15,17 @@ on:
     types: [opened, reopened]
   pull_request:
     types: [opened, reopened, ready_for_review, labeled, closed]
+  # Para recolocar una tarjeta a mano cuando el tablero se ha quedado desfasado
+  # (un fallo del PAT, una issue creada antes de existir el tablero).
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Número de la issue
+        required: true
+      status:
+        description: Columna de destino
+        required: true
+        default: In progress
 
 permissions:
   contents: read
@@ -39,6 +50,10 @@ jobs:
       - name: Mover la tarjeta
         env:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          # El node id de la issue es un dato del repositorio, no del tablero:
+          # se lee con el token de Actions para que el PAT sólo necesite
+          # `project`.
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PROJECT_OWNER: ${{ vars.PROJECT_OWNER || github.repository_owner }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
@@ -47,6 +62,8 @@ jobs:
           ISSUE_NUM: ${{ github.event.issue.number }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_MERGED: ${{ github.event.pull_request.merged }}
+          INPUT_ISSUE: ${{ inputs.issue }}
+          INPUT_STATUS: ${{ inputs.status }}
         run: |
           set -euo pipefail
 
@@ -56,6 +73,14 @@ jobs:
           fi
 
           chmod +x scripts/project-item-status.sh
+
+          # ---------------------------------------------------------- #
+          # Ejecución manual: la issue y la columna vienen dadas.
+          # ---------------------------------------------------------- #
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            ./scripts/project-item-status.sh "$INPUT_ISSUE" "$INPUT_STATUS"
+            exit 0
+          fi
 
           # ---------------------------------------------------------- #
           # Issues: entran en Todo.
