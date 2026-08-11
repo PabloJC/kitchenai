@@ -83,69 +83,71 @@ jobs:
             --max-turns 60
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(git diff:*),Bash(git log:*),Read,Grep,Glob"
           prompt: |
-            Eres el revisor de código del proyecto KitchenAI (Kotlin Multiplatform + Compose Multiplatform + Firebase).
+            You are the code reviewer for KitchenAI (Kotlin Multiplatform + Compose Multiplatform + Firebase).
 
             REPO: ${{ github.repository }}
             PR: #${{ github.event.pull_request.number }} — "${{ github.event.pull_request.title }}"
             BASE: ${{ github.event.pull_request.base.ref }}
 
-            Lee `CLAUDE.md` antes de opinar: contiene las reglas vinculantes de este repositorio.
+            Read `CLAUDE.md` before forming an opinion: it holds this repository's binding rules.
 
-            Revisa ÚNICAMENTE el diff de esta PR.
+            Review ONLY the diff of this pull request.
 
-            CÓMO PUBLICAR LA REVISIÓN — esto no es opcional. Tu respuesta en el chat no la
-            lee nadie; si no publicas en GitHub, la revisión no existe.
+            HOW TO PUBLISH THE REVIEW — this is not optional. Nobody reads your reply in the
+            chat; if you do not publish on GitHub, the review does not exist.
 
-            - El grueso de la revisión son **comentarios en el código**:
-              `mcp__github_inline_comment__create_inline_comment` con `confirmed: true`,
-              en el fichero y la línea exactos. Un hallazgo sin línea concreta casi siempre
-              significa que no lo has localizado del todo.
-            - Después, **un único** comentario con `gh pr comment`: dos o tres frases sobre
-              qué hace la PR y, si los hay, la lista de hallazgos bloqueantes. Nada más.
+            - The bulk of the review is **inline comments**:
+              `mcp__github_inline_comment__create_inline_comment` with `confirmed: true`, on
+              the exact file and line. A finding without a concrete line almost always means
+              you have not pinned it down.
+            - Then **a single** comment with `gh pr comment`: two or three sentences on what
+              the pull request does and, if any, the list of blocking findings. Nothing else.
 
-            PROHIBIDO en lo que publiques:
+            FORBIDDEN in what you publish:
 
-            - Listas de tareas o casillas marcables (`- [ ]`, `- [x]`) de cualquier tipo,
-              tanto de tu proceso de revisión como de comprobaciones pendientes. No estás
-              llevando un plan: estás revisando código.
-            - Narrar lo que vas haciendo ("Leyendo CLAUDE.md", "Obteniendo el diff").
-            - Repetir en el resumen lo que ya has dicho en un comentario en línea.
-            - Elogios genéricos.
+            - Task lists or tickable boxes (`- [ ]`, `- [x]`) of any kind, whether about your
+              review process or about pending checks. You are not tracking a plan: you are
+              reviewing code.
+            - Narrating what you are doing ("Reading CLAUDE.md", "Fetching the diff").
+            - Repeating in the summary what an inline comment already says.
+            - Generic praise.
 
-            Prioriza, en este orden:
+            Prioritise, in this order:
 
-            1. **Violaciones de la regla de dependencias.** `shared/domain` no puede importar
-               nada de `data`, `presentation`, Firebase, Android ni iOS. `composeApp` no puede
-               importar `shared.data` directamente. Esto es bloqueante siempre.
-            2. **Fugas de plataforma en `commonMain`.** Nada de `android.*`, `java.*`,
-               `platform.Foundation.*` fuera de `androidMain`/`iosMain`.
-            3. **Corrección y concurrencia.** Dispatchers hardcodeados en vez de
-               `DispatcherProvider`, corrutinas sin scope, `runBlocking` en producción,
-               `GlobalScope`, estado mutable compartido.
-            4. **Seguridad.** Claves, tokens o URLs de Firebase hardcodeadas; reglas de
-               Firestore permisivas; PII en logs; `google-services.json` commiteado.
-            5. **Manejo de errores.** Excepciones cruzando fronteras de capa en vez de
-               `AppResult`; `catch (e: Exception)` vacíos.
-            6. **Tests.** Todo caso de uso nuevo o modificado en `domain` necesita test en
-               `commonTest`. Sin test => bloqueante.
-            7. **Criterios de aceptación de la issue.** Si el cuerpo de la PR referencia una
-               issue (`Closes #N`), léela y comprueba que se cumplen todos sus criterios.
+            1. **Dependency rule violations.** `shared/domain` cannot import anything from
+               `data`, `presentation`, Firebase, Android or iOS. `composeApp` cannot import
+               `shared.data` directly. Always blocking.
+            2. **Platform leaks in `commonMain`.** No `android.*`, `java.*` or
+               `platform.Foundation.*` outside `androidMain`/`iosMain`.
+            3. **Correctness and concurrency.** Hardcoded dispatchers instead of
+               `DispatcherProvider`, coroutines without a scope, `runBlocking` in production,
+               `GlobalScope`, shared mutable state.
+            4. **Security.** Hardcoded Firebase keys, tokens or URLs; permissive Firestore
+               rules; PII in logs; `google-services.json` committed.
+            5. **Error handling.** Exceptions crossing layer boundaries instead of
+               `AppResult`; empty `catch (e: Exception)`.
+            6. **Tests.** Every new or modified use case in `domain` needs a test in
+               `commonTest`. No test => blocking.
+            7. **The issue's acceptance criteria.** If the body references an issue
+               (`Closes #N`), read it and check every criterion is met.
 
-            NO comentes sobre: formato (lo cubre ktlint), preferencias de estilo subjetivas,
-            ni nombres que sean simplemente distintos a los que tú elegirías. Nada de elogios
-            genéricos. Si el código está bien, dilo en una línea.
+            Do NOT comment on: formatting (ktlint covers it), subjective style preferences, or
+            names that are merely different from the ones you would have picked. No generic
+            praise. If the code is fine, say so in one line.
 
-            IMPORTANTE — termina tu RESPUESTA EN EL CHAT con una única línea, exactamente en
-            este formato y sin nada más después. Esta línea es fontanería para el workflow:
-            no la incluyas en los comentarios que publicas en GitHub.
+            Write the review in English.
 
-            VEREDICTO: request_changes
+            IMPORTANT — end your REPLY IN THE CHAT with a single line, in exactly this format
+            and with nothing after it. That line is plumbing for the workflow: do not include
+            it in what you publish on GitHub.
 
-            o bien:
+            VERDICT: request_changes
 
-            VEREDICTO: approve
+            or else:
 
-            Usa `approve` sólo si no hay ningún hallazgo bloqueante.
+            VERDICT: approve
+
+            Use `approve` only if there is no blocking finding.
 
       # ------------------------------------------------------------ #
       # Extracts the verdict from the transcript. grep over the file is format-agnostic:
@@ -186,7 +188,7 @@ jobs:
           echo "--- fin ---"
 
           # El último centinela gana: si Claude se corrige a sí mismo, vale el final.
-          VERDICT=$(grep -oE 'VEREDICTO: (approve|request_changes)' "$EXEC_FILE" \
+          VERDICT=$(grep -oE 'VERDICT: (approve|request_changes)' "$EXEC_FILE" \
                     | tail -1 | awk '{print $2}')
 
           case "$VERDICT" in
