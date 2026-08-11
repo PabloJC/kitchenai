@@ -19,9 +19,16 @@ gh issue view $1 --json number,title,body,labels
 Extract from it: the **type** (`feat` / `fix` / `chore` / `docs`), the **development plan**,
 the **files affected**, the **acceptance criteria** and any `Blocked by #N`.
 
+Check every `Blocked by #N` it declares — the issue states the dependency, it does not track
+whether it has been met:
+
+```bash
+gh issue view <N> --json number,state,title --jq '"\(.number) \(.state) \(.title)"'
+```
+
 Stop and say so if:
 
-- a blocking dependency is still open,
+- a blocking dependency is still open (`OPEN` above),
 - the plan contradicts `CLAUDE.md`,
 - the plan cannot be carried out as written.
 

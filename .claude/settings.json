@@ -17,7 +17,7 @@
       "Bash(git branch:*)",
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
-      "Bash(git push:*)",
+      "Bash(git push -u origin HEAD)",
       "Bash(gh issue:*)",
       "Bash(gh pr:*)",
       "Bash(gh run:*)",
@@ -34,6 +34,8 @@
       "Bash(gh secret:*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
+      "Bash(git push --delete:*)",
+      "Bash(git push --mirror:*)",
       "Bash(gh pr merge:*)"
     ]
   }
