@@ -7,7 +7,7 @@ plugins {
 }
 
 kotlin {
-    // AGP 9: sustituye a androidTarget {} + al bloque android {} de nivel superior.
+    // AGP 9: replaces androidTarget {} plus the top-level android {} block.
     androidLibrary {
         namespace = "com.kitchenai.shared"
         compileSdk = libs.versions.androidCompileSdk.get().toInt()
@@ -18,7 +18,7 @@ kotlin {
         withHostTest { }
     }
 
-    // Compose Multiplatform 1.11 eliminó los targets Apple x86_64.
+    // Compose Multiplatform 1.11 dropped the Apple x86_64 targets.
     listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
         target.binaries.framework {
             baseName = "Shared"
@@ -33,7 +33,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.koin.core)
 
-            // api: el framework de iOS necesita ver estos tipos
+            // api: the iOS framework needs to see these types
             api(libs.gitlive.firebase.app)
             api(libs.gitlive.firebase.common)
             api(libs.gitlive.firebase.auth)
@@ -45,10 +45,10 @@ kotlin {
             implementation(libs.turbine)
         }
         androidMain.dependencies {
-            // GitLive declara com.google.firebase:* SIN versión y espera que el
-            // consumidor aporte el BOM. Tiene que estar en este módulo, que es
-            // donde vive la dependencia, y como `api` para que la restricción de
-            // versiones llegue al classpath de :composeApp y :androidApp.
+            // GitLive declares com.google.firebase:* WITHOUT a version and expects the
+            // consumer to supply the BOM. It belongs in this module, where the dependency
+            // lives, and as `api` so the version constraint reaches :composeApp and
+            // :androidApp.
             api(project.dependencies.platform(libs.firebase.bom))
 
             implementation(libs.kotlinx.coroutines.android)
@@ -57,17 +57,14 @@ kotlin {
 }
 
 // ---------------------------------------------------------------------------
-// Tests de Kotlin/Native desactivados.
+// Kotlin/Native tests disabled.
 //
-// GitLive declara linker options hacia los frameworks del SDK nativo de Firebase
-// (FirebaseCore y compañía). Cuando Xcode compila la app, SPM los aporta; pero el
-// binario de test de Kotlin/Native lo enlaza Gradle por su cuenta, sin acceso a
-// ellos, y falla con "ld: framework 'FirebaseCore' not found".
+// GitLive declares linker options against the native Firebase frameworks. Xcode gets them
+// from SPM, but Gradle links the Kotlin/Native test binary on its own, without access, and
+// fails with "ld: framework 'FirebaseCore' not found".
 //
-// Los tests de commonTest siguen ejecutándose en JVM/Android, que es donde vive
-// toda la lógica de dominio. El arreglo de fondo es separar :shared en dos módulos
-// (domain puro sin Firebase + data), y entonces domain sí podrá testearse en iOS.
-// Ver docs/infra.md.
+// commonTest still runs on JVM/Android, where the domain logic lives. The real fix is
+// splitting :shared into two modules (pure domain + data). See docs/infra.md.
 // ---------------------------------------------------------------------------
 tasks.matching { task ->
     task.name.startsWith("linkDebugTestIos") ||

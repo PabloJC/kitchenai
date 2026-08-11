@@ -18,7 +18,7 @@ env:
 
 jobs:
   # ---------------------------------------------------------------- #
-  # Análisis estático: rápido, falla pronto.
+  # Static analysis: fast, fails early.
   # ---------------------------------------------------------------- #
   static-analysis:
     name: Lint & Detekt
@@ -48,7 +48,7 @@ jobs:
       - run: ./gradlew detekt --continue
       - run: ./gradlew ktlintCheck --continue
 
-      - name: Publicar reportes
+      - name: Publish reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -58,10 +58,10 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------- #
-  # Tests JVM del código compartido.
-  # `check` en vez de un nombre de tarea concreto: con el plugin
-  # com.android.kotlin.multiplatform.library las tareas de test cambiaron
-  # de nombre y `check` resuelve las que existan en cada módulo.
+  # JVM tests of the shared code.
+  # `check` rather than a specific task name: the
+  # com.android.kotlin.multiplatform.library plugin renamed the test tasks, and `check`
+  # resolves whichever exist in each module.
   # ---------------------------------------------------------------- #
   shared-tests:
     name: Tests (JVM)
@@ -86,13 +86,13 @@ jobs:
             cp androidApp/google-services.json.template androidApp/google-services.json
           fi
 
-      # Sin exclusiones: `check` vuelve a ejecutar detekt y ktlint, que ya corren
-      # en el job anterior. Es un minuto de más a cambio de no depender de nombres
-      # de tarea que con KMP cambian por source set (ktlintCommonMainSourceSetCheck,
-      # ktlintAndroidMainSourceSetCheck, ...) y hacen fallar el comando por ambigüedad.
+      # No exclusions: `check` re-runs detekt and ktlint from the previous job. A minute
+      # more, in exchange for not depending on task names that KMP varies per source set
+      # (ktlintCommonMainSourceSetCheck, ktlintAndroidMainSourceSetCheck, ...) and which
+      # fail the command by ambiguity.
       - run: ./gradlew :shared:check :composeApp:check
 
-      - name: Publicar resultados de tests
+      - name: Publish test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -128,7 +128,7 @@ jobs:
       - run: ./gradlew :androidApp:assembleDebug
 
   # ---------------------------------------------------------------- #
-  # macOS es caro en minutos: sólo compila y testea los targets Apple.
+  # macOS minutes are expensive: build and test the Apple targets only.
   # ---------------------------------------------------------------- #
   build-ios:
     name: Build iOS framework
@@ -147,9 +147,9 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
         run: |
-          # Ojo con la ruta: el fichero vive en iosApp/, no en iosApp/iosApp/.
-          # Con la ruta mal, este paso no hace nada y el job pasa igualmente
-          # porque el fichero estaba commiteado — verde por el motivo equivocado.
+          # Mind the path: the file lives in iosApp/, not iosApp/iosApp/. With the wrong
+          # one this step does nothing and the job still passes because the file was
+          # committed — green for the wrong reason.
           if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
             echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/GoogleService-Info.plist
           else
@@ -157,13 +157,12 @@ jobs:
             exit 1
           fi
 
-      # Sólo enlazado: los tests de Kotlin/Native están desactivados porque el
-      # linker no encuentra los frameworks de Firebase para iOS (los aporta Xcode
-      # vía SPM). Ver docs/infra.md.
+      # Link only: Kotlin/Native tests are disabled because the linker cannot find the
+      # iOS Firebase frameworks, which Xcode supplies through SPM. See docs/infra.md.
       - run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 
   # ---------------------------------------------------------------- #
-  # Check agregado: es el único que se marca como "required" en main.
+  # Aggregated check: the only one marked as required on main.
   # ---------------------------------------------------------------- #
   ci-passed:
     name: CI passed
@@ -171,8 +170,8 @@ jobs:
     needs: [static-analysis, shared-tests, build-android, build-ios]
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar que todos los jobs pasaron
+      - name: Verify every job passed
         run: |
           echo '${{ toJSON(needs) }}' | jq -e 'all(.[]; .result == "success")' > /dev/null \
             || { echo "::error::Algún job de CI falló"; exit 1; }
-          echo "Todos los jobs de CI en verde."
+          echo "Every CI job green."

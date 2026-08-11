@@ -63,6 +63,13 @@ and no `object` holding mutable state.
 
 **File names.** One public type per file, named after it.
 
+**Language.** Everything written in the repository is in English: code, comments, KDoc, test
+names, commit messages, documentation, workflow step names and anything a script prints.
+
+**Comments.** One or two lines. Say what the code cannot — a constraint, a forced choice, a
+trap. Never paraphrase the code. If it needs paragraphs it belongs in `docs/` or the pull
+request body.
+
 ---
 
 ## Tests

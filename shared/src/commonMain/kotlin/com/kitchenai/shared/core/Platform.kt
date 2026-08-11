@@ -1,6 +1,6 @@
 package com.kitchenai.shared.core
 
-/** Identidad de la plataforma en tiempo de ejecución. Sólo para diagnóstico. */
+/** Runtime platform identity. Diagnostics only. */
 interface Platform {
     val name: String
 }

@@ -9,14 +9,14 @@ plugins {
 
 kotlin {
     androidLibrary {
-        // Debe diferir del namespace de :androidApp (AGP 9 exige que sean únicos).
+        // Must differ from :androidApp's namespace (AGP 9 requires them to be unique).
         namespace = "com.kitchenai.ui"
         compileSdk = libs.versions.androidCompileSdk.get().toInt()
         minSdk = libs.versions.androidMinSdk.get().toInt()
 
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
 
-        // Sin esto los recursos de Compose no se empaquetan y la app crashea (CMP-9547).
+        // Without this, Compose resources are not packaged and the app crashes (CMP-9547).
         androidResources { enable = true }
 
         withHostTest { }
@@ -26,14 +26,14 @@ kotlin {
         target.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
-            // Xcode enlaza un solo framework: éste debe exportar también :shared.
+            // Xcode links a single framework: this one must export :shared too.
             export(projects.shared)
         }
     }
 
     sourceSets {
         commonMain.dependencies {
-            // api (no implementation): requisito para poder exportarlo al framework
+            // api, not implementation: required to export it to the framework
             api(projects.shared)
 
             implementation(compose.runtime)
@@ -57,17 +57,14 @@ kotlin {
 }
 
 // ---------------------------------------------------------------------------
-// Tests de Kotlin/Native desactivados.
+// Kotlin/Native tests disabled.
 //
-// GitLive declara linker options hacia los frameworks del SDK nativo de Firebase
-// (FirebaseCore y compañía). Cuando Xcode compila la app, SPM los aporta; pero el
-// binario de test de Kotlin/Native lo enlaza Gradle por su cuenta, sin acceso a
-// ellos, y falla con "ld: framework 'FirebaseCore' not found".
+// GitLive declares linker options against the native Firebase frameworks. Xcode gets them
+// from SPM, but Gradle links the Kotlin/Native test binary on its own, without access, and
+// fails with "ld: framework 'FirebaseCore' not found".
 //
-// Los tests de commonTest siguen ejecutándose en JVM/Android, que es donde vive
-// toda la lógica de dominio. El arreglo de fondo es separar :shared en dos módulos
-// (domain puro sin Firebase + data), y entonces domain sí podrá testearse en iOS.
-// Ver docs/infra.md.
+// commonTest still runs on JVM/Android, where the domain logic lives. The real fix is
+// splitting :shared into two modules (pure domain + data). See docs/infra.md.
 // ---------------------------------------------------------------------------
 tasks.matching { task ->
     task.name.startsWith("linkDebugTestIos") ||

@@ -1,19 +1,18 @@
 name: Auto-merge
 
-# Sustituye al auto-merge nativo de GitHub, que requiere protección de rama
-# y por tanto no está disponible en repositorios privados con plan Free.
+# Replaces GitHub's native auto-merge, which needs branch protection and is therefore
+# unavailable on private repositories on the Free plan.
 #
-# Contrato: pones la etiqueta `ready-to-merge` en una PR y, en cuanto CI y la
-# revisión de Claude estén en verde, se mergea sola con squash y se borra la
-# rama. Si algún check falla, no pasa nada: corriges, empujas, y al volver a
-# ponerse todo en verde este workflow lo reintenta solo.
+# The contract: label a pull request `ready-to-merge` and, once CI and the review are green,
+# it squash-merges itself and deletes the branch. A failing check costs nothing — fix, push,
+# and this workflow retries on its own when everything goes green again.
 
 on:
-  # Cuando terminan CI o la revisión: puede que ese fuera el último check pendiente.
+  # When CI or the review finishes: that may have been the last pending check.
   workflow_run:
     workflows: ["CI", "AI Code Review"]
     types: [completed]
-  # Cuando etiquetas la PR: puede que los checks ya estuvieran verdes.
+  # When the pull request is labelled: the checks may already be green.
   pull_request:
     types: [labeled]
 
@@ -27,10 +26,10 @@ concurrency:
 
 jobs:
   merge:
-    name: Mergear si todo está en verde
+    name: Merge if everything is green
     runs-on: ubuntu-latest
     steps:
-      - name: Evaluar y mergear
+      - name: Evaluate and merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -38,16 +37,16 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           PR_NUM: ${{ github.event.pull_request.number }}
           LABEL: ready-to-merge
-          # Tiene que coincidir exactamente con el `name:` del job de abajo.
-          SELF: Mergear si todo está en verde
+          # Must match the job's `name:` above exactly.
+          SELF: Merge if everything is green
         run: |
           set -euo pipefail
 
           # ---------------------------------------------------------- #
-          # 1. Qué PRs mirar.
+          # 1. Which pull requests to look at.
           #
-          # En `pull_request` la sabemos. En `workflow_run` sólo tenemos el
-          # SHA, así que buscamos las PRs abiertas cuyo head coincida.
+          # `pull_request` tells us. `workflow_run` only carries the SHA, so we look for
+          # open pull requests whose head matches.
           # ---------------------------------------------------------- #
           if [ "$EVENT" = "pull_request" ]; then
             PRS="$PR_NUM"
@@ -57,7 +56,7 @@ jobs:
           fi
 
           if [ -z "$PRS" ]; then
-            echo "Ninguna PR abierta corresponde a este evento."
+            echo "No open pull request matches this event."
             exit 0
           fi
 
@@ -71,38 +70,36 @@ jobs:
             HAS_LABEL=$(echo "$DATA" | jq -r --arg l "$LABEL" \
                         '[.labels[].name] | index($l) != null')
 
-            if [ "$STATE" != "OPEN" ];    then echo "No está abierta."; echo "::endgroup::"; continue; fi
-            if [ "$HAS_LABEL" != "true" ]; then echo "Sin la etiqueta '$LABEL': no se toca."; echo "::endgroup::"; continue; fi
-            if [ "$DRAFT" = "true" ];      then echo "Es un borrador."; echo "::endgroup::"; continue; fi
+            if [ "$STATE" != "OPEN" ];    then echo "Not open."; echo "::endgroup::"; continue; fi
+            if [ "$HAS_LABEL" != "true" ]; then echo "No '$LABEL' label: leaving it alone."; echo "::endgroup::"; continue; fi
+            if [ "$DRAFT" = "true" ];      then echo "It is a draft."; echo "::endgroup::"; continue; fi
 
             if [ "$MERGEABLE" = "CONFLICTING" ]; then
-              echo "Tiene conflictos con la base. Resuélvelos y vuelve a etiquetar."
-              gh pr comment "$PR" --body "Auto-merge detenido: la rama tiene conflictos con \`main\`."
+              echo "Conflicts with the base. Resolve them and label it again."
+              gh pr comment "$PR" --body "Auto-merge stopped: the branch conflicts with \`main\`."
               echo "::endgroup::"; continue
             fi
 
             # ---------------------------------------------------------- #
-            # 2. Todos los checks en verde, excepto el nuestro.
+            # 2. Every check green, except ours.
             #
-            # Cuando el disparador es `pull_request`, este propio job
-            # aparece como un check de la PR. Preguntar "¿están todos los
-            # checks en verde?" con `gh pr checks` a secas se responde a sí
-            # mismo que no: está en curso. Hay que excluirse del recuento.
+            # On a `pull_request` trigger this job is itself a check of the pull request, so
+            # asking `gh pr checks` whether everything is green answers itself with no — it
+            # is still running. It has to exclude itself from the count.
             #
-            # `skipping` cuenta como bueno: es lo que sale cuando un job se
-            # salta por condición y no significa que falte nada.
+            # `skipping` counts as good: it is what a job skipped by condition reports.
             # ---------------------------------------------------------- #
-            PENDIENTES=$(gh pr checks "$PR" --json name,bucket --jq \
+            PENDING=$(gh pr checks "$PR" --json name,bucket --jq \
               "[.[] | select(.name != \"$SELF\") | select(.bucket != \"pass\" and .bucket != \"skipping\")] | length")
 
-            if [ "$PENDIENTES" != "0" ]; then
-              echo "Hay $PENDIENTES check(s) fallando o pendientes. No se mergea."
+            if [ "$PENDING" != "0" ]; then
+              echo "$PENDING check(s) failing or pending. Not merging."
               gh pr checks "$PR" --json name,bucket --jq \
                 '.[] | select(.bucket != "pass" and .bucket != "skipping") | "  \(.bucket)\t\(.name)"'
               echo "::endgroup::"; continue
             fi
 
-            echo "Todo en verde. Mergeando."
+            echo "All green. Merging."
             gh pr merge "$PR" --squash --delete-branch
             echo "::endgroup::"
           done

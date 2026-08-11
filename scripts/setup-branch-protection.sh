@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Paso 4 — protege `main` y activa el auto-merge.
+# Step 4 — protect `main` and turn on auto-merge.
 #
-#   ./scripts/setup-branch-protection.sh            aplica la configuración
-#   ./scripts/setup-branch-protection.sh --show     muestra la configuración actual
-#   ./scripts/setup-branch-protection.sh --remove   quita la protección
+#   ./scripts/setup-branch-protection.sh            apply the configuration
+#   ./scripts/setup-branch-protection.sh --show     show the current configuration
+#   ./scripts/setup-branch-protection.sh --remove   remove the protection
 #
-# Idempotente: puedes ejecutarlo tantas veces como quieras.
+# Idempotent: run it as often as you like.
 set -euo pipefail
 
 GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RED=$'\033[31m'; BOLD=$'\033[1m'; OFF=$'\033[0m'
@@ -16,24 +16,23 @@ BRANCH="main"
 case "${1:-}" in
     --show)
         gh api "repos/$REPO/branches/$BRANCH/protection" 2>/dev/null \
-            || echo "La rama $BRANCH no tiene protección."
+            || echo "Branch $BRANCH is not protected."
         exit 0
         ;;
     --remove)
         gh api -X DELETE "repos/$REPO/branches/$BRANCH/protection"
-        printf '%s✓%s Protección eliminada de %s\n' "$YELLOW" "$OFF" "$BRANCH"
+        printf '%s✓%s Protection removed from %s\n' "$YELLOW" "$OFF" "$BRANCH"
         exit 0
         ;;
 esac
 
-printf '%s%sConfigurando %s%s\n\n' "$BOLD" "$GREEN" "$REPO" "$OFF"
+printf '%s%sConfiguring %s%s\n\n' "$BOLD" "$GREEN" "$REPO" "$OFF"
 
 # ------------------------------------------------------------------ #
-# 1. Opciones del repositorio.
+# 1. Repository options.
 #
-# Sólo squash: cada issue entra en `main` como un único commit, así el
-# historial de `main` es la lista de tareas completadas y `git revert`
-# de una tarea es un solo comando.
+# Squash only: every issue lands on `main` as a single commit, so the history is the list of
+# finished tasks and reverting one is a single command.
 # ------------------------------------------------------------------ #
 gh repo edit "$REPO" \
     --enable-auto-merge \
@@ -42,33 +41,27 @@ gh repo edit "$REPO" \
     --enable-merge-commit=false \
     --enable-rebase-merge=false
 
-printf '%s✓%s Auto-merge, squash-only y borrado de rama al mergear\n' "$GREEN" "$OFF"
+printf '%s✓%s Auto-merge, squash-only and branch deletion on merge\n' "$GREEN" "$OFF"
 
 # ------------------------------------------------------------------ #
-# 2. Protección de la rama.
+# 2. Branch protection.
 #
-# `strict: false` a propósito: con `true`, cada merge invalida el resto
-# de PRs abiertas y hay que actualizarlas y re-revisarlas una por una.
-# Eso serializa el desarrollo, que es justo lo contrario de poder
-# paralelizar issues independientes. El precio es que dos PRs verdes
-# por separado pueden romper `main` juntas; el CI de `push` lo detecta.
+# `strict: false` on purpose: with `true`, every merge invalidates the other open pull
+# requests and each has to be updated and re-reviewed, which serialises development — the
+# opposite of parallel issues. The price is that two independently green pull requests can
+# break `main` together; the push CI catches that.
 #
-# `required_approving_review_count: 0` porque GitHub no deja aprobar tus
-# propias PRs. La revisión la aporta el check `Claude review`, no un
-# humano. Si más adelante configuras AI_REVIEWER_TOKEN con un usuario
-# máquina, súbelo a 1.
+# `required_approving_review_count: 0` because GitHub does not let you approve your own pull
+# requests. The review comes from the `Claude review` check, not a human. Raise it to 1 once
+# AI_REVIEWER_TOKEN points at a machine user.
 #
-# `enforce_admins` se envía aquí por completitud, pero este PUT lo acepta
-# y no lo aplica: se activa de verdad en la sección 3, con su endpoint.
+# `enforce_admins` is sent here for completeness, but this PUT accepts it without applying
+# it: section 3 turns it on through its own endpoint.
 #
-# `required_conversation_resolution: false` porque choca de frente con
-# tener un revisor automático. Cada comentario inline de Claude abre un
-# hilo, y un solo hilo sin resolver deja la PR en BLOCKED aunque el
-# veredicto sea `approve` y todos los checks estén verdes. El auto-merge
-# no puede entrar y el error de GitHub —"the base branch policy prohibits
-# the merge"— no menciona los hilos por ningún lado. La barrera la pone
-# el check `Claude review`; exigir además resolver hilos convierte cada
-# comentario menor en trabajo manual que se despacha sin leer.
+# `required_conversation_resolution: false` because it collides head-on with an automated
+# reviewer. Every inline comment opens a thread, and a single unresolved one leaves the pull
+# request BLOCKED even with an `approve` verdict and green checks — and GitHub's error, "the
+# base branch policy prohibits the merge", never mentions threads.
 # ------------------------------------------------------------------ #
 if ! gh api -X PUT "repos/$REPO/branches/$BRANCH/protection" --input - <<'JSON'
 {
@@ -93,63 +86,61 @@ if ! gh api -X PUT "repos/$REPO/branches/$BRANCH/protection" --input - <<'JSON'
 }
 JSON
 then
-    printf '\n%s✗ No se pudo aplicar la protección de rama.%s\n\n' "$YELLOW" "$OFF"
+    printf '\n%s✗ Could not apply branch protection.%s\n\n' "$YELLOW" "$OFF"
     cat <<'WHY'
-Si el error es un 403 con "Upgrade to GitHub Pro or make this repository public",
-no hay nada que arreglar aquí: la protección de rama no existe para repositorios
-privados en plan Free. GitHub acepta la llamada y no aplica nada.
+If the error is a 403 with "Upgrade to GitHub Pro or make this repository public", there is
+nothing to fix here: branch protection does not exist for private repositories on the Free
+plan. GitHub accepts the call and applies nothing.
 
-Salidas:
-  · hacer el repositorio público  -> gh repo edit --visibility public
-  · pasar a GitHub Pro
-  · quedarte sin protección       -> el workflow auto-merge.yml cubre el merge
-                                     automático; ver docs/infra.md
+Ways out:
+  · make the repository public  -> gh repo edit --visibility public
+  · move to GitHub Pro
+  · live without protection     -> auto-merge.yml covers the automatic merge;
+                                   see docs/infra.md
 WHY
     exit 1
 fi
 
-printf '%s✓%s Protección aplicada a %s\n' "$GREEN" "$OFF" "$BRANCH"
+printf '%s✓%s Protection applied to %s\n' "$GREEN" "$OFF" "$BRANCH"
 
 # ------------------------------------------------------------------ #
-# 3. enforce_admins, por su endpoint propio.
+# 3. enforce_admins, through its own endpoint.
 #
-# El PUT de arriba acepta "enforce_admins": true, responde 200 y lo deja
-# en false. Hay que activarlo con su endpoint dedicado. Y hay que
-# comprobarlo: sin esto la protección parece puesta y al owner —la única
-# persona que iba a empujar— no le aplica nada.
+# The PUT above accepts "enforce_admins": true, answers 200 and leaves it false. It has to be
+# set through the dedicated endpoint, and verified: without this the protection looks applied
+# while not covering the owner — the only person who was going to push anyway.
 # ------------------------------------------------------------------ #
 gh api -X POST "repos/$REPO/branches/$BRANCH/protection/enforce_admins" >/dev/null
 
 ADMINS=$(gh api "repos/$REPO/branches/$BRANCH/protection" --jq .enforce_admins.enabled)
 if [ "$ADMINS" != "true" ]; then
-    printf '%s✗ enforce_admins sigue en false.%s La protección no te aplicará a ti.\n' "$RED" "$OFF"
+    printf '%s✗ enforce_admins is still false.%s The protection will not apply to you.\n' "$RED" "$OFF"
     exit 1
 fi
-printf '%s✓%s enforce_admins activo: la protección también te aplica a ti\n\n' "$GREEN" "$OFF"
+printf '%s✓%s enforce_admins on: the protection applies to you too\n\n' "$GREEN" "$OFF"
 
 cat <<'NEXT'
-Lo que acaba de cambiar:
+What just changed:
 
-  · No se puede empujar directamente a main. Todo pasa por PR.
-  · Una PR sólo se puede mergear con "CI passed" y "Claude review" en verde.
-  · Sólo squash. Historial lineal. Sin force-push ni borrado de main.
-  · Los comentarios del revisor NO bloquean el merge: quien decide es el
-    veredicto del check "Claude review".
+  · No direct pushes to main. Everything goes through a pull request.
+  · A pull request merges only with "CI passed" and "Claude review" green.
+  · Squash only. Linear history. No force-push, no deleting main.
+  · Reviewer comments do NOT block the merge: the "Claude review" verdict decides.
 
-Flujo de una tarea a partir de ahora:
+The flow for a task from now on:
 
-  git checkout -b feat/12-listado-recetas
+  git checkout -b feat/12-recipe-list
   ...
   gh pr create --fill
-  gh pr merge --squash --auto        <- se mergea solo cuando los checks pasen
+  gh pr merge --squash --auto        <- merges on its own once the checks pass
 
-Comprueba que funciona intentando romperlo:
+Check it works by trying to break it:
 
   git checkout main
-  echo "// prueba" >> README.md && git commit -am "chore: probar protección"
-  git push        <- debe ser rechazado por el remoto
+  echo "// test" >> README.md && git commit -am "chore: test the protection"
+  git push        <- the remote must reject this
 
-Y deshaz la prueba:
+And undo the test:
 
   git reset --hard origin/main
 NEXT

@@ -4,8 +4,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 
 /**
- * Los dispatchers se inyectan, nunca se referencian directamente desde
- * casos de uso o repositorios: así los tests pueden sustituirlos.
+ * Dispatchers are injected, never referenced directly from use cases or repositories, so
+ * tests can replace them.
  */
 interface DispatcherProvider {
     val main: CoroutineDispatcher
@@ -19,5 +19,5 @@ class DefaultDispatcherProvider : DispatcherProvider {
     override val default: CoroutineDispatcher get() = Dispatchers.Default
 }
 
-/** `Dispatchers.IO` sólo existe en JVM/Native; en common se resuelve por plataforma. */
+/** `Dispatchers.IO` only exists on JVM/Native; in common it is resolved per platform. */
 internal expect fun ioDispatcher(): CoroutineDispatcher
