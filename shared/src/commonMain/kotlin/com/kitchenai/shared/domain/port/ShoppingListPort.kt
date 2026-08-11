@@ -49,12 +49,7 @@ interface ShoppingListPort {
         list: ShoppingList,
     ): AppResult<Unit>
 
-    suspend fun upsertItem(
-        userId: UserId,
-        listId: ShoppingListId,
-        item: ShoppingItem,
-    ): AppResult<Unit>
-
+    /** One method, not two: a single-item write is a batch of one, and adds no capability. */
     suspend fun upsertItems(
         userId: UserId,
         listId: ShoppingListId,

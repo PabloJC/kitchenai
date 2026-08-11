@@ -81,12 +81,6 @@ class FakeShoppingListPort(
             lists.value = lists.value.filterNot { it.id == list.id } + list
         }
 
-    override suspend fun upsertItem(
-        userId: UserId,
-        listId: ShoppingListId,
-        item: ShoppingItem,
-    ): AppResult<Unit> = upsertItems(userId, listId, listOf(item))
-
     override suspend fun upsertItems(
         userId: UserId,
         listId: ShoppingListId,

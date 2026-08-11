@@ -44,7 +44,7 @@ class AddShoppingItem(
             }
         if (built is AppResult.Failure) return built
         val item = (built as AppResult.Success).data
-        return shoppingList.upsertItem(userId, listId, item).map { item }
+        return shoppingList.upsertItems(userId, listId, listOf(item)).map { item }
     }
 
     // A free-text line never merges: two people write "the good bread" in two different ways,

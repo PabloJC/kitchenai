@@ -28,6 +28,7 @@ class SetShoppingItemChecked(
         // The current state is read to rebuild the document, never to derive the new value.
         val item = (snapshot as AppResult.Success).data.firstOrNull { it.id == itemId }
         if (item == null) return AppResult.Failure(AppError.NotFound("shoppingItem"))
-        return shoppingList.upsertItem(userId, listId, item.copy(checked = checked, updatedAt = time.now()))
+        val updated = item.copy(checked = checked, updatedAt = time.now())
+        return shoppingList.upsertItems(userId, listId, listOf(updated))
     }
 }
