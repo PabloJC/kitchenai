@@ -138,6 +138,22 @@ the caches), but a Kotlin/Native link across six worktrees at once will saturate
 Stagger the builds, or give each worktree `GRADLE_USER_HOME` of its own if the machine has
 the disk.
 
+### Build traps
+
+Found the hard way in wave 1. Both cost a failed build before they cost anything else.
+
+- **No commas in backticked test names.** `compileTestKotlinIosSimulatorArm64` runs even
+  though the Kotlin/Native test targets are disabled, and it fails the build with
+  `Name contains illegal characters: ","`. Applies to every `commonTest` source set, so it
+  applies to every issue in this backlog.
+- **`rememberSwipeToDismissBoxState(confirmValueChange = …)` is deprecated** in the Compose
+  version pinned here. React to `state.currentValue` in a `LaunchedEffect` instead — see
+  `composeApp/.../designsystem/component/SwipeToDismissRow.kt` from #32.
+- **`compose.components.uiToolingPreview` is deprecated** in Compose Multiplatform 1.11 and
+  there is no `compose.uiToolingPreview` accessor. `@Preview` comes from the
+  `org.jetbrains.compose.ui:ui-tooling-preview` coordinates via the version catalog, in an
+  `androidMain` dependency block. #32 added both entries; #44 inherits them.
+
 ---
 
 ## 5. Shared-file collision matrix
@@ -150,9 +166,9 @@ Issues in the same wave that touch the same file, and the mitigation:
 | `composeApp/di/PresentationModule.kt` | #44 (rewrites), #48/#49/#52/#50 (one line each) | Same pattern: per-feature module file, one appended line. |
 | `composeApp/navigation/KitchenAiNavHost.kt` | #44 (creates), #48/#49/#50 (one line each), #52 (two) | Keep each route entry to a single line. |
 | `firebase/firestore.indexes.json` | #33 (wave 1, structure), #42 and #43 (wave 3, one index each) | #33 lands first; the two wave-3 issues append sibling objects. |
-| `gradle/libs.versions.toml` | #44 (navigation, wave 3), #51 (functions, wave 5) | Different waves — no overlap. |
+| `gradle/libs.versions.toml` | #32 (preview, wave 1), #44 (navigation, wave 3), #51 (functions, wave 5) | Different waves — no overlap. Each appends one entry. |
 | `shared/build.gradle.kts` | #51 only | — |
-| `composeApp/build.gradle.kts` | #44 only | — |
+| `composeApp/build.gradle.kts` | #32 (wave 1, `androidMain` block), #44 (wave 3) | Different waves. #44 rebases onto the block #32 added. |
 
 Every other file in the backlog is owned by exactly one issue. That is not luck; it is why
 each issue lists the files it will touch.
