@@ -5,7 +5,7 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ShoppingListPort
+import com.kitchenai.shared.domain.port.ShoppingItemPort
 import com.kitchenai.shared.domain.port.TimeProvider
 
 /**
@@ -14,7 +14,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
  * inversions would cancel each other out and leave the line unchecked.
  */
 class SetShoppingItemChecked(
-    private val shoppingList: ShoppingListPort,
+    private val shoppingItems: ShoppingItemPort,
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(
@@ -23,12 +23,12 @@ class SetShoppingItemChecked(
         itemId: ShoppingItemId,
         checked: Boolean,
     ): AppResult<Unit> {
-        val snapshot = shoppingList.getItems(userId, listId)
+        val snapshot = shoppingItems.getItems(userId, listId)
         if (snapshot is AppResult.Failure) return snapshot
         // The current state is read to rebuild the document, never to derive the new value.
         val item = (snapshot as AppResult.Success).data.firstOrNull { it.id == itemId }
         if (item == null) return AppResult.Failure(AppError.NotFound("shoppingItem"))
         val updated = item.copy(checked = checked, updatedAt = time.now())
-        return shoppingList.upsertItems(userId, listId, listOf(updated))
+        return shoppingItems.upsertItems(userId, listId, listOf(updated))
     }
 }

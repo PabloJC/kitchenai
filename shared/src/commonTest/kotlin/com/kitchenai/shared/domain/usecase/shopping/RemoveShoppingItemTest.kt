@@ -9,7 +9,7 @@ class RemoveShoppingItemTest {
     fun `removing the same line twice leaves the rest of the list untouched`() =
         runTest {
             val list = listId()
-            val port = FakeShoppingListPort()
+            val port = FakeShoppingItemPort()
             port.seed(list, shoppingItem("milk"), shoppingItem("bread"))
 
             RemoveShoppingItem(port)(userId(), list, itemId("milk"))
