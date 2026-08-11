@@ -2,7 +2,9 @@ package com.kitchenai.shared.di
 
 import com.kitchenai.shared.core.DefaultDispatcherProvider
 import com.kitchenai.shared.core.DispatcherProvider
-import com.kitchenai.shared.data.remote.firebase.FirebaseHealthCheck
+import com.kitchenai.shared.data.remote.firebase.FirebaseHealthCheckAdapter
+import com.kitchenai.shared.domain.port.HealthCheckPort
+import com.kitchenai.shared.domain.usecase.CheckFirebaseHealth
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.KoinAppDeclaration
@@ -15,17 +17,19 @@ val coreModule: Module =
 
 val dataModule: Module =
     module {
-        factory { FirebaseHealthCheck() }
+        // The binding is to the port, not to the class: that is what stops a use case
+        // from asking for the adapter and dragging Firebase into the domain.
+        factory<HealthCheckPort> { FirebaseHealthCheckAdapter(get()) }
     }
 
 val domainModule: Module =
     module {
-        // Los casos de uso se registran aquí conforme se van creando.
+        factory { CheckFirebaseHealth(get()) }
     }
 
 val sharedModules: List<Module> = listOf(coreModule, dataModule, domainModule)
 
-/** Punto de entrada único; lo llaman MainActivity (Android) y iOSApp (iOS). */
+/** Single entry point; called by MainActivity (Android) and iOSApp (iOS). */
 fun initKoin(appDeclaration: KoinAppDeclaration = {}) =
     startKoin {
         appDeclaration()
