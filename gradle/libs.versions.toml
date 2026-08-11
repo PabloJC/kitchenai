@@ -63,6 +63,10 @@ androidx-activity-compose   = { module = "androidx.activity:activity-compose", v
 androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
 androidx-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
 
+# The @Preview annotation alone. The `compose.components.uiToolingPreview` accessor is
+# deprecated in Compose Multiplatform 1.11 in favour of the coordinates.
+compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 [plugins]

@@ -48,6 +48,11 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
         }
+        androidMain.dependencies {
+            // The @Preview annotation only, not the tooling runtime: Compose Multiplatform
+            // renders previews on Android alone, so they live in androidMain.
+            implementation(libs.compose.ui.tooling.preview)
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
