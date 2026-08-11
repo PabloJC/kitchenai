@@ -32,13 +32,18 @@ style:
     ignorePropertyDeclaration: true
   MaxLineLength:
     maxLineLength: 120
-  ForbiddenMethodCall:
+  # Replaces a ForbiddenMethodCall pair that never fired: that rule needs type resolution,
+  # which no task has for commonMain. An import ban is syntactic, so it holds everywhere.
+  # Its println half has no syntactic equivalent and stays unenforced for now.
+  ForbiddenImport:
     active: true
-    methods:
-      - reason: 'Use DispatcherProvider, not a hardcoded dispatcher'
-        value: 'kotlinx.coroutines.Dispatchers.IO'
-      - reason: 'println leaks data and is invisible in production; use the logger'
-        value: 'kotlin.io.println'
+    imports:
+      - reason: 'Inject DispatcherProvider; only its implementations may name a dispatcher'
+        value: 'kotlinx.coroutines.Dispatchers'
+    excludes:
+      # The implementations of the port itself, and test setup that must reach Dispatchers.Main.
+      - '**/DispatcherProvider*.kt'
+      - '**/commonTest/**'
   ReturnCount:
     max: 4
   UnusedPrivateMember:
