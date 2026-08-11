@@ -36,6 +36,7 @@ val sharedModules: List<Module> =
         firebaseModule,
         pantryModule,
         profileModule,
+        sessionModule,
     )
 
 /** Single entry point; called by MainActivity (Android) and iOSApp (iOS). */
