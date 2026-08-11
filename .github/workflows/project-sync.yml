@@ -2,7 +2,7 @@ name: Project board
 
 # Keeps the board in sync with what actually happens in the repository:
 #
-#   issue opened     -> Todo
+#   issue opened     -> Todo, and into the open MVP milestone unless it opts out
 #   PR opened        -> In progress   (for the issues the PR closes)
 #   review approved  -> In review
 #   PR merged        -> Done
@@ -173,3 +173,62 @@ jobs:
 
             echo "::endgroup::"
           done
+
+  # ------------------------------------------------------------------ #
+  # A new issue joins the open MVP milestone unless it opts out with `no-milestone`.
+  #
+  # `task` cannot tell MVP work from the infra chores that share the label — nine of the
+  # first ten issues in this repository were infra — so membership is a judgement no label
+  # encodes. Defaulting to *in* is the lesser evil: a wrong milestone is visible on the
+  # milestone page and one click to remove, while a missing one is invisible and quietly
+  # makes the progress bar lie.
+  #
+  # To flip this to opt-in, change the IS_ELIGIBLE test below to look for a label you add
+  # on purpose. Nothing else in the job changes.
+  #
+  # A separate job rather than a step in `sync`: this one needs `issues: write` and no PAT,
+  # and neither concern should be able to break the other.
+  # ------------------------------------------------------------------ #
+  milestone:
+    name: Stamp the milestone
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'issues' && github.event.action == 'opened' }}
+    permissions:
+      issues: write
+
+    steps:
+      - name: Add the issue to the open MVP milestone
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          IS_ELIGIBLE: ${{ contains(github.event.issue.labels.*.name, 'task') }}
+          IS_EXCLUDED: ${{ contains(github.event.issue.labels.*.name, 'no-milestone') }}
+          HAS_MILESTONE: ${{ github.event.issue.milestone != null }}
+        run: |
+          set -euo pipefail
+
+          if [ "$IS_ELIGIBLE" != "true" ] || [ "$IS_EXCLUDED" = "true" ]; then
+            echo "Not a milestone-eligible task. Leaving it alone."
+            exit 0
+          fi
+
+          # Never overwrite a milestone somebody set deliberately.
+          if [ "$HAS_MILESTONE" = "true" ]; then
+            echo "The issue already carries a milestone."
+            exit 0
+          fi
+
+          # Resolved by state, not by a hardcoded number: once the MVP milestone closes
+          # this step stops stamping on its own, instead of filling a shipped milestone
+          # and waiting for someone to remember to delete the job.
+          NUM=$(gh api "/repos/$GH_REPO/milestones?state=open" \
+                --jq 'map(select(.title == "MVP")) | first | .number // empty')
+
+          if [ -z "$NUM" ]; then
+            echo "No open milestone called MVP. Nothing to stamp."
+            exit 0
+          fi
+
+          gh api -X PATCH "/repos/$GH_REPO/issues/$ISSUE_NUM" -F milestone="$NUM" >/dev/null
+          echo "Issue #$ISSUE_NUM added to milestone MVP (#$NUM)."
