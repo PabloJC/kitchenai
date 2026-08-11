@@ -33,7 +33,12 @@ class ConsumePantryItems(
                 }
         }
 
-    /** Returns only the touched holdings, so an unrelated row is never rewritten. */
+    /**
+     * Returns only the touched holdings, so an unrelated row is never rewritten.
+     *
+     * Five exits, one per rejection reason: collapsing them would hide which check failed.
+     */
+    @Suppress("ReturnCount")
     private fun apply(
         held: List<PantryItem>,
         consumptions: List<Pair<PantryItemId, Quantity>>,

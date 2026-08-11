@@ -41,3 +41,6 @@ style:
         value: 'kotlin.io.println'
   ReturnCount:
     max: 4
+  UnusedPrivateMember:
+    # @Preview composables are unused by construction: the IDE renders them, nothing calls them.
+    ignoreAnnotated: ['Preview']
