@@ -8,7 +8,6 @@ import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryPort
 import com.kitchenai.shared.domain.port.TimeProvider
-import kotlinx.coroutines.flow.first
 
 /**
  * Subtracts what has been used from the pantry.
@@ -24,7 +23,7 @@ class ConsumePantryItems(
         userId: UserId,
         consumptions: List<Pair<PantryItemId, Quantity>>,
     ): AppResult<Unit> =
-        when (val held = pantry.observePantry(userId).first()) {
+        when (val held = pantry.getPantry(userId)) {
             is AppResult.Failure -> held
             is AppResult.Success ->
                 when (val applied = apply(held.data, consumptions)) {

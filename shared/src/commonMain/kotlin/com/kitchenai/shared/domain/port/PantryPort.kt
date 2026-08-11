@@ -1,5 +1,6 @@
 package com.kitchenai.shared.domain.port
 
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
@@ -8,7 +9,16 @@ import kotlinx.coroutines.flow.Flow
 
 /** The pantry seam: `domain` states what it needs from storage, `data` provides it. */
 interface PantryPort {
-    fun observePantry(userId: UserId): Flow<AppResult<List<PantryItem>>>
+    fun observePantry(userId: UserId): Flow<List<PantryItem>>
+
+    /** Failures of the listener above, which stops emitting rather than throwing. */
+    fun streamErrors(): Flow<AppError>
+
+    /**
+     * One-shot read for the read-modify-write use cases: taking the first emission of the
+     * listener would hang forever once that listener has failed.
+     */
+    suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>>
 
     suspend fun upsert(
         userId: UserId,

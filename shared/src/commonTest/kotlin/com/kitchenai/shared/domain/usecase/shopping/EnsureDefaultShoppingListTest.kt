@@ -1,6 +1,7 @@
 package com.kitchenai.shared.domain.usecase.shopping
 
 import com.kitchenai.shared.core.AppResult
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,7 +30,7 @@ class EnsureDefaultShoppingListTest {
         runTest {
             useCase(user, labels)
 
-            val stored = port.observeLists(user).firstSuccess()
+            val stored = port.observeLists(user).first()
             assertEquals(listOf(labels), stored.map { it.labels })
             assertEquals(listOf(user), stored.map { it.ownerId })
         }

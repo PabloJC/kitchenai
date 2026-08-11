@@ -13,7 +13,8 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryPort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlin.time.Instant
 
 /**
@@ -34,8 +35,14 @@ class FakePantryPort(
     val removed = mutableListOf<PantryItemId>()
     val items: List<PantryItem> get() = state.value
 
-    override fun observePantry(userId: UserId): Flow<AppResult<List<PantryItem>>> =
-        state.map { current -> readError?.let { AppResult.Failure(it) } ?: AppResult.Success(current) }
+    // A failing listener stops emitting and reports on streamErrors, which is what the real
+    // adapter does with a Firestore snapshot error.
+    override fun observePantry(userId: UserId): Flow<List<PantryItem>> = if (readError == null) state else emptyFlow()
+
+    override fun streamErrors(): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
+
+    override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> =
+        readError?.let { AppResult.Failure(it) } ?: AppResult.Success(state.value)
 
     override suspend fun upsert(
         userId: UserId,

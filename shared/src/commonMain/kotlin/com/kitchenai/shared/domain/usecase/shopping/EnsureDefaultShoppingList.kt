@@ -8,7 +8,6 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.ShoppingListPort
 import com.kitchenai.shared.domain.port.TimeProvider
-import kotlinx.coroutines.flow.first
 
 /**
  * Returns the user's list and creates one only when there is none, so calling it on every
@@ -26,7 +25,7 @@ class EnsureDefaultShoppingList(
         userId: UserId,
         labels: Map<String, String>,
     ): AppResult<ShoppingListId> {
-        val snapshot = shoppingList.observeLists(userId).first()
+        val snapshot = shoppingList.getLists(userId)
         if (snapshot is AppResult.Failure) return snapshot
         // The oldest list wins, so two devices racing on a first launch settle on one of them.
         val existing = (snapshot as AppResult.Success).data.minByOrNull { it.updatedAt }

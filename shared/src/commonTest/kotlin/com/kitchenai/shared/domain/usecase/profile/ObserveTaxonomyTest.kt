@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.port.TaxonomyPort
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -21,22 +22,23 @@ class ObserveTaxonomyTest {
     @Test
     fun `terms arrive in the order the catalogue declares`() =
         runTest {
-            val useCase = ObserveTaxonomy(StubTaxonomyPort(AppResult.Success(listOf(second, first))))
+            val useCase = ObserveTaxonomy(StubTaxonomyPort(listOf(second, first)))
 
             useCase(first.ref.taxonomy).test {
-                assertEquals(AppResult.Success(listOf(first, second)), awaitItem())
+                assertEquals(listOf(first, second), awaitItem())
                 awaitComplete()
             }
         }
 
     @Test
-    fun `a failure reaches the caller untouched`() =
+    fun `a failing listener reports on errors and emits no terms`() =
         runTest {
             val error = AppError.Network()
-            val useCase = ObserveTaxonomy(StubTaxonomyPort(AppResult.Failure(error)))
+            val useCase = ObserveTaxonomy(StubTaxonomyPort(failure = error))
 
-            useCase(first.ref.taxonomy).test {
-                assertEquals(AppResult.Failure(error), awaitItem())
+            useCase(first.ref.taxonomy).test { awaitComplete() }
+            useCase.errors().test {
+                assertEquals(error, awaitItem())
                 awaitComplete()
             }
         }
@@ -48,9 +50,14 @@ class ObserveTaxonomyTest {
 }
 
 private class StubTaxonomyPort(
-    private val terms: AppResult<List<Term>>,
+    private val terms: List<Term> = emptyList(),
+    private val failure: AppError? = null,
 ) : TaxonomyPort {
-    override fun observeTaxonomy(id: TaxonomyId): Flow<AppResult<List<Term>>> = flowOf(terms)
+    override fun observeTaxonomy(id: TaxonomyId): Flow<List<Term>> = if (failure == null) flowOf(terms) else emptyFlow()
 
-    override fun observeTaxonomies(): Flow<AppResult<List<Taxonomy>>> = flowOf(AppResult.Success(emptyList()))
+    override fun observeTaxonomies(): Flow<List<Taxonomy>> = flowOf(emptyList())
+
+    override fun streamErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+
+    override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(emptyList())
 }

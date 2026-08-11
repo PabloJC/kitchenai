@@ -1,7 +1,6 @@
 package com.kitchenai.shared.domain.usecase.shopping
 
-import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.map
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
@@ -16,8 +15,10 @@ class ObserveShoppingItems(
     operator fun invoke(
         userId: UserId,
         listId: ShoppingListId,
-    ): Flow<AppResult<List<ShoppingItem>>> =
-        shoppingList.observeItems(userId, listId).map { items -> items.map(::order) }
+    ): Flow<List<ShoppingItem>> = shoppingList.observeItems(userId, listId).map(::order)
+
+    /** The listener's failures, collected alongside the stream above. */
+    fun errors(): Flow<AppError> = shoppingList.streamErrors()
 
     // Unchecked first and least recently touched first inside each group: ticking a line sends
     // it to the bottom without reshuffling the lines above it in a supermarket aisle.

@@ -17,7 +17,8 @@ import com.kitchenai.shared.domain.port.ShoppingListPort
 import com.kitchenai.shared.domain.port.TimeProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlin.time.Instant
 
@@ -43,12 +44,23 @@ class FakeShoppingListPort(
         items.value = items.value + (listId.value to seeded.toList())
     }
 
-    override fun observeLists(userId: UserId): Flow<AppResult<List<ShoppingList>>> = lists.map { read(it) }
+    // A failing listener stops emitting and reports on streamErrors, which is what the real
+    // adapter does with a Firestore snapshot error.
+    override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = if (failure == null) lists else emptyFlow()
 
     override fun observeItems(
         userId: UserId,
         listId: ShoppingListId,
-    ): Flow<AppResult<List<ShoppingItem>>> = items.map { read(it[listId.value].orEmpty()) }
+    ): Flow<List<ShoppingItem>> = if (failure == null) items.map { it[listId.value].orEmpty() } else emptyFlow()
+
+    override fun streamErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+
+    override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> = read(lists.value)
+
+    override suspend fun getItems(
+        userId: UserId,
+        listId: ShoppingListId,
+    ): AppResult<List<ShoppingItem>> = read(items.value[listId.value].orEmpty())
 
     override suspend fun upsertList(
         userId: UserId,
@@ -143,5 +155,3 @@ fun sequentialIds(prefix: String = "generated"): IdGenerator {
     var next = 0
     return IdGenerator { "$prefix-${++next}" }
 }
-
-suspend fun <T> Flow<AppResult<T>>.firstSuccess(): T = (first() as AppResult.Success).data
