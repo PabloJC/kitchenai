@@ -99,6 +99,10 @@ Firestore rules answer *"is this user allowed?"*, never *"does this request come
 app at all?"*. App Check answers the second question — **Play Integrity** on Android,
 **App Attest** on iOS — and lets Firebase reject anything else before a rule is evaluated.
 
+It is wired on both platforms and **enforcement is off**, which means Firebase measures
+attestation but rejects nothing. That is deliberate and it is not a step someone forgot:
+see *Enforcement is off on purpose* below before enabling anything.
+
 Where it is wired:
 
 | Platform | File | Provider |
@@ -179,6 +183,41 @@ The order is not negotiable:
 
 It is reversible from the console and takes effect within minutes, so the recovery from a
 premature enable is quick — provided you remember that App Check is what you switched.
+
+### Enforcement is off on purpose: iOS cannot attest yet
+
+**Do not enable it.** Not until iOS can produce a token, which today it cannot: there is no
+Apple Developer Program membership, and both iOS paths need one.
+
+| Path | Needs |
+|---|---|
+| App Attest | a build distributed through TestFlight or the App Store, on real hardware |
+| DeviceCheck (the #19 fallback) | a private key generated in the Apple developer portal |
+
+The empty `TEAM_ID` in `iosApp/Configuration/Config.xcconfig` is a consequence of this, not an
+oversight: it stays empty until there is a real team to put in it.
+
+Two things that make this easy to get wrong:
+
+- **Enforcement is per API, not per platform.** Turning it on for Firestore turns it on for
+  the Android app *and* the iOS app. Getting Android attesting through Play Integrity — a
+  separate account, cheaper and one-off — is therefore not a reason to enable anything. Either
+  both platforms can attest or neither should be enforced.
+- **The failure would not name App Check.** It arrives as a permission error indistinguishable
+  from a rules problem, which is the same trap described above, except that here it would hit
+  every release build rather than a subset of devices.
+
+What is *not* blocked: development. A debug build whose token is registered talks to Firebase
+normally — on the simulator, and on a real iPhone signed with a free personal team and its
+7-day profile. Nothing about day-to-day work needs a paid account.
+
+And nothing is decaying while this waits. App Check is a layer on top of the Firestore rules,
+never a replacement for them: with enforcement off, the posture is exactly what it was before
+App Check was wired in, and the client code is already in place for the day it is switched on.
+
+To unblock: get the membership, fill `TEAM_ID`, register App Attest for the iOS app and Play
+Integrity for the Android one, then follow the sequence above — 24 h of metrics first,
+Authentication last.
 
 ---
 
