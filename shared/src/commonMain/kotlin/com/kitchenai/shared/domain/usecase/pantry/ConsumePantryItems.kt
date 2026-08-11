@@ -42,6 +42,11 @@ class ConsumePantryItems(
         val byId = held.associateBy { it.id }
         val touched = LinkedHashMap<PantryItemId, PantryItem>()
         for ((id, taken) in consumptions) {
+            // Without this guard a negative amount would add to the holding through the
+            // subtraction, bypassing the merge AddPantryItem enforces.
+            if (taken.amount <= 0.0) {
+                return AppResult.Failure(AppError.Validation("amount", "must be greater than zero"))
+            }
             val item = touched[id] ?: byId[id] ?: return AppResult.Failure(AppError.NotFound("PantryItem"))
             val left =
                 when (val rest = item.quantity - taken) {
