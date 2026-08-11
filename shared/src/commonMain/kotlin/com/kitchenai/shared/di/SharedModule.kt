@@ -27,7 +27,14 @@ val domainModule: Module =
         factory { CheckFirebaseHealth(get()) }
     }
 
-val sharedModules: List<Module> = listOf(coreModule, dataModule, domainModule)
+// One module per line and alphabetical: several issues append to this list in parallel.
+val sharedModules: List<Module> =
+    listOf(
+        coreModule,
+        dataModule,
+        domainModule,
+        firebaseModule,
+    )
 
 /** Single entry point; called by MainActivity (Android) and iOSApp (iOS). */
 fun initKoin(appDeclaration: KoinAppDeclaration = {}) =
