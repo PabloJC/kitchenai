@@ -37,6 +37,7 @@ val sharedModules: List<Module> =
         pantryModule,
         profileModule,
         sessionModule,
+        shoppingModule,
     )
 
 /** Single entry point; called by MainActivity (Android) and iOSApp (iOS). */
