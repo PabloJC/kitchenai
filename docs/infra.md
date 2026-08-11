@@ -104,7 +104,7 @@ Where it is wired:
 | Platform | File | Provider |
 |---|---|---|
 | Android | `androidApp/src/main/kotlin/.../KitchenAiApplication.kt` | `appCheckProviderFactory()` from `src/debug` or `src/release` |
-| iOS | `iosApp/iosApp/iOSApp.swift` | `#if DEBUG` → debug provider, otherwise `AppAttestProviderFactory` |
+| iOS | `iosApp/iosApp/iOSApp.swift` | `#if DEBUG` → debug provider, otherwise `AttestationProviderFactory` |
 
 On both platforms the provider is installed **before** anything else touches Firebase:
 before `initKoin` on Android, before `FirebaseApp.configure()` on iOS. Installing it
@@ -113,6 +113,33 @@ afterwards lets the first requests — the authentication ones — leave unattes
 The debug artifact is not merely disabled in release, it is absent: `firebase-appcheck-debug`
 comes in through `debugImplementation`, and the factory lives in a per-build-type source set.
 On iOS the `#if DEBUG` branch does not exist in a Release binary.
+
+### Devices without App Attest fall back to DeviceCheck
+
+`AppAttestProvider(app:)` is failable and returns `nil` on any device that does not support
+App Attest — not only the simulator. `AttestationProviderFactory` then builds a
+`DeviceCheckProvider`, and logs it under subsystem `com.kitchenai.app`, category `appcheck`:
+
+```bash
+log stream --predicate 'subsystem == "com.kitchenai.app" AND category == "appcheck"'
+```
+
+The fallback is weaker on purpose. DeviceCheck attests **the device**, not the integrity of
+the build, so it does not answer the question App Check exists to answer. But the choice is
+not App Attest versus DeviceCheck, it is DeviceCheck versus nothing: without it those devices
+send unattested requests forever, and once enforcement is on they get a permission error that
+says nothing about App Check — on a subset of hardware nobody debugging it is likely to hold.
+
+Two consequences when reading the metrics:
+
+- *Verified requests* counts a DeviceCheck token as verified. A clean 100% does not mean every
+  install is attesting the build.
+- Deliberately deprecated it is not: no public symbol in `FirebaseAppCheck` 12.17 carries the
+  attribute. Google recommends App Attest over DeviceCheck, which is a different thing.
+
+The class is **not** called `AppAttestProviderFactory` because the SDK already exports that
+exact Swift name. A local declaration shadows an imported one with no error, so that name
+would make deleting the file change the provider silently.
 
 ### Getting a debug token
 
