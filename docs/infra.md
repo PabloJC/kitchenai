@@ -259,6 +259,26 @@ review every time any label is added, `ready-to-merge` included.
 That is why the review skip (the `skip-ai-review` label, drafts) does not live in the job's
 `if:` but inside it: the job always runs and always reports, whether it reviews or not.
 
+### `Claude review` red does not always mean the review found something
+
+Two ways it goes red with nothing wrong in the diff. Neither says so in the message, so check
+here before reading the verdict as a rejection:
+
+| In the log | What it means |
+|---|---|
+| `workflow validation` in the step, empty transcript | The action refused to run — the pull request edits `ai-code-review.yml`. See above |
+| `exceeding the configured maximum` or `error_max_turns` | The reviewer ran out of turns |
+
+The second one had the nastier shape: the action fails **after** a successful review, so the
+steps that read the verdict, apply `ai-review:approved` and gate the merge were skipped by the
+`if:` chain. A pull request that had just been approved ended up with no label, no verdict and
+a blocking check — #26 is the example.
+
+Hence `continue-on-error: true` on the review step: the action's exit code no longer decides
+the check. The verdict does, and a run that overspent its budget but still published one is
+honoured. `--max-turns` is at 60; a 17-file pull request needed 40, so treat a fresh crop of
+budget errors as a sign to raise it rather than to re-run and hope.
+
 ### The reviewer publishes; the action does not
 
 In agent mode Claude has to call `gh pr comment` and
