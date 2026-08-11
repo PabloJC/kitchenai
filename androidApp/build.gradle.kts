@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.googleServices)
-    // Sin kotlin-android: AGP 9 trae soporte de Kotlin integrado.
+    // No kotlin-android: AGP 9 ships built-in Kotlin support.
 }
 
 android {
@@ -26,10 +26,9 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
-            // Sin applicationIdSuffix: cambiaría el package a com.kitchenai.app.debug
-            // y google-services.json sólo tiene registrado com.kitchenai.app.
-            // Cuando existan proyectos Firebase separados (dev/prod) esto se resuelve
-            // con product flavors y un google-services.json por flavor, no con un sufijo.
+            // No applicationIdSuffix: it would change the package to com.kitchenai.app.debug,
+            // and google-services.json only has com.kitchenai.app registered. Separate
+            // Firebase projects (dev/prod) are a product-flavour problem, not a suffix one.
             isMinifyEnabled = false
         }
     }
@@ -47,27 +46,24 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.koin.android)
 
-    // App Check. `firebase-appcheck` se declara explícito porque lo usa
-    // KitchenAiApplication: llegaría transitivo desde el proveedor, pero
-    // compilar contra una dependencia que no se declara es cómo un cambio de
-    // empaquetado río arriba rompe el build sin tocar nada aquí.
+    // App Check. `firebase-appcheck` is declared explicitly because KitchenAiApplication
+    // uses it: it would arrive transitively from the provider, but compiling against an
+    // undeclared dependency is how an upstream repackaging breaks the build.
     //
-    // Play Integrity va en todas las variantes; el proveedor de debug se queda
-    // en la variante debug y no entra en el APK de release, donde permitiría
-    // saltarse la atestación con un token registrado. La factoría concreta la
-    // elige `appCheckProviderFactory()`, con una implementación por build type
-    // en src/debug y src/release.
+    // Play Integrity ships in every variant; the debug provider stays in the debug
+    // variant, where it cannot be used to bypass attestation with a registered token.
+    // `appCheckProviderFactory()` picks the factory, one implementation per build type.
     implementation(libs.firebase.appcheck)
     implementation(libs.firebase.appcheck.playintegrity)
     debugImplementation(libs.firebase.appcheck.debug)
 
-    // Analytics y Crashlytics: fuera por ahora.
+    // Analytics and Crashlytics: out for now.
     //
-    // Crashlytics necesita además su plugin de Gradle (com.google.firebase.crashlytics),
-    // que inyecta el build ID en el APK. Sin él, Crashlytics lanza al inicializarse y
-    // tumba FirebaseInitProvider entero: la app crashea antes de pintar nada.
+    // Crashlytics also needs its Gradle plugin, which injects the build ID into the APK.
+    // Without it Crashlytics throws on init and takes FirebaseInitProvider down with it:
+    // the app crashes before drawing anything.
     //
-    // Ninguna de las dos la usa ningún código todavía. Se añadirán en su propia issue,
-    // con el plugin y la subida del mapping de R8 configurados, cuando haya testers.
-    // El BOM que fija sus versiones llega vía `api` desde :shared.
+    // No code uses either yet. They come back in their own issue, with the plugin and the
+    // R8 mapping upload configured, once there are testers. The BOM pinning their versions
+    // arrives through `api` from :shared.
 }

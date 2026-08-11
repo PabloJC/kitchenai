@@ -5,27 +5,27 @@ import kotlin.test.assertEquals
 
 class AppResultExtTest {
     @Test
-    fun `getOrElse devuelve el valor de un Success sin llamar al fallback`() {
-        var llamadas = 0
+    fun `getOrElse returns the value of a Success without calling the fallback`() {
+        var calls = 0
         val result: AppResult<Int> = AppResult.Success(42)
 
-        val valor =
+        val value =
             result.getOrElse {
-                llamadas++
+                calls++
                 0
             }
 
-        assertEquals(42, valor)
-        assertEquals(0, llamadas)
+        assertEquals(42, value)
+        assertEquals(0, calls)
     }
 
     @Test
-    fun `getOrElse aplica el fallback y recibe el error de un Failure`() {
+    fun `getOrElse applies the fallback and receives the error of a Failure`() {
         val error = AppError.NotFound("recipe")
         val result: AppResult<Int> = AppResult.Failure(error)
 
-        val valor = result.getOrElse { if (it == error) -1 else -2 }
+        val value = result.getOrElse { if (it == error) -1 else -2 }
 
-        assertEquals(-1, valor)
+        assertEquals(-1, value)
     }
 }

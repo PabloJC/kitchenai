@@ -18,9 +18,9 @@ allprojects {
     apply(plugin = rootProject.libs.plugins.detekt.get().pluginId)
     apply(plugin = rootProject.libs.plugins.ktlint.get().pluginId)
 
-    // extensions.configure y no `detekt { }` / `ktlint { }`: dentro de allprojects
-    // esos accesores resuelven contra la extensión del proyecto RAÍZ, así que la
-    // configuración nunca llegaba a :shared, :composeApp ni :androidApp.
+    // extensions.configure rather than `detekt { }` / `ktlint { }`: inside allprojects
+    // those accessors resolve against the ROOT project's extension, so the configuration
+    // never reached :shared, :composeApp or :androidApp.
     extensions.configure<DetektExtension> {
         buildUponDefaultConfig = true
         allRules = false
@@ -29,9 +29,9 @@ allprojects {
     }
 
     extensions.configure<KtlintExtension> {
-        // El generador de recursos de Compose escribe Res.kt bajo build/generated/
-        // con nombres en minúscula que ktlint rechaza y no puede autocorregir.
-        // Es código regenerado en cada build: analizarlo no aporta nada.
+        // The Compose resource generator writes Res.kt under build/generated/ with
+        // lowercase names ktlint rejects and cannot autocorrect. Regenerated on every
+        // build, so there is nothing to gain from analysing it.
         filter {
             exclude { element -> element.file.path.contains("${File.separator}build${File.separator}") }
         }

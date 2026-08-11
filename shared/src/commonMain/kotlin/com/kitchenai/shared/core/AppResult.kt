@@ -1,8 +1,8 @@
 package com.kitchenai.shared.core
 
 /**
- * Resultado explícito de una operación de dominio.
- * Ninguna capa debe propagar excepciones a través de sus fronteras.
+ * Explicit result of a domain operation.
+ * No layer propagates exceptions across its boundaries.
  */
 sealed interface AppResult<out T> {
     data class Success<T>(val data: T) : AppResult<T>

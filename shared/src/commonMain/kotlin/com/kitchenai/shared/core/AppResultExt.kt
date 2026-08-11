@@ -1,10 +1,10 @@
 package com.kitchenai.shared.core
 
 /**
- * Devuelve el valor si la operación fue bien, o el resultado de [fallback] si no.
+ * Returns the value on success, or the result of [fallback] otherwise.
  *
- * Existe para que quien consume un [AppResult] no tenga que escribir un `when`
- * cuando lo único que necesita es un valor por defecto.
+ * Exists so that consuming an [AppResult] does not require a `when` when all you need is a
+ * default value.
  */
 inline fun <T> AppResult<T>.getOrElse(fallback: (AppError) -> T): T =
     when (this) {
