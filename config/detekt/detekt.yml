@@ -35,9 +35,9 @@ style:
   ForbiddenMethodCall:
     active: true
     methods:
-      - reason: 'Usa DispatcherProvider, no un dispatcher hardcodeado'
+      - reason: 'Use DispatcherProvider, not a hardcoded dispatcher'
         value: 'kotlinx.coroutines.Dispatchers.IO'
-      - reason: 'println filtra datos y no se ve en producción; usa el logger'
+      - reason: 'println leaks data and is invisible in production; use the logger'
         value: 'kotlin.io.println'
   ReturnCount:
     max: 4

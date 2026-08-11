@@ -11,7 +11,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Perfil: cada usuario sólo ve y edita el suyo.
+    // Profile: each user only reads and writes their own.
     match /users/{userId} {
       allow read, write: if isOwner(userId);
 
@@ -20,13 +20,13 @@ service cloud.firestore {
       }
     }
 
-    // Catálogo de recetas: lectura autenticada, escritura sólo desde backend.
+    // Recipe catalogue: authenticated reads, writes only from the backend.
     match /recipes/{recipeId} {
       allow read: if isSignedIn();
       allow write: if false;
     }
 
-    // Todo lo no declarado queda cerrado.
+    // Anything not declared stays closed.
     match /{document=**} {
       allow read, write: if false;
     }
