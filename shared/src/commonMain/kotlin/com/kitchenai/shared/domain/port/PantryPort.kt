@@ -1,0 +1,28 @@
+package com.kitchenai.shared.domain.port
+
+import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.PantryItem
+import com.kitchenai.shared.domain.model.PantryItemId
+import com.kitchenai.shared.domain.model.UserId
+import kotlinx.coroutines.flow.Flow
+
+/** The pantry seam: `domain` states what it needs from storage, `data` provides it. */
+interface PantryPort {
+    fun observePantry(userId: UserId): Flow<AppResult<List<PantryItem>>>
+
+    suspend fun upsert(
+        userId: UserId,
+        item: PantryItem,
+    ): AppResult<Unit>
+
+    suspend fun remove(
+        userId: UserId,
+        id: PantryItemId,
+    ): AppResult<Unit>
+
+    /** Batched so that "I cooked this recipe" is one write instead of N round trips. */
+    suspend fun upsertAll(
+        userId: UserId,
+        items: List<PantryItem>,
+    ): AppResult<Unit>
+}

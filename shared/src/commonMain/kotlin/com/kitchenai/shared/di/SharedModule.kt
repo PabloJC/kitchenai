@@ -34,6 +34,7 @@ val sharedModules: List<Module> =
         dataModule,
         domainModule,
         firebaseModule,
+        pantryModule,
         profileModule,
     )
 

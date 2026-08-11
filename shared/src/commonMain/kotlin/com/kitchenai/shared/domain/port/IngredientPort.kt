@@ -1,0 +1,13 @@
+package com.kitchenai.shared.domain.port
+
+import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.IngredientId
+import kotlinx.coroutines.flow.Flow
+
+/** The catalogue seam. Read-only for the client: ingredients are shared data, not user data. */
+interface IngredientPort {
+    fun observeIngredients(): Flow<AppResult<List<Ingredient>>>
+
+    suspend fun getIngredient(id: IngredientId): AppResult<Ingredient>
+}
