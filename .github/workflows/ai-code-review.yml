@@ -182,12 +182,12 @@ jobs:
             fi
           fi
 
-          echo "--- últimos 2000 caracteres de la transcripción ---"
+          echo "--- last 2000 characters of the transcript ---"
           tail -c 2000 "$EXEC_FILE"
           echo ""
-          echo "--- fin ---"
+          echo "--- end ---"
 
-          # El último centinela gana: si Claude se corrige a sí mismo, vale el final.
+          # The last sentinel wins: if Claude corrects itself, the final one counts.
           VERDICT=$(grep -oE 'VERDICT: (approve|request_changes)' "$EXEC_FILE" \
                     | tail -1 | awk '{print $2}')
 

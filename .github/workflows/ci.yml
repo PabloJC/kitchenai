@@ -153,7 +153,7 @@ jobs:
           if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
             echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/GoogleService-Info.plist
           else
-            echo "::error::Falta el secret GOOGLE_SERVICE_INFO_PLIST."
+            echo "::error::The GOOGLE_SERVICE_INFO_PLIST secret is missing."
             exit 1
           fi
 
@@ -173,5 +173,5 @@ jobs:
       - name: Verify every job passed
         run: |
           echo '${{ toJSON(needs) }}' | jq -e 'all(.[]; .result == "success")' > /dev/null \
-            || { echo "::error::Algún job de CI falló"; exit 1; }
+            || { echo "::error::A CI job failed"; exit 1; }
           echo "Every CI job green."

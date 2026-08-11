@@ -14,9 +14,9 @@ ktlint_standard_function-naming = disabled
 ktlint_standard_no-wildcard-imports = enabled
 ktlint_function_naming_ignore_when_annotated_with = Composable, Test
 
-# Código generado (Res.kt del generador de recursos de Compose, etc.).
-# Redundante con el filtro de build.gradle.kts, pero es el mecanismo propio de
-# ktlint y funciona aunque el plugin de Gradle le pase el fichero igualmente.
+# Generated code (Res.kt from the Compose resource generator, and so on).
+# Redundant with the build.gradle.kts filter, but this is ktlint's own mechanism
+# and it works even when the Gradle plugin hands it the file anyway.
 [**/build/**.{kt,kts}]
 ktlint = disabled
 ktlint_standard = disabled

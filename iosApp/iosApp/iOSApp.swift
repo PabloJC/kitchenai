@@ -1,7 +1,7 @@
 import SwiftUI
 import FirebaseCore
 import FirebaseAppCheck
-import ComposeApp   // el framework exporta también los tipos de :shared
+import ComposeApp   // the framework also exports the :shared types
 
 @main
 struct iOSApp: App {
