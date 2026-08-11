@@ -16,7 +16,7 @@ struct iOSApp: App {
         #if DEBUG
         AppCheck.setAppCheckProviderFactory(AppCheckDebugProviderFactory())
         #else
-        AppCheck.setAppCheckProviderFactory(AppAttestProviderFactory())
+        AppCheck.setAppCheckProviderFactory(AttestationProviderFactory())
         #endif
 
         // Orden importante: Firebase antes de tocar nada de Kotlin.
