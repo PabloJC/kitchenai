@@ -1,0 +1,5 @@
+# The lockfile is deliberately not committed: it is 10k lines of test-only dependencies
+# pinned behind major-version ranges, and CI installs fresh on every run.
+node_modules/
+package-lock.json
+*-debug.log

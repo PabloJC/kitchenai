@@ -162,12 +162,40 @@ jobs:
       - run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 
   # ---------------------------------------------------------------- #
+  # Firestore rules, executed against the emulator. No secret and no real project: the
+  # `demo-` project id keeps the emulator from ever reaching a Firebase backend.
+  # ---------------------------------------------------------------- #
+  firestore-rules:
+    name: Firestore rules (emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The Firestore emulator is a Java process.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install the rules test dependencies
+        working-directory: firebase/tests
+        run: npm install --no-audit --no-fund
+
+      - name: Run the rules tests
+        working-directory: firebase/tests
+        run: npm test
+
+  # ---------------------------------------------------------------- #
   # Aggregated check: the only one marked as required on main.
   # ---------------------------------------------------------------- #
   ci-passed:
     name: CI passed
     if: always()
-    needs: [static-analysis, shared-tests, build-android, build-ios]
+    needs: [static-analysis, shared-tests, build-android, build-ios, firestore-rules]
     runs-on: ubuntu-latest
     steps:
       - name: Verify every job passed
