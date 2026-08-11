@@ -1,10 +1,11 @@
 package com.kitchenai.shared.data.remote.firebase
 
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.DispatcherProvider
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /**
@@ -23,7 +24,9 @@ suspend fun <T> firestoreCall(
         )
     }
 
-/** The snapshot-flow counterpart of [firestoreCall]: a listener error becomes a `Failure` emission. */
-fun <T> Flow<T>.asAppResultFlow(): Flow<AppResult<T>> =
-    map<T, AppResult<T>> { AppResult.Success(it) }
-        .catch { emit(AppResult.Failure(it.toAppError())) }
+/**
+ * The snapshot-flow counterpart of [firestoreCall]. The stream carries data only, so a listener
+ * error ends it and is published on the port's matching error stream instead of riding an
+ * emission. One shared flow per keyed listener, never one per port.
+ */
+fun <T> Flow<T>.reportingErrorsTo(errors: MutableSharedFlow<AppError>): Flow<T> = catch { errors.emit(it.toAppError()) }

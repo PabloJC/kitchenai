@@ -7,7 +7,6 @@ import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TaxonomyPort
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfilePort
-import kotlinx.coroutines.flow.first
 
 /**
  * Validates the profile against the live catalogue and stamps [UserProfile.updatedAt] before
@@ -21,7 +20,7 @@ class SaveUserProfile(
 ) {
     suspend operator fun invoke(profile: UserProfile): AppResult<Unit> {
         val known =
-            when (val catalogue = taxonomies.observeTaxonomies().first()) {
+            when (val catalogue = taxonomies.getTaxonomies()) {
                 is AppResult.Failure -> return AppResult.Failure(catalogue.error)
                 is AppResult.Success -> catalogue.data.map { it.id }.toSet()
             }

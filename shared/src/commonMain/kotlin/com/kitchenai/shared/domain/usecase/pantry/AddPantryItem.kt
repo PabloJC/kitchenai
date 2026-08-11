@@ -12,7 +12,6 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryPort
 import com.kitchenai.shared.domain.port.TimeProvider
-import kotlinx.coroutines.flow.first
 import kotlin.time.Instant
 
 /**
@@ -37,7 +36,7 @@ class AddPantryItem(
         if (quantity.amount <= 0.0) {
             AppResult.Failure(AppError.Validation("amount", "must be greater than zero"))
         } else {
-            when (val held = pantry.observePantry(userId).first()) {
+            when (val held = pantry.getPantry(userId)) {
                 is AppResult.Failure -> held
                 is AppResult.Success -> write(userId, held.data, ingredient, quantity, location, expiresAt)
             }

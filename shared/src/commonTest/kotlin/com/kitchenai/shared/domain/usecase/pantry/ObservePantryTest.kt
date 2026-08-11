@@ -2,7 +2,6 @@ package com.kitchenai.shared.domain.usecase.pantry
 
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
-import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Quantity
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -29,24 +28,23 @@ class ObservePantryTest {
                 )
 
             ObservePantry(port)(user).test {
-                val emission = awaitItem()
-                assertTrue(emission is AppResult.Success)
                 assertEquals(
                     listOf("item-4", "item-3", "item-2", "item-1").map(::pantryItemId),
-                    emission.data.map { it.id },
+                    awaitItem().map { it.id },
                 )
                 cancelAndIgnoreRemainingEvents()
             }
         }
 
     @Test
-    fun `passes a read failure through without sorting anything`() =
+    fun `a failing listener reports on errors and emits no list`() =
         runTest {
-            ObservePantry(FakePantryPort(readError = AppError.Unauthorized()))(user).test {
-                val emission = awaitItem()
-                assertTrue(emission is AppResult.Failure)
-                assertTrue(emission.error is AppError.Unauthorized)
-                cancelAndIgnoreRemainingEvents()
+            val useCase = ObservePantry(FakePantryPort(readError = AppError.Unauthorized()))
+
+            useCase(user).test { awaitComplete() }
+            useCase.errors(user).test {
+                assertTrue(awaitItem() is AppError.Unauthorized)
+                awaitComplete()
             }
         }
 }

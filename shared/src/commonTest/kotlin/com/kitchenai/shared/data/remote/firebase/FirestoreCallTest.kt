@@ -6,6 +6,7 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.DispatcherProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -68,28 +69,32 @@ class FirestoreCallTest {
         }
 
     @Test
-    fun `wraps every emission of a snapshot flow in Success`() =
+    fun `a snapshot flow passes its emissions through untouched`() =
         runTest {
-            flowOf(1, 2).asAppResultFlow().test {
-                assertEquals(AppResult.Success(1), awaitItem())
-                assertEquals(AppResult.Success(2), awaitItem())
+            val errors = MutableSharedFlow<AppError>()
+
+            flowOf(1, 2).reportingErrorsTo(errors).test {
+                assertEquals(1, awaitItem())
+                assertEquals(2, awaitItem())
                 awaitComplete()
             }
         }
 
     @Test
-    fun `turns a listener error into a Failure emission`() =
+    fun `a listener error ends the stream and is published on the error flow`() =
         runTest {
             val cause = IllegalStateException("listener died")
+            val errors = MutableSharedFlow<AppError>(replay = 1)
 
             flow<Int> {
                 emit(1)
                 throw cause
-            }.asAppResultFlow().test {
-                assertEquals(AppResult.Success(1), awaitItem())
-                assertEquals(AppResult.Failure(AppError.Unknown(cause)), awaitItem())
+            }.reportingErrorsTo(errors).test {
+                assertEquals(1, awaitItem())
                 awaitComplete()
             }
+
+            assertEquals(AppError.Unknown(cause), errors.replayCache.single())
         }
 
     private fun testDispatchers(dispatcher: CoroutineDispatcher): DispatcherProvider =

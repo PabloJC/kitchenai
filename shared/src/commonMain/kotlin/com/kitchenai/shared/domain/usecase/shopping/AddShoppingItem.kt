@@ -12,7 +12,6 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.ShoppingListPort
 import com.kitchenai.shared.domain.port.TimeProvider
-import kotlinx.coroutines.flow.first
 
 /**
  * Adds a line, merging it into an existing one when it is the same ingredient in the same unit.
@@ -33,7 +32,7 @@ class AddShoppingItem(
         quantity: Quantity? = null,
         sourceRecipe: RecipeId? = null,
     ): AppResult<ShoppingItem> {
-        val snapshot = shoppingList.observeItems(userId, listId).first()
+        val snapshot = shoppingList.getItems(userId, listId)
         if (snapshot is AppResult.Failure) return snapshot
         val current = (snapshot as AppResult.Success).data
         val duplicate = ingredient?.let { known -> current.firstOrNull { it.absorbs(known, quantity) } }
@@ -45,7 +44,7 @@ class AddShoppingItem(
             }
         if (built is AppResult.Failure) return built
         val item = (built as AppResult.Success).data
-        return shoppingList.upsertItem(userId, listId, item).map { item }
+        return shoppingList.upsertItems(userId, listId, listOf(item)).map { item }
     }
 
     // A free-text line never merges: two people write "the good bread" in two different ways,

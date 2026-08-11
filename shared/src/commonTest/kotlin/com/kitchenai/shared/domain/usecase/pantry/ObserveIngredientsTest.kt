@@ -7,6 +7,7 @@ import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.port.IngredientPort
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -19,25 +20,31 @@ class ObserveIngredientsTest {
     @Test
     fun `emits the catalogue as the port publishes it`() =
         runTest {
-            ObserveIngredients(FakeIngredientPort(AppResult.Success(catalogue)))().test {
-                assertEquals(AppResult.Success(catalogue), awaitItem())
+            ObserveIngredients(FakeIngredientPort(catalogue))().test {
+                assertEquals(catalogue, awaitItem())
                 awaitComplete()
             }
         }
 
     @Test
-    fun `passes a catalogue failure through`() =
+    fun `a failing catalogue listener reports on errors and emits nothing`() =
         runTest {
-            ObserveIngredients(FakeIngredientPort(AppResult.Failure(AppError.Network())))().test {
-                assertTrue(awaitItem() is AppResult.Failure)
+            val useCase = ObserveIngredients(FakeIngredientPort(failure = AppError.Network()))
+
+            useCase().test { awaitComplete() }
+            useCase.errors().test {
+                assertTrue(awaitItem() is AppError.Network)
                 awaitComplete()
             }
         }
 
     private class FakeIngredientPort(
-        private val answer: AppResult<List<Ingredient>>,
+        private val answer: List<Ingredient> = emptyList(),
+        private val failure: AppError? = null,
     ) : IngredientPort {
-        override fun observeIngredients(): Flow<AppResult<List<Ingredient>>> = flowOf(answer)
+        override fun observeIngredients(): Flow<List<Ingredient>> = if (failure == null) flowOf(answer) else emptyFlow()
+
+        override fun ingredientErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
 
         // Unused here: this use case reads the catalogue stream and nothing else.
         override suspend fun getIngredient(id: IngredientId): AppResult<Ingredient> =

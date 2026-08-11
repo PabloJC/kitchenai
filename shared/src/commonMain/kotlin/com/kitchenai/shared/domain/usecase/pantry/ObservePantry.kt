@@ -1,7 +1,6 @@
 package com.kitchenai.shared.domain.usecase.pantry
 
-import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.map
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryPort
@@ -19,8 +18,9 @@ class ObservePantry(
         compareBy<PantryItem, Instant?>(nullsLast<Instant>()) { it.expiresAt }
             .thenByDescending { it.updatedAt }
 
-    operator fun invoke(userId: UserId): Flow<AppResult<List<PantryItem>>> =
-        pantry.observePantry(userId).map { result ->
-            result.map { items -> items.sortedWith(urgentFirst) }
-        }
+    operator fun invoke(userId: UserId): Flow<List<PantryItem>> =
+        pantry.observePantry(userId).map { items -> items.sortedWith(urgentFirst) }
+
+    /** The listener's failures, collected alongside the stream above. */
+    fun errors(userId: UserId): Flow<AppError> = pantry.pantryErrors(userId)
 }

@@ -17,7 +17,8 @@ import com.kitchenai.shared.domain.port.ShoppingListPort
 import com.kitchenai.shared.domain.port.TimeProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlin.time.Instant
 
@@ -27,6 +28,8 @@ import kotlin.time.Instant
  */
 class FakeShoppingListPort(
     private val failure: AppError? = null,
+    // Which item listener broke. Null means all of them, which is what most tests want.
+    private val failingList: ShoppingListId? = null,
 ) : ShoppingListPort {
     private val lists = MutableStateFlow<List<ShoppingList>>(emptyList())
     private val items = MutableStateFlow<Map<String, List<ShoppingItem>>>(emptyMap())
@@ -43,12 +46,31 @@ class FakeShoppingListPort(
         items.value = items.value + (listId.value to seeded.toList())
     }
 
-    override fun observeLists(userId: UserId): Flow<AppResult<List<ShoppingList>>> = lists.map { read(it) }
+    // A failing listener stops emitting and reports on its keyed error stream, which is what
+    // the real adapter does with a Firestore snapshot error.
+    override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = if (failure == null) lists else emptyFlow()
 
     override fun observeItems(
         userId: UserId,
         listId: ShoppingListId,
-    ): Flow<AppResult<List<ShoppingItem>>> = items.map { read(it[listId.value].orEmpty()) }
+    ): Flow<List<ShoppingItem>> = if (broken(listId)) emptyFlow() else items.map { it[listId.value].orEmpty() }
+
+    override fun listErrors(userId: UserId): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+
+    override fun itemErrors(
+        userId: UserId,
+        listId: ShoppingListId,
+    ): Flow<AppError> = if (broken(listId)) flowOf(failure!!) else emptyFlow()
+
+    private fun broken(listId: ShoppingListId): Boolean =
+        failure != null && (failingList == null || failingList == listId)
+
+    override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> = read(lists.value)
+
+    override suspend fun getItems(
+        userId: UserId,
+        listId: ShoppingListId,
+    ): AppResult<List<ShoppingItem>> = read(items.value[listId.value].orEmpty())
 
     override suspend fun upsertList(
         userId: UserId,
@@ -58,12 +80,6 @@ class FakeShoppingListPort(
             upsertListCalls++
             lists.value = lists.value.filterNot { it.id == list.id } + list
         }
-
-    override suspend fun upsertItem(
-        userId: UserId,
-        listId: ShoppingListId,
-        item: ShoppingItem,
-    ): AppResult<Unit> = upsertItems(userId, listId, listOf(item))
 
     override suspend fun upsertItems(
         userId: UserId,
@@ -143,5 +159,3 @@ fun sequentialIds(prefix: String = "generated"): IdGenerator {
     var next = 0
     return IdGenerator { "$prefix-${++next}" }
 }
-
-suspend fun <T> Flow<AppResult<T>>.firstSuccess(): T = (first() as AppResult.Success).data

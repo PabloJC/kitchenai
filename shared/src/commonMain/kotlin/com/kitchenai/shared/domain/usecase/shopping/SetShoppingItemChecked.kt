@@ -7,7 +7,6 @@ import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.ShoppingListPort
 import com.kitchenai.shared.domain.port.TimeProvider
-import kotlinx.coroutines.flow.first
 
 /**
  * Assigns the checked state of a line. Deliberately not a toggle, which is what a caller will
@@ -24,11 +23,12 @@ class SetShoppingItemChecked(
         itemId: ShoppingItemId,
         checked: Boolean,
     ): AppResult<Unit> {
-        val snapshot = shoppingList.observeItems(userId, listId).first()
+        val snapshot = shoppingList.getItems(userId, listId)
         if (snapshot is AppResult.Failure) return snapshot
         // The current state is read to rebuild the document, never to derive the new value.
         val item = (snapshot as AppResult.Success).data.firstOrNull { it.id == itemId }
         if (item == null) return AppResult.Failure(AppError.NotFound("shoppingItem"))
-        return shoppingList.upsertItem(userId, listId, item.copy(checked = checked, updatedAt = time.now()))
+        val updated = item.copy(checked = checked, updatedAt = time.now())
+        return shoppingList.upsertItems(userId, listId, listOf(updated))
     }
 }

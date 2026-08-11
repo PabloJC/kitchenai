@@ -2,7 +2,6 @@ package com.kitchenai.shared.domain.usecase.shopping
 
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
-import com.kitchenai.shared.core.AppResult
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -25,22 +24,31 @@ class ObserveShoppingItemsTest {
             )
 
             ObserveShoppingItems(port)(user, list).test {
-                val emitted = awaitItem()
-                assertTrue(emitted is AppResult.Success)
                 assertEquals(
                     listOf("added-early", "added-late", "bought-early", "bought-late"),
-                    emitted.data.map { it.id.value },
+                    awaitItem().map { it.id.value },
                 )
                 cancelAndIgnoreRemainingEvents()
             }
         }
 
     @Test
-    fun `a failing stream stays a Failure and is not turned into an empty list`() =
+    fun `a failing listener reports on errors instead of emitting an empty list`() =
         runTest {
-            ObserveShoppingItems(FakeShoppingListPort(AppError.Network()))(user, list).test {
-                assertTrue(awaitItem() is AppResult.Failure)
-                cancelAndIgnoreRemainingEvents()
+            val useCase = ObserveShoppingItems(FakeShoppingListPort(AppError.Network()))
+
+            useCase(user, list).test { awaitComplete() }
+            useCase.errors(user, list).test {
+                assertTrue(awaitItem() is AppError.Network)
+                awaitComplete()
             }
+        }
+
+    @Test
+    fun `one list's broken listener is not reported on another list's errors`() =
+        runTest {
+            val port = FakeShoppingListPort(AppError.Network(), failingList = listId("other"))
+
+            ObserveShoppingItems(port).errors(user, list).test { awaitComplete() }
         }
 }
