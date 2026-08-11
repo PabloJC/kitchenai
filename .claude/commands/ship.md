@@ -16,17 +16,23 @@ no se puede confiar.
 ```bash
 git branch --show-current
 git status --porcelain
+git fetch -q origin main
 ```
 
 Para si estás en `main`, si hay cambios sin commitear, o si la rama no tiene commits propios
-por encima de `main`. Nada que enviar no es un error que haya que resolver a la brava.
+por encima de `origin/main`. Nada que enviar no es un error que haya que resolver a la brava.
+
+El `fetch` no es higiene: todo lo que viene después compara contra `origin/main`, y con una
+`main` local desactualizada esa comparación miente en las dos direcciones —lista ficheros que
+ya están en `main` y se pierde los que llegaron después—. Si esa mentira cae en el paso 3, la
+PR se crea sin `skip-ai-review` y el check obligatorio se queda rojo para siempre.
 
 ## 2. La issue que cierra
 
 Busca `Closes #N` en los commits de la rama:
 
 ```bash
-git log main..HEAD --format=%B | grep -oiE '(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed)) +#[0-9]+'
+git log origin/main..HEAD --format=%B | grep -oiE '(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed)) +#[0-9]+'
 ```
 
 Si no aparece, dedúcelo del nombre de la rama (`chore/11-slug` → `#11`) y **confírmalo con el
@@ -36,7 +42,7 @@ tarjeta encallada: el tablero entero cuelga de esa línea.
 ## 3. La trampa de los workflows
 
 ```bash
-git diff --name-only main..HEAD | grep '^\.github/workflows/' && echo "TOCA WORKFLOWS"
+git diff --name-only origin/main..HEAD | grep '^\.github/workflows/' && echo "TOCA WORKFLOWS"
 ```
 
 Si toca, la PR **tiene que crearse con `--label skip-ai-review`**. La action de Claude se
@@ -79,6 +85,10 @@ tocar nada — es el salto silencioso del punto 3, no un hallazgo de la revisió
 No mergees a mano. Pon la etiqueta y deja que `auto-merge.yml` haga el squash y borre la
 rama; sólo lo hace con todos los checks en verde, así que no hay forma de colar una PR que la
 revisión haya rechazado.
+
+Poner aquí `ready-to-merge` no contradice a `/issue`, que la reserva explícitamente para el
+humano: la decisión de mergear se toma al invocar `/ship`, y esto es su ejecución. `/issue`
+termina en la PR abierta justamente para que esa decisión siga siendo un acto aparte.
 
 ```bash
 gh pr edit <n> --add-label ready-to-merge
