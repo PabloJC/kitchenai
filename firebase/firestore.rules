@@ -3,6 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ---------------------------------------------------------------- //
+    // Identity
+    // ---------------------------------------------------------------- //
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -11,22 +15,172 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Profile: each user only reads and writes their own.
+    // ---------------------------------------------------------------- //
+    // Value guards
+    //
+    // Rules have no optional-field operator: `data.get(field, null)` collapses "absent"
+    // and "written as null" into one case, which is what the serialiser produces.
+    // ---------------------------------------------------------------- //
+
+    function isId(value) {
+      return value is string && value.size() > 0 && value.size() <= 128;
+    }
+
+    function isOptionalId(value) {
+      return value == null || isId(value);
+    }
+
+    function isText(value, maxLength) {
+      return value is string && value.size() > 0 && value.size() <= maxLength;
+    }
+
+    function isOptionalText(value, maxLength) {
+      return value == null || isText(value, maxLength);
+    }
+
+    // Upper bound so a client cannot store a quantity that no kitchen holds; there is no
+    // unit conversion in the MVP, so the bound is deliberately generous.
+    function isAmount(value) {
+      return value is number && value > 0 && value <= 1000000;
+    }
+
+    function isOptionalAmount(value) {
+      return value == null || isAmount(value);
+    }
+
+    function isMillis(value) {
+      return value is int && value > 0;
+    }
+
+    function isOptionalMillis(value) {
+      return value == null || isMillis(value);
+    }
+
+    // ---------------------------------------------------------------- //
+    // Document guards
+    //
+    // The key lists mirror the data-layer DTOs. A field added there without being added
+    // here is denied at write time, which is the intended failure: the schema is declared
+    // in one place that the client cannot edit.
+    // ---------------------------------------------------------------- //
+
+    function isValidPantryItem(data) {
+      return data.keys().hasOnly([
+               'ingredientId', 'amount', 'unitTaxonomy', 'unitTerm',
+               'locationTaxonomy', 'locationTerm', 'expiresAtMillis', 'updatedAtMillis'
+             ])
+             && data.keys().hasAll(['ingredientId', 'amount', 'updatedAtMillis'])
+             && isId(data.ingredientId)
+             && isAmount(data.amount)
+             && isOptionalId(data.get('unitTaxonomy', null))
+             && isOptionalId(data.get('unitTerm', null))
+             && isOptionalId(data.get('locationTaxonomy', null))
+             && isOptionalId(data.get('locationTerm', null))
+             && isOptionalMillis(data.get('expiresAtMillis', null))
+             && isMillis(data.updatedAtMillis);
+    }
+
+    // `ownerId` is redundant under users/{uid} but is accepted if the DTO carries it.
+    // Label values cannot be length-capped: rules cannot iterate a map.
+    function isValidShoppingList(data) {
+      return data.keys().hasOnly(['labels', 'ownerId', 'updatedAtMillis'])
+             && data.keys().hasAll(['labels', 'updatedAtMillis'])
+             && data.labels is map
+             && data.labels.size() <= 16
+             && isOptionalId(data.get('ownerId', null))
+             && isMillis(data.updatedAtMillis);
+    }
+
+    // Exactly one of ingredientId / freeText, the same invariant the domain factory
+    // enforces. Rules are the only place it holds for a client that bypasses the app.
+    function isValidShoppingItem(data) {
+      return data.keys().hasOnly([
+               'ingredientId', 'freeText', 'amount', 'unitTaxonomy', 'unitTerm',
+               'checked', 'sourceRecipeId', 'updatedAtMillis'
+             ])
+             && data.keys().hasAll(['checked', 'updatedAtMillis'])
+             && (data.get('ingredientId', null) == null) != (data.get('freeText', null) == null)
+             && isOptionalId(data.get('ingredientId', null))
+             && isOptionalText(data.get('freeText', null), 200)
+             && isOptionalAmount(data.get('amount', null))
+             && isOptionalId(data.get('unitTaxonomy', null))
+             && isOptionalId(data.get('unitTerm', null))
+             && data.checked is bool
+             && isOptionalId(data.get('sourceRecipeId', null))
+             && isMillis(data.updatedAtMillis);
+    }
+
+    // A saved recipe is a snapshot of catalogue or agent output, so its shape is wider and
+    // less settled than the hand-edited collections: required fields and caps, no key
+    // whitelist, until the recipe DTO lands.
+    function isValidSavedRecipe(data) {
+      return data.keys().hasAll(['title', 'ingredients', 'steps'])
+             && isText(data.title, 200)
+             && isOptionalText(data.get('summary', null), 2000)
+             && data.ingredients is list
+             && data.ingredients.size() <= 100
+             && data.steps is list
+             && data.steps.size() <= 100
+             && isOptionalMillis(data.get('updatedAtMillis', null))
+             && isOptionalMillis(data.get('savedAtMillis', null));
+    }
+
+    // ---------------------------------------------------------------- //
+    // User-owned data
+    //
+    // Every subcollection is declared: a catch-all would let a client invent a
+    // subcollection and store anything it liked inside its own document tree.
+    // ---------------------------------------------------------------- //
+
     match /users/{userId} {
       allow read, write: if isOwner(userId);
 
-      match /{subcollection=**} {
-        allow read, write: if isOwner(userId);
+      match /pantry/{itemId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidPantryItem(request.resource.data);
+      }
+
+      match /shoppingLists/{listId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidShoppingList(request.resource.data);
+
+        match /items/{itemId} {
+          allow read, delete: if isOwner(userId);
+          allow create, update: if isOwner(userId) && isValidShoppingItem(request.resource.data);
+        }
+      }
+
+      match /savedRecipes/{recipeId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidSavedRecipe(request.resource.data);
       }
     }
 
-    // Recipe catalogue: authenticated reads, writes only from the backend.
+    // ---------------------------------------------------------------- //
+    // Read-only catalogues: authenticated reads, writes only from the backend.
+    // ---------------------------------------------------------------- //
+
+    match /taxonomies/{taxonomyId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      match /terms/{termId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    match /ingredients/{ingredientId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     match /recipes/{recipeId} {
       allow read: if isSignedIn();
       allow write: if false;
     }
 
-    // Anything not declared stays closed.
+    // Anything not declared stays closed. This block must remain last.
     match /{document=**} {
       allow read, write: if false;
     }
