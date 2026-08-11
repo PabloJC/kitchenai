@@ -15,6 +15,22 @@ on:
     types: [opened, reopened]
   pull_request:
     types: [opened, reopened, ready_for_review, labeled, closed]
+  # ------------------------------------------------------------------ #
+  # Los eventos generados con el GITHUB_TOKEN no disparan workflows. Es
+  # el cortafuegos de GitHub contra los bucles, y deja mudas justo las
+  # dos transiciones finales de este tablero:
+  #
+  #   - `ai-code-review` pone `ai-review:approved` con el GITHUB_TOKEN
+  #     cuando no hay AI_REVIEWER_TOKEN => no hay evento `labeled`.
+  #   - `auto-merge` mergea con el GITHUB_TOKEN => no hay evento `closed`.
+  #
+  # Sin esto, «In review» y «Done» no llegan nunca por mucho que el PAT
+  # del tablero sea correcto. `workflow_run` sí se entrega: se escucha el
+  # final de esos dos workflows y se deduce la columna del estado real.
+  # ------------------------------------------------------------------ #
+  workflow_run:
+    workflows: ["AI Code Review", "Auto-merge"]
+    types: [completed]
   # Para recolocar una tarjeta a mano cuando el tablero se ha quedado desfasado
   # (un fallo del PAT, una issue creada antes de existir el tablero).
   workflow_dispatch:
@@ -33,7 +49,7 @@ permissions:
   issues: read
 
 concurrency:
-  group: project-${{ github.event.issue.number || github.event.pull_request.number || inputs.issue }}
+  group: project-${{ github.event.issue.number || github.event.pull_request.number || inputs.issue || github.event.workflow_run.head_sha }}
   cancel-in-progress: false
 
 jobs:
@@ -50,18 +66,17 @@ jobs:
       - name: Mover la tarjeta
         env:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-          # El node id de la issue es un dato del repositorio, no del tablero:
-          # se lee con el token de Actions para que el PAT sólo necesite
-          # `project`.
+          # Todo lo que se lee del repositorio —la PR, su cuerpo, sus
+          # etiquetas, el node id de la issue— sale del token de Actions, que
+          # ya puede hacerlo. Así el PAT del tablero sólo necesita `project`.
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PROJECT_OWNER: ${{ vars.PROJECT_OWNER || github.repository_owner }}
           PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
           EVENT: ${{ github.event_name }}
-          ACTION: ${{ github.event.action }}
           ISSUE_NUM: ${{ github.event.issue.number }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           INPUT_ISSUE: ${{ inputs.issue }}
           INPUT_STATUS: ${{ inputs.status }}
         run: |
@@ -91,37 +106,76 @@ jobs:
           fi
 
           # ---------------------------------------------------------- #
-          # PRs: la columna depende de qué ha pasado.
+          # Qué PRs mirar.
           #
-          # `closed` sin merge no mueve nada: la issue sigue viva y su
-          # tarjeta debe quedarse donde estaba, no volver atrás.
+          # `workflow_run` no trae la PR en el payload, sólo el SHA. Este
+          # endpoint la encuentra igualmente, y —a diferencia de buscar
+          # entre las PRs abiertas— también cuando ya está mergeada y la
+          # rama borrada, que es exactamente el caso de «Done».
           # ---------------------------------------------------------- #
-          case "$ACTION" in
-            opened|reopened|ready_for_review) DESTINO="In progress" ;;
-            labeled)                          DESTINO="In review"   ;;
-            closed)
-              if [ "$PR_MERGED" = "true" ]; then DESTINO="Done"; else
-                echo "PR cerrada sin mergear: la tarjeta se queda como está."
-                exit 0
-              fi
-              ;;
-            *) echo "Acción '$ACTION' sin efecto en el tablero."; exit 0 ;;
-          esac
+          if [ "$EVENT" = "workflow_run" ]; then
+            PRS=$(GH_TOKEN="$REPO_TOKEN" gh api "/repos/$GH_REPO/commits/$HEAD_SHA/pulls" \
+                  --jq '.[].number' || true)
+          else
+            PRS="${PR_NUM:-}"
+          fi
 
-          # ---------------------------------------------------------- #
-          # Qué issues cierra esta PR. Sólo las palabras que GitHub
-          # reconoce como cierre; una mención suelta a #7 no significa
-          # que la PR resuelva la issue 7.
-          # ---------------------------------------------------------- #
-          ISSUES=$(printf '%s' "$PR_BODY" \
-                   | grep -oiE '(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed)) +#[0-9]+' \
-                   | grep -oE '[0-9]+' | sort -u || true)
-
-          if [ -z "$ISSUES" ]; then
-            echo "La PR no declara cerrar ninguna issue (Closes #N). Nada que mover."
+          if [ -z "$PRS" ]; then
+            echo "Ninguna PR corresponde a este evento."
             exit 0
           fi
 
-          for N in $ISSUES; do
-            ./scripts/project-item-status.sh "$N" "$DESTINO"
+          for PR in $PRS; do
+            echo "::group::PR #$PR"
+
+            DATA=$(GH_TOKEN="$REPO_TOKEN" gh pr view "$PR" --json state,body,labels)
+            STATE=$(echo "$DATA" | jq -r .state)
+            APPROVED=$(echo "$DATA" | jq -r \
+                       '[.labels[].name] | index("ai-review:approved") != null')
+
+            # -------------------------------------------------------- #
+            # La columna sale del ESTADO REAL de la PR, no de qué evento
+            # nos despertó. Dos consecuencias que valen el rodeo: el
+            # mismo evento repetido es inofensivo, y un evento perdido lo
+            # corrige el siguiente que llegue en vez de dejar la tarjeta
+            # encallada para siempre.
+            #
+            # `closed` sin merge no mueve nada: la issue sigue viva y su
+            # tarjeta debe quedarse donde estaba, no volver atrás.
+            # -------------------------------------------------------- #
+            case "$STATE" in
+              MERGED) DESTINO="Done" ;;
+              OPEN)
+                if [ "$APPROVED" = "true" ]; then
+                  DESTINO="In review"
+                else
+                  DESTINO="In progress"
+                fi
+                ;;
+              CLOSED)
+                echo "PR cerrada sin mergear: la tarjeta se queda como está."
+                echo "::endgroup::"; continue
+                ;;
+              *) echo "Estado '$STATE' inesperado."; echo "::endgroup::"; continue ;;
+            esac
+
+            # -------------------------------------------------------- #
+            # Qué issues cierra esta PR. Sólo las palabras que GitHub
+            # reconoce como cierre; una mención suelta a #7 no significa
+            # que la PR resuelva la issue 7.
+            # -------------------------------------------------------- #
+            ISSUES=$(echo "$DATA" | jq -r '.body // ""' \
+                     | grep -oiE '(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed)) +#[0-9]+' \
+                     | grep -oE '[0-9]+' | sort -u || true)
+
+            if [ -z "$ISSUES" ]; then
+              echo "La PR no declara cerrar ninguna issue (Closes #N). Nada que mover."
+              echo "::endgroup::"; continue
+            fi
+
+            for N in $ISSUES; do
+              ./scripts/project-item-status.sh "$N" "$DESTINO"
+            done
+
+            echo "::endgroup::"
           done

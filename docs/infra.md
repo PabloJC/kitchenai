@@ -29,7 +29,7 @@ None of this needs manual intervention beyond writing the issue and adding the l
 | `ci.yml` | Lint, detekt, JVM tests, Android APK and iOS framework. Aggregated into the **`CI passed`** check |
 | `ai-code-review.yml` | Claude reviews the diff against `CLAUDE.md`, comments inline and emits a verdict. **`Claude review`** check |
 | `auto-merge.yml` | With the `ready-to-merge` label and everything green, squash-merges and deletes the branch |
-| `project-sync.yml` | Moves the board card according to what happens to the issue and its PR |
+| `project-sync.yml` | Moves the board card. Derives the column from the PR's state, and listens to the other workflows finishing — see the trap below |
 
 `CI passed` and `Claude review` are the only two required checks on `main`. That way jobs
 can be added or removed without touching the protected branch configuration.
@@ -303,6 +303,45 @@ even when the verdict is `approve` and every check is green. GitHub answers *"th
 policy prohibits the merge"* without mentioning threads anywhere. It is disabled on purpose:
 the gate is the `Claude review` check.
 
+### An automation cannot wake another automation
+
+GitHub does not trigger workflows from events created with the `GITHUB_TOKEN`. It is a
+deliberate guard against infinite loops, it is silent, and it takes out the two closing
+moves of this board:
+
+| The event that never fires | Because |
+|---|---|
+| `pull_request: labeled` for `ai-review:approved` | `ai-code-review.yml` labels with the `GITHUB_TOKEN` unless `AI_REVIEWER_TOKEN` is set |
+| `pull_request: closed` after an automatic merge | `auto-merge.yml` merges with the `GITHUB_TOKEN` |
+
+So `In review` and `Done` were unreachable no matter how correct `PROJECT_TOKEN` was — the
+half of the board that a human drives worked, and the half the automation drives did not.
+`auto-merge.yml` had already met this problem and solved it for itself: it triggers on
+`workflow_run`, which *is* delivered.
+
+`project-sync.yml` now does the same, and takes one more step. Instead of asking *which
+event woke me*, it asks **what state is the pull request actually in**:
+
+```
+MERGED                       -> Done
+OPEN + ai-review:approved    -> In review
+OPEN                         -> In progress
+CLOSED, not merged           -> leave the card alone
+```
+
+Deriving instead of reacting buys two things. A duplicate event is harmless, because
+recomputing the same state produces the same column. And a lost event is not permanent: the
+next trigger of any kind repairs the card, rather than leaving it stranded in a column
+nobody will move it out of.
+
+Two details of the `workflow_run` path worth knowing before debugging it:
+
+- The payload carries no pull request, only `head_sha`. The PR comes from
+  `/repos/{repo}/commits/{sha}/pulls`, which — unlike listing open PRs — still finds it once
+  it is merged and the branch is deleted. That is precisely the `Done` case.
+- `workflow_run` always runs the copy of the workflow on the default branch, with secrets.
+  So a change to this file is only live once it is on `main`.
+
 ### The board needs a classic token with `project`
 
 The Actions `GITHUB_TOKEN` cannot reach Projects, which lives outside the repository. Neither
@@ -315,8 +354,14 @@ for personal boards, because it resolves the owner type before anything else and
 cannot. `scripts/project-item-status.sh` therefore talks to GraphQL directly: it asks for
 `user` and `organization` in the same query and keeps whichever answers.
 
-The issue's node id is read with the Actions `GITHUB_TOKEN` (`REPO_TOKEN` in the workflow),
-so the PAT does not need `repo` either.
+Everything read from the repository — the pull request, its body, its labels, the issue's node
+id — goes through the Actions `GITHUB_TOKEN` (`REPO_TOKEN` in the workflow), so the PAT does
+not need `repo` either.
+
+`PROJECT_OWNER` must be a **login**, never `@me`. `gh project` accepted `@me` and resolved it
+through `viewer`, which was one way around `unknown owner type`; the GraphQL query asks for
+`user(login:)`, and `@me` is not a login. Setting the variable to `@me` breaks the board with
+a `NOT_FOUND` that reads as if the project had been deleted.
 
 Column names are compared case-insensitively, so `In Progress` and `In progress` both work.
 
