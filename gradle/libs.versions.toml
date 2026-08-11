@@ -41,6 +41,13 @@ firebase-bom         = { module = "com.google.firebase:firebase-bom", version.re
 firebase-analytics   = { module = "com.google.firebase:firebase-analytics" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 
+# App Check. Sin versión: la fija el BOM, que :shared exporta como `api`.
+# El artefacto -debug NO puede acabar en release: se consume desde
+# debugImplementation, no desde implementation.
+firebase-appcheck               = { module = "com.google.firebase:firebase-appcheck" }
+firebase-appcheck-playintegrity = { module = "com.google.firebase:firebase-appcheck-playintegrity" }
+firebase-appcheck-debug         = { module = "com.google.firebase:firebase-appcheck-debug" }
+
 koin-core             = { module = "io.insert-koin:koin-core",                version.ref = "koin" }
 koin-android          = { module = "io.insert-koin:koin-android",             version.ref = "koin" }
 koin-compose          = { module = "io.insert-koin:koin-compose",             version.ref = "koin" }

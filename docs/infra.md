@@ -92,6 +92,69 @@ gh project field-list <number> --owner @me --format json \
 
 ---
 
+## App Check
+
+The Firebase API keys are public by construction: they travel inside every binary. The
+Firestore rules answer *"is this user allowed?"*, never *"does this request come from our
+app at all?"*. App Check answers the second question — **Play Integrity** on Android,
+**App Attest** on iOS — and lets Firebase reject anything else before a rule is evaluated.
+
+Where it is wired:
+
+| Platform | File | Provider |
+|---|---|---|
+| Android | `androidApp/src/main/kotlin/.../KitchenAiApplication.kt` | `appCheckProviderFactory()` from `src/debug` or `src/release` |
+| iOS | `iosApp/iosApp/iOSApp.swift` | `#if DEBUG` → debug provider, otherwise `AppAttestProviderFactory` |
+
+On both platforms the provider is installed **before** anything else touches Firebase:
+before `initKoin` on Android, before `FirebaseApp.configure()` on iOS. Installing it
+afterwards lets the first requests — the authentication ones — leave unattested.
+
+The debug artifact is not merely disabled in release, it is absent: `firebase-appcheck-debug`
+comes in through `debugImplementation`, and the factory lives in a per-build-type source set.
+On iOS the `#if DEBUG` branch does not exist in a Release binary.
+
+### Getting a debug token
+
+Attestation needs real hardware and a real install. The emulator, the simulator and CI have
+neither, so they use the debug provider, which prints a token on first launch:
+
+```bash
+# Android
+adb logcat -s DebugAppCheckProvider          # "Enter this debug secret into the allow list…"
+```
+
+On iOS the token appears in the Xcode console. If it does not, add `-FIRDebugEnabled` to the
+scheme arguments.
+
+Register it in *Firebase console → App Check → the app → ⋮ → Manage debug tokens*. The token
+identifies **a device, not a person**: it is not worth a GitHub secret, but it does not belong
+in the repository either — anyone holding it can talk to the backend from anywhere. Tokens are
+revoked from that same screen; give each one a name that says whose machine it is.
+
+CI does not need one today: it builds but does not run anything against Firebase. The day it
+does, the token goes in as a secret and gets injected into the debug build.
+
+### Enforcement
+
+Enforcement is enabled per API — Firestore, Authentication, Storage — and it is the part that
+bites. Turning it on before the *Verified requests* metric is essentially 100% locks out your
+own app, and the failure does not look like a policy decision: the SDK returns permission
+errors identical to a rules problem, with no mention of App Check anywhere.
+
+The order is not negotiable:
+
+1. Ship a build with the providers installed.
+2. Leave enforcement **off** for at least 24 h.
+3. Check *App Check → APIs* and read the verified-requests percentage per API.
+4. Only enable enforcement once what is left unverified is old app versions you are willing
+   to break.
+
+It is reversible from the console and takes effect within minutes, so the recovery from a
+premature enable is quick — provided you remember that App Check is what you switched.
+
+---
+
 ## Traps
 
 ### The review workflow must be identical to the one on `main`
@@ -228,6 +291,8 @@ real fix is splitting `:shared` into `:domain` (pure Kotlin, testable everywhere
 ## Known debt
 
 - Restrict the iOS API key in Google Cloud Console to the app's bundle id.
+- Enable App Check enforcement for Firestore, Auth and Storage once the verified-requests
+  metric is clean. The code is in place; the switch is not flipped.
 - Split `:shared` into `:domain` and `:data` to get iOS tests back.
 - Re-add Analytics and Crashlytics **with their Gradle plugin**: without it the build id is
   missing and the app crashes on launch.

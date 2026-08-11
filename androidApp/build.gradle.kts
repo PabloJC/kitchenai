@@ -47,6 +47,20 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.koin.android)
 
+    // App Check. `firebase-appcheck` se declara explícito porque lo usa
+    // KitchenAiApplication: llegaría transitivo desde el proveedor, pero
+    // compilar contra una dependencia que no se declara es cómo un cambio de
+    // empaquetado río arriba rompe el build sin tocar nada aquí.
+    //
+    // Play Integrity va en todas las variantes; el proveedor de debug se queda
+    // en la variante debug y no entra en el APK de release, donde permitiría
+    // saltarse la atestación con un token registrado. La factoría concreta la
+    // elige `appCheckProviderFactory()`, con una implementación por build type
+    // en src/debug y src/release.
+    implementation(libs.firebase.appcheck)
+    implementation(libs.firebase.appcheck.playintegrity)
+    debugImplementation(libs.firebase.appcheck.debug)
+
     // Analytics y Crashlytics: fuera por ahora.
     //
     // Crashlytics necesita además su plugin de Gradle (com.google.firebase.crashlytics),
