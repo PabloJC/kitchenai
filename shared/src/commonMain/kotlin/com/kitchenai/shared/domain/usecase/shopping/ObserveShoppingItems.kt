@@ -1,0 +1,26 @@
+package com.kitchenai.shared.domain.usecase.shopping
+
+import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.map
+import com.kitchenai.shared.domain.model.ShoppingItem
+import com.kitchenai.shared.domain.model.ShoppingListId
+import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.port.ShoppingListPort
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+/** Streams the items of a list in the order they are shown in. */
+class ObserveShoppingItems(
+    private val shoppingList: ShoppingListPort,
+) {
+    operator fun invoke(
+        userId: UserId,
+        listId: ShoppingListId,
+    ): Flow<AppResult<List<ShoppingItem>>> =
+        shoppingList.observeItems(userId, listId).map { items -> items.map(::order) }
+
+    // Unchecked first and least recently touched first inside each group: ticking a line sends
+    // it to the bottom without reshuffling the lines above it in a supermarket aisle.
+    private fun order(items: List<ShoppingItem>): List<ShoppingItem> =
+        items.sortedWith(compareBy({ it.checked }, { it.updatedAt }))
+}
