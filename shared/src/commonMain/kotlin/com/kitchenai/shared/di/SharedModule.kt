@@ -17,6 +17,7 @@ val sharedModules: List<Module> =
     listOf(
         authModule,
         coreModule,
+        crossFeatureModule,
         firebaseModule,
         pantryDataModule,
         pantryModule,
