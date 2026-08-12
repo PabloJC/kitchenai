@@ -20,6 +20,8 @@ internal fun CoroutineScope.optimistically(
     write: suspend () -> Unit,
 ): AppResult<Unit> {
     launch {
+        // `runCatching` also catches cancellation; `toAppError` rethrows it, so a torn-down scope
+        // propagates instead of arriving on `errors` as an ordinary failure.
         runCatching { write() }.onFailure { failure -> errors.emit(failure.toAppError()) }
     }
     return AppResult.Success(Unit)
