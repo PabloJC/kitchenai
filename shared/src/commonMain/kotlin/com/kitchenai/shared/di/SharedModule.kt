@@ -15,6 +15,7 @@ val coreModule: Module =
 // One module per line and alphabetical: several issues append to this list in parallel.
 val sharedModules: List<Module> =
     listOf(
+        agentModule,
         authModule,
         coreModule,
         firebaseModule,
