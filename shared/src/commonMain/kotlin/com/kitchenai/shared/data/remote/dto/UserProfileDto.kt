@@ -15,8 +15,9 @@ data class UserProfileDto(
     val languageTags: List<String> = emptyList(),
     val household: HouseholdDto? = null,
     val constraints: List<DietaryConstraintDto> = emptyList(),
-    // Grouped by taxonomy so a preference query stays a single `array-contains` on one field.
-    val preferences: Map<String, List<String>> = emptyMap(),
+    // A list, not a map grouped by taxonomy: the domain type is ordered and grouping loses that
+    // order whenever preferences interleave taxonomies.
+    val preferences: List<TermRefDto> = emptyList(),
     val avoidedIngredients: List<String> = emptyList(),
     val updatedAtMillis: Long? = null,
 )

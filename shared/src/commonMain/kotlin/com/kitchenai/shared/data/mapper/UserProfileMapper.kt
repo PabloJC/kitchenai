@@ -6,6 +6,7 @@ import com.kitchenai.shared.core.getOrElse
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.data.remote.dto.DietaryConstraintDto
 import com.kitchenai.shared.data.remote.dto.HouseholdDto
+import com.kitchenai.shared.data.remote.dto.TermRefDto
 import com.kitchenai.shared.data.remote.dto.UserProfileDto
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.DietaryConstraint
@@ -24,7 +25,7 @@ fun UserProfile.toDto(): UserProfileDto =
         languageTags = languageTags,
         household = household.toDto(),
         constraints = constraints.map { it.toDto() },
-        preferences = preferences.groupBy({ it.taxonomy.value }, { it.term.value }),
+        preferences = preferences.map { TermRefDto(it.taxonomy.value, it.term.value) },
         avoidedIngredients = avoidedIngredients.map { it.value },
         updatedAtMillis = updatedAt.toEpochMilliseconds(),
     )
@@ -93,10 +94,9 @@ private fun UserProfileDto.decodeReferences(): AppResult<References> {
     return AppResult.Success(References(terms, liked, avoided))
 }
 
-private fun Map<String, List<String>>.toTermRefs(): AppResult<List<TermRef>> =
-    entries
-        .flatMap { (taxonomy, terms) -> terms.map { term -> taxonomy to term } }
-        .mapAll { (taxonomy, term) -> termRefOf(taxonomy, term) }
+/** Order is preserved: the domain type is a `List` and it is the order the user set. */
+private fun List<TermRefDto>.toTermRefs(): AppResult<List<TermRef>> =
+    mapAll { reference -> termRefOf(reference.taxonomy.orEmpty(), reference.term.orEmpty()) }
 
 private fun termRefOf(
     taxonomy: String,

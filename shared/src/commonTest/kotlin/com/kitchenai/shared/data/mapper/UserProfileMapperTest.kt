@@ -4,6 +4,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.data.remote.dto.DietaryConstraintDto
 import com.kitchenai.shared.data.remote.dto.HouseholdDto
+import com.kitchenai.shared.data.remote.dto.TermRefDto
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.DietaryConstraint
 import com.kitchenai.shared.domain.model.HouseholdContext
@@ -29,7 +30,9 @@ class UserProfileMapperTest {
             languageTags = listOf("xx", "yy-ZZ"),
             household = HouseholdContext(servings = 2, weeklyBudget = 40.0, defaultCookingMinutes = 25),
             constraints = listOf(DietaryConstraint(ref("t-1", "a"), ConstraintStrength.EXCLUDE)),
-            preferences = listOf(ref("t-2", "b"), ref("t-2", "c")),
+            // Interleaved on purpose: grouping by taxonomy would reorder these and the round-trip
+            // test would not notice if both came from the same one.
+            preferences = listOf(ref("t-2", "b"), ref("t-3", "a"), ref("t-2", "c")),
             avoidedIngredients = listOf((IngredientId.of("i-1") as AppResult.Success).data),
             updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000),
         )
@@ -37,6 +40,13 @@ class UserProfileMapperTest {
     @Test
     fun `a profile survives the round trip through the document shape`() {
         assertEquals(AppResult.Success(profile), profile.toDto().toDomain(documentId))
+    }
+
+    @Test
+    fun `preferences keep the order the user set them in`() {
+        val decoded = profile.toDto().toDomain(documentId)
+
+        assertEquals(profile.preferences, (decoded as AppResult.Success).data.preferences)
     }
 
     @Test
@@ -93,7 +103,7 @@ class UserProfileMapperTest {
 
     @Test
     fun `a blank identifier fails rather than decoding into an unusable reference`() {
-        val dto = profile.toDto().copy(preferences = mapOf("" to listOf("b")))
+        val dto = profile.toDto().copy(preferences = listOf(TermRefDto("", "b")))
 
         assertTrue(dto.toDomain(documentId) is AppResult.Failure)
     }
