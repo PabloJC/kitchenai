@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.ui.presentation.shopping.ShoppingScreen
 
 /**
  * The whole graph. [userId] travels as a parameter rather than in a singleton: a uid kept in
@@ -29,7 +30,7 @@ fun KitchenAiNavHost(
         modifier = modifier,
     ) {
         composable<Route.Pantry> { placeholder(userId) }
-        composable<Route.ShoppingList> { placeholder(userId) }
+        composable<Route.ShoppingList> { ShoppingScreen(userId) }
         composable<Route.Suggestions> { placeholder(userId) }
         composable<Route.RecipeDetail> { placeholder(userId) }
         composable<Route.Profile> { placeholder(userId) }

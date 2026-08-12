@@ -11,6 +11,7 @@ import org.koin.dsl.module
 val presentationModule: Module =
     module {
         viewModel { SessionViewModel(get(), get(), get(), get(), get(), get()) }
+        includes(shoppingPresentationModule)
     }
 
 /**
