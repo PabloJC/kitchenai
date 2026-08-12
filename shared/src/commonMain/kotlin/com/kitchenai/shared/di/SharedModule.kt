@@ -30,6 +30,7 @@ val domainModule: Module =
 // One module per line and alphabetical: several issues append to this list in parallel.
 val sharedModules: List<Module> =
     listOf(
+        authModule,
         coreModule,
         dataModule,
         domainModule,
