@@ -40,6 +40,7 @@ val sharedModules: List<Module> =
         profileModule,
         recipeModule,
         sessionModule,
+        shoppingDataModule,
         shoppingModule,
     )
 

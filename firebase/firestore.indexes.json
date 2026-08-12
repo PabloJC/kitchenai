@@ -7,6 +7,14 @@
         { "fieldPath": "expiresAtMillis", "order": "ASCENDING" },
         { "fieldPath": "updatedAtMillis", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "checked", "order": "ASCENDING" },
+        { "fieldPath": "updatedAtMillis", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
