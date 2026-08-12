@@ -1,4 +1,13 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "pantry",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "expiresAtMillis", "order": "ASCENDING" },
+        { "fieldPath": "updatedAtMillis", "order": "DESCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
