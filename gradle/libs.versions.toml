@@ -11,6 +11,7 @@ androidMinSdk       = "26"
 androidTargetSdk    = "36"
 androidxActivity    = "1.13.0"
 androidxLifecycle   = "2.11.0-beta01"
+androidxNavigation  = "2.9.2"
 
 # --- Libraries ---------------------------------------------------------------
 gitliveFirebase     = "2.5.0"   # 2.6.0 did not publish dev.gitlive:firebase-app to Maven Central
@@ -62,6 +63,10 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 androidx-activity-compose   = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
 androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
 androidx-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
+
+# The multiplatform navigation library: it handles the Android back button and the iOS
+# swipe-back gesture, neither of which is worth reimplementing over a sealed class.
+androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidxNavigation" }
 
 # The @Preview annotation alone. The `compose.components.uiToolingPreview` accessor is
 # deprecated in Compose Multiplatform 1.11 in favour of the coordinates.
