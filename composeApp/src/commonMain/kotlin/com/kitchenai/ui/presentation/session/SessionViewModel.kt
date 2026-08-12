@@ -63,7 +63,11 @@ class SessionViewModel(
         bootstrap = launchBootstrap()
     }
 
-    /** Only from a failure: retrying a session that already resolved would redo its writes. */
+    /**
+     * Only from a failure, and it re-runs the whole bootstrap — including the sign-in and the
+     * default list, which a failure after [SessionUiState.Ready] has already done. Both are
+     * idempotent, which is what makes repeating them safe rather than merely cheap.
+     */
     fun retry() {
         if (_state.value !is SessionUiState.Failed) return
         bootstrap = launchBootstrap()
