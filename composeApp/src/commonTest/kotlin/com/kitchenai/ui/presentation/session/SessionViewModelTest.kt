@@ -24,15 +24,22 @@ import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -127,7 +134,7 @@ class SessionViewModelTest {
             profiles.errors.emit(AppError.NotFound("profile"))
             advanceUntilIdle()
 
-            assertEquals(1, profiles.saveCount)
+            assertEquals(1, profiles.saveCount())
             assertEquals(listOf("aa"), profiles.saved?.languageTags)
         }
 
@@ -143,7 +150,7 @@ class SessionViewModelTest {
             profiles.errors.emit(AppError.NotFound("profile"))
             advanceUntilIdle()
 
-            assertEquals(0, profiles.saveCount)
+            assertEquals(0, profiles.saveCount())
         }
 
     @Test
@@ -156,7 +163,7 @@ class SessionViewModelTest {
             profiles.errors.emit(AppError.Network())
             advanceUntilIdle()
 
-            assertEquals(0, profiles.saveCount)
+            assertEquals(0, profiles.saveCount())
             assertEquals(SessionUiState.Ready(userId), viewModel.state.value)
         }
 
@@ -174,7 +181,41 @@ class SessionViewModelTest {
             assertEquals(SessionUiState.Failed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
         }
 
-    private fun viewModel(): SessionViewModel {
+    /**
+     * The retry path after `Ready`, which had no coverage: the listener from the first attempt
+     * is still subscribed, so it and the bootstrap both reach `createProfile`. It runs on a real
+     * pool because that is how the app dispatches it.
+     *
+     * It does **not** prove the lock in `createProfile`. That window is a few instructions with
+     * no suspension point inside it, and this test passes with the lock removed — a unit test
+     * cannot reproduce the interleaving on demand, and one claiming to would be worse than none.
+     */
+    @Test
+    fun `a retry after Ready writes the profile once more and no further`() =
+        runTest {
+            val viewModel = viewModel(Dispatchers.Default)
+            profiles.saveResult = AppResult.Failure(AppError.Unauthorized())
+
+            viewModel.start(listOf("aa"), "list")
+            viewModel.state.first { it is SessionUiState.Ready }
+            profiles.errors.emit(AppError.NotFound("profile"))
+            viewModel.state.first { it is SessionUiState.Failed }
+
+            // From here both writers are live: retry() re-enters the bootstrap while the error
+            // collector of the first attempt is still subscribed.
+            profiles.saveResult = AppResult.Success(Unit)
+            coroutineScope {
+                launch(Dispatchers.Default) { viewModel.retry() }
+                launch(Dispatchers.Default) { profiles.errors.emit(AppError.NotFound("profile")) }
+            }
+            viewModel.state.first { it is SessionUiState.Ready }
+            withContext(Dispatchers.Default) { delay(200) }
+
+            // One failed write, then one that succeeded. A third means both writers claimed it.
+            assertEquals(2, profiles.saveCount())
+        }
+
+    private fun viewModel(default: CoroutineDispatcher = dispatcher): SessionViewModel {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         return SessionViewModel(
             ensureSession = EnsureSession(sessions),
@@ -182,7 +223,7 @@ class SessionViewModelTest {
             observeUserProfile = ObserveUserProfile(profiles),
             saveUserProfile = SaveUserProfile(profiles, FakeTaxonomyPort(), time),
             time = time,
-            dispatchers = TestDispatcherProvider(dispatcher),
+            dispatchers = TestDispatcherProvider(dispatcher, default),
         )
     }
 }
@@ -192,10 +233,11 @@ private const val UNAUTHORIZED_MESSAGE = "This account is not allowed to read it
 
 private class TestDispatcherProvider(
     private val dispatcher: CoroutineDispatcher,
+    private val defaultDispatcher: CoroutineDispatcher = dispatcher,
 ) : DispatcherProvider {
     override val main: CoroutineDispatcher get() = dispatcher
     override val io: CoroutineDispatcher get() = dispatcher
-    override val default: CoroutineDispatcher get() = dispatcher
+    override val default: CoroutineDispatcher get() = defaultDispatcher
 }
 
 private class FakeSessionPort : SessionPort {
@@ -236,15 +278,21 @@ private class FakeUserProfilePort : UserProfilePort {
     val profiles = MutableSharedFlow<UserProfile>(replay = 1)
     val errors = MutableSharedFlow<AppError>()
     var saveResult: AppResult<Unit> = AppResult.Success(Unit)
-    var saveCount = 0
     var saved: UserProfile? = null
+
+    // Counted under a lock: the concurrency test writes from more than one thread, and an
+    // undercount there would hide the very bug that test exists to catch.
+    private val counter = Mutex()
+    private var saves = 0
+
+    suspend fun saveCount(): Int = counter.withLock { saves }
 
     override fun observeProfile(userId: UserId): Flow<UserProfile> = profiles
 
     override fun profileErrors(userId: UserId): Flow<AppError> = errors
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
-        saveCount++
+        counter.withLock { saves++ }
         saved = profile
         return saveResult
     }

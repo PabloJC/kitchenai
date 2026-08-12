@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Resolves the session and writes the documents a first launch needs, before any screen reads
@@ -38,6 +40,11 @@ class SessionViewModel(
     private var languageTags: List<String> = emptyList()
     private var defaultListName: String = ""
     private var bootstrap: Job? = null
+
+    // The three flags below are read and written from several coroutines on a multi-threaded
+    // dispatcher, so every check-then-act over them happens under this lock. It is never held
+    // across a write to Firestore.
+    private val flags = Mutex()
     private var watching = false
     private var profileMissing = false
     private var creatingProfile = false
@@ -79,7 +86,7 @@ class SessionViewModel(
             _state.value = SessionUiState.Ready(userId)
             watchProfile(userId)
             // A retry after a failed write: the listener will not repeat the NotFound.
-            if (profileMissing) createProfile(userId)
+            if (flags.withLock { profileMissing }) createProfile(userId)
         }
 
     /**
@@ -87,9 +94,9 @@ class SessionViewModel(
      * one is the only place a new user announces itself, because the repository does not write
      * on read.
      */
-    private fun watchProfile(userId: UserId) {
-        if (watching) return
-        watching = true
+    private suspend fun watchProfile(userId: UserId) {
+        val alreadyWatching = flags.withLock { watching.also { watching = true } }
+        if (alreadyWatching) return
         viewModelScope.launch(dispatchers.default) {
             observeUserProfile(userId).collect { loaded -> profile.value = loaded }
         }
@@ -103,17 +110,29 @@ class SessionViewModel(
         error: AppError,
     ) {
         if (error !is AppError.NotFound) return
-        profileMissing = true
+        flags.withLock { profileMissing = true }
         createProfile(userId)
     }
 
-    /** Written once: two NotFound emissions are one missing document, not two. */
+    /**
+     * Written once: two NotFound emissions are one missing document, not two, and a retry can
+     * race the listener that is still alive from the first attempt. Claiming the write and
+     * performing it are separate steps so the lock never spans the round trip.
+     */
     private suspend fun createProfile(userId: UserId) {
-        if (creatingProfile || profile.value != null) return
-        creatingProfile = true
+        val claimed =
+            flags.withLock {
+                if (creatingProfile || profile.value != null) {
+                    false
+                } else {
+                    creatingProfile = true
+                    true
+                }
+            }
+        if (!claimed) return
         val result = saveUserProfile(UserProfile.newFor(userId, languageTags, time.now()))
         if (result is AppResult.Failure) {
-            creatingProfile = false
+            flags.withLock { creatingProfile = false }
             fail(result.error)
         }
     }
