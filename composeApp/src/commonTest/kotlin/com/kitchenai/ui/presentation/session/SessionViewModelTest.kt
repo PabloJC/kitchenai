@@ -24,14 +24,10 @@ import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -39,7 +35,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.withContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -183,35 +178,35 @@ class SessionViewModelTest {
 
     /**
      * The retry path after `Ready`, which had no coverage: the listener from the first attempt
-     * is still subscribed, so it and the bootstrap both reach `createProfile`. It runs on a real
-     * pool because that is how the app dispatches it.
+     * is still subscribed, so it and the bootstrap both reach `createProfile`.
      *
-     * It does **not** prove the lock in `createProfile`. That window is a few instructions with
-     * no suspension point inside it, and this test passes with the lock removed — a unit test
-     * cannot reproduce the interleaving on demand, and one claiming to would be worse than none.
+     * It runs on the test dispatcher rather than a real pool. An earlier version used
+     * `Dispatchers.Default` and a fixed settle delay, which made it flaky on a loaded CI
+     * machine, and it never proved the lock in `createProfile` anyway: that window is a few
+     * instructions with no suspension point, which no unit test can interleave on demand.
      */
     @Test
     fun `a retry after Ready writes the profile once more and no further`() =
-        runTest {
-            val viewModel = viewModel(Dispatchers.Default)
+        runTest(dispatcher) {
             profiles.saveResult = AppResult.Failure(AppError.Unauthorized())
+            val viewModel = viewModel()
 
             viewModel.start(listOf("aa"), "list")
-            viewModel.state.first { it is SessionUiState.Ready }
+            advanceUntilIdle()
             profiles.errors.emit(AppError.NotFound("profile"))
-            viewModel.state.first { it is SessionUiState.Failed }
+            advanceUntilIdle()
+            assertEquals(SessionUiState.Failed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
 
-            // From here both writers are live: retry() re-enters the bootstrap while the error
+            // Both writers are live from here: retry re-enters the bootstrap while the error
             // collector of the first attempt is still subscribed.
             profiles.saveResult = AppResult.Success(Unit)
-            coroutineScope {
-                launch(Dispatchers.Default) { viewModel.retry() }
-                launch(Dispatchers.Default) { profiles.errors.emit(AppError.NotFound("profile")) }
-            }
-            viewModel.state.first { it is SessionUiState.Ready }
-            withContext(Dispatchers.Default) { delay(200) }
+            viewModel.retry()
+            advanceUntilIdle()
+            profiles.errors.emit(AppError.NotFound("profile"))
+            advanceUntilIdle()
 
-            // One failed write, then one that succeeded. A third means both writers claimed it.
+            // One failed write, then one that succeeded. A third would mean the guard let go.
+            assertEquals(SessionUiState.Ready(userId), viewModel.state.value)
             assertEquals(2, profiles.saveCount())
         }
 
