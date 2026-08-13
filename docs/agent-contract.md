@@ -134,7 +134,12 @@ The call fails through the same mapping every Firebase call in this app uses:
 | `UNAUTHENTICATED`, `PERMISSION_DENIED` | `Unauthorized` |
 | `UNAVAILABLE`, `DEADLINE_EXCEEDED` | `Network` |
 | `RESOURCE_EXHAUSTED` | `Unknown` |
+| `NOT_FOUND` | `NotFound("function")` |
 | anything else | `Unknown` |
+
+`NOT_FOUND` from a callable means the function is not deployed, which is a different problem
+from a missing document; it is named separately so the two never read alike in a log or on a
+screen.
 
 `RESOURCE_EXHAUSTED` is retryable, and #51 asked for `Network` on that ground. It is mapped to
 `Unknown` instead: every screen renders `Network` as "No connection", and a rate-limited user

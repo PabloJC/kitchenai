@@ -21,7 +21,7 @@ fun Throwable.toAppError(): AppError {
 
     return when (this) {
         is FirebaseFirestoreException -> appErrorForCode(code.name, this)
-        is FirebaseFunctionsException -> appErrorForCode(code.name, this)
+        is FirebaseFunctionsException -> appErrorForCode(code.name, this, FUNCTIONS_RESOURCE)
         else -> AppError.Unknown(this)
     }
 }
@@ -38,13 +38,20 @@ fun Throwable.toAppError(): AppError {
 internal fun appErrorForCode(
     code: String,
     cause: Throwable?,
+    resource: String = FIRESTORE_RESOURCE,
 ): AppError =
     when (code) {
         "PERMISSION_DENIED", "UNAUTHENTICATED" -> AppError.Unauthorized(cause)
         "UNAVAILABLE", "DEADLINE_EXCEEDED" -> AppError.Network(cause)
-        "NOT_FOUND" -> AppError.NotFound(FIRESTORE_RESOURCE)
+        "NOT_FOUND" -> AppError.NotFound(resource)
         else -> AppError.Unknown(cause)
     }
 
 /** The SDK error carries no path, so the resource is the store itself. */
 internal const val FIRESTORE_RESOURCE = "firestore"
+
+/**
+ * A callable answering NOT_FOUND means the function is not deployed, which is a different
+ * problem from a missing document and must not be reported as one.
+ */
+internal const val FUNCTIONS_RESOURCE = "function"

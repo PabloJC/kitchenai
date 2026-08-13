@@ -3,6 +3,7 @@ package com.kitchenai.shared.data.remote.agent
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.testDispatchers
+import com.kitchenai.shared.data.remote.firebase.FUNCTIONS_RESOURCE
 import com.kitchenai.shared.data.remote.firebase.appErrorForCode
 import com.kitchenai.shared.domain.agent.AgentCapability
 import com.kitchenai.shared.domain.agent.AgentContext
@@ -106,8 +107,15 @@ class CallableFunctionRecipeAgentTest {
             )
 
         cases.forEach { (code, expected) ->
-            assertEquals(expected, appErrorForCode(code, null)::class, "code $code")
+            assertEquals(expected, appErrorForCode(code, null, FUNCTIONS_RESOURCE)::class, "code $code")
         }
+    }
+
+    @Test
+    fun `says the function is missing rather than blaming the document store`() {
+        val error = appErrorForCode("NOT_FOUND", null, FUNCTIONS_RESOURCE)
+
+        assertEquals(AppError.NotFound(FUNCTIONS_RESOURCE), error)
     }
 
     @Test

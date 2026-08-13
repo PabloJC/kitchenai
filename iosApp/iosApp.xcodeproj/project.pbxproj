@@ -10,6 +10,7 @@
 		79960DE9302A106300AA04EE /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DE8302A106300AA04EE /* FirebaseAuth */; };
 		79960DEB302A106300AA04EE /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DEA302A106300AA04EE /* FirebaseCore */; };
 		79960DED302A106300AA04EE /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DEC302A106300AA04EE /* FirebaseFirestore */; };
+		79960DF1302A106300AA04EE /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DF0302A106300AA04EE /* FirebaseFunctions */; };
 		79960DEF302A106300AA04EE /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DEE302A106300AA04EE /* FirebaseAppCheck */; };
 /* End PBXBuildFile section */
 
@@ -51,6 +52,7 @@
 				79960DEB302A106300AA04EE /* FirebaseCore in Frameworks */,
 				79960DE9302A106300AA04EE /* FirebaseAuth in Frameworks */,
 				79960DED302A106300AA04EE /* FirebaseFirestore in Frameworks */,
+				79960DF1302A106300AA04EE /* FirebaseFunctions in Frameworks */,
 				79960DEF302A106300AA04EE /* FirebaseAppCheck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -108,6 +110,7 @@
 				79960DE8302A106300AA04EE /* FirebaseAuth */,
 				79960DEA302A106300AA04EE /* FirebaseCore */,
 				79960DEC302A106300AA04EE /* FirebaseFirestore */,
+				79960DF0302A106300AA04EE /* FirebaseFunctions */,
 			);
 			productName = iosApp;
 			productReference = 9AE0D2DF80F14F30E4FC571F /* KitchenAI.app */;
@@ -421,6 +424,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 79E55C9D302A0BCC0098A3DC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		79960DF0302A106300AA04EE /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 79E55C9D302A0BCC0098A3DC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
 		};
 		79960DEE302A106300AA04EE /* FirebaseAppCheck */ = {
 			isa = XCSwiftPackageProductDependency;
