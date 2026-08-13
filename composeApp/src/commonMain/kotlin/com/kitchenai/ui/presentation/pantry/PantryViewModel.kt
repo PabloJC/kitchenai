@@ -132,7 +132,12 @@ class PantryViewModel(
 
     private fun watchPantry(userId: UserId) {
         viewModelScope.launch(dispatchers.default) {
-            reads.pantry(userId).collect { items -> held.value = items }
+            reads.pantry(userId).collect { items ->
+                held.value = items
+                // Clearing belongs here rather than in render(): re-emitting an unchanged list
+                // leaves the combine silent, and a listener that recovered still recovered.
+                _state.update { current -> current.copy(error = null) }
+            }
         }
         viewModelScope.launch(dispatchers.default) {
             reads.pantry.errors(userId).collect(::fail)
@@ -233,7 +238,9 @@ private fun PantryItemUi.applied(
 ): PantryItem =
     PantryItem(
         id = id,
-        ingredient = ingredient,
+        // From the draft, not from the row: the sheet lets the ingredient be changed, and
+        // keeping the old one silently discarded that edit.
+        ingredient = draft.ingredient,
         quantity = Quantity(draft.amount, draft.unit),
         location = draft.location,
         expiresAt = draft.expiresAt,

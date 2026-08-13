@@ -157,6 +157,36 @@ class PantryViewModelTest {
         }
 
     @Test
+    fun `editing the ingredient of a row writes the new one`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            val row = viewModel.state.value.items.single()
+            val other = IngredientId.of("ingredient-2").value()
+
+            viewModel.openEditor(row)
+            viewModel.save(PantryItemDraft(other, 1.0, row.unit, null, null))
+            advanceUntilIdle()
+
+            val written = pantry.upserted.single()
+            assertEquals(itemId, written.id)
+            assertEquals(other, written.ingredient)
+        }
+
+    @Test
+    fun `a listener that emits again clears the banner it raised`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+
+            pantry.errors.emit(AppError.Network())
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.state.value.error)
+
+            pantry.items.emit(listOf(item))
+            advanceUntilIdle()
+            assertNull(viewModel.state.value.error)
+        }
+
+    @Test
     fun `removing a row announces it so that it can be undone`() =
         runTest(dispatcher) {
             val viewModel = loadedViewModel()
