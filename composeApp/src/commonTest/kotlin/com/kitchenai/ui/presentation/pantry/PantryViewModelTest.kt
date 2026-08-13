@@ -138,6 +138,22 @@ class PantryViewModelTest {
         }
 
     @Test
+    fun `a listener that fails before its first emission stops the spinner`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId, languageTags)
+            advanceUntilIdle()
+
+            // Cold start with no cache and no network: nothing has ever been emitted.
+            pantry.errors.emit(AppError.Network())
+            advanceUntilIdle()
+
+            val state = viewModel.state.value
+            assertEquals(false, state.isLoading)
+            assertEquals("No connection", state.error)
+        }
+
+    @Test
     fun `a broken listener is reported without clearing the rows already on screen`() =
         runTest(dispatcher) {
             val viewModel = loadedViewModel()

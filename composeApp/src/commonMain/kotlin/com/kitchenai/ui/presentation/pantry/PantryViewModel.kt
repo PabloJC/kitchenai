@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
@@ -207,7 +206,7 @@ class PantryViewModel(
 
     private fun watchProjection() {
         viewModelScope.launch(dispatchers.default) {
-            combine(held, catalogue, vocabulary, vocabularies, ::Projection)
+            combine(held, catalogue, vocabulary, vocabularies, errors, ::Projection)
                 .collect { projection -> render(projection) }
         }
     }
@@ -224,11 +223,16 @@ class PantryViewModel(
         val ingredients = projection.ingredients
         val terms = projection.terms
         val taxonomies = projection.taxonomies
+        // A stable order, so the banner does not flicker between two broken listeners.
+        val message = Source.entries.firstNotNullOfOrNull { source -> projection.errors[source] }
         val now = writes.time.now()
         _state.update { current ->
             current.copy(
                 items = items.orEmpty().map { item -> item.toUi(resolver, now) },
-                isLoading = items == null,
+                // Answered means emitted or failed. Only the pantry listener decides this: a
+                // broken catalogue leaves the rows loading, it does not replace them.
+                isLoading = items == null && Source.PANTRY !in projection.errors,
+                error = message,
                 ingredients = ingredients.map { ingredient -> ingredient.id to resolver.nameOf(ingredient) },
                 units = terms.optionsIn(taxonomies.of(TaxonomyPurpose.UNITS) + ingredients.unitTaxonomies(), resolver),
                 locations =
@@ -241,22 +245,16 @@ class PantryViewModel(
     }
 
     /**
-     * `updateAndGet` rather than a read and a write: four collectors on a real pool touch this
-     * map, and `value = value + …` loses whichever update lands second.
+     * `update` rather than a read and a write: four collectors on a real pool touch this map,
+     * and `value = value + …` loses whichever lands second. The projection reads it from here.
      */
     private fun fail(
         source: Source,
         error: AppError,
-    ) = publishError(errors.updateAndGet { open -> open + (source to error.describe()) })
+    ) = errors.update { open -> open + (source to error.describe()) }
 
     /** That listener spoke again, so whatever it was complaining about is over. */
-    private fun recovered(source: Source) = publishError(errors.updateAndGet { open -> open - source })
-
-    // A stable order, so the banner does not flicker between two broken listeners as they retry.
-    private fun publishError(open: Map<Source, String>) {
-        val message = Source.entries.firstNotNullOfOrNull { source -> open[source] }
-        _state.update { current -> current.copy(error = message) }
-    }
+    private fun recovered(source: Source) = errors.update { open -> open - source }
 
     private suspend fun AppResult<Any>.reportFailure() {
         if (this is AppResult.Failure) _events.send(PantryEvent.SaveFailed(error.describe()))
@@ -352,6 +350,9 @@ private data class Projection(
     val ingredients: List<Ingredient>,
     val terms: List<Term>,
     val taxonomies: List<Taxonomy>,
+    // In the projection, not written to the state on the side: a listener that fails before its
+    // first emission changes nothing else, and the screen would spin for ever waiting for it.
+    val errors: Map<Source, String>,
 )
 
 /** The listeners this screen keeps open, each owning its own message. */
