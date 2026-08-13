@@ -86,7 +86,7 @@ export const suggestRecipes = onCall(
         schemaVersion: SCHEMA_VERSION,
         agentId: AGENT_ID,
         modelId: MODEL_ID,
-        suggestions: toWire(suggestions, catalogue, vocabulary.unitTaxonomy, request.options.maxResults),
+        suggestions: toWire(suggestions, catalogue, vocabulary, request.options.maxResults),
       };
     } catch (failure) {
       logger.error('the model call failed', { requestId: request.requestId, failure: String(failure) });

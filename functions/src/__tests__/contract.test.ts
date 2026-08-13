@@ -65,6 +65,12 @@ test('falls back to the document default and then to anything', () => {
   assert.equal(resolve({ labels: {} }, ['fr']), null);
 });
 
+const vocabulary = {
+  ingredients: [{ id: 'tomato', name: 'Tomate' }],
+  units: [{ id: 'piece', name: 'ud' }, { id: 'gram', name: 'g' }],
+  unitTaxonomy: 'units',
+};
+
 const catalogue = {
   ingredient: (id: string) => (id === 'tomato' ? 'Tomate' : null),
   term: ({ taxonomy, term }: { taxonomy: string; term: string }) =>
@@ -100,7 +106,7 @@ test('keeps a pointer only when the catalogue agrees it exists', () => {
       },
     ],
     catalogue,
-    'units',
+    vocabulary,
     5,
   );
 
@@ -115,7 +121,7 @@ test('keeps a pointer only when the catalogue agrees it exists', () => {
 
 test('drops a unit the catalogue does not know', () => {
   const line = { freeText: 'flour', amount: 1, unitTerm: 'furlong' };
-  const wire = toWire([{ title: 'Dish', ingredients: [line] }], catalogue, 'units', 5);
+  const wire = toWire([{ title: 'Dish', ingredients: [line] }], catalogue, vocabulary, 5);
 
   // The line survives; only the unit it invented is gone.
   assert.equal(wire[0]?.ingredients[0]?.freeText, 'flour');
@@ -124,5 +130,17 @@ test('drops a unit the catalogue does not know', () => {
 
 test('never returns more than was asked for', () => {
   const many = Array.from({ length: 20 }, () => ({ title: 'Dish', ingredients: [] }));
-  assert.equal(toWire(many, catalogue, 'units', 3).length, 3);
+  assert.equal(toWire(many, catalogue, vocabulary, 3).length, 3);
+});
+
+test('accepts a unit given as its label, not only as its id', () => {
+  // What actually happened in production: the model wrote "g", having been shown "gram=g".
+  const wire = toWire([{ title: 'Dish', ingredients: [{ freeText: 'rice', amount: 200, unitTerm: 'g' }] }], catalogue, vocabulary, 5);
+  assert.equal(wire[0]?.ingredients[0]?.unitTerm, 'gram');
+  assert.equal(wire[0]?.ingredients[0]?.unitTaxonomy, 'units');
+});
+
+test('still drops a unit that is neither an id nor a label', () => {
+  const wire = toWire([{ title: 'Dish', ingredients: [{ freeText: 'rice', amount: 1, unitTerm: 'furlong' }] }], catalogue, vocabulary, 5);
+  assert.equal(wire[0]?.ingredients[0]?.unitTerm, null);
 });

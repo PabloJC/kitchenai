@@ -39,7 +39,10 @@ const responseSchema = {
                 unitTerm: { type: Type.STRING, description: 'a unit id from the catalogue, or empty' },
                 optional: { type: Type.BOOLEAN },
               },
-              required: ['amount', 'optional'],
+              // unitTerm is required, not optional: left out, the model simply omits it, and an
+              // amount with no unit is a number nobody can act on. Empty is still allowed for
+              // the rare line that genuinely has none.
+              required: ['amount', 'optional', 'unitTerm'],
             },
           },
         },
@@ -88,6 +91,7 @@ function instructions(request: ReadableRequest, vocabulary: Vocabulary): string 
     request.preferred.length ? `They enjoy: ${request.preferred.join(', ')}.` : null,
     '',
     'Ingredient lines: set ingredientId to one of the catalogue ids below when the ingredient is one of them, and leave freeText empty. Otherwise leave ingredientId empty and put the name in freeText.',
+    'Always set unitTerm to a unit id from the list below — an amount without a unit is useless. Count things in the unit meaning "piece" rather than leaving it out.',
     `Catalogue ingredients: ${vocabulary.ingredients.map((it) => `${it.id}=${it.name}`).join(', ') || 'none'}`,
     `Units: ${vocabulary.units.map((it) => `${it.id}=${it.name}`).join(', ') || 'none'}`,
     '',
@@ -144,9 +148,21 @@ export async function askModel(
 export function toWire(
   suggestions: ModelSuggestion[],
   catalogue: Catalogue,
-  unitTaxonomy: string | null,
+  vocabulary: Vocabulary,
   maxResults: number,
 ) {
+  const unitTaxonomy = vocabulary.unitTaxonomy;
+  // A model writing in Spanish returns "g" as readily as "gram", because both were shown to it.
+  // Accepting either and normalising to the id beats losing the unit, which is what strictness
+  // bought the first time this ran.
+  const byLabel = new Map(vocabulary.units.map((unit) => [unit.name.toLowerCase(), unit.id]));
+  const knownUnits = new Set(vocabulary.units.map((unit) => unit.id));
+  const unitIdFor = (raw: string | undefined): string | null => {
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    if (knownUnits.has(trimmed)) return trimmed;
+    return byLabel.get(trimmed.toLowerCase()) ?? null;
+  };
   return suggestions.slice(0, maxResults).map((suggestion) => ({
     title: suggestion.title ?? null,
     summary: suggestion.summary ?? null,
@@ -158,10 +174,8 @@ export function toWire(
       .map((line) => {
         const claimed = typeof line.ingredientId === 'string' && line.ingredientId.length > 0;
         const known = claimed && catalogue.ingredient(line.ingredientId as string) ? (line.ingredientId as string) : null;
-        const unit =
-          unitTaxonomy && line.unitTerm && catalogue.term({ taxonomy: unitTaxonomy, term: line.unitTerm })
-            ? { unitTaxonomy, unitTerm: line.unitTerm }
-            : { unitTaxonomy: null, unitTerm: null };
+        const unitTerm = unitTaxonomy ? unitIdFor(line.unitTerm) : null;
+        const unit = unitTerm ? { unitTaxonomy, unitTerm } : { unitTaxonomy: null, unitTerm: null };
         return {
           ingredientId: known,
           // A pointer the catalogue rejected does not fall back to text: the model believed this
