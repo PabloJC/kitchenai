@@ -39,6 +39,19 @@ Both are overridable. If a deploy rejects `europe-southwest1` for Cloud Function
 to `europe-west1` and accept the extra hop to Firestore. If a model is not served from
 `europe-west1`, `global` works but routes outside the EU — a choice worth making deliberately.
 
+## Rate limit
+
+`enforceAppCheck` answers "is this our app?". It does not answer "is our app asking ten
+thousand times?", and on Blaze that second question costs money.
+
+`quota.ts` counts calls per account per UTC day and refuses past `DAILY_CALL_LIMIT` (50 by
+default, overridable). The counter lives in `agentUsage`, which the rules deny to every client —
+the function writes it through the Admin SDK, which bypasses them. A quota a caller can edit is
+not a quota.
+
+Each document carries `expiresAt`. Set a Firestore **TTL policy** on that field to clear the
+collection without a scheduled job.
+
 ## App Check
 
 `enforceAppCheck: true`. Without it, anyone holding the URL spends this project's model budget.

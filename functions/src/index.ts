@@ -5,6 +5,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import { loadCatalogue, resolve, toReadable } from './catalogue.js';
 import { BadRequest, parseRequest, SCHEMA_VERSION } from './contract.js';
+import { QuotaExceeded, chargeCall } from './quota.js';
 import { AGENT_ID, MODEL_ID, askModel, toWire, type Vocabulary } from './suggest.js';
 
 initializeApp();
@@ -56,6 +57,16 @@ export const suggestRecipes = onCall(
       // The only place a caller's own text is echoed, and it is our own message, never theirs.
       const reason = failure instanceof BadRequest ? failure.message : 'malformed request';
       throw new HttpsError('invalid-argument', reason);
+    }
+
+    // Before the model, not after: the point is to not spend the call.
+    try {
+      await chargeCall(db, call.auth.uid, new Date());
+    } catch (failure) {
+      if (failure instanceof QuotaExceeded) {
+        throw new HttpsError('resource-exhausted', 'too many suggestions today, try again tomorrow');
+      }
+      throw failure;
     }
 
     const catalogue = await loadCatalogue(db, request.languageTags);

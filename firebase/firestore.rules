@@ -181,6 +181,12 @@ service cloud.firestore {
     }
 
     // Anything not declared stays closed. This block must remain last.
+    // The agent's per-account call counter. Written by the function through the Admin SDK,
+    // which bypasses these rules; denied here because a quota a caller can edit is not a quota.
+    match /agentUsage/{entry} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
