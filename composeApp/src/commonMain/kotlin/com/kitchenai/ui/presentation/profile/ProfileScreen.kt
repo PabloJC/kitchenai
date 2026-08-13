@@ -71,7 +71,7 @@ private fun ProfileContent(
         }
         item { TransparencyRow(state = state) }
 
-        if (state.sections.isEmpty()) {
+        if (state.isCatalogueLoaded && state.sections.isEmpty()) {
             item {
                 EmptyState(
                     title = "No preferences to show",

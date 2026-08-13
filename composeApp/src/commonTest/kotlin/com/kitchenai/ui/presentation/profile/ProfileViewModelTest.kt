@@ -236,6 +236,36 @@ class ProfileViewModelTest {
         }
 
     /** Started and fed: the catalogue published, the profile delivered and every listener running. */
+    @Test
+    fun `a catalogue that has not answered is not a catalogue that failed`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId)
+            profiles.profiles.emit(profile())
+            advanceUntilIdle()
+
+            // The profile resolved first; the vocabulary is still on its way.
+            assertEquals(false, viewModel.state.value.isCatalogueLoaded)
+
+            publish("t-1" to 1)
+            advanceUntilIdle()
+            assertEquals(true, viewModel.state.value.isCatalogueLoaded)
+        }
+
+    @Test
+    fun `a stream that recovers clears the banner it raised and no other`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+
+            profiles.errors.emit(AppError.Network())
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.state.value.generalError)
+
+            profiles.profiles.emit(profile())
+            advanceUntilIdle()
+            assertEquals(null, viewModel.state.value.generalError)
+        }
+
     private suspend fun TestScope.ready(vararg sizes: Pair<String, Int>): ProfileViewModel {
         val viewModel = viewModel()
         viewModel.start(userId)
@@ -246,7 +276,7 @@ class ProfileViewModelTest {
     }
 
     private fun publish(vararg sizes: Pair<String, Int>) {
-        catalogue.taxonomies.value = sizes.map { (id, _) -> taxonomy(id) }
+        catalogue.publish(sizes.map { (id, _) -> taxonomy(id) })
         sizes.forEach { (id, count) ->
             catalogue.termsOf(taxonomyId(id)).value = (1..count).map { index -> term(id, index) }
         }
@@ -337,7 +367,10 @@ private class FakeUserProfilePort : UserProfilePort {
 
 /** Keyed exactly like the port it stands for, so one broken taxonomy can be told from all of them. */
 private class FakeTaxonomyPort : TaxonomyPort {
-    val taxonomies = MutableStateFlow<List<Taxonomy>>(emptyList())
+    // Replay without an initial value: a listener that has not answered emits nothing, which is
+    // the state the screen has to tell apart from an empty catalogue.
+    val taxonomies = MutableSharedFlow<List<Taxonomy>>(replay = 1)
+    private var published: List<Taxonomy> = emptyList()
     private val terms = mutableMapOf<TaxonomyId, MutableStateFlow<List<Term>>>()
     private val errors = mutableMapOf<TaxonomyId, MutableSharedFlow<AppError>>()
 
@@ -353,5 +386,10 @@ private class FakeTaxonomyPort : TaxonomyPort {
 
     override fun taxonomiesErrors(): Flow<AppError> = emptyFlow()
 
-    override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(taxonomies.value)
+    fun publish(loaded: List<Taxonomy>) {
+        published = loaded
+        taxonomies.tryEmit(loaded)
+    }
+
+    override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(published)
 }

@@ -19,6 +19,9 @@ data class ProfileUiState(
     val constraintCount: Int = 0,
     val languageTags: List<String> = emptyList(),
     val sections: List<ConstraintSectionUi> = emptyList(),
+    // False while the catalogue is still on its way: an empty vocabulary and one that has not
+    // arrived look identical on screen otherwise, and only one of them is worth a message.
+    val isCatalogueLoaded: Boolean = false,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val error: ProfileError? = null,

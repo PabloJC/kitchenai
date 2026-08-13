@@ -44,7 +44,16 @@ class ProfileViewModel(
     private val draft = MutableStateFlow<ProfileDraft?>(null)
     private val catalogue = MutableStateFlow(CatalogueState())
     private val saving = MutableStateFlow(false)
-    private val failure = MutableStateFlow<ProfileError?>(null)
+
+    // One per source, each cleared by its own stream recovering: a profile that loads again must
+    // not silence a catalogue that is still broken, and neither may outlive its own failure.
+    private val profileFailure = MutableStateFlow<ProfileError?>(null)
+    private val catalogueFailure = MutableStateFlow<ProfileError?>(null)
+    private val writeFailure = MutableStateFlow<ProfileError?>(null)
+    private val failure =
+        combine(profileFailure, catalogueFailure, writeFailure) { streams ->
+            streams.firstOrNull { it != null }
+        }
 
     private var started = false
     private var termListeners: Job? = null
@@ -80,10 +89,10 @@ class ProfileViewModel(
         val editing = draft.value?.profile ?: return
         if (saving.value) return
         saving.value = true
-        failure.value = null
+        writeFailure.value = null
         viewModelScope.launch(dispatchers.default) {
             when (val result = saveUserProfile(editing)) {
-                is AppResult.Failure -> failure.value = result.error.toProfileError()
+                is AppResult.Failure -> writeFailure.value = result.error.toProfileError()
                 is AppResult.Success -> draft.update { current -> current?.copy(edited = false) }
             }
             saving.value = false
@@ -91,7 +100,7 @@ class ProfileViewModel(
     }
 
     private fun edit(block: (UserProfile) -> UserProfile) {
-        failure.value = null
+        writeFailure.value = null
         draft.update { current -> current?.let { ProfileDraft(block(it.profile), edited = true) } }
     }
 
@@ -109,12 +118,15 @@ class ProfileViewModel(
             observeUserProfile(userId).collect { loaded -> onProfile(loaded) }
         }
         viewModelScope.launch(dispatchers.default) {
-            observeUserProfile.errors(userId).collect { error -> failure.value = error.toProfileError() }
+            observeUserProfile.errors(userId).collect { error ->
+                profileFailure.value = error.toProfileError()
+            }
         }
     }
 
     /** A remote update never overwrites edits that have not been saved yet. */
     private fun onProfile(loaded: UserProfile) {
+        profileFailure.value = null
         draft.update { current -> if (current?.edited == true) current else ProfileDraft(loaded) }
     }
 
@@ -123,12 +135,16 @@ class ProfileViewModel(
             observeTaxonomies().collect { loaded -> onTaxonomies(loaded) }
         }
         viewModelScope.launch(dispatchers.default) {
-            observeTaxonomies.errors().collect { error -> failure.value = error.toProfileError() }
+            observeTaxonomies.errors().collect { error ->
+                catalogue.update { state -> state.copy(answered = true) }
+                catalogueFailure.value = error.toProfileError()
+            }
         }
     }
 
     private fun onTaxonomies(loaded: List<Taxonomy>) {
-        catalogue.update { state -> state.copy(taxonomies = loaded) }
+        catalogueFailure.value = null
+        catalogue.update { state -> state.copy(answered = true, taxonomies = loaded) }
         // The term listeners belong to the catalogue that named them; a new catalogue replaces them.
         termListeners?.cancel()
         termListeners =
@@ -158,6 +174,9 @@ private data class ProfileDraft(
 
 /** The catalogue as the screen needs it: what exists, what is in it, and what failed to load. */
 private data class CatalogueState(
+    // Distinguishes a catalogue with nothing in it from one that has not answered yet: the
+    // screen must not say the vocabulary failed to load while it is still on its way.
+    val answered: Boolean = false,
     val taxonomies: List<Taxonomy> = emptyList(),
     val terms: Map<TaxonomyId, List<Term>> = emptyMap(),
     val errors: Map<TaxonomyId, String> = emptyMap(),
@@ -186,6 +205,7 @@ private fun uiState(
         constraintCount = profile?.constraints?.size ?: 0,
         languageTags = profile?.languageTags.orEmpty(),
         sections = sections(catalogue, profile),
+        isCatalogueLoaded = catalogue.answered,
         isLoading = draft == null,
         isSaving = saving,
         error = failure,
