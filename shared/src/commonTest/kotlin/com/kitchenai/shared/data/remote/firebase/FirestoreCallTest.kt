@@ -3,8 +3,7 @@ package com.kitchenai.shared.data.remote.firebase
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
-import kotlinx.coroutines.CoroutineDispatcher
+import com.kitchenai.shared.core.testDispatchers
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
@@ -95,12 +94,5 @@ class FirestoreCallTest {
             }
 
             assertEquals(AppError.Unknown(cause), errors.replayCache.single())
-        }
-
-    private fun testDispatchers(dispatcher: CoroutineDispatcher): DispatcherProvider =
-        object : DispatcherProvider {
-            override val main: CoroutineDispatcher = dispatcher
-            override val io: CoroutineDispatcher = dispatcher
-            override val default: CoroutineDispatcher = dispatcher
         }
 }
