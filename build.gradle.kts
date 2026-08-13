@@ -38,7 +38,9 @@ allprojects {
     }
 
     tasks.withType<Detekt>().configureEach {
-        exclude("**/build/**", "**/generated/**")
+        // A Spec, not a glob: detekt 2 registers the Compose resource generator's output as a
+        // source root of its own, so the paths it walks are relative to build/ and never contain it.
+        exclude { element -> element.file.absolutePath.contains("${File.separator}build${File.separator}") }
     }
 
     // The plain `detekt` task still reads src/main, which no module here uses. The analysis lives

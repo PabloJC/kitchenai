@@ -43,6 +43,7 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.components.resources)
+            implementation(compose.materialIconsExtended)
 
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
@@ -80,4 +81,10 @@ tasks.matching { task ->
         Regex("^ios[A-Za-z0-9]*Test$").matches(task.name)
 }.configureEach {
     enabled = false
+}
+
+// The generated class defaults to a package derived from the module name, which is neither this
+// module's package nor anything a reader would guess.
+compose.resources {
+    packageOfResClass = "com.kitchenai.ui.resources"
 }

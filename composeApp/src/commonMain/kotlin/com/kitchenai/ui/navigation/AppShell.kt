@@ -1,6 +1,7 @@
 package com.kitchenai.ui.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -36,9 +37,7 @@ fun AppShell(
                     NavigationBarItem(
                         selected = entry.isOn(destination.route),
                         onClick = { navController.switchTo(destination.route) },
-                        // No icon set is on the classpath for both targets yet, and inventing one
-                        // per screen is a design decision this issue does not get to make.
-                        icon = { },
+                        icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(destination.label) },
                     )
                 }
