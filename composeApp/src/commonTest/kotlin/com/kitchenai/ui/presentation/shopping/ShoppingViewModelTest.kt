@@ -128,6 +128,8 @@ class ShoppingViewModelTest {
             advanceUntilIdle()
 
             viewModel.onDraftChange("cata")
+            // The state is derived from its sources, so it lands on the next turn, not inline.
+            advanceUntilIdle()
             val suggestion = viewModel.state.value.draft.suggestions.single()
             assertEquals(ingredientId, suggestion.id)
             viewModel.onPick(suggestion)

@@ -16,10 +16,11 @@ import com.kitchenai.ui.presentation.common.LabelResolver
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -39,9 +40,6 @@ class ShoppingViewModel(
     private val writes: ShoppingWrites,
     private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(ShoppingUiState())
-    val state: StateFlow<ShoppingUiState> = _state.asStateFlow()
-
     // Buffered: an undo offer emitted while the screen is recomposing must wait, not disappear.
     private val _events = Channel<ShoppingEvent>(Channel.BUFFERED)
     val events: Flow<ShoppingEvent> = _events.receiveAsFlow()
@@ -66,6 +64,35 @@ class ShoppingViewModel(
     private val catalogueError = MutableStateFlow<String?>(null)
     private val itemsAnswered = MutableStateFlow(false)
 
+    // User-owned, so they belong to the screen rather than to a listener.
+    private val draft = MutableStateFlow(ShoppingDraftUi())
+    private val listName = MutableStateFlow("")
+
+    /** A rejected write outlives the next emission: the listener echo must not wipe the reason. */
+    private val writeFailure = MutableStateFlow<String?>(null)
+
+    private val lines =
+        combine(items, itemsError, itemsAnswered, resolver) { loaded, error, answered, labels ->
+            LinesState(
+                lines = loaded.orEmpty().map { item -> toUi(item, labels) },
+                error = error,
+                isLoading = !answered,
+                failedToLoad = error != null && loaded == null,
+            )
+        }
+
+    /**
+     * Derived, never assembled: four collectors used to each call a render() that read five
+     * fields and wrote the state, so whichever finished last could publish a combination that
+     * never held. Here every source is a flow and the composition happens in one place.
+     *
+     * Declared after its sources on purpose — a property cannot combine what is not built yet —
+     * and eager, so the screen has a state before anything collects it.
+     */
+    val state: StateFlow<ShoppingUiState> =
+        combine(lines, catalogueError, draft, listName, writeFailure, ::project)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, ShoppingUiState())
+
     /**
      * Idempotent: a configuration change composes the screen again and must not open a second pair
      * of listeners. [defaultListName] only reaches Firestore when there is no list yet.
@@ -79,7 +106,7 @@ class ShoppingViewModel(
         started = true
         this.userId.value = userId
         resolver.value = LabelResolver(languageTags = languageTags)
-        _state.update { it.copy(listName = defaultListName) }
+        listName.value = defaultListName
         watchCatalogue(languageTags)
         viewModelScope.launch(dispatchers.default) {
             val labels = languageTags.take(1).associateWith { defaultListName }
@@ -87,7 +114,6 @@ class ShoppingViewModel(
                 is AppResult.Failure -> {
                     itemsError.value = list.error.describe()
                     itemsAnswered.value = true
-                    render()
                 }
                 is AppResult.Success -> {
                     listId.value = list.data
@@ -109,7 +135,7 @@ class ShoppingViewModel(
         val item = items.value?.firstOrNull { it.id == itemId } ?: return
         edit { user, list ->
             val result = writes.remove(user, list, itemId)
-            if (result is AppResult.Success) _events.send(ShoppingEvent.ItemRemoved(label(item), item))
+            if (result is AppResult.Success) _events.send(ShoppingEvent.ItemRemoved(label(item, resolver.value), item))
             result
         }
     }
@@ -129,7 +155,7 @@ class ShoppingViewModel(
     }
 
     fun clearChecked() {
-        val count = _state.value.checked.size
+        val count = state.value.checked.size
         edit { user, list ->
             val result = writes.clearChecked(user, list)
             if (result is AppResult.Success) _events.send(ShoppingEvent.CheckedCleared(count))
@@ -139,17 +165,17 @@ class ShoppingViewModel(
 
     /** Typing anywhere drops the pick: the word on screen would otherwise stop matching the identifier. */
     fun onDraftChange(text: String) {
-        _state.update { it.copy(draft = ShoppingDraftUi(text = text, suggestions = suggest(text))) }
+        draft.value = ShoppingDraftUi(text = text, suggestions = suggest(text))
     }
 
     fun onPick(suggestion: IngredientSuggestion) {
-        _state.update { it.copy(draft = ShoppingDraftUi(text = suggestion.label, picked = suggestion)) }
+        draft.value = ShoppingDraftUi(text = suggestion.label, picked = suggestion)
     }
 
     fun add() {
-        val draft = _state.value.draft
-        val text = draft.text.trim()
-        val picked = draft.picked
+        val current = draft.value
+        val text = current.text.trim()
+        val picked = current.picked
         if (picked == null && text.isEmpty()) return
         val dispatched =
             edit { user, list ->
@@ -162,7 +188,7 @@ class ShoppingViewModel(
             }
         // Only once the write is on its way: clearing first loses the line the user typed while
         // the default list was still resolving.
-        if (dispatched) _state.update { it.copy(draft = ShoppingDraftUi()) }
+        if (dispatched) draft.value = ShoppingDraftUi()
     }
 
     /**
@@ -178,14 +204,12 @@ class ShoppingViewModel(
                 items.value = loaded
                 itemsError.value = null
                 itemsAnswered.value = true
-                render()
             }
         }
         viewModelScope.launch(dispatchers.default) {
             reads.items.errors(userId, listId).collect { error ->
                 itemsError.value = error.describe()
                 itemsAnswered.value = true
-                render()
             }
         }
     }
@@ -196,40 +220,42 @@ class ShoppingViewModel(
                 catalogue.value = loaded
                 resolver.value = LabelResolver(ingredients = loaded, languageTags = languageTags)
                 catalogueError.value = null
-                render()
             }
         }
         viewModelScope.launch(dispatchers.default) {
             reads.ingredients.errors().collect { error ->
                 catalogueError.value = error.describe()
-                render()
             }
         }
     }
 
-    /**
-     * The only place either stream reaches the state. `isLoading` is about the item listener
-     * alone: a broken catalogue leaves the list loading, and a failed item listener is answered,
-     * not loading, so the screen can say the list failed rather than that it is empty.
-     */
-    private fun render() {
-        val lines = items.value.orEmpty().map(::toUi)
-        _state.update {
-            it.copy(
-                unchecked = lines.filterNot(ShoppingItemUi::checked),
-                checked = lines.filter(ShoppingItemUi::checked),
-                isLoading = !itemsAnswered.value,
-                failedToLoad = itemsError.value != null && items.value == null,
-                error = itemsError.value ?: catalogueError.value,
-            )
-        }
-    }
+    /** Pure: it takes what every source says and produces the one state that follows from it. */
+    private fun project(
+        lines: LinesState,
+        catalogueError: String?,
+        draft: ShoppingDraftUi,
+        listName: String,
+        writeFailure: String?,
+    ): ShoppingUiState =
+        ShoppingUiState(
+            listName = listName,
+            unchecked = lines.lines.filterNot(ShoppingItemUi::checked),
+            checked = lines.lines.filter(ShoppingItemUi::checked),
+            draft = draft,
+            isLoading = lines.isLoading,
+            failedToLoad = lines.failedToLoad,
+            // A write that was rejected is the newest thing that happened, so it speaks first.
+            error = writeFailure ?: lines.error ?: catalogueError,
+        )
 
-    private fun toUi(item: ShoppingItem): ShoppingItemUi =
+    private fun toUi(
+        item: ShoppingItem,
+        labels: LabelResolver,
+    ): ShoppingItemUi =
         ShoppingItemUi(
             id = item.id,
-            label = label(item),
-            quantity = item.quantity?.let(::formatQuantity),
+            label = label(item, labels),
+            quantity = item.quantity?.let { amount -> formatQuantity(amount, labels) },
             // The recipe catalogue is not read here, so this is the identifier until a screen reads it.
             sourceRecipe = item.sourceRecipe?.value,
             fromCatalogue = item.ingredient != null,
@@ -237,13 +263,18 @@ class ShoppingViewModel(
         )
 
     /** A catalogue miss renders the identifier: ugly and honest beats a placeholder that hides it. */
-    private fun label(item: ShoppingItem): String =
-        item.freeText ?: item.ingredient?.let { id -> resolver.value.label(id) ?: id.value }.orEmpty()
+    private fun label(
+        item: ShoppingItem,
+        labels: LabelResolver,
+    ): String = item.freeText ?: item.ingredient?.let { id -> labels.label(id) ?: id.value }.orEmpty()
 
-    private fun formatQuantity(quantity: Quantity): String {
+    private fun formatQuantity(
+        quantity: Quantity,
+        labels: LabelResolver,
+    ): String {
         val whole = quantity.amount.toLong()
         val amount = if (quantity.amount == whole.toDouble()) whole.toString() else quantity.amount.toString()
-        val unit = quantity.unit?.let { ref -> resolver.value.label(ref) ?: ref.term.value }
+        val unit = quantity.unit?.let { ref -> labels.label(ref) ?: ref.term.value }
         return listOfNotNull(amount, unit).joinToString(" ")
     }
 
@@ -274,7 +305,7 @@ class ShoppingViewModel(
 
     /** A rejected write: the lines on screen are untouched and only the message changes. */
     private fun fail(error: AppError) {
-        _state.update { it.copy(error = error.describe()) }
+        writeFailure.value = error.describe()
     }
 }
 
@@ -300,3 +331,11 @@ private fun AppError.describe(): String =
         is AppError.Validation -> "Invalid $field: $reason"
         is AppError.Unknown -> "Something went wrong"
     }
+
+/** What the item listener has produced so far, as one value rather than four fields. */
+private data class LinesState(
+    val lines: List<ShoppingItemUi> = emptyList(),
+    val error: String? = null,
+    val isLoading: Boolean = true,
+    val failedToLoad: Boolean = false,
+)
