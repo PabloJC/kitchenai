@@ -62,6 +62,10 @@ class PantryViewModel(
     // own tags do not cover renders as its identifier even when the catalogue has a good one.
     private val vocabularies = MutableStateFlow<List<Taxonomy>>(emptyList())
 
+    // One per listener. A single field meant a catalogue that recovered cleared a pantry that
+    // had not, and clearing only the pantry's left the other three banners up for good.
+    private val errors = MutableStateFlow<Map<Source, String>>(emptyMap())
+
     private var started = false
     private var user: UserId? = null
     private var languageTags: List<String> = emptyList()
@@ -136,20 +140,23 @@ class PantryViewModel(
                 held.value = items
                 // Clearing belongs here rather than in render(): re-emitting an unchanged list
                 // leaves the combine silent, and a listener that recovered still recovered.
-                _state.update { current -> current.copy(error = null) }
+                recovered(Source.PANTRY)
             }
         }
         viewModelScope.launch(dispatchers.default) {
-            reads.pantry.errors(userId).collect(::fail)
+            reads.pantry.errors(userId).collect { error -> fail(Source.PANTRY, error) }
         }
     }
 
     private fun watchCatalogue() {
         viewModelScope.launch(dispatchers.default) {
-            reads.ingredients().collect { ingredients -> catalogue.value = ingredients }
+            reads.ingredients().collect { ingredients ->
+                catalogue.value = ingredients
+                recovered(Source.CATALOGUE)
+            }
         }
         viewModelScope.launch(dispatchers.default) {
-            reads.ingredients.errors().collect(::fail)
+            reads.ingredients.errors().collect { error -> fail(Source.CATALOGUE, error) }
         }
     }
 
@@ -165,18 +172,24 @@ class PantryViewModel(
             }.distinctUntilChanged()
 
         viewModelScope.launch(dispatchers.default) {
-            ids.flatMapLatest(::termsOf).collect { terms -> vocabulary.value = terms }
+            ids.flatMapLatest(::termsOf).collect { terms ->
+                vocabulary.value = terms
+                recovered(Source.TERMS)
+            }
         }
         viewModelScope.launch(dispatchers.default) {
-            reads.taxonomies().collect { loaded -> vocabularies.value = loaded }
+            reads.taxonomies().collect { loaded ->
+                vocabularies.value = loaded
+                recovered(Source.TAXONOMIES)
+            }
         }
         viewModelScope.launch(dispatchers.default) {
-            reads.taxonomies.errors().collect(::fail)
+            reads.taxonomies.errors().collect { error -> fail(Source.TAXONOMIES, error) }
         }
         viewModelScope.launch(dispatchers.default) {
             ids.flatMapLatest { watched ->
                 watched.map { id -> reads.taxonomy.errors(id) }.merge()
-            }.collect(::fail)
+            }.collect { error -> fail(Source.TERMS, error) }
         }
     }
 
@@ -217,8 +230,26 @@ class PantryViewModel(
         }
     }
 
-    private fun fail(error: AppError) {
-        _state.update { current -> current.copy(error = error.describe(), isLoading = false) }
+    private fun fail(
+        source: Source,
+        error: AppError,
+    ) {
+        errors.value = errors.value + (source to error.describe())
+        publishError()
+    }
+
+    /** That listener spoke again, so whatever it was complaining about is over. */
+    private fun recovered(source: Source) {
+        if (source !in errors.value) return
+        errors.value = errors.value - source
+        publishError()
+    }
+
+    // Oldest complaint first: the order is stable, so the banner does not flicker between two
+    // broken listeners as they retry.
+    private fun publishError() {
+        val message = Source.entries.firstNotNullOfOrNull { source -> errors.value[source] }
+        _state.update { current -> current.copy(error = message) }
     }
 
     private suspend fun AppResult<Any>.reportFailure() {
@@ -309,3 +340,11 @@ private data class Projection(
     val terms: List<Term>,
     val taxonomies: List<Taxonomy>,
 )
+
+/** The listeners this screen keeps open, each owning its own message. */
+private enum class Source {
+    PANTRY,
+    CATALOGUE,
+    TERMS,
+    TAXONOMIES,
+}

@@ -173,6 +173,21 @@ class PantryViewModelTest {
         }
 
     @Test
+    fun `a catalogue that recovers does not clear a pantry that has not`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+
+            pantry.errors.emit(AppError.Network())
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.state.value.error)
+
+            // A different listener speaking says nothing about the broken one.
+            catalogue.ingredients.emit(listOf(ingredient))
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.state.value.error)
+        }
+
+    @Test
     fun `a listener that emits again clears the banner it raised`() =
         runTest(dispatcher) {
             val viewModel = loadedViewModel()
