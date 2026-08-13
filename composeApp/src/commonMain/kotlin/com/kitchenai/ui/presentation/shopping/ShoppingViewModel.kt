@@ -47,8 +47,10 @@ class ShoppingViewModel(
     val events: Flow<ShoppingEvent> = _events.receiveAsFlow()
 
     private var started = false
-    private var userId: UserId? = null
-    private var listId: ShoppingListId? = null
+
+    // Written by the bootstrap coroutine and read by every public method, so not plain fields.
+    private val userId = MutableStateFlow<UserId?>(null)
+    private val listId = MutableStateFlow<ShoppingListId?>(null)
 
     // Null until the first emission. An empty list and a list nobody has sent yet look the same
     // on screen otherwise, and one of them is still loading.
@@ -69,7 +71,7 @@ class ShoppingViewModel(
     ) {
         if (started) return
         started = true
-        this.userId = userId
+        this.userId.value = userId
         resolver.value = LabelResolver(languageTags = languageTags)
         _state.update { it.copy(listName = defaultListName) }
         watchCatalogue(languageTags)
@@ -78,7 +80,7 @@ class ShoppingViewModel(
             when (val list = ensureDefaultShoppingList(userId, labels)) {
                 is AppResult.Failure -> fail(list.error)
                 is AppResult.Success -> {
-                    listId = list.data
+                    listId.value = list.data
                     watchItems(userId, list.data)
                 }
             }
@@ -139,15 +141,18 @@ class ShoppingViewModel(
         val text = draft.text.trim()
         val picked = draft.picked
         if (picked == null && text.isEmpty()) return
-        _state.update { it.copy(draft = ShoppingDraftUi()) }
-        edit { user, list ->
-            writes.add(
-                userId = user,
-                listId = list,
-                ingredient = picked?.id,
-                freeText = if (picked == null) text else null,
-            )
-        }
+        val dispatched =
+            edit { user, list ->
+                writes.add(
+                    userId = user,
+                    listId = list,
+                    ingredient = picked?.id,
+                    freeText = if (picked == null) text else null,
+                )
+            }
+        // Only once the write is on its way: clearing first loses the line the user typed while
+        // the default list was still resolving.
+        if (dispatched) _state.update { it.copy(draft = ShoppingDraftUi()) }
     }
 
     /**
@@ -228,14 +233,19 @@ class ShoppingViewModel(
             .take(SUGGESTION_LIMIT)
     }
 
-    /** Every write goes through here, so no action can forget to report its failure. */
-    private fun edit(block: suspend (UserId, ShoppingListId) -> AppResult<*>) {
-        val user = userId ?: return
-        val list = listId ?: return
+    /**
+     * Every write goes through here, so no action can forget to report its failure. Returns
+     * whether it dispatched at all: until the default list resolves there is nothing to write
+     * to, and a caller that has taken something from the user needs to know that.
+     */
+    private fun edit(block: suspend (UserId, ShoppingListId) -> AppResult<*>): Boolean {
+        val user = userId.value ?: return false
+        val list = listId.value ?: return false
         viewModelScope.launch(dispatchers.default) {
             val result = block(user, list)
             if (result is AppResult.Failure) fail(result.error)
         }
+        return true
     }
 
     // The lines already on screen stay there: a broken listener is not an emptied list.
