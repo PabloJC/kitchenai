@@ -51,7 +51,9 @@ class ProfileViewModel(
     private val catalogueFailure = MutableStateFlow<ProfileError?>(null)
     private val writeFailure = MutableStateFlow<ProfileError?>(null)
     private val failure =
-        combine(profileFailure, catalogueFailure, writeFailure) { streams ->
+        combine(writeFailure, profileFailure, catalogueFailure) { streams ->
+            // The write speaks first: it is the thing the user just did, and a stale banner from
+            // a listener must not hide the reason their save was refused.
             streams.firstOrNull { it != null }
         }
 

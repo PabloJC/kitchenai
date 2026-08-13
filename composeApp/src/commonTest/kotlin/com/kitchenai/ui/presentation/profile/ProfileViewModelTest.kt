@@ -237,6 +237,27 @@ class ProfileViewModelTest {
 
     /** Started and fed: the catalogue published, the profile delivered and every listener running. */
     @Test
+    fun `a refused save is shown even while a listener banner is still up`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId)
+            publish("t-1" to 1)
+            profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
+            advanceUntilIdle()
+
+            // A listener failure raises a banner and nothing clears it on its own.
+            profiles.errors.emit(AppError.Network())
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.state.value.generalError)
+
+            viewModel.save()
+            advanceUntilIdle()
+
+            // The refusal is what the user just caused, so it is what they are told.
+            assertEquals("references an unknown taxonomy", viewModel.state.value.generalError)
+        }
+
+    @Test
     fun `an empty catalogue is answered but not failed`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
