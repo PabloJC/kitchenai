@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
@@ -230,25 +231,21 @@ class PantryViewModel(
         }
     }
 
+    /**
+     * `updateAndGet` rather than a read and a write: four collectors on a real pool touch this
+     * map, and `value = value + …` loses whichever update lands second.
+     */
     private fun fail(
         source: Source,
         error: AppError,
-    ) {
-        errors.value = errors.value + (source to error.describe())
-        publishError()
-    }
+    ) = publishError(errors.updateAndGet { open -> open + (source to error.describe()) })
 
     /** That listener spoke again, so whatever it was complaining about is over. */
-    private fun recovered(source: Source) {
-        if (source !in errors.value) return
-        errors.value = errors.value - source
-        publishError()
-    }
+    private fun recovered(source: Source) = publishError(errors.updateAndGet { open -> open - source })
 
-    // Oldest complaint first: the order is stable, so the banner does not flicker between two
-    // broken listeners as they retry.
-    private fun publishError() {
-        val message = Source.entries.firstNotNullOfOrNull { source -> errors.value[source] }
+    // A stable order, so the banner does not flicker between two broken listeners as they retry.
+    private fun publishError(open: Map<Source, String>) {
+        val message = Source.entries.firstNotNullOfOrNull { source -> open[source] }
         _state.update { current -> current.copy(error = message) }
     }
 
