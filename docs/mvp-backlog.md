@@ -171,7 +171,12 @@ branch since, with what each one cost:
 - **`DestructuringDeclarationWithTooManyEntries`, 3.**
 
 Never raise a threshold to make a branch pass. Restructure, or say so in the pull request.
-Typed detekt rules remain unusable here for a separate reason — see #71.
+
+#71 lifted detekt to 2.x, which changed how those ceilings are spelled — `threshold` became
+`allowedLines`, `allowedFunctionParameters`, `allowedConstructorParameters`. The numbers did not
+move. Two things did: typed rules work now, so a `println` or a hardcoded `Dispatchers.IO` in
+`commonMain` fails the build, and the analysis runs under **`detektAll`** — the bare `detekt`
+task reads `src/main`, which no module here has.
 
 Wave 2 added one more, and it is the reason every ceiling in §6 moved:
 

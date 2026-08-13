@@ -1,14 +1,15 @@
-build:
-  maxIssues: 0
+# detekt 2 dropped `build.maxIssues`: the build now fails on any issue whose severity is `error`,
+# which every rule here is. The effect is what `maxIssues: 0` used to buy, and there is no baseline.
 
 complexity:
   LongMethod:
-    threshold: 60
+    allowedLines: 60
   LongParameterList:
-    functionThreshold: 7
-    constructorThreshold: 8
+    allowedFunctionParameters: 7
+    allowedConstructorParameters: 8
   TooManyFunctions:
-    thresholdInClasses: 20
+    allowedFunctionsPerClass: 20
+    # A private helper is not part of what a reader has to hold in their head at once.
     ignorePrivate: true
 
 exceptions:
@@ -32,12 +33,16 @@ style:
     ignorePropertyDeclaration: true
   MaxLineLength:
     maxLineLength: 120
-  # Replaces a ForbiddenMethodCall pair that never fired: that rule needs type resolution,
-  # which no task has for commonMain. An import ban is syntactic, so it holds everywhere.
-  # Its println half has no syntactic equivalent and stays unenforced for now.
+  # Needs type resolution, which only the compilation tasks have. Those cover commonMain and
+  # androidMain; nothing typed reaches iosMain, so the import ban below still earns its place.
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - reason: 'A log line carries the user own content to a device log'
+        value: 'kotlin.io.println'
   ForbiddenImport:
     active: true
-    imports:
+    forbiddenImports:
       - reason: 'Inject DispatcherProvider; only its implementations may name a dispatcher'
         value: 'kotlinx.coroutines.Dispatchers'
     excludes:
@@ -46,6 +51,6 @@ style:
       - '**/commonTest/**'
   ReturnCount:
     max: 4
-  UnusedPrivateMember:
-    # @Preview composables are unused by construction: the IDE renders them, nothing calls them.
+  # Was UnusedPrivateMember, which detekt 2 split in two.
+  UnusedPrivateFunction:
     ignoreAnnotated: ['Preview']

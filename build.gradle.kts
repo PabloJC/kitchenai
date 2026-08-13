@@ -1,6 +1,5 @@
-import io.gitlab.arturbosch.detekt.Detekt
-import io.gitlab.arturbosch.detekt.extensions.DetektExtension
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import dev.detekt.gradle.Detekt
+import dev.detekt.gradle.extensions.DetektExtension
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 
 plugins {
@@ -42,23 +41,9 @@ allprojects {
         exclude("**/build/**", "**/generated/**")
     }
 
-    // KMP keeps its code under src/<sourceSet>/kotlin; the default detekt task only reads
-    // src/main/{java,kotlin}, so without this both modules analyse nothing and stay green.
-    plugins.withId(rootProject.libs.plugins.kotlinMultiplatform.get().pluginId) {
-        // Lazy on purpose: resolved any earlier, the hierarchy is still half-built and only
-        // the leaf sets exist, so iosMain is silently dropped by the exists() filter.
-        val kmpSourceDirs =
-            provider {
-                // The Compose resource generator registers its output under build/ as a
-                // srcDir. The exclude() above drops those files from the analysis but not
-                // from the task inputs, which makes Gradle fail on an undeclared dependency
-                // once the directory exists — so they are dropped here instead.
-                val generated = layout.buildDirectory.get().asFile
-                extensions.getByType<KotlinMultiplatformExtension>()
-                    .sourceSets
-                    .flatMap { sourceSet -> sourceSet.kotlin.srcDirs }
-                    .filter { dir -> dir.exists() && !dir.startsWith(generated) }
-            }
-        tasks.withType<Detekt>().configureEach { setSource(files(kmpSourceDirs)) }
-    }
+    // The plain `detekt` task still reads src/main, which no module here uses. The analysis lives
+    // in the per-source-set and per-compilation tasks the plugin registers, and only the latter
+    // carry a classpath, so anything typed is silent unless both are run.
+    val detektAll = tasks.register("detektAll") { dependsOn(tasks.withType<Detekt>()) }
+    tasks.matching { task -> task.name == "check" }.configureEach { dependsOn(detektAll) }
 }
