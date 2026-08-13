@@ -75,7 +75,12 @@ private fun ProfileContent(
             item {
                 EmptyState(
                     title = "No preferences to show",
-                    body = "The vocabulary could not be loaded, so there is nothing to choose from yet.",
+                    body =
+                        if (state.hasCatalogueFailed) {
+                            "The vocabulary could not be loaded, so there is nothing to choose from yet."
+                        } else {
+                            "This catalogue has no vocabulary in it yet."
+                        },
                 )
             }
         } else {

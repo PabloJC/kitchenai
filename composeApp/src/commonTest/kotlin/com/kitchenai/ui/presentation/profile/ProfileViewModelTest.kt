@@ -237,6 +237,20 @@ class ProfileViewModelTest {
 
     /** Started and fed: the catalogue published, the profile delivered and every listener running. */
     @Test
+    fun `an empty catalogue is answered but not failed`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId)
+            profiles.profiles.emit(profile())
+            catalogue.publish(emptyList())
+            advanceUntilIdle()
+
+            val state = viewModel.state.value
+            assertEquals(true, state.isCatalogueLoaded)
+            assertEquals(false, state.hasCatalogueFailed)
+        }
+
+    @Test
     fun `a catalogue that has not answered is not a catalogue that failed`() =
         runTest(dispatcher) {
             val viewModel = viewModel()

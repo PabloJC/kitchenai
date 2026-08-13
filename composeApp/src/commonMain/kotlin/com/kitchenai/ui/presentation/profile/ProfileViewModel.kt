@@ -136,7 +136,7 @@ class ProfileViewModel(
         }
         viewModelScope.launch(dispatchers.default) {
             observeTaxonomies.errors().collect { error ->
-                catalogue.update { state -> state.copy(answered = true) }
+                catalogue.update { state -> state.copy(answered = true, failed = true) }
                 catalogueFailure.value = error.toProfileError()
             }
         }
@@ -144,7 +144,7 @@ class ProfileViewModel(
 
     private fun onTaxonomies(loaded: List<Taxonomy>) {
         catalogueFailure.value = null
-        catalogue.update { state -> state.copy(answered = true, taxonomies = loaded) }
+        catalogue.update { state -> state.copy(answered = true, failed = false, taxonomies = loaded) }
         // The term listeners belong to the catalogue that named them; a new catalogue replaces them.
         termListeners?.cancel()
         termListeners =
@@ -177,6 +177,9 @@ private data class CatalogueState(
     // Distinguishes a catalogue with nothing in it from one that has not answered yet: the
     // screen must not say the vocabulary failed to load while it is still on its way.
     val answered: Boolean = false,
+    // Answered and failed are different answers: a catalogue with nothing in it is valid, and
+    // telling that user the vocabulary could not be loaded would be a lie.
+    val failed: Boolean = false,
     val taxonomies: List<Taxonomy> = emptyList(),
     val terms: Map<TaxonomyId, List<Term>> = emptyMap(),
     val errors: Map<TaxonomyId, String> = emptyMap(),
@@ -206,6 +209,7 @@ private fun uiState(
         languageTags = profile?.languageTags.orEmpty(),
         sections = sections(catalogue, profile),
         isCatalogueLoaded = catalogue.answered,
+        hasCatalogueFailed = catalogue.failed,
         isLoading = draft == null,
         isSaving = saving,
         error = failure,

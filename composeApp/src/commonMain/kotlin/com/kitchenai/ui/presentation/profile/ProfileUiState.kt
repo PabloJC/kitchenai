@@ -22,6 +22,8 @@ data class ProfileUiState(
     // False while the catalogue is still on its way: an empty vocabulary and one that has not
     // arrived look identical on screen otherwise, and only one of them is worth a message.
     val isCatalogueLoaded: Boolean = false,
+    // Only true when the listener actually failed, so an empty catalogue is not called broken.
+    val hasCatalogueFailed: Boolean = false,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val error: ProfileError? = null,
