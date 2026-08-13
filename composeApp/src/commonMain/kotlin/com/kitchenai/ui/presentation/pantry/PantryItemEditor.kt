@@ -175,7 +175,9 @@ private fun ExpiryField(
     onChange: (Instant?) -> Unit,
 ) {
     var picking by rememberSaveable { mutableStateOf(false) }
-    val picker = rememberDatePickerState()
+    // Seeded from the date already on the row: an unseeded picker starts at null, so confirming
+    // without touching the calendar wiped an expiry the user had set.
+    val picker = rememberDatePickerState(initialSelectedDateMillis = value?.toEpochMilliseconds())
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         // The ISO date, in UTC: formatting one per locale needs a date library this module does
