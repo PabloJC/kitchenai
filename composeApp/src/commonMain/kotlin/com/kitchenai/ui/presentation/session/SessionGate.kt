@@ -1,5 +1,8 @@
 package com.kitchenai.ui.presentation.session
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,13 +32,18 @@ fun SessionGate(
     // The composition guards the recomposition, the ViewModel guards the configuration change.
     LaunchedEffect(Unit) { viewModel.start(platformLanguageTags(), defaultListName) }
 
+    // These two are the only screens drawn before the shell exists, so nothing else is padding
+    // them: the Scaffold that pads everything else lives inside `content`. Applied here rather
+    // than inside the components, which are used under that Scaffold and would double up.
+    val safe = modifier.windowInsetsPadding(WindowInsets.safeDrawing)
+
     when (val resolved = state) {
-        SessionUiState.Loading -> LoadingState(modifier)
+        SessionUiState.Loading -> LoadingState(safe)
 
         is SessionUiState.Failed ->
             ErrorState(
                 message = resolved.message,
-                modifier = modifier,
+                modifier = safe,
                 retryLabel = retryLabel,
                 onRetry = viewModel::retry,
             )
