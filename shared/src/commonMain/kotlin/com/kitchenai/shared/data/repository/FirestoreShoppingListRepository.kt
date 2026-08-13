@@ -18,11 +18,8 @@ import dev.gitlive.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.updateAndGet
 
 /**
  * [ShoppingListPort] over `users/{uid}/shoppingLists`: a snapshot listener to read, an
@@ -37,18 +34,16 @@ class FirestoreShoppingListRepository(
     // the writes queued after it.
     private val writes = CoroutineScope(SupervisorJob() + dispatchers.io)
 
-    // One sink per user: a single stream per port would report one listener's failure to every
-    // other open observer.
-    private val sinks = MutableStateFlow<Map<UserId, MutableSharedFlow<AppError>>>(emptyMap())
+    private val errors = KeyedErrorSinks<UserId>()
 
     override fun observeLists(userId: UserId): Flow<List<ShoppingList>> =
         paths
             .shoppingLists(userId)
             .snapshots
             .map { snapshot -> snapshot.toLists() }
-            .reportingErrorsTo(sink(userId))
+            .reportingErrorsTo(errors.of(userId))
 
-    override fun listErrors(userId: UserId): Flow<AppError> = sink(userId).asSharedFlow()
+    override fun listErrors(userId: UserId): Flow<AppError> = errors.of(userId).asSharedFlow()
 
     override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> =
         firestoreCall(dispatchers) { paths.shoppingLists(userId).get().toLists() }
@@ -59,7 +54,7 @@ class FirestoreShoppingListRepository(
     ): AppResult<Unit> =
         // `updatedAtMillis` travels in the document the domain built, so ordering stays stable
         // without the repository owning a clock.
-        writes.optimistically(sink(userId)) {
+        writes.optimistically(errors.of(userId)) {
             paths.shoppingList(userId, list.id).set(list.toDto(), merge = true) { encodeDefaults = true }
         }
 
@@ -71,12 +66,4 @@ class FirestoreShoppingListRepository(
             onSuccess = { dto -> dto.toDomain(id) },
             onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
         )
-
-    private fun sink(userId: UserId): MutableSharedFlow<AppError> =
-        sinks
-            .updateAndGet { open -> if (userId in open) open else open + (userId to newSink()) }
-            .getValue(userId)
-
-    // Buffered so that publishing a failure never suspends the listener that is dying.
-    private fun newSink(): MutableSharedFlow<AppError> = MutableSharedFlow(extraBufferCapacity = 1)
 }

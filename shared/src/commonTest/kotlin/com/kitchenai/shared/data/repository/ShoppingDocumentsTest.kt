@@ -1,13 +1,11 @@
 package com.kitchenai.shared.data.repository
 
-import com.kitchenai.shared.data.mapper.shoppingItemDocument
-import com.kitchenai.shared.data.mapper.toDomain
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The two rules a snapshot has to obey before it reaches the domain: a delete never exceeds what
- * Firestore will commit, and a corrupt document costs itself rather than the list around it.
+ * The rule a delete has to obey before it reaches Firestore: it never exceeds what one commit
+ * accepts. Dropping a corrupt document is the other rule, and it lives in [DecodedDocumentsTest].
  */
 class ShoppingDocumentsTest {
     @Test
@@ -30,19 +28,5 @@ class ShoppingDocumentsTest {
     @Test
     fun `has nothing to commit for an empty delete`() {
         assertEquals(emptyList(), emptyList<Int>().chunkedForBatch())
-    }
-
-    @Test
-    fun `drops the document it cannot map and keeps its siblings`() {
-        val decoded =
-            listOf(
-                shoppingItemDocument().toDomain("item-1"),
-                shoppingItemDocument(freeText = "text-1").toDomain("item-2"),
-                shoppingItemDocument().toDomain("item-3"),
-            )
-
-        val kept = decoded.decodedOrDropped()
-
-        assertEquals(listOf("item-1", "item-3"), kept.map { it.id.value })
     }
 }

@@ -15,7 +15,6 @@ import com.kitchenai.shared.domain.port.IngredientPort
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
@@ -27,8 +26,7 @@ class FirestoreIngredientRepository(
     private val paths: FirestorePaths,
     private val dispatchers: DispatcherProvider,
 ) : IngredientPort {
-    // Buffered so that publishing a failure never suspends the listener that is dying.
-    private val errors = MutableSharedFlow<AppError>(extraBufferCapacity = 1)
+    private val errors = errorSink()
 
     override fun observeIngredients(): Flow<List<Ingredient>> =
         paths
@@ -45,9 +43,7 @@ class FirestoreIngredientRepository(
             is AppResult.Success -> read.data.toIngredientOrNotFound()
         }
 
-    // Same rule as the pantry: a document that will not map is dropped, never propagated as a
-    // failure for the whole catalogue.
-    private fun QuerySnapshot.toIngredients(): List<Ingredient> = documents.map { it.toIngredient() }.mapped().items
+    private fun QuerySnapshot.toIngredients(): List<Ingredient> = documents.map { it.toIngredient() }.decodedOrDropped()
 
     private fun DocumentSnapshot.toIngredientOrNotFound(): AppResult<Ingredient> =
         if (exists) toIngredient() else AppResult.Failure(AppError.NotFound(INGREDIENT_RESOURCE))

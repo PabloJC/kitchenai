@@ -14,6 +14,9 @@ import kotlinx.coroutines.launch
  *
  * A failure that does arrive later is published on [errors] rather than swallowed. Being offline
  * is not one of them: Firestore replays the write when it can.
+ *
+ * No caller cancels the scope it launches on, deliberately: every repository owning one is a
+ * singleton, and cancelling would drop a write the caller was already told had been accepted.
  */
 internal fun CoroutineScope.optimistically(
     errors: MutableSharedFlow<AppError>,

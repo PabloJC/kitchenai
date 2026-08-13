@@ -2,6 +2,7 @@ package com.kitchenai.shared.data.mapper
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.getOrElse
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.data.remote.dto.DietaryConstraintDto
@@ -12,8 +13,6 @@ import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.DietaryConstraint
 import com.kitchenai.shared.domain.model.HouseholdContext
 import com.kitchenai.shared.domain.model.IngredientId
-import com.kitchenai.shared.domain.model.TaxonomyId
-import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
@@ -36,8 +35,8 @@ fun UserProfile.toDto(): UserProfileDto =
  */
 fun UserProfileDto.toDomain(documentId: String): AppResult<UserProfile> {
     val millis = updatedAtMillis ?: return missing("updatedAt")
-    return UserId.of(documentId).andThen { id ->
-        household.toDomain().andThen { context ->
+    return UserId.of(documentId).flatMap { id ->
+        household.toDomain().flatMap { context ->
             decodeReferences().map { refs ->
                 UserProfile(
                     userId = id,
@@ -69,7 +68,7 @@ private fun DietaryConstraint.toDto(): DietaryConstraintDto =
 private fun DietaryConstraintDto.toDomain(): AppResult<DietaryConstraint> {
     val taxonomy = taxonomy ?: return missing("constraints.taxonomy")
     val term = term ?: return missing("constraints.term")
-    return termRefOf(taxonomy, term).andThen { ref -> strength.toStrength().map { DietaryConstraint(ref, it) } }
+    return termRef(taxonomy, term).flatMap { ref -> strength.toStrength().map { DietaryConstraint(ref, it) } }
 }
 
 /**
@@ -96,12 +95,7 @@ private fun UserProfileDto.decodeReferences(): AppResult<References> {
 
 /** Order is preserved: the domain type is a `List` and it is the order the user set. */
 private fun List<TermRefDto>.toTermRefs(): AppResult<List<TermRef>> =
-    mapAll { reference -> termRefOf(reference.taxonomy.orEmpty(), reference.term.orEmpty()) }
-
-private fun termRefOf(
-    taxonomy: String,
-    term: String,
-): AppResult<TermRef> = TaxonomyId.of(taxonomy).andThen { id -> TermId.of(term).map { TermRef(id, it) } }
+    mapAll { reference -> termRef(reference.taxonomy.orEmpty(), reference.term.orEmpty()) }
 
 /** The first failure wins: a half-decoded document would silently drop what the user actually set. */
 internal fun <T, R> List<T>.mapAll(transform: (T) -> AppResult<R>): AppResult<List<R>> {
@@ -109,12 +103,5 @@ internal fun <T, R> List<T>.mapAll(transform: (T) -> AppResult<R>): AppResult<Li
     forEach { element -> mapped += transform(element).getOrElse { return AppResult.Failure(it) } }
     return AppResult.Success(mapped)
 }
-
-/** [map] for a transform that can itself fail; decoding is the only place that chains those. */
-private inline fun <T, R> AppResult<T>.andThen(transform: (T) -> AppResult<R>): AppResult<R> =
-    when (this) {
-        is AppResult.Success -> transform(data)
-        is AppResult.Failure -> this
-    }
 
 private fun missing(field: String): AppResult.Failure = AppResult.Failure(AppError.Validation(field, "is missing"))

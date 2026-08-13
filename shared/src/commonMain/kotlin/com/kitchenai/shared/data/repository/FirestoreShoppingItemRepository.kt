@@ -22,11 +22,8 @@ import dev.gitlive.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.updateAndGet
 
 /**
  * [ShoppingItemPort] over `users/{uid}/shoppingLists/{listId}/items`. Everything is keyed by the
@@ -42,7 +39,7 @@ class FirestoreShoppingItemRepository(
     // the writes queued after it.
     private val writes = CoroutineScope(SupervisorJob() + dispatchers.io)
 
-    private val sinks = MutableStateFlow<Map<Pair<UserId, ShoppingListId>, MutableSharedFlow<AppError>>>(emptyMap())
+    private val errors = KeyedErrorSinks<Pair<UserId, ShoppingListId>>()
 
     override fun observeItems(
         userId: UserId,
@@ -52,12 +49,12 @@ class FirestoreShoppingItemRepository(
             .shoppingListItems(userId, listId)
             .snapshots
             .map { snapshot -> snapshot.toItems() }
-            .reportingErrorsTo(sink(userId, listId))
+            .reportingErrorsTo(errors.of(userId to listId))
 
     override fun itemErrors(
         userId: UserId,
         listId: ShoppingListId,
-    ): Flow<AppError> = sink(userId, listId).asSharedFlow()
+    ): Flow<AppError> = errors.of(userId to listId).asSharedFlow()
 
     override suspend fun getItems(
         userId: UserId,
@@ -70,7 +67,7 @@ class FirestoreShoppingItemRepository(
         listId: ShoppingListId,
         items: List<ShoppingItem>,
     ): AppResult<Unit> =
-        writes.optimistically(sink(userId, listId)) {
+        writes.optimistically(errors.of(userId to listId)) {
             items.chunkedForBatch().forEach { chunk ->
                 val batch = firestore.batch()
                 chunk.forEach { item ->
@@ -86,7 +83,7 @@ class FirestoreShoppingItemRepository(
         listId: ShoppingListId,
         itemId: ShoppingItemId,
     ): AppResult<Unit> =
-        writes.optimistically(sink(userId, listId)) {
+        writes.optimistically(errors.of(userId to listId)) {
             paths.shoppingListItem(userId, listId, itemId).delete()
         }
 
@@ -101,7 +98,7 @@ class FirestoreShoppingItemRepository(
         val ticked = firestoreCall(dispatchers) { checkedDocuments(userId, listId) }
         return when (ticked) {
             is AppResult.Failure -> ticked
-            is AppResult.Success -> writes.optimistically(sink(userId, listId)) { deleteAll(ticked.data) }
+            is AppResult.Success -> writes.optimistically(errors.of(userId to listId)) { deleteAll(ticked.data) }
         }
     }
 
@@ -132,19 +129,6 @@ class FirestoreShoppingItemRepository(
             onSuccess = { dto -> dto.toDomain(id) },
             onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
         )
-
-    private fun sink(
-        userId: UserId,
-        listId: ShoppingListId,
-    ): MutableSharedFlow<AppError> {
-        val key = userId to listId
-        return sinks
-            .updateAndGet { open -> if (key in open) open else open + (key to newSink()) }
-            .getValue(key)
-    }
-
-    // Buffered so that publishing a failure never suspends the listener that is dying.
-    private fun newSink(): MutableSharedFlow<AppError> = MutableSharedFlow(extraBufferCapacity = 1)
 
     private companion object {
         const val CHECKED = "checked"
