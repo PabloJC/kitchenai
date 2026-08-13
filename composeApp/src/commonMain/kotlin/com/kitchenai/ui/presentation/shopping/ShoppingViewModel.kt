@@ -297,15 +297,14 @@ class ShoppingViewModel(
         val user = userId.value ?: return false
         val list = listId.value ?: return false
         viewModelScope.launch(dispatchers.default) {
-            val result = block(user, list)
-            if (result is AppResult.Failure) fail(result.error)
+            // A write that lands clears the last one that did not: the banner belongs to the
+            // most recent attempt, not to the first that ever failed.
+            when (val result = block(user, list)) {
+                is AppResult.Failure -> writeFailure.value = result.error.describe()
+                is AppResult.Success -> writeFailure.value = null
+            }
         }
         return true
-    }
-
-    /** A rejected write: the lines on screen are untouched and only the message changes. */
-    private fun fail(error: AppError) {
-        writeFailure.value = error.describe()
     }
 }
 

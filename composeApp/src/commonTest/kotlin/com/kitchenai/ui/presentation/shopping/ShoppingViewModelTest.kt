@@ -171,6 +171,24 @@ class ShoppingViewModelTest {
         }
 
     @Test
+    fun `a rejected write is announced and the next write that lands clears it`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+
+            items.upsertResult = AppResult.Failure(AppError.Network())
+            viewModel.setChecked(itemId("item-1"), checked = true)
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.state.value.error)
+
+            items.upsertResult = AppResult.Success(Unit)
+            viewModel.setChecked(itemId("item-1"), checked = false)
+            advanceUntilIdle()
+            assertNull(viewModel.state.value.error)
+        }
+
+    @Test
     fun `each stream keeps its own error and clears only its own`() =
         runTest(dispatcher) {
             val viewModel = started()
@@ -292,6 +310,7 @@ private class FakeShoppingItemPort : ShoppingItemPort {
 
     val errors = MutableSharedFlow<AppError>()
     val upserts = mutableListOf<List<ShoppingItem>>()
+    var upsertResult: AppResult<Unit> = AppResult.Success(Unit)
     var removed: ShoppingItemId? = null
     var clears = 0
 
@@ -321,7 +340,7 @@ private class FakeShoppingItemPort : ShoppingItemPort {
         items: List<ShoppingItem>,
     ): AppResult<Unit> {
         upserts += items
-        return AppResult.Success(Unit)
+        return upsertResult
     }
 
     override suspend fun removeItem(
