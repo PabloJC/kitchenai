@@ -8,6 +8,7 @@ import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
+import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
@@ -56,6 +57,10 @@ class PantryViewModel(
     private val held = MutableStateFlow<List<PantryItem>?>(null)
     private val catalogue = MutableStateFlow<List<Ingredient>>(emptyList())
     private val vocabulary = MutableStateFlow<List<Term>>(emptyList())
+
+    // Without these the resolver has no per-taxonomy default language, so a label the device's
+    // own tags do not cover renders as its identifier even when the catalogue has a good one.
+    private val vocabularies = MutableStateFlow<List<Taxonomy>>(emptyList())
 
     private var started = false
     private var user: UserId? = null
@@ -158,6 +163,12 @@ class PantryViewModel(
             ids.flatMapLatest(::termsOf).collect { terms -> vocabulary.value = terms }
         }
         viewModelScope.launch(dispatchers.default) {
+            reads.taxonomies().collect { loaded -> vocabularies.value = loaded }
+        }
+        viewModelScope.launch(dispatchers.default) {
+            reads.taxonomies.errors().collect(::fail)
+        }
+        viewModelScope.launch(dispatchers.default) {
             ids.flatMapLatest { watched ->
                 watched.map { id -> reads.taxonomy.errors(id) }.merge()
             }.collect(::fail)
@@ -173,18 +184,22 @@ class PantryViewModel(
 
     private fun watchProjection() {
         viewModelScope.launch(dispatchers.default) {
-            combine(held, catalogue, vocabulary) { items, ingredients, terms ->
-                Triple(items, ingredients, terms)
-            }.collect { (items, ingredients, terms) -> render(items, ingredients, terms) }
+            combine(held, catalogue, vocabulary, vocabularies, ::Projection)
+                .collect { projection -> render(projection) }
         }
     }
 
-    private fun render(
-        items: List<PantryItem>?,
-        ingredients: List<Ingredient>,
-        terms: List<Term>,
-    ) {
-        val resolver = LabelResolver(terms = terms, ingredients = ingredients, languageTags = languageTags)
+    private fun render(projection: Projection) {
+        val resolver =
+            LabelResolver(
+                terms = projection.terms,
+                ingredients = projection.ingredients,
+                taxonomies = projection.taxonomies,
+                languageTags = languageTags,
+            )
+        val items = projection.items
+        val ingredients = projection.ingredients
+        val terms = projection.terms
         val now = writes.time.now()
         _state.update { current ->
             current.copy(
@@ -279,3 +294,11 @@ private fun AppError.describe(): String =
         is AppError.Validation -> "Invalid $field: $reason"
         is AppError.Unknown -> "Something went wrong"
     }
+
+/** The four sources a rendered pantry needs, so the combine stays one value rather than four. */
+private data class Projection(
+    val items: List<PantryItem>?,
+    val ingredients: List<Ingredient>,
+    val terms: List<Term>,
+    val taxonomies: List<Taxonomy>,
+)

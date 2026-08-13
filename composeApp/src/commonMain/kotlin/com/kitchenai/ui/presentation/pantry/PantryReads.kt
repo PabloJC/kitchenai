@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantry
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 
 /**
@@ -13,4 +14,6 @@ class PantryReads(
     val pantry: ObservePantry,
     val ingredients: ObserveIngredients,
     val taxonomy: ObserveTaxonomy,
+    // The terms carry the words; the taxonomies carry the language each one falls back to.
+    val taxonomies: ObserveTaxonomies,
 )

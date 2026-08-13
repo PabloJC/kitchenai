@@ -31,13 +31,8 @@ fun KitchenAiNavHost(
         startDestination = Route.Pantry,
         modifier = modifier,
     ) {
-<<<<<<< HEAD
-        composable<Route.Pantry> { placeholder(userId) }
-        composable<Route.ShoppingList> { ShoppingScreen(userId) }
-=======
         composable<Route.Pantry> { PantryScreen(userId) }
-        composable<Route.ShoppingList> { placeholder(userId) }
->>>>>>> 3be1e25 (feat(ui): pantry screen)
+        composable<Route.ShoppingList> { ShoppingScreen(userId) }
         composable<Route.Suggestions> { placeholder(userId) }
         composable<Route.RecipeDetail> { placeholder(userId) }
         composable<Route.Profile> { ProfileScreen(userId) }

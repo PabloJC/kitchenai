@@ -25,6 +25,7 @@ import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantry
 import com.kitchenai.shared.domain.usecase.pantry.RemovePantryItem
 import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItem
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -237,6 +238,7 @@ class PantryViewModelTest {
                     pantry = ObservePantry(pantry),
                     ingredients = ObserveIngredients(catalogue),
                     taxonomy = ObserveTaxonomy(taxonomies),
+                    taxonomies = ObserveTaxonomies(taxonomies),
                 ),
             writes =
                 PantryWrites(
