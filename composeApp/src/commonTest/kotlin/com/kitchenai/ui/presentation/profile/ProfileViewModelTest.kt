@@ -6,6 +6,7 @@ import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
@@ -255,6 +256,25 @@ class ProfileViewModelTest {
 
             // The refusal is what the user just caused, so it is what they are told.
             assertEquals("references an unknown taxonomy", viewModel.state.value.generalError)
+        }
+
+    @Test
+    fun `a vocabulary the app reads structurally is not offered as a preference`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId)
+            catalogue.publish(
+                listOf(
+                    taxonomy("t-1"),
+                    Taxonomy(taxonomyId("t-2"), labels = mapOf("xx" to "structural"), purpose = TaxonomyPurpose.UNITS),
+                ),
+            )
+            catalogue.termsOf(taxonomyId("t-1")).value = listOf(term("t-1", 1))
+            catalogue.termsOf(taxonomyId("t-2")).value = listOf(term("t-2", 1))
+            profiles.profiles.emit(profile())
+            advanceUntilIdle()
+
+            assertEquals(listOf(taxonomyId("t-1")), viewModel.state.value.sections.map { it.taxonomy })
         }
 
     @Test

@@ -234,7 +234,10 @@ private fun sections(
             languageTags = tags,
         )
     val strengths = profile?.constraints.orEmpty().associate { it.term to it.strength }
-    return catalogue.taxonomies.map { taxonomy ->
+    // A vocabulary the app reads structurally — units, storage places — is not a matter of taste,
+    // and offering it here let a user avoid a freezer. Which ones those are is the catalogue's
+    // to say, so nothing is named: they are the ones that declare a purpose.
+    return catalogue.taxonomies.filter { taxonomy -> taxonomy.purpose == null }.map { taxonomy ->
         ConstraintSectionUi(
             taxonomy = taxonomy.id,
             title = taxonomy.labels.resolve(tags, taxonomy.defaultLanguageTag) ?: taxonomy.id.value,
