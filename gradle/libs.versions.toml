@@ -36,6 +36,7 @@ gitlive-firebase-common    = { module = "dev.gitlive:firebase-common",    versio
 gitlive-firebase-auth      = { module = "dev.gitlive:firebase-auth",      version.ref = "gitliveFirebase" }
 gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitliveFirebase" }
 gitlive-firebase-storage   = { module = "dev.gitlive:firebase-storage",   version.ref = "gitliveFirebase" }
+gitlive-firebase-functions = { module = "dev.gitlive:firebase-functions", version.ref = "gitliveFirebase" }
 
 # Native Android Firebase (analytics/crashlytics are not in GitLive)
 firebase-bom         = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
