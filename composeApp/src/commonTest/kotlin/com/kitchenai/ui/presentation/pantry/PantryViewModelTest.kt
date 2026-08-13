@@ -11,6 +11,7 @@ import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
@@ -100,6 +101,29 @@ class PantryViewModelTest {
             assertEquals(LOCATION_LABEL, row.locationLabel)
             assertEquals(listOf(unitRef to UNIT_LABEL), state.units)
             assertEquals(listOf(locationRef to LOCATION_LABEL), state.locations)
+        }
+
+    @Test
+    fun `a fresh pantry can still offer a storage location`() =
+        runTest(dispatcher) {
+            // Nothing held, so nothing to derive a location taxonomy from: the catalogue
+            // declaring one is the only reason this picker has anything in it.
+            val viewModel = viewModel()
+            viewModel.start(userId, languageTags)
+            taxonomies.taxonomies.emit(
+                listOf(
+                    Taxonomy(
+                        id = locationRef.taxonomy,
+                        labels = mapOf("aa" to "Places"),
+                        purpose = TaxonomyPurpose.STORAGE_LOCATIONS,
+                    ),
+                ),
+            )
+            taxonomies.terms.emit(listOf(locationTerm))
+            pantry.items.emit(emptyList())
+            advanceUntilIdle()
+
+            assertEquals(listOf(locationRef to LOCATION_LABEL), viewModel.state.value.locations)
         }
 
     @Test
@@ -394,10 +418,14 @@ private class FakeIngredientPort : IngredientPort {
 private class FakeTaxonomyPort : TaxonomyPort {
     val terms = MutableSharedFlow<List<Term>>(replay = 1)
 
+    // Replay without an initial value: a listener that has not answered emits nothing, and a
+    // fake that emits an empty catalogue on subscribe hides the difference.
+    val taxonomies = MutableSharedFlow<List<Taxonomy>>(replay = 1)
+
     override fun observeTaxonomy(id: TaxonomyId): Flow<List<Term>> =
         terms.map { known -> known.filter { term -> term.ref.taxonomy == id } }
 
-    override fun observeTaxonomies(): Flow<List<Taxonomy>> = emptyFlow()
+    override fun observeTaxonomies(): Flow<List<Taxonomy>> = taxonomies
 
     override fun taxonomyErrors(id: TaxonomyId): Flow<AppError> = emptyFlow()
 

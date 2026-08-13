@@ -10,6 +10,7 @@ import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
@@ -168,8 +169,11 @@ class PantryViewModel(
      */
     private fun watchVocabulary() {
         val ids =
-            combine(held, catalogue) { items, ingredients ->
-                ingredients.unitTaxonomies() + items.orEmpty().termTaxonomies()
+            combine(held, catalogue, vocabularies) { items, ingredients, declared ->
+                // The catalogue declaring what a vocabulary is for is the only thing that lets a
+                // fresh pantry offer a storage location: derived from the user's own rows, the
+                // first one could never get one and none would ever be discovered.
+                declared.purposeful() + ingredients.unitTaxonomies() + items.orEmpty().termTaxonomies()
             }.distinctUntilChanged()
 
         viewModelScope.launch(dispatchers.default) {
@@ -219,14 +223,19 @@ class PantryViewModel(
         val items = projection.items
         val ingredients = projection.ingredients
         val terms = projection.terms
+        val taxonomies = projection.taxonomies
         val now = writes.time.now()
         _state.update { current ->
             current.copy(
                 items = items.orEmpty().map { item -> item.toUi(resolver, now) },
                 isLoading = items == null,
                 ingredients = ingredients.map { ingredient -> ingredient.id to resolver.nameOf(ingredient) },
-                units = terms.optionsIn(ingredients.unitTaxonomies(), resolver),
-                locations = terms.optionsIn(items.orEmpty().locationTaxonomies(), resolver),
+                units = terms.optionsIn(taxonomies.of(TaxonomyPurpose.UNITS) + ingredients.unitTaxonomies(), resolver),
+                locations =
+                    terms.optionsIn(
+                        taxonomies.of(TaxonomyPurpose.STORAGE_LOCATIONS) + items.orEmpty().locationTaxonomies(),
+                        resolver,
+                    ),
             )
         }
     }
@@ -309,6 +318,13 @@ private fun List<Term>.optionsIn(
 /** The vocabularies the catalogue itself measures ingredients in. */
 private fun List<Ingredient>.unitTaxonomies(): Set<TaxonomyId> =
     mapNotNullTo(mutableSetOf()) { ingredient -> ingredient.defaultUnit?.taxonomy }
+
+/** The vocabularies the catalogue declares a use for, whatever the user happens to hold. */
+private fun List<Taxonomy>.purposeful(): Set<TaxonomyId> =
+    mapNotNullTo(mutableSetOf()) { taxonomy -> taxonomy.id.takeIf { taxonomy.purpose != null } }
+
+private fun List<Taxonomy>.of(purpose: TaxonomyPurpose): Set<TaxonomyId> =
+    mapNotNullTo(mutableSetOf()) { taxonomy -> taxonomy.id.takeIf { taxonomy.purpose == purpose } }
 
 /** The vocabularies the pantry itself already uses, for amounts and for storage places. */
 private fun List<PantryItem>.termTaxonomies(): Set<TaxonomyId> =
