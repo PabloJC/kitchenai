@@ -3,26 +3,37 @@ package com.kitchenai.shared.data.remote.firebase
 import com.kitchenai.shared.core.AppError
 import dev.gitlive.firebase.firestore.FirebaseFirestoreException
 import dev.gitlive.firebase.firestore.code
+import dev.gitlive.firebase.functions.FirebaseFunctionsException
+import dev.gitlive.firebase.functions.code
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * The only translation from a Firestore failure into the error vocabulary of the app.
+ * The only translation from a Firebase failure into the error vocabulary of the app.
  * Rethrows [CancellationException]: mapping it would swallow a cancellation and break
  * structured concurrency.
+ *
+ * Both SDKs are handled here because both use the same gRPC status names, and a caller that
+ * matched only one would report a refused call as [AppError.Unknown] — which is what a user
+ * sees as "something went wrong" instead of "you are not allowed to do that".
  */
 fun Throwable.toAppError(): AppError {
     if (this is CancellationException) throw this
 
     return when (this) {
         is FirebaseFirestoreException -> appErrorForCode(code.name, this)
+        is FirebaseFunctionsException -> appErrorForCode(code.name, this)
         else -> AppError.Unknown(this)
     }
 }
 
 /**
- * Keyed on the code name rather than on `FirestoreExceptionCode`: on Android that type is a
- * typealias to the SDK enum, whose static initialiser needs the Android runtime and therefore
- * cannot be loaded by a host test. Every branch below is covered by name in the test.
+ * Keyed on the code name rather than on the SDKs' code enums: on Android those are typealiases
+ * to the Firebase enums, whose static initialisers need the Android runtime and cannot be loaded
+ * by a host test. Every branch below is covered by name in the test.
+ *
+ * `RESOURCE_EXHAUSTED` deliberately falls through to [AppError.Unknown]. #51 asked for
+ * [AppError.Network] because it is retryable, but every screen renders that as "No connection",
+ * and a rate-limited user has a connection. "Something went wrong" is the true statement.
  */
 internal fun appErrorForCode(
     code: String,

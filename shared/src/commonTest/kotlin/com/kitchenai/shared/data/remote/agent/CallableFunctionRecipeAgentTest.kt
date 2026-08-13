@@ -86,23 +86,29 @@ class CallableFunctionRecipeAgentTest {
             assertIs<AppResult.Success<*>>(result)
         }
 
+    /**
+     * The code table only. The type dispatch in `toAppError` cannot be reached from here: on
+     * Android both SDK exception types are typealiases whose static initialisers need the
+     * Android runtime, which is the same reason `appErrorForCode` is keyed on a name at all.
+     * That branch is one line, and it is what review caught missing for the functions SDK.
+     */
     @Test
-    fun `maps each transport failure to the error the caller can act on`() =
-        runTest {
-            val cases =
-                mapOf(
-                    "UNAUTHENTICATED" to AppError.Unauthorized::class,
-                    "PERMISSION_DENIED" to AppError.Unauthorized::class,
-                    "UNAVAILABLE" to AppError.Network::class,
-                    "DEADLINE_EXCEEDED" to AppError.Network::class,
-                    "INTERNAL" to AppError.Unknown::class,
-                )
+    fun `maps every status code the callable can return`() {
+        val cases =
+            mapOf(
+                "UNAUTHENTICATED" to AppError.Unauthorized::class,
+                "PERMISSION_DENIED" to AppError.Unauthorized::class,
+                "UNAVAILABLE" to AppError.Network::class,
+                "DEADLINE_EXCEEDED" to AppError.Network::class,
+                // Retryable, but not a connection problem, and Network renders as "No connection".
+                "RESOURCE_EXHAUSTED" to AppError.Unknown::class,
+                "INTERNAL" to AppError.Unknown::class,
+            )
 
-            cases.forEach { (code, expected) ->
-                val error = appErrorForCode(code, null)
-                assertEquals(expected, error::class, "code $code")
-            }
+        cases.forEach { (code, expected) ->
+            assertEquals(expected, appErrorForCode(code, null)::class, "code $code")
         }
+    }
 
     @Test
     fun `does not let a rejected call escape as an exception`() =

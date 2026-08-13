@@ -133,7 +133,12 @@ The call fails through the same mapping every Firebase call in this app uses:
 |---|---|
 | `UNAUTHENTICATED`, `PERMISSION_DENIED` | `Unauthorized` |
 | `UNAVAILABLE`, `DEADLINE_EXCEEDED` | `Network` |
+| `RESOURCE_EXHAUSTED` | `Unknown` |
 | anything else | `Unknown` |
+
+`RESOURCE_EXHAUSTED` is retryable, and #51 asked for `Network` on that ground. It is mapped to
+`Unknown` instead: every screen renders `Network` as "No connection", and a rate-limited user
+has a connection. Retryability is not what that error type means to the person reading it.
 
 The call carries an explicit **30 second timeout**. A model call may be slow, but a stalled one
 has to fail rather than spin: without it the caller waits on the platform default, which is a
