@@ -18,6 +18,7 @@ val sharedModules: List<Module> =
         agentModule,
         authModule,
         coreModule,
+        crossFeatureModule,
         firebaseModule,
         pantryDataModule,
         pantryModule,
