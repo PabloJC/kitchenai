@@ -13,6 +13,8 @@ interface DispatcherProvider {
     val default: CoroutineDispatcher
 }
 
+// The implementation of the port every other file has to inject: naming a dispatcher here is the point.
+@Suppress("InjectDispatcher")
 class DefaultDispatcherProvider : DispatcherProvider {
     override val main: CoroutineDispatcher get() = Dispatchers.Main
     override val io: CoroutineDispatcher get() = ioDispatcher()

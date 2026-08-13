@@ -45,7 +45,10 @@ jobs:
             cp androidApp/google-services.json.template androidApp/google-services.json
           fi
 
-      - run: ./gradlew detekt --continue
+      # detektAll, not detekt: the bare task reads src/main, which no module here has. It pulls
+      # in the per-compilation tasks, the only ones carrying a classpath, without which every
+      # typed rule stays silent.
+      - run: ./gradlew detektAll --continue
       - run: ./gradlew ktlintCheck --continue
 
       - name: Publish reports
