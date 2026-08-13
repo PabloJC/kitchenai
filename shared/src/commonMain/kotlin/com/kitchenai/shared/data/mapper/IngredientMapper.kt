@@ -1,6 +1,7 @@
 package com.kitchenai.shared.data.mapper
 
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.data.remote.dto.IngredientDto
 import com.kitchenai.shared.domain.model.Ingredient

@@ -27,3 +27,10 @@ inline fun <T, R> AppResult<T>.map(transform: (T) -> R): AppResult<R> =
         is AppResult.Success -> AppResult.Success(transform(data))
         is AppResult.Failure -> this
     }
+
+/** [map] for a transform that can itself fail. It belongs next to [map]: chaining is not a data concern. */
+inline fun <T, R> AppResult<T>.flatMap(transform: (T) -> AppResult<R>): AppResult<R> =
+    when (this) {
+        is AppResult.Success -> transform(data)
+        is AppResult.Failure -> this
+    }

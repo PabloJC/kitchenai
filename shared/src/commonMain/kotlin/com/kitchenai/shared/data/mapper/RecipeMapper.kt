@@ -2,6 +2,7 @@ package com.kitchenai.shared.data.mapper
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.data.remote.dto.RecipeDto
 import com.kitchenai.shared.data.remote.dto.RecipeIngredientDto
