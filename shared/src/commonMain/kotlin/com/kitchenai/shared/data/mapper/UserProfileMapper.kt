@@ -103,8 +103,8 @@ private fun termRefOf(
     term: String,
 ): AppResult<TermRef> = TaxonomyId.of(taxonomy).andThen { id -> TermId.of(term).map { TermRef(id, it) } }
 
-/** The first failure wins: a half-decoded profile would silently drop a constraint the user set. */
-private fun <T, R> List<T>.mapAll(transform: (T) -> AppResult<R>): AppResult<List<R>> {
+/** The first failure wins: a half-decoded document would silently drop what the user actually set. */
+internal fun <T, R> List<T>.mapAll(transform: (T) -> AppResult<R>): AppResult<List<R>> {
     val mapped = ArrayList<R>(size)
     forEach { element -> mapped += transform(element).getOrElse { return AppResult.Failure(it) } }
     return AppResult.Success(mapped)
