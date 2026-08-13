@@ -252,6 +252,23 @@ class ProfileViewModelTest {
         }
     }
 
+    @Test
+    fun `a validation failure naming an input this screen does not bind still reaches the user`() =
+        runTest(dispatcher) {
+            // `preferences` is a field no input on this screen renders, so the message has
+            // nowhere of its own to go and must fall through to the general one.
+            val viewModel = viewModel()
+            viewModel.start(userId)
+            publish("t-1" to 1)
+            profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
+            advanceUntilIdle()
+
+            viewModel.save()
+            advanceUntilIdle()
+
+            assertEquals("references an unknown taxonomy", viewModel.state.value.generalError)
+        }
+
     private fun viewModel(): ProfileViewModel =
         ProfileViewModel(
             observeUserProfile = ObserveUserProfile(profiles),

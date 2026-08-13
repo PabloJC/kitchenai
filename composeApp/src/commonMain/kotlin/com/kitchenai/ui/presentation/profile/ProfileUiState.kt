@@ -26,8 +26,12 @@ data class ProfileUiState(
     /** A message belongs to an input only when the use case named that input. */
     fun errorFor(field: String): String? = error?.takeIf { it.field == field }?.message
 
-    /** What is left once every field has taken its own: the screen shows it beside the save button. */
-    val generalError: String? get() = error?.takeIf { it.field == null }?.message
+    /**
+     * What is left once every field has taken its own: the screen shows it beside the save
+     * button. A failure naming a field this screen does not bind still shows up here, because
+     * the alternative is dropping it and telling the user nothing.
+     */
+    val generalError: String? get() = error?.takeIf { it.field !in BOUND_FIELDS }?.message
 }
 
 /** [field] is null when the failure belongs to the screen rather than to one of its inputs. */
@@ -55,3 +59,6 @@ data class TermChipUi(
 ) {
     val selected: Boolean get() = strength != null
 }
+
+/** The inputs that render their own message; anything else falls through to the general one. */
+private val BOUND_FIELDS = setOf(SERVINGS_FIELD, CONSTRAINTS_FIELD)
