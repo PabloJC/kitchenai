@@ -155,6 +155,24 @@ Found the hard way in wave 1. Both cost a failed build before they cost anything
   `org.jetbrains.compose.ui:ui-tooling-preview` coordinates via the version catalog, in an
   `androidMain` dependency block. #32 added both entries; #44 inherits them.
 
+detekt has been analysing this project only since #67 — before that the task ran against no
+source at all and every branch passed it for free. These are the rules that have blocked a
+branch since, with what each one cost:
+
+- **`TooManyFunctions`, 11 on interfaces.** Forced `ShoppingListPort` to be split in two (#73)
+  once every observer gained its own keyed error stream. That split was right, but it arrived
+  as a build failure rather than as a design decision.
+- **`LongParameterList`, 8 constructor parameters.** Two screens hit it with six use cases plus
+  a clock and a dispatcher. The answer was grouping collaborators by role — what the screen
+  reads and what it writes — not raising the threshold and not dropping the dispatcher, which
+  one branch did and quietly moved all its work onto the main thread.
+- **`ReturnCount`, 4** — it counts non-local returns through inline lambdas, so a chain of
+  `getOrElse { return … }` trips it at what looks like three.
+- **`DestructuringDeclarationWithTooManyEntries`, 3.**
+
+Never raise a threshold to make a branch pass. Restructure, or say so in the pull request.
+Typed detekt rules remain unusable here for a separate reason — see #71.
+
 Wave 2 added one more, and it is the reason every ceiling in §6 moved:
 
 - **`ktlint_official` rejects a multi-parameter signature on one line.** A port method or an
@@ -234,3 +252,69 @@ Not oversights — scope decisions, each with a reason:
   instead extracts its two pieces of real logic — amount parsing and coverage clamping — into
   pure functions and tests them with the setup that already exists. Every ViewModel in the
   backlog is tested regardless; that is where UI logic risk actually lives.
+
+---
+
+## 8. What waves 3 and 4 got wrong
+
+Every screen in wave 4 needed between three and six review rounds, and they lost them to the
+same handful of mistakes rather than to anything specific to each screen. None of these were in
+any acceptance criterion, which is why they all shipped and were caught late.
+
+### The states nobody enumerated
+
+Acceptance criteria described what a screen shows when everything works. Every finding of
+substance was about what it shows when something half-works, and there are more of those states
+than anyone wrote down:
+
+- **One error per source, cleared by that source.** A screen with several listeners and a single
+  `error: String?` produces three separate bugs, and all three shipped: a recovering listener
+  clears a banner belonging to one that is still broken; the failing listener's own recovery
+  never clears anything, so a transient blip leaves a permanent message; and a rejected write is
+  wiped by the next echo from an unrelated stream. Keep one slot per listener plus one for
+  writes, clear each on its own recovery, and let the write speak first — it is the thing the
+  user just did.
+- **Three states, not two.** *Has not answered yet*, *answered and empty* and *failed* are three
+  different screens. `isLoading` means "this particular listener has not answered", not
+  "something somewhere is pending". Telling a user their pantry is empty when the read was
+  denied reached a device twice.
+- **Clear a banner where the listener speaks, not where the state is projected.** Re-emitting an
+  unchanged value leaves a `combine` over `StateFlow`s silent, and a listener that recovered
+  with identical data still recovered.
+
+### Derive the state, never assemble it
+
+Several collectors each calling a `render()` that reads five fields and writes the whole state
+will publish combinations that never held at any instant — whichever finishes last wins with a
+stale view of the rest. Build the UI state from a `combine` of its sources with a pure
+projection. `ShoppingViewModel` is the worked example, and it got there by being rewritten
+after four rounds of patching symptoms.
+
+### Fakes that cannot fail hide the branches that matter
+
+Four separate bugs hid behind a fake that could not do what a real one does:
+
+| The fake | What it hid |
+|---|---|
+| Writes that always succeeded | Every write-failure branch, untested |
+| A catalogue port with no error stream | A broken catalogue emptying a screen |
+| A listener emitting an empty list on subscribe | "Not answered yet" being indistinguishable from "empty" |
+| A `saveCount` incremented without synchronisation | A double write under a real dispatcher |
+
+A fake that only models the happy path is a test that only tests the happy path, however many
+cases it has.
+
+### The file lists forget the thin tests
+
+Four wave-2 agents independently added test files the issue's own file list omitted, because
+CLAUDE.md makes an untested use case a blocking finding and the lists skip the one-line
+observers. Assume any issue's file list is short by the tests for its thinnest use cases, and
+count them in the budget rather than treating them as an overrun.
+
+### Verification that cannot be done says so
+
+"Runs on Android and iOS; screenshots in the PR" appears in four issues. Until #90 the iOS app
+could not launch at all, and it still cannot reach a signed-in state without a development team
+that `docs/infra.md` records as absent. A criterion nobody can meet is worse than no criterion:
+it either blocks a correct branch or gets waved through, and both teach the wrong thing. State
+what was verified, on which platform, and what was not.
