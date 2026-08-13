@@ -55,3 +55,26 @@ sibling objects.
 
 `google-services.json` and `GoogleService-Info.plist` are never committed; CI restores them
 from base64 secrets. Nothing in this directory contains a project id, key or bucket name.
+
+## Seeding the catalogues
+
+`taxonomies/`, their `terms/` and `ingredients/` are read-only for every client — the rules deny
+those writes — so the documents get there through the Admin SDK, which bypasses rules. That is
+the point and also the risk, which is why this is a deliberate command and not a CI step.
+
+The vocabulary itself lives in `seed/*.json` and nowhere else. It must never move into a Kotlin
+file: §1 of `docs/mvp-backlog.md` forbids a diet, an allergen, a cuisine, a unit or a storage
+location appearing in code, and a dataset the app can read at build time is exactly that.
+
+```bash
+gcloud auth application-default login
+cd tools && npm install
+node seed.mjs --project <projectId>
+```
+
+It writes by document id, so running it twice leaves the same database — edit the JSON and run
+it again to change a label. It prints counts and never contents.
+
+Two taxonomies carry a `purpose` the app reads: `units` and `storage`. Everything else has none,
+which is what tells the preferences screen to show a vocabulary without pretending to know what
+it means. See #94.

@@ -1,0 +1,12 @@
+{
+  "name": "kitchenai-tools",
+  "private": true,
+  "type": "module",
+  "description": "One-off scripts run by hand against a real project. Not part of any build.",
+  "scripts": {
+    "seed": "node seed.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

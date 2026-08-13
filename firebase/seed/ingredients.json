@@ -1,0 +1,86 @@
+{
+  "egg": {
+    "labels": { "en": "Egg", "es": "Huevo" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "piece",
+    "tags": { "food-groups": ["pantry-staple"], "allergens": ["egg"] }
+  },
+  "milk": {
+    "labels": { "en": "Milk", "es": "Leche" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "millilitre",
+    "tags": { "food-groups": ["dairy"], "allergens": ["lactose"] }
+  },
+  "butter": {
+    "labels": { "en": "Butter", "es": "Mantequilla" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["dairy"], "allergens": ["lactose"] }
+  },
+  "wheat-flour": {
+    "labels": { "en": "Wheat flour", "es": "Harina de trigo" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["grain"], "allergens": ["gluten"] }
+  },
+  "rice": {
+    "labels": { "en": "Rice", "es": "Arroz" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["grain"] }
+  },
+  "pasta": {
+    "labels": { "en": "Pasta", "es": "Pasta" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["grain"], "allergens": ["gluten"] }
+  },
+  "tomato": {
+    "labels": { "en": "Tomato", "es": "Tomate" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "piece",
+    "tags": { "food-groups": ["vegetable"] }
+  },
+  "onion": {
+    "labels": { "en": "Onion", "es": "Cebolla" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "piece",
+    "tags": { "food-groups": ["vegetable"] }
+  },
+  "garlic": {
+    "labels": { "en": "Garlic", "es": "Ajo" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "piece",
+    "tags": { "food-groups": ["vegetable"] }
+  },
+  "potato": {
+    "labels": { "en": "Potato", "es": "Patata" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["vegetable"] }
+  },
+  "chicken-breast": {
+    "labels": { "en": "Chicken breast", "es": "Pechuga de pollo" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["meat"] }
+  },
+  "olive-oil": {
+    "labels": { "en": "Olive oil", "es": "Aceite de oliva" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "millilitre",
+    "tags": { "food-groups": ["pantry-staple"] }
+  },
+  "salt": {
+    "labels": { "en": "Salt", "es": "Sal" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["pantry-staple"] }
+  },
+  "chickpeas": {
+    "labels": { "en": "Chickpeas", "es": "Garbanzos" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["pantry-staple"] }
+  }
+}
