@@ -49,8 +49,17 @@ default, overridable). The counter lives in `agentUsage`, which the rules deny t
 the function writes it through the Admin SDK, which bypasses them. A quota a caller can edit is
 not a quota.
 
-Each document carries `expiresAt`. Set a Firestore **TTL policy** on that field to clear the
-collection without a scheduled job.
+Each document carries `expiresAt`, and a Firestore **TTL policy** on that field is active, so
+the collection clears itself without a scheduled job. Deletion runs within 24 hours of expiry
+and is billed as a write — negligible at one document per account per day.
+
+To recreate it on another project:
+
+```bash
+curl -X PATCH -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
+  -H "x-goog-user-project: <project>" -H "Content-Type: application/json" -d '{"ttlConfig":{}}' \
+  "https://firestore.googleapis.com/v1/projects/<project>/databases/(default)/collectionGroups/agentUsage/fields/expiresAt?updateMask=ttlConfig"
+```
 
 ## App Check
 
