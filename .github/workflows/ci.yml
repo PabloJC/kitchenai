@@ -147,11 +147,11 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
         run: |
-          # Mind the path: the file lives in iosApp/, not iosApp/iosApp/. With the wrong
-          # one this step does nothing and the job still passes because the file was
-          # committed — green for the wrong reason.
+          # Mind the path: the file lives in iosApp/iosApp/, the folder the Xcode project
+          # synchronises into the target. One level up it is never copied into the bundle and
+          # the app dies on launch, which no job here would notice — none of them run it.
           if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
-            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/GoogleService-Info.plist
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/iosApp/GoogleService-Info.plist
           else
             echo "::error::The GOOGLE_SERVICE_INFO_PLIST secret is missing."
             exit 1
