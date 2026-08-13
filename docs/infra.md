@@ -52,7 +52,10 @@ repository: the action exchanges an OIDC token for an app token, and without the
 returns 401 before ever reaching Anthropic.
 
 Firebase config files are **never committed**; CI restores them from secrets. Mind the path:
-the iOS one lives at `iosApp/GoogleService-Info.plist`, not `iosApp/iosApp/`.
+the iOS one lives at `iosApp/iosApp/GoogleService-Info.plist`, inside the folder the Xcode
+project synchronises into the app target. A copy one level up, at `iosApp/`, is what the
+project used to carry and it never reached the bundle: the app built and then died on launch
+with `FirebaseApp.configure() could not find a valid GoogleService-Info.plist`.
 
 ### Labels
 

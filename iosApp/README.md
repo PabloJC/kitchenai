@@ -5,8 +5,10 @@ and `User Script Sandboxing = No`.
 
 ## Cloning from scratch
 
-`GoogleService-Info.plist` is not versioned. Download it from the Firebase console and drag
-it onto the `iosApp` target → *Copy items if needed* + *Add to target*.
+`GoogleService-Info.plist` is not versioned. Download it from the Firebase console and put it
+at `iosApp/iosApp/GoogleService-Info.plist` — inside the folder the project synchronises into
+the target, next to `Info.plist`. Anywhere else and the app builds, launches and dies on
+`FirebaseApp.configure()`, which is what happened until this was fixed.
 
 Firebase dependencies come through Swift Package Manager: *File → Add Package
 Dependencies…* → `https://github.com/firebase/firebase-ios-sdk` → *Up to Next Major* →
