@@ -29,9 +29,9 @@ import kotlinx.coroutines.launch
  * write back within the frame, and a second device's edit arrives the same way. Keeping a local
  * copy would look like an optimistic update and behave like a divergence.
  *
- * No `DispatcherProvider`: every dependency here already dispatches its own IO, everything below
- * runs on the main dispatcher of `viewModelScope`, and an eighth constructor parameter is a
- * detekt failure this screen has no way to earn back.
+ * Every coroutine it starts runs on the injected dispatcher, so the caches below are
+ * `MutableStateFlow` rather than plain fields: two collectors on a real pool write them and the
+ * public methods read them, and a `var` gives no visibility guarantee between the two.
  */
 class ShoppingViewModel(
     private val ensureDefaultShoppingList: EnsureDefaultShoppingList,
@@ -52,10 +52,11 @@ class ShoppingViewModel(
 
     // Null until the first emission. An empty list and a list nobody has sent yet look the same
     // on screen otherwise, and one of them is still loading.
-    private var items: List<ShoppingItem>? = null
-    private var catalogue: List<Ingredient> = emptyList()
-    private var resolver = LabelResolver()
-    private var undoable: ShoppingItem? = null
+    // Null means the listener has not emitted yet, which is what loading is; an empty list is an
+    // empty list.
+    private val items = MutableStateFlow<List<ShoppingItem>?>(null)
+    private val catalogue = MutableStateFlow<List<Ingredient>>(emptyList())
+    private val resolver = MutableStateFlow(LabelResolver())
 
     /**
      * Idempotent: a configuration change composes the screen again and must not open a second pair
@@ -69,7 +70,7 @@ class ShoppingViewModel(
         if (started) return
         started = true
         this.userId = userId
-        resolver = LabelResolver(languageTags = languageTags)
+        resolver.value = LabelResolver(languageTags = languageTags)
         _state.update { it.copy(listName = defaultListName) }
         watchCatalogue(languageTags)
         viewModelScope.launch(dispatchers.default) {
@@ -93,21 +94,16 @@ class ShoppingViewModel(
     }
 
     fun remove(itemId: ShoppingItemId) {
-        val item = items?.firstOrNull { it.id == itemId } ?: return
+        val item = items.value?.firstOrNull { it.id == itemId } ?: return
         edit { user, list ->
             val result = writes.remove(user, list, itemId)
-            if (result is AppResult.Success) {
-                undoable = item
-                _events.send(ShoppingEvent.ItemRemoved(label(item)))
-            }
+            if (result is AppResult.Success) _events.send(ShoppingEvent.ItemRemoved(label(item), item))
             result
         }
     }
 
     /** Adds the line back rather than resurrecting it: the removed document is gone on every device. */
-    fun undoRemove() {
-        val item = undoable ?: return
-        undoable = null
+    fun undoRemove(item: ShoppingItem) {
         edit { user, list ->
             writes.add(
                 userId = user,
@@ -164,7 +160,7 @@ class ShoppingViewModel(
     ) {
         viewModelScope.launch(dispatchers.default) {
             reads.items(userId, listId).collect { loaded ->
-                items = loaded
+                items.value = loaded
                 render()
             }
         }
@@ -176,8 +172,8 @@ class ShoppingViewModel(
     private fun watchCatalogue(languageTags: List<String>) {
         viewModelScope.launch(dispatchers.default) {
             reads.ingredients().collect { loaded ->
-                catalogue = loaded
-                resolver = LabelResolver(ingredients = loaded, languageTags = languageTags)
+                catalogue.value = loaded
+                resolver.value = LabelResolver(ingredients = loaded, languageTags = languageTags)
                 render()
             }
         }
@@ -187,13 +183,15 @@ class ShoppingViewModel(
     }
 
     private fun render() {
-        val loaded = items ?: return
+        val loaded = items.value ?: return
         val lines = loaded.map(::toUi)
         _state.update {
             it.copy(
                 unchecked = lines.filterNot(ShoppingItemUi::checked),
                 checked = lines.filter(ShoppingItemUi::checked),
                 isLoading = false,
+                // A listener that emits again has recovered: the banner it raised goes with it.
+                error = null,
             )
         }
     }
@@ -211,21 +209,21 @@ class ShoppingViewModel(
 
     /** A catalogue miss renders the identifier: ugly and honest beats a placeholder that hides it. */
     private fun label(item: ShoppingItem): String =
-        item.freeText ?: item.ingredient?.let { id -> resolver.label(id) ?: id.value }.orEmpty()
+        item.freeText ?: item.ingredient?.let { id -> resolver.value.label(id) ?: id.value }.orEmpty()
 
     private fun formatQuantity(quantity: Quantity): String {
         val whole = quantity.amount.toLong()
         val amount = if (quantity.amount == whole.toDouble()) whole.toString() else quantity.amount.toString()
-        val unit = quantity.unit?.let { ref -> resolver.label(ref) ?: ref.term.value }
+        val unit = quantity.unit?.let { ref -> resolver.value.label(ref) ?: ref.term.value }
         return listOfNotNull(amount, unit).joinToString(" ")
     }
 
     private fun suggest(query: String): List<IngredientSuggestion> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return emptyList()
-        return catalogue
+        return catalogue.value
             .mapNotNull { ingredient ->
-                resolver.label(ingredient.id)?.let { label -> IngredientSuggestion(ingredient.id, label) }
+                resolver.value.label(ingredient.id)?.let { label -> IngredientSuggestion(ingredient.id, label) }
             }.filter { suggestion -> suggestion.label.contains(trimmed, ignoreCase = true) }
             .take(SUGGESTION_LIMIT)
     }
@@ -248,7 +246,11 @@ class ShoppingViewModel(
 
 /** One-shot announcements. They never live in the state: a snackbar shown twice is a bug. */
 sealed interface ShoppingEvent {
-    data class ItemRemoved(val label: String) : ShoppingEvent
+    /** [restore] travels with the offer so a second removal cannot steal the first one's undo. */
+    data class ItemRemoved(
+        val label: String,
+        val restore: ShoppingItem,
+    ) : ShoppingEvent
 
     data class CheckedCleared(val count: Int) : ShoppingEvent
 }

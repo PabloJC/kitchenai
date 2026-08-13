@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
@@ -206,19 +207,16 @@ private fun ClearCheckedDialog(
 /** The undo lives on the snackbar and nowhere else: the state must not remember a removed line. */
 private suspend fun SnackbarHostState.announce(
     event: ShoppingEvent,
-    onUndo: () -> Unit,
+    onUndo: (ShoppingItem) -> Unit,
 ) {
-    val undone =
-        when (event) {
-            is ShoppingEvent.ItemRemoved ->
-                showSnackbar("${event.label} $REMOVED_SUFFIX", UNDO_LABEL) == SnackbarResult.ActionPerformed
-
-            is ShoppingEvent.CheckedCleared -> {
-                showSnackbar("${event.count} $CLEARED_SUFFIX")
-                false
-            }
+    when (event) {
+        is ShoppingEvent.ItemRemoved -> {
+            val undone = showSnackbar("${event.label} $REMOVED_SUFFIX", UNDO_LABEL) == SnackbarResult.ActionPerformed
+            if (undone) onUndo(event.restore)
         }
-    if (undone) onUndo()
+
+        is ShoppingEvent.CheckedCleared -> showSnackbar("${event.count} $CLEARED_SUFFIX")
+    }
 }
 
 // The screen owns its own wording; every component it draws takes each string as a parameter.

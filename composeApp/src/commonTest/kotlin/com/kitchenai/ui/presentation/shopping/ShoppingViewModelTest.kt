@@ -154,10 +154,15 @@ class ShoppingViewModelTest {
             items.emit(listOf(line("item-1", freeText = "written by hand")))
             advanceUntilIdle()
 
-            viewModel.remove(itemId("item-1"))
-            advanceUntilIdle()
-            viewModel.undoRemove()
-            advanceUntilIdle()
+            viewModel.events.test {
+                viewModel.remove(itemId("item-1"))
+                advanceUntilIdle()
+                val removed = awaitItem() as ShoppingEvent.ItemRemoved
+
+                viewModel.undoRemove(removed.restore)
+                advanceUntilIdle()
+                cancelAndIgnoreRemainingEvents()
+            }
 
             assertEquals(itemId("item-1"), items.removed)
             assertEquals("written by hand", items.upserts.single().single().freeText)
