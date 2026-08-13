@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.ui.presentation.pantry.PantryScreen
 import com.kitchenai.ui.presentation.profile.ProfileScreen
 import com.kitchenai.ui.presentation.shopping.ShoppingScreen
 
@@ -30,7 +31,7 @@ fun KitchenAiNavHost(
         startDestination = Route.Pantry,
         modifier = modifier,
     ) {
-        composable<Route.Pantry> { placeholder(userId) }
+        composable<Route.Pantry> { PantryScreen(userId) }
         composable<Route.ShoppingList> { ShoppingScreen(userId) }
         composable<Route.Suggestions> { placeholder(userId) }
         composable<Route.RecipeDetail> { placeholder(userId) }
