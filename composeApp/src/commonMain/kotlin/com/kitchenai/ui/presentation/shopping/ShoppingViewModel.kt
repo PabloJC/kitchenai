@@ -78,7 +78,7 @@ class ShoppingViewModel(
         viewModelScope.launch(dispatchers.default) {
             val labels = languageTags.take(1).associateWith { defaultListName }
             when (val list = ensureDefaultShoppingList(userId, labels)) {
-                is AppResult.Failure -> fail(list.error)
+                is AppResult.Failure -> fail(list.error, stillLoading = false)
                 is AppResult.Success -> {
                     listId.value = list.data
                     watchItems(userId, list.data)
@@ -170,7 +170,7 @@ class ShoppingViewModel(
             }
         }
         viewModelScope.launch(dispatchers.default) {
-            reads.items.errors(userId, listId).collect { error -> fail(error) }
+            reads.items.errors(userId, listId).collect { error -> fail(error, stillLoading = false) }
         }
     }
 
@@ -248,9 +248,18 @@ class ShoppingViewModel(
         return true
     }
 
-    // The lines already on screen stay there: a broken listener is not an emptied list.
-    private fun fail(error: AppError) {
-        _state.update { it.copy(isLoading = false, error = error.describe()) }
+    /**
+     * The lines already on screen stay there: a broken listener is not an emptied list.
+     *
+     * [stillLoading] is what the item listener has to say and the catalogue does not: a broken
+     * catalogue while the list itself has never emitted must not turn the screen into "nothing
+     * to buy", which is a different sentence from "this did not load".
+     */
+    private fun fail(
+        error: AppError,
+        stillLoading: Boolean = items.value == null,
+    ) {
+        _state.update { it.copy(isLoading = stillLoading, error = error.describe()) }
     }
 }
 

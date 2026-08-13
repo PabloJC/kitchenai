@@ -168,6 +168,19 @@ class ShoppingViewModelTest {
             assertEquals("written by hand", items.upserts.single().single().freeText)
         }
 
+    @Test
+    fun `a broken catalogue does not turn a list that never loaded into an empty one`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+
+            catalogue.errors.emit(AppError.Network())
+            advanceUntilIdle()
+
+            // "Nothing to buy" is a different sentence from "this has not loaded".
+            assertTrue(viewModel.state.value.isLoading)
+            assertEquals("No connection", viewModel.state.value.error)
+        }
+
     private fun TestScope.started(): ShoppingViewModel {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         var generated = 0
@@ -295,6 +308,7 @@ private class FakeShoppingItemPort : ShoppingItemPort {
 
 private class FakeIngredientPort : IngredientPort {
     private val stream = MutableSharedFlow<List<Ingredient>>(replay = 1)
+    val errors = MutableSharedFlow<AppError>()
 
     suspend fun emit(ingredients: List<Ingredient>) {
         stream.emit(ingredients)
@@ -302,7 +316,7 @@ private class FakeIngredientPort : IngredientPort {
 
     override fun observeIngredients(): Flow<List<Ingredient>> = stream
 
-    override fun ingredientErrors(): Flow<AppError> = emptyFlow()
+    override fun ingredientErrors(): Flow<AppError> = errors
 
     override suspend fun getIngredient(id: IngredientId): AppResult<Ingredient> =
         AppResult.Failure(AppError.NotFound("ingredient"))
