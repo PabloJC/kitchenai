@@ -20,4 +20,10 @@ object Dimens {
 
     /** Corner radius shared by cards and the swipe background, so the two line up. */
     val corner = 12.dp
+
+    /** Top-level containers — sheets and the outer cards — sit a step rounder than what is inside. */
+    val cornerLarge = 16.dp
+
+    /** Input fields stay squarer: a field that reads as a pill reads as a button. */
+    val cornerSmall = 8.dp
 }

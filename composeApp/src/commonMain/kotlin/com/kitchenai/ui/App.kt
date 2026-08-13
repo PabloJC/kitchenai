@@ -2,6 +2,11 @@ package com.kitchenai.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Kitchen
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -43,8 +48,8 @@ private fun PlaceholderScreen() {
 /** Recipe detail is reached from a suggestion, so it is not one of these. */
 private val tabs =
     listOf(
-        ShellDestination(Route.Pantry, "Pantry"),
-        ShellDestination(Route.ShoppingList, "Shopping"),
-        ShellDestination(Route.Suggestions, "Ideas"),
-        ShellDestination(Route.Profile, "Profile"),
+        ShellDestination(Route.Pantry, "Pantry", Icons.Outlined.Kitchen),
+        ShellDestination(Route.ShoppingList, "Shopping", Icons.Outlined.ShoppingCart),
+        ShellDestination(Route.Suggestions, "Ideas", Icons.AutoMirrored.Outlined.MenuBook),
+        ShellDestination(Route.Profile, "Profile", Icons.Outlined.Person),
     )
