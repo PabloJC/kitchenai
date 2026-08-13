@@ -5,6 +5,7 @@ import com.kitchenai.shared.data.remote.dto.TaxonomyDto
 import com.kitchenai.shared.data.remote.dto.TermDto
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
@@ -22,6 +23,32 @@ class TaxonomyMapperTest {
         val dto = TaxonomyDto(labels = mapOf("xx" to "Label"), defaultLanguageTag = "xx")
 
         assertEquals(AppResult.Success(Taxonomy(taxonomy, dto.labels, "xx")), dto.toDomain("t-1"))
+    }
+
+    @Test
+    fun `a declared purpose survives the round trip`() {
+        val dto = TaxonomyDto(labels = mapOf("xx" to "Label"), purpose = "STORAGE_LOCATIONS")
+
+        val decoded = dto.toDomain("t-1")
+
+        assertEquals(TaxonomyPurpose.STORAGE_LOCATIONS, (decoded as AppResult.Success).data.purpose)
+    }
+
+    @Test
+    fun `a purpose this version does not know is null rather than a failure`() {
+        // A newer catalogue must not break an older app: what it cannot place, it can still show.
+        val dto = TaxonomyDto(labels = mapOf("xx" to "Label"), purpose = "SOMETHING_LATER")
+
+        val decoded = dto.toDomain("t-1")
+
+        assertEquals(null, (decoded as AppResult.Success).data.purpose)
+    }
+
+    @Test
+    fun `a taxonomy with no purpose decodes as one the app only displays`() {
+        val decoded = TaxonomyDto(labels = mapOf("xx" to "Label")).toDomain("t-1")
+
+        assertEquals(null, (decoded as AppResult.Success).data.purpose)
     }
 
     @Test

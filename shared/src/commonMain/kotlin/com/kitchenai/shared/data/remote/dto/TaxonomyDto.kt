@@ -12,4 +12,6 @@ import kotlinx.serialization.Serializable
 data class TaxonomyDto(
     val labels: Map<String, String> = emptyMap(),
     val defaultLanguageTag: String? = null,
+    // What the app reads this vocabulary as, if anything. Absent for most of them.
+    val purpose: String? = null,
 )
