@@ -1,0 +1,74 @@
+{
+  "units": {
+    "labels": { "en": "Units", "es": "Unidades" },
+    "defaultLanguageTag": "en",
+    "purpose": "UNITS",
+    "terms": {
+      "gram": { "labels": { "en": "g", "es": "g" }, "order": 1 },
+      "kilogram": { "labels": { "en": "kg", "es": "kg" }, "order": 2 },
+      "millilitre": { "labels": { "en": "ml", "es": "ml" }, "order": 3 },
+      "litre": { "labels": { "en": "l", "es": "l" }, "order": 4 },
+      "piece": { "labels": { "en": "piece", "es": "unidad" }, "order": 5 },
+      "tablespoon": { "labels": { "en": "tbsp", "es": "cda" }, "order": 6 },
+      "teaspoon": { "labels": { "en": "tsp", "es": "cdta" }, "order": 7 }
+    }
+  },
+  "storage": {
+    "labels": { "en": "Where it is kept", "es": "Dónde se guarda" },
+    "defaultLanguageTag": "en",
+    "purpose": "STORAGE_LOCATIONS",
+    "terms": {
+      "fridge": { "labels": { "en": "Fridge", "es": "Nevera" }, "order": 1 },
+      "freezer": { "labels": { "en": "Freezer", "es": "Congelador" }, "order": 2 },
+      "cupboard": { "labels": { "en": "Cupboard", "es": "Despensa" }, "order": 3 },
+      "spice-rack": { "labels": { "en": "Spice rack", "es": "Especiero" }, "order": 4 }
+    }
+  },
+  "diets": {
+    "labels": { "en": "Diet", "es": "Dieta" },
+    "defaultLanguageTag": "en",
+    "terms": {
+      "vegetarian": { "labels": { "en": "Vegetarian", "es": "Vegetariana" }, "order": 1 },
+      "vegan": { "labels": { "en": "Vegan", "es": "Vegana" }, "order": 2 },
+      "pescatarian": { "labels": { "en": "Pescatarian", "es": "Pescetariana" }, "order": 3 },
+      "halal": { "labels": { "en": "Halal", "es": "Halal" }, "order": 4 },
+      "kosher": { "labels": { "en": "Kosher", "es": "Kosher" }, "order": 5 }
+    }
+  },
+  "allergens": {
+    "labels": { "en": "Allergens", "es": "Alérgenos" },
+    "defaultLanguageTag": "en",
+    "terms": {
+      "gluten": { "labels": { "en": "Gluten", "es": "Gluten" }, "order": 1 },
+      "lactose": { "labels": { "en": "Lactose", "es": "Lactosa" }, "order": 2 },
+      "nuts": { "labels": { "en": "Nuts", "es": "Frutos secos" }, "order": 3 },
+      "shellfish": { "labels": { "en": "Shellfish", "es": "Marisco" }, "order": 4 },
+      "egg": { "labels": { "en": "Egg", "es": "Huevo" }, "order": 5 },
+      "soy": { "labels": { "en": "Soy", "es": "Soja" }, "order": 6 }
+    }
+  },
+  "cuisines": {
+    "labels": { "en": "Cuisine", "es": "Cocina" },
+    "defaultLanguageTag": "en",
+    "terms": {
+      "mediterranean": { "labels": { "en": "Mediterranean", "es": "Mediterránea" }, "order": 1 },
+      "italian": { "labels": { "en": "Italian", "es": "Italiana" }, "order": 2 },
+      "mexican": { "labels": { "en": "Mexican", "es": "Mexicana" }, "order": 3 },
+      "indian": { "labels": { "en": "Indian", "es": "India" }, "order": 4 },
+      "japanese": { "labels": { "en": "Japanese", "es": "Japonesa" }, "order": 5 }
+    }
+  },
+  "food-groups": {
+    "labels": { "en": "Food group", "es": "Grupo de alimentos" },
+    "defaultLanguageTag": "en",
+    "terms": {
+      "vegetable": { "labels": { "en": "Vegetable", "es": "Verdura" }, "order": 1 },
+      "fruit": { "labels": { "en": "Fruit", "es": "Fruta" }, "order": 2 },
+      "dairy": { "labels": { "en": "Dairy", "es": "Lácteo" }, "order": 3 },
+      "meat": { "labels": { "en": "Meat", "es": "Carne" }, "order": 4 },
+      "fish": { "labels": { "en": "Fish", "es": "Pescado" }, "order": 5 },
+      "grain": { "labels": { "en": "Grain", "es": "Cereal" }, "order": 6 },
+      "pantry-staple": { "labels": { "en": "Store cupboard", "es": "Básico de despensa" }, "order": 7 }
+    }
+  }
+}

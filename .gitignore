@@ -21,14 +21,19 @@ DerivedData/
 iosApp/Pods/
 iosApp/*.xcodeproj/project.xcworkspace/
 
-# --- Firebase: NUNCA se commitean ---
+# --- Firebase: never committed ---
 androidApp/google-services.json
 iosApp/GoogleService-Info.plist
 iosApp/iosApp/GoogleService-Info.plist
 firebase-debug.log
 .firebase/
 
-# Firmas
+# Signing
 *.keystore
 *.jks
 keystore.properties
+
+# Node: the rules tests and the seeding script each install their own. No lock files either —
+# neither is part of a build, and firebase/tests has never carried one.
+node_modules/
+package-lock.json
