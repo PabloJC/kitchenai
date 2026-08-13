@@ -164,7 +164,9 @@ class PantryViewModelTest {
             viewModel.events.test {
                 viewModel.remove(row)
                 advanceUntilIdle()
-                assertEquals(PantryEvent.ItemRemoved(INGREDIENT_LABEL), awaitItem())
+                val removed = awaitItem() as PantryEvent.ItemRemoved
+                assertEquals(INGREDIENT_LABEL, removed.name)
+                assertEquals(itemId, removed.restore.id)
             }
             assertEquals(listOf(itemId), pantry.removed)
         }
@@ -175,10 +177,15 @@ class PantryViewModelTest {
             val viewModel = loadedViewModel()
             val row = viewModel.state.value.items.single()
 
-            viewModel.remove(row)
-            advanceUntilIdle()
-            viewModel.undoRemove()
-            advanceUntilIdle()
+            viewModel.events.test {
+                viewModel.remove(row)
+                advanceUntilIdle()
+                val removed = awaitItem() as PantryEvent.ItemRemoved
+
+                viewModel.undoRemove(removed.restore)
+                advanceUntilIdle()
+                cancelAndIgnoreRemainingEvents()
+            }
 
             assertEquals(itemId, pantry.upserted.single().id)
         }

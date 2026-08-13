@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.Freshness
+import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorState
@@ -128,16 +129,16 @@ private fun PantryRow(
 
 private suspend fun SnackbarHostState.announce(
     event: PantryEvent,
-    onUndo: () -> Unit,
+    onUndo: (PantryItem) -> Unit,
 ) {
-    val outcome =
-        when (event) {
-            is PantryEvent.ItemRemoved ->
-                showSnackbar(message = "$REMOVED_LABEL: ${event.name}", actionLabel = UNDO_LABEL)
-
-            is PantryEvent.SaveFailed -> showSnackbar(message = event.message)
+    when (event) {
+        is PantryEvent.ItemRemoved -> {
+            val outcome = showSnackbar(message = "$REMOVED_LABEL: ${event.name}", actionLabel = UNDO_LABEL)
+            if (outcome == SnackbarResult.ActionPerformed) onUndo(event.restore)
         }
-    if (outcome == SnackbarResult.ActionPerformed) onUndo()
+
+        is PantryEvent.SaveFailed -> showSnackbar(message = event.message)
+    }
 }
 
 /**

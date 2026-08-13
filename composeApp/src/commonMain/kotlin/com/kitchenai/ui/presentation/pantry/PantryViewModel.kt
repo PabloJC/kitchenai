@@ -60,7 +60,6 @@ class PantryViewModel(
     private var started = false
     private var user: UserId? = null
     private var languageTags: List<String> = emptyList()
-    private var lastRemoved: PantryItem? = null
 
     /** Idempotent: a configuration change composes the screen again, not a second set of listeners. */
     fun start(
@@ -110,23 +109,19 @@ class PantryViewModel(
         viewModelScope.launch(dispatchers.default) {
             // The row is captured before the write: undo restores it under its own id rather than
             // adding a second holding of the same ingredient.
-            val original = held.value?.firstOrNull { candidate -> candidate.id == item.id }
+            val original = held.value?.firstOrNull { candidate -> candidate.id == item.id } ?: return@launch
             when (val result = writes.remove(userId, item.id)) {
                 is AppResult.Failure -> result.reportFailure()
-                is AppResult.Success -> {
-                    lastRemoved = original
-                    _events.send(PantryEvent.ItemRemoved(item.name))
-                }
+                is AppResult.Success -> _events.send(PantryEvent.ItemRemoved(item.name, original))
             }
         }
     }
 
-    fun undoRemove() {
+    /** Takes the row to restore rather than remembering one: two quick removals do not race. */
+    fun undoRemove(item: PantryItem) {
         val userId = user ?: return
-        val original = lastRemoved ?: return
-        lastRemoved = null
         viewModelScope.launch(dispatchers.default) {
-            writes.update(userId, original).reportFailure()
+            writes.update(userId, item).reportFailure()
         }
     }
 
