@@ -14,6 +14,7 @@ by the agent reviewing pull requests.
 | `:composeApp` | `com.android.kotlin.multiplatform.library` | `presentation` (ViewModels, UiState, composables), navigation, design system. Package `com.kitchenai.ui` | `:shared` |
 | `:androidApp` | `com.android.application` | `MainActivity`, `Application`, manifest, resources and icons. Package `com.kitchenai.app`. **No logic** | `:composeApp`, `:shared` |
 | `iosApp` | — | Xcode wrapper, `FirebaseApp.configure()` | `ComposeApp` framework |
+| `functions` | — | TypeScript. The `suggestRecipes` callable: the only thing that talks to a model, and the only thing holding a credential to do it | nothing in the project |
 
 Since AGP 9 the KMP plugin is incompatible with `com.android.application` in the same
 module: that is why `:androidApp` exists and holds nothing but the entry point. Any PR that
@@ -86,7 +87,9 @@ request body.
 
 - `androidApp/google-services.json` and `iosApp/GoogleService-Info.plist` are **never**
   committed (they are in `.gitignore`). CI restores them from base64 secrets.
-- No keys, tokens or endpoints hardcoded in the source.
+- No keys, tokens or endpoints hardcoded in the source. The model call lives in `functions/`
+  precisely so no client ever holds one; a prompt or a provider name appearing in `:shared` or
+  `:composeApp` is a rejection.
 - Firestore rules live in `firebase/firestore.rules`, versioned and tested. No rule may be
   left as `allow read, write: if true`.
 - No PII (emails, locations, user content) in `println` or in Crashlytics.
