@@ -169,6 +169,40 @@ class ShoppingViewModelTest {
         }
 
     @Test
+    fun `each stream keeps its own error and clears only its own`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+
+            catalogue.errors.emit(AppError.Network())
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.state.value.error)
+
+            // An item emission is not the catalogue recovering, so the banner stays.
+            items.emit(listOf(line("item-1"), line("item-2")))
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.state.value.error)
+
+            catalogue.emit(emptyList())
+            advanceUntilIdle()
+            assertNull(viewModel.state.value.error)
+        }
+
+    @Test
+    fun `an item listener that fails before emitting says so instead of showing an empty list`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+
+            items.errors.emit(AppError.Unauthorized())
+            advanceUntilIdle()
+
+            val state = viewModel.state.value
+            assertEquals(false, state.isLoading)
+            assertTrue(state.failedToLoad)
+        }
+
+    @Test
     fun `a broken catalogue does not turn a list that never loaded into an empty one`() =
         runTest(dispatcher) {
             val viewModel = started()

@@ -60,6 +60,12 @@ class ShoppingViewModel(
     private val catalogue = MutableStateFlow<List<Ingredient>>(emptyList())
     private val resolver = MutableStateFlow(LabelResolver())
 
+    // One per source: a catalogue that recovers must not clear a still-broken item listener,
+    // and the item listener answering — with data or with a failure — is what ends loading.
+    private val itemsError = MutableStateFlow<String?>(null)
+    private val catalogueError = MutableStateFlow<String?>(null)
+    private val itemsAnswered = MutableStateFlow(false)
+
     /**
      * Idempotent: a configuration change composes the screen again and must not open a second pair
      * of listeners. [defaultListName] only reaches Firestore when there is no list yet.
@@ -78,7 +84,11 @@ class ShoppingViewModel(
         viewModelScope.launch(dispatchers.default) {
             val labels = languageTags.take(1).associateWith { defaultListName }
             when (val list = ensureDefaultShoppingList(userId, labels)) {
-                is AppResult.Failure -> fail(list.error, stillLoading = false)
+                is AppResult.Failure -> {
+                    itemsError.value = list.error.describe()
+                    itemsAnswered.value = true
+                    render()
+                }
                 is AppResult.Success -> {
                     listId.value = list.data
                     watchItems(userId, list.data)
@@ -166,11 +176,17 @@ class ShoppingViewModel(
         viewModelScope.launch(dispatchers.default) {
             reads.items(userId, listId).collect { loaded ->
                 items.value = loaded
+                itemsError.value = null
+                itemsAnswered.value = true
                 render()
             }
         }
         viewModelScope.launch(dispatchers.default) {
-            reads.items.errors(userId, listId).collect { error -> fail(error, stillLoading = false) }
+            reads.items.errors(userId, listId).collect { error ->
+                itemsError.value = error.describe()
+                itemsAnswered.value = true
+                render()
+            }
         }
     }
 
@@ -179,24 +195,32 @@ class ShoppingViewModel(
             reads.ingredients().collect { loaded ->
                 catalogue.value = loaded
                 resolver.value = LabelResolver(ingredients = loaded, languageTags = languageTags)
+                catalogueError.value = null
                 render()
             }
         }
         viewModelScope.launch(dispatchers.default) {
-            reads.ingredients.errors().collect { error -> fail(error) }
+            reads.ingredients.errors().collect { error ->
+                catalogueError.value = error.describe()
+                render()
+            }
         }
     }
 
+    /**
+     * The only place either stream reaches the state. `isLoading` is about the item listener
+     * alone: a broken catalogue leaves the list loading, and a failed item listener is answered,
+     * not loading, so the screen can say the list failed rather than that it is empty.
+     */
     private fun render() {
-        val loaded = items.value ?: return
-        val lines = loaded.map(::toUi)
+        val lines = items.value.orEmpty().map(::toUi)
         _state.update {
             it.copy(
                 unchecked = lines.filterNot(ShoppingItemUi::checked),
                 checked = lines.filter(ShoppingItemUi::checked),
-                isLoading = false,
-                // A listener that emits again has recovered: the banner it raised goes with it.
-                error = null,
+                isLoading = !itemsAnswered.value,
+                failedToLoad = itemsError.value != null && items.value == null,
+                error = itemsError.value ?: catalogueError.value,
             )
         }
     }
@@ -248,18 +272,9 @@ class ShoppingViewModel(
         return true
     }
 
-    /**
-     * The lines already on screen stay there: a broken listener is not an emptied list.
-     *
-     * [stillLoading] is what the item listener has to say and the catalogue does not: a broken
-     * catalogue while the list itself has never emitted must not turn the screen into "nothing
-     * to buy", which is a different sentence from "this did not load".
-     */
-    private fun fail(
-        error: AppError,
-        stillLoading: Boolean = items.value == null,
-    ) {
-        _state.update { it.copy(isLoading = stillLoading, error = error.describe()) }
+    /** A rejected write: the lines on screen are untouched and only the message changes. */
+    private fun fail(error: AppError) {
+        _state.update { it.copy(error = error.describe()) }
     }
 }
 

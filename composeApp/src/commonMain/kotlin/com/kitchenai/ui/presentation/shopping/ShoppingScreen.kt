@@ -77,6 +77,11 @@ fun ShoppingScreen(
 
             when {
                 state.isLoading -> LoadingState(Modifier.weight(1f))
+                // The banner above already carries the reason; this only avoids claiming the
+                // list is empty when it never loaded.
+                state.failedToLoad ->
+                    EmptyState(title = FAILED_TITLE, body = FAILED_BODY, modifier = Modifier.weight(1f))
+
                 state.unchecked.isEmpty() && state.checked.isEmpty() ->
                     EmptyState(title = EMPTY_TITLE, body = EMPTY_BODY, modifier = Modifier.weight(1f))
                 else ->
@@ -227,6 +232,8 @@ private const val CLEAR_LABEL = "Clear"
 private const val CANCEL_LABEL = "Cancel"
 private const val CLEAR_TITLE = "Clear what is in the cart?"
 private const val CLEAR_BODY = "The ticked lines are removed from the list on every device."
+private const val FAILED_TITLE = "The list did not load"
+private const val FAILED_BODY = "Check the message above and try again"
 private const val EMPTY_TITLE = "Nothing to buy"
 private const val EMPTY_BODY = "Add what you need and tick it off as you go."
 private const val REMOVED_SUFFIX = "removed"

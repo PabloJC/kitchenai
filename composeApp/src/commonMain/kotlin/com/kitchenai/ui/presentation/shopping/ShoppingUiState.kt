@@ -16,6 +16,8 @@ data class ShoppingUiState(
     val checked: List<ShoppingItemUi> = emptyList(),
     val draft: ShoppingDraftUi = ShoppingDraftUi(),
     val isLoading: Boolean = true,
+    // The list never arrived, which is a different screen from a list that arrived empty.
+    val failedToLoad: Boolean = false,
     val error: String? = null,
 )
 
