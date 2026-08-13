@@ -66,12 +66,9 @@ class ProfileViewModel(
     fun setServings(servings: Int) =
         edit { profile -> profile.copy(household = profile.household.copy(servings = servings)) }
 
-    /**
-     * A term selected for the first time binds at the softest strength: excluding a food is a
-     * decision the user makes, not one a single tap makes for them.
-     */
+    /** Which strength a first tap binds at is domain policy; this only asks for it. */
     fun toggleConstraint(term: TermRef) =
-        edit { profile -> toggleDietaryConstraint(profile, term, ConstraintStrength.PREFER) }
+        edit { profile -> toggleDietaryConstraint(profile, term, ConstraintStrength.SOFTEST) }
 
     fun cycleStrength(term: TermRef) = edit { profile -> profile.cycled(term) }
 
@@ -227,14 +224,6 @@ private fun sections(
         )
     }
 }
-
-/** The cycle a chip walks. It starts at the softest binding, so no tap lands on an exclusion. */
-private fun ConstraintStrength.next(): ConstraintStrength =
-    when (this) {
-        ConstraintStrength.PREFER -> ConstraintStrength.AVOID
-        ConstraintStrength.AVOID -> ConstraintStrength.EXCLUDE
-        ConstraintStrength.EXCLUDE -> ConstraintStrength.PREFER
-    }
 
 /** The cause is dropped on purpose: it can carry paths and identifiers, and this ends up on screen. */
 private fun AppError.toProfileError(): ProfileError =

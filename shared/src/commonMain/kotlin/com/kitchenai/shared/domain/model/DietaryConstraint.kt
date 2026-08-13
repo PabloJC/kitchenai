@@ -14,4 +14,21 @@ enum class ConstraintStrength {
     EXCLUDE,
     AVOID,
     PREFER,
+    ;
+
+    /**
+     * The next binding a repeated choice lands on. It wraps from the hardest back to the
+     * softest, and [SOFTEST] is where a term binds the first time: excluding a food is a
+     * decision the user makes deliberately, never one a single tap makes for them.
+     */
+    fun next(): ConstraintStrength =
+        when (this) {
+            PREFER -> AVOID
+            AVOID -> EXCLUDE
+            EXCLUDE -> PREFER
+        }
+
+    companion object {
+        val SOFTEST: ConstraintStrength = PREFER
+    }
 }
