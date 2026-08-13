@@ -3,6 +3,7 @@ package com.kitchenai.ui.presentation.shopping
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.ShoppingItem
@@ -22,6 +23,7 @@ import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItems
 import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItem
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemChecked
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -167,12 +169,19 @@ class ShoppingViewModelTest {
         val viewModel =
             ShoppingViewModel(
                 ensureDefaultShoppingList = EnsureDefaultShoppingList(lists, IdGenerator { "list-1" }, time),
-                observeShoppingItems = ObserveShoppingItems(items),
-                observeIngredients = ObserveIngredients(catalogue),
-                addShoppingItem = AddShoppingItem(items, IdGenerator { "added-${++generated}" }, time),
-                setShoppingItemChecked = SetShoppingItemChecked(items, time),
-                removeShoppingItem = RemoveShoppingItem(items),
-                clearCheckedItems = ClearCheckedItems(items),
+                reads =
+                    ShoppingReads(
+                        items = ObserveShoppingItems(items),
+                        ingredients = ObserveIngredients(catalogue),
+                    ),
+                writes =
+                    ShoppingWrites(
+                        add = AddShoppingItem(items, IdGenerator { "added-${++generated}" }, time),
+                        setChecked = SetShoppingItemChecked(items, time),
+                        remove = RemoveShoppingItem(items),
+                        clearChecked = ClearCheckedItems(items),
+                    ),
+                dispatchers = TestDispatcherProvider(dispatcher),
             )
         viewModel.start(userId, listOf("en"), "list")
         advanceUntilIdle()
@@ -292,4 +301,13 @@ private class FakeIngredientPort : IngredientPort {
 
     override suspend fun getIngredient(id: IngredientId): AppResult<Ingredient> =
         AppResult.Failure(AppError.NotFound("ingredient"))
+}
+
+/** Everything on the one test dispatcher, so `advanceUntilIdle` drives the whole ViewModel. */
+private class TestDispatcherProvider(
+    private val dispatcher: CoroutineDispatcher,
+) : DispatcherProvider {
+    override val main: CoroutineDispatcher get() = dispatcher
+    override val io: CoroutineDispatcher get() = dispatcher
+    override val default: CoroutineDispatcher get() = dispatcher
 }

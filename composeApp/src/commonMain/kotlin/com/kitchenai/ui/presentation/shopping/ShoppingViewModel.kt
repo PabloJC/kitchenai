@@ -4,19 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
-import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItem
-import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItems
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
-import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItems
-import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItem
-import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemChecked
 import com.kitchenai.ui.presentation.common.LabelResolver
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -40,12 +35,9 @@ import kotlinx.coroutines.launch
  */
 class ShoppingViewModel(
     private val ensureDefaultShoppingList: EnsureDefaultShoppingList,
-    private val observeShoppingItems: ObserveShoppingItems,
-    private val observeIngredients: ObserveIngredients,
-    private val addShoppingItem: AddShoppingItem,
-    private val setShoppingItemChecked: SetShoppingItemChecked,
-    private val removeShoppingItem: RemoveShoppingItem,
-    private val clearCheckedItems: ClearCheckedItems,
+    private val reads: ShoppingReads,
+    private val writes: ShoppingWrites,
+    private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ShoppingUiState())
     val state: StateFlow<ShoppingUiState> = _state.asStateFlow()
@@ -80,7 +72,7 @@ class ShoppingViewModel(
         resolver = LabelResolver(languageTags = languageTags)
         _state.update { it.copy(listName = defaultListName) }
         watchCatalogue(languageTags)
-        viewModelScope.launch {
+        viewModelScope.launch(dispatchers.default) {
             val labels = languageTags.take(1).associateWith { defaultListName }
             when (val list = ensureDefaultShoppingList(userId, labels)) {
                 is AppResult.Failure -> fail(list.error)
@@ -97,13 +89,13 @@ class ShoppingViewModel(
         itemId: ShoppingItemId,
         checked: Boolean,
     ) {
-        edit { user, list -> setShoppingItemChecked(user, list, itemId, checked) }
+        edit { user, list -> writes.setChecked(user, list, itemId, checked) }
     }
 
     fun remove(itemId: ShoppingItemId) {
         val item = items?.firstOrNull { it.id == itemId } ?: return
         edit { user, list ->
-            val result = removeShoppingItem(user, list, itemId)
+            val result = writes.remove(user, list, itemId)
             if (result is AppResult.Success) {
                 undoable = item
                 _events.send(ShoppingEvent.ItemRemoved(label(item)))
@@ -117,7 +109,7 @@ class ShoppingViewModel(
         val item = undoable ?: return
         undoable = null
         edit { user, list ->
-            addShoppingItem(
+            writes.add(
                 userId = user,
                 listId = list,
                 ingredient = item.ingredient,
@@ -131,7 +123,7 @@ class ShoppingViewModel(
     fun clearChecked() {
         val count = _state.value.checked.size
         edit { user, list ->
-            val result = clearCheckedItems(user, list)
+            val result = writes.clearChecked(user, list)
             if (result is AppResult.Success) _events.send(ShoppingEvent.CheckedCleared(count))
             result
         }
@@ -153,7 +145,7 @@ class ShoppingViewModel(
         if (picked == null && text.isEmpty()) return
         _state.update { it.copy(draft = ShoppingDraftUi()) }
         edit { user, list ->
-            addShoppingItem(
+            writes.add(
                 userId = user,
                 listId = list,
                 ingredient = picked?.id,
@@ -170,27 +162,27 @@ class ShoppingViewModel(
         userId: UserId,
         listId: ShoppingListId,
     ) {
-        viewModelScope.launch {
-            observeShoppingItems(userId, listId).collect { loaded ->
+        viewModelScope.launch(dispatchers.default) {
+            reads.items(userId, listId).collect { loaded ->
                 items = loaded
                 render()
             }
         }
-        viewModelScope.launch {
-            observeShoppingItems.errors(userId, listId).collect { error -> fail(error) }
+        viewModelScope.launch(dispatchers.default) {
+            reads.items.errors(userId, listId).collect { error -> fail(error) }
         }
     }
 
     private fun watchCatalogue(languageTags: List<String>) {
-        viewModelScope.launch {
-            observeIngredients().collect { loaded ->
+        viewModelScope.launch(dispatchers.default) {
+            reads.ingredients().collect { loaded ->
                 catalogue = loaded
                 resolver = LabelResolver(ingredients = loaded, languageTags = languageTags)
                 render()
             }
         }
-        viewModelScope.launch {
-            observeIngredients.errors().collect { error -> fail(error) }
+        viewModelScope.launch(dispatchers.default) {
+            reads.ingredients.errors().collect { error -> fail(error) }
         }
     }
 
@@ -242,7 +234,7 @@ class ShoppingViewModel(
     private fun edit(block: suspend (UserId, ShoppingListId) -> AppResult<*>) {
         val user = userId ?: return
         val list = listId ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(dispatchers.default) {
             val result = block(user, list)
             if (result is AppResult.Failure) fail(result.error)
         }
