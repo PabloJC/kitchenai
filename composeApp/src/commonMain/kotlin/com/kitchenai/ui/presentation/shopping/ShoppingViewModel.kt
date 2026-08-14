@@ -325,6 +325,7 @@ private const val SUGGESTION_LIMIT = 6
 private fun AppError.describe(): String =
     when (this) {
         is AppError.Network -> "No connection"
+        is AppError.Timeout -> "That took too long. Try again."
         is AppError.Unauthorized -> "This account is not allowed to read this list"
         is AppError.NotFound -> "Cannot find $resource"
         is AppError.Validation -> "Invalid $field: $reason"

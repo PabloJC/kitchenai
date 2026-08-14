@@ -149,6 +149,7 @@ private fun RecipeIngredient.name(resolver: LabelResolver): String {
 private fun AppError.describe(): String =
     when (this) {
         is AppError.Network -> "No connection"
+        is AppError.Timeout -> "That took too long. Try again."
         is AppError.Unauthorized -> "This app could not prove who it is, so suggestions are unavailable"
         is AppError.NotFound -> "Cannot find $resource"
         is AppError.Validation -> "Invalid $field: $reason"

@@ -273,6 +273,7 @@ private fun RecipeIngredient.toUi(resolver: LabelResolver): IngredientLineUi =
 private fun AppError.describe(validation: ((AppError.Validation) -> String)? = null): String =
     when (this) {
         is AppError.Network -> "No connection"
+        is AppError.Timeout -> "That took too long. Try again."
         is AppError.Unauthorized -> "This account is not allowed to do that"
         is AppError.NotFound -> "Cannot find $resource"
         is AppError.Validation -> validation?.invoke(this) ?: "Invalid $field: $reason"

@@ -13,6 +13,13 @@ sealed interface AppResult<out T> {
 sealed class AppError(open val cause: Throwable? = null) {
     data class Network(override val cause: Throwable? = null) : AppError(cause)
 
+    /**
+     * The call was reachable and did not answer in time. Separate from [Network] because the
+     * user's connection is not at fault and retrying is the fix — the one thing "no connection"
+     * does not tell them.
+     */
+    data class Timeout(override val cause: Throwable? = null) : AppError(cause)
+
     data class Unauthorized(override val cause: Throwable? = null) : AppError(cause)
 
     data class NotFound(val resource: String) : AppError()

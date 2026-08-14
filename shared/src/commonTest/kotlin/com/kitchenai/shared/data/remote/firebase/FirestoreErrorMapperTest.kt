@@ -27,8 +27,9 @@ class FirestoreErrorMapperTest {
     }
 
     @Test
-    fun `maps DEADLINE_EXCEEDED to Network`() {
-        assertEquals(AppError.Network(cause), appErrorForCode("DEADLINE_EXCEEDED", cause))
+    fun `maps DEADLINE_EXCEEDED to Timeout rather than to Network`() {
+        // A call that timed out reached the network, so it must not come back as one that did not.
+        assertEquals(AppError.Timeout(cause), appErrorForCode("DEADLINE_EXCEEDED", cause))
     }
 
     @Test

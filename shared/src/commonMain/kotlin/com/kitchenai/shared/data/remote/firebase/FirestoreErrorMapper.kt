@@ -34,6 +34,10 @@ fun Throwable.toAppError(): AppError {
  * `RESOURCE_EXHAUSTED` deliberately falls through to [AppError.Unknown]. #51 asked for
  * [AppError.Network] because it is retryable, but every screen renders that as "No connection",
  * and a rate-limited user has a connection. "Something went wrong" is the true statement.
+ *
+ * `DEADLINE_EXCEEDED` was mapped to [AppError.Network] for the same reason and with the same
+ * fault: a call that timed out reached the network. It has its own case now, because unlike
+ * `RESOURCE_EXHAUSTED` there is a useful thing to tell the user, and it is "try again".
  */
 internal fun appErrorForCode(
     code: String,
@@ -42,7 +46,8 @@ internal fun appErrorForCode(
 ): AppError =
     when (code) {
         "PERMISSION_DENIED", "UNAUTHENTICATED" -> AppError.Unauthorized(cause)
-        "UNAVAILABLE", "DEADLINE_EXCEEDED" -> AppError.Network(cause)
+        "UNAVAILABLE" -> AppError.Network(cause)
+        "DEADLINE_EXCEEDED" -> AppError.Timeout(cause)
         "NOT_FOUND" -> AppError.NotFound(resource)
         else -> AppError.Unknown(cause)
     }

@@ -62,7 +62,8 @@ class CallableFunctionRecipeAgentTest {
                 "UNAUTHENTICATED" to AppError.Unauthorized::class,
                 "PERMISSION_DENIED" to AppError.Unauthorized::class,
                 "UNAVAILABLE" to AppError.Network::class,
-                "DEADLINE_EXCEEDED" to AppError.Network::class,
+                // A cold start is the likeliest one of these, and the user's connection is fine.
+                "DEADLINE_EXCEEDED" to AppError.Timeout::class,
                 // Retryable, but not a connection problem, and Network renders as "No connection".
                 "RESOURCE_EXHAUSTED" to AppError.Unknown::class,
                 "INTERNAL" to AppError.Unknown::class,

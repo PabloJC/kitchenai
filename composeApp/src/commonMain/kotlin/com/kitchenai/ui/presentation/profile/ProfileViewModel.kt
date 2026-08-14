@@ -258,6 +258,7 @@ private fun sections(
 private fun AppError.toProfileError(): ProfileError =
     when (this) {
         is AppError.Network -> ProfileError(null, "No connection")
+        is AppError.Timeout -> ProfileError(null, "That took too long. Try again.")
         is AppError.Unauthorized -> ProfileError(null, "This account is not allowed to read its own data")
         is AppError.NotFound -> ProfileError(null, "Cannot find $resource")
         is AppError.Validation -> ProfileError(field, reason)

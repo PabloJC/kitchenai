@@ -138,6 +138,21 @@ class SuggestionsViewModelTest {
         }
 
     @Test
+    fun `a timeout does not blame the connection and says retrying is the fix`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Failure(AppError.Timeout())
+            val viewModel = started()
+
+            viewModel.generate()
+            advanceUntilIdle()
+
+            // A cold start is the likeliest cause here, and the connection is not at fault.
+            val message = viewModel.state.value.error.orEmpty()
+            assertFalse(message.contains("connection"), message)
+            assertTrue(message.contains("again"), message)
+        }
+
+    @Test
     fun `a network failure says so`() =
         runTest(dispatcher) {
             agent.answer = AppResult.Failure(AppError.Network())
