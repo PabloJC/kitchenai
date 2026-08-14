@@ -11,6 +11,8 @@ import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.RecipeIngredient
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
+import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
@@ -42,6 +44,7 @@ class RecipeDetailViewModel(
     val events: Flow<RecipeDetailEvent> = eventChannel.receiveAsFlow()
 
     private val names = MutableStateFlow<List<Ingredient>>(emptyList())
+    private val units = MutableStateFlow<List<Term>>(emptyList())
     private var recipe: Recipe? = null
     private var user: UserId? = null
     private var id: RecipeId? = null
@@ -61,7 +64,27 @@ class RecipeDetailViewModel(
                 recipe?.let { held -> render(held, currentMatch) }
             }
         }
+        watchUnits()
         load(recipeId, servings = null)
+    }
+
+    /**
+     * The unit vocabulary, which the catalogue names rather than this app: "200" is not a
+     * quantity, and the taxonomy that holds units is the one that declares that purpose.
+     */
+    private fun watchUnits() {
+        viewModelScope.launch(dispatchers.default) {
+            reads.taxonomies().collect { published ->
+                published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
+                    launch {
+                        reads.taxonomy(unit.id).collect { terms ->
+                            units.value = terms
+                            recipe?.let { held -> render(held, currentMatch) }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /** Re-scales and re-matches together; neither is useful without the other. */
@@ -139,7 +162,7 @@ class RecipeDetailViewModel(
         match: PantryMatch?,
         servings: Int = internalState.value.servings,
     ) {
-        val resolver = LabelResolver(ingredients = names.value)
+        val resolver = LabelResolver(terms = units.value, ingredients = names.value)
         internalState.update { current ->
             current.copy(
                 title = found.title,

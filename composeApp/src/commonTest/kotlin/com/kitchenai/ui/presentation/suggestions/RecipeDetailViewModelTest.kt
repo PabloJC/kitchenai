@@ -17,6 +17,8 @@ import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItems
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.recipe.CookRecipe
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeById
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantry
@@ -28,6 +30,7 @@ import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
+import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -215,6 +218,7 @@ class RecipeDetailViewModelTest {
         )
 
     private val cache = SuggestionCache()
+    private val taxonomies = FakeTaxonomyPort()
     private val items = FakeShoppingItemPort()
     private val lists = FakeShoppingListPort()
 
@@ -230,6 +234,8 @@ class RecipeDetailViewModelTest {
                 cache = cache,
                 match = MatchRecipeAgainstPantry(recipePort, pantryPort, time),
                 ingredients = ObserveIngredients(FakeIngredientPort()),
+                taxonomies = ObserveTaxonomies(taxonomies),
+                taxonomy = ObserveTaxonomy(taxonomies),
             )
         val writes =
             RecipeDetailWrites(

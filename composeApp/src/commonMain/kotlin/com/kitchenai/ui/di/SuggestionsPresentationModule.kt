@@ -14,7 +14,7 @@ val suggestionsPresentationModule: Module =
         // A single: the two screens have to see the same generation.
         single { SuggestionCache() }
         viewModel { SuggestionsViewModel(get(), get(), get(), get()) }
-        factory { RecipeDetailReads(get(), get(), get(), get()) }
+        factory { RecipeDetailReads(get(), get(), get(), get(), get(), get()) }
         factory { RecipeDetailWrites(get(), get(), get(), get()) }
         viewModel { RecipeDetailViewModel(get(), get(), get()) }
     }
