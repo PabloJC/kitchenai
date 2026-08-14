@@ -17,6 +17,7 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -150,29 +152,65 @@ class RecipeDetailViewModel(
             writes.cook(userId, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
         }
 
+    /**
+     * One match at a time, whoever asked for it. A slower earlier read landing last would put
+     * the buckets back to a count the stepper has already left — the same disagreement the
+     * servings override exists to prevent — and the stepper is not gated while a write runs, so
+     * a tap really can overlap the refresh after a cook.
+     */
+    private fun matching(block: suspend () -> Unit) {
+        // Swapped atomically rather than cancel-then-assign. A stepper tap arrives on the main
+        // thread and the refresh after a cook on the pool, so two callers really can interleave:
+        // read-cancel-assign twice over would leave one of the two jobs owned by nobody and
+        // running anyway, which is the double flight this exists to prevent.
+        val next = viewModelScope.launch(dispatchers.default, CoroutineStart.LAZY) { block() }
+        loading.getAndUpdate { next }?.cancel()
+        // Started only once it is the one on record. A job cancelled by a later swap before it
+        // gets here never runs at all.
+        next.start()
+    }
+
     private fun load(
         recipeId: RecipeId,
         servings: Int?,
     ) {
         val userId = user ?: return
-        // One load at a time. Each carries the servings it was started for, so a slower earlier
-        // read landing last would put the buckets back to a count the stepper has already left —
-        // the same disagreement the servings override exists to prevent.
-        loading.value?.cancel()
-        loading.value =
-            viewModelScope.launch(dispatchers.default) {
-                // The cache first: a generated dish was never written anywhere, so the repository
-                // would answer NotFound for the only kind of recipe this screen is reached with.
-                val cached = reads.cache[recipeId]
-                if (cached != null) {
-                    matched(userId, cached, servings)
-                    return@launch
-                }
-                when (val found = reads.recipe(recipeId)) {
-                    is AppResult.Failure -> failed(found.error)
-                    is AppResult.Success -> matched(userId, found.data, servings)
-                }
+        matching {
+            // The cache first: a generated dish was never written anywhere, so the repository
+            // would answer NotFound for the only kind of recipe this screen is reached with.
+            val cached = reads.cache[recipeId]
+            if (cached != null) {
+                matched(userId, cached, servings)
+                return@matching
             }
+            when (val found = reads.recipe(recipeId)) {
+                is AppResult.Failure -> failed(found.error)
+                is AppResult.Success -> matched(userId, found.data, servings)
+            }
+        }
+    }
+
+    /**
+     * The buckets after a cook, from the recipe in hand. Never by id: a generated dish may have
+     * left the cache by now, and the repository would answer NotFound for a cook that just
+     * succeeded.
+     *
+     * Reads the servings when it runs rather than when it was queued, so a stepper tap that
+     * overlapped the cook is answered for rather than overwritten.
+     *
+     * Silent when the re-match fails. The pantry has already changed and cannot be put back, so
+     * a stale bucket is a smaller lie than telling somebody their cook did not happen.
+     */
+    private fun refreshMatch(userId: UserId) {
+        val held = recipe.value ?: return
+        matching {
+            val servings = internalState.value.servings
+            val match = reads.match(userId, held, servings)
+            if (match is AppResult.Success) {
+                currentMatch.value = match.data
+                render(held, match.data, servings)
+            }
+        }
     }
 
     private suspend fun matched(
@@ -243,7 +281,7 @@ class RecipeDetailViewModel(
                     if (outcome.data is RecipeDetailEvent.Saved) internalState.update { it.copy(isSaved = true) }
                     announce(outcome.data)
                     // Cooking changed the pantry, so the buckets beside it are now stale.
-                    if (outcome.data is RecipeDetailEvent.Cooked) id?.let { load(it, internalState.value.servings) }
+                    if (outcome.data is RecipeDetailEvent.Cooked) refreshMatch(userId)
                 }
             }
             internalState.update { it.copy(isWorking = false) }

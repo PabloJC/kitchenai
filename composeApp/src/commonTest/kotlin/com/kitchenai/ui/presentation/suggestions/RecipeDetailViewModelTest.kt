@@ -183,6 +183,63 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
+    fun `a cook that worked is never followed by a failure`() =
+        runTest(dispatcher) {
+            // Enough for one cook and not for the next, so the buckets have to move afterwards.
+            cache.put(listOf(dish))
+            val pantry = FakePantryPort(listOf(holding(350.0)))
+            val viewModel =
+                started(
+                    pantry = listOf(holding(350.0)),
+                    pantryPort = pantry,
+                    recipePort = FakeRecipePort(catalogue = emptyList()),
+                )
+            advanceUntilIdle()
+            val seen = mutableListOf<RecipeDetailEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            // A new generation replaces the cache while this screen is still open, so the dish
+            // this ViewModel is showing exists nowhere any longer.
+            cache.put(emptyList())
+            viewModel.cook()
+            advanceUntilIdle()
+            collector.cancel()
+
+            assertEquals(listOf<RecipeDetailEvent>(RecipeDetailEvent.Cooked), seen)
+            assertEquals(150.0, pantry.held.single().quantity.amount)
+            // And the buckets still refreshed: what is left no longer covers another serving.
+            assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
+        }
+
+    @Test
+    fun `a stepper tap during a cook is answered for rather than overwritten`() =
+        runTest(dispatcher) {
+            cache.put(listOf(dish))
+            val pantry = FakePantryPort(listOf(holding(500.0)))
+            val viewModel =
+                started(
+                    pantry = listOf(holding(500.0)),
+                    pantryPort = pantry,
+                    recipePort = FakeRecipePort(catalogue = emptyList()),
+                )
+            advanceUntilIdle()
+
+            // The stepper is not gated while a write runs, so the tap and the post-cook refresh
+            // are genuinely in flight together.
+            viewModel.cook()
+            viewModel.setServings(4)
+            advanceUntilIdle()
+
+            // 300 left after cooking two servings, and four servings need 400.
+            assertEquals(4, viewModel.state.value.servings)
+            assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
+            // The refresh and the tap share one flight, so the superseded match never reaches
+            // the pantry. Outside it there is a fifth read: two matches running unmanaged, with
+            // whichever answered last deciding what the screen shows.
+            assertEquals(4, pantry.reads)
+        }
+
+    @Test
     fun `saving reports itself once and disables the button`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort(catalogue = listOf(dish))
