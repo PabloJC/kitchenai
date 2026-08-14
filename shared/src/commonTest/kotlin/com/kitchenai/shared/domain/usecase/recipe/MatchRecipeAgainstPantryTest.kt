@@ -75,6 +75,29 @@ class MatchRecipeAgainstPantryTest {
             assertTrue(result is AppResult.Failure)
         }
 
+    @Test
+    fun `a doubled serving count needs more than the recipe's own`() =
+        runTest {
+            // Exactly enough for the recipe as written, and so not enough for twice it.
+            val useCase = matcher(pantry = listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit))))
+
+            assertEquals(1f, useCase(user, stored.id).unwrap().coverage)
+            assertEquals(0f, useCase(user, stored.id, servings = stored.servings * 2).unwrap().coverage)
+        }
+
+    @Test
+    fun `an override the recipe cannot scale to fails without reading the pantry`() =
+        runTest {
+            val pantry = FakePantryPort(readError = AppError.Network())
+            val recipes = FakeRecipePort(catalogue = listOf(stored))
+            val useCase = MatchRecipeAgainstPantry(recipes, pantry, TimeProvider { now })
+
+            // Network is what the pantry would answer; a validation failure proves it was never asked.
+            val error = (useCase(user, stored.id, servings = 0) as AppResult.Failure).error
+
+            assertTrue(error is AppError.Validation)
+        }
+
     private fun matcher(pantry: List<PantryItem>): MatchRecipeAgainstPantry =
         MatchRecipeAgainstPantry(
             FakeRecipePort(catalogue = listOf(stored)),

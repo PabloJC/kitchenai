@@ -18,3 +18,15 @@ fun parseAmount(input: String): Double? {
     if (!AmountPattern.matches(trimmed)) return null
     return trimmed.replace(',', '.').toDoubleOrNull()
 }
+
+/**
+ * An amount beside its unit, with the trailing `.0` dropped: "2 pieces", never "2.0 pieces".
+ * A unit the catalogue could not name is left out rather than shown as an identifier.
+ */
+fun formatQuantity(
+    amount: Double,
+    unitLabel: String?,
+): String = listOfNotNull(amount.trimmed(), unitLabel).joinToString(" ")
+
+/** A whole number keeps no fraction: nobody writes "3.0 onions". */
+private fun Double.trimmed(): String = if (this == toLong().toDouble()) toLong().toString() else toString()

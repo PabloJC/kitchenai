@@ -3,18 +3,12 @@ package com.kitchenai.ui.presentation.shopping
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
-import com.kitchenai.shared.domain.model.ShoppingList
-import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.IngredientPort
-import com.kitchenai.shared.domain.port.ShoppingItemPort
-import com.kitchenai.shared.domain.port.ShoppingListPort
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
 import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItem
@@ -23,12 +17,12 @@ import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItems
 import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItem
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemChecked
-import kotlinx.coroutines.CoroutineDispatcher
+import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
+import com.kitchenai.ui.presentation.common.FakeShoppingListPort
+import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -262,7 +256,6 @@ class ShoppingViewModelTest {
 }
 
 private val userId = unwrap(UserId.of("user-1"))
-private val listId = unwrap(ShoppingListId.of("list-1"))
 private val ingredientId = unwrap(IngredientId.of("ing-1"))
 
 private fun itemId(raw: String): ShoppingItemId = unwrap(ShoppingItemId.of(raw))
@@ -285,103 +278,4 @@ private fun line(
         updatedAt = Instant.fromEpochSeconds(0),
     )
 
-/** The list already exists, which is the state the screen opens in: the session gate created it. */
-private class FakeShoppingListPort : ShoppingListPort {
-    override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = emptyFlow()
-
-    override fun listErrors(userId: UserId): Flow<AppError> = emptyFlow()
-
-    override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> =
-        AppResult.Success(listOf(ShoppingList(listId, userId, emptyMap(), Instant.fromEpochSeconds(0))))
-
-    override suspend fun upsertList(
-        userId: UserId,
-        list: ShoppingList,
-    ): AppResult<Unit> = AppResult.Success(Unit)
-}
-
-/**
- * Writes are recorded and never echoed: what the ViewModel renders has to come from the stream,
- * so a test that wrote back would hide exactly the bug this screen can have.
- */
-private class FakeShoppingItemPort : ShoppingItemPort {
-    private val stream = MutableSharedFlow<List<ShoppingItem>>(replay = 1)
-    private var current: List<ShoppingItem> = emptyList()
-
-    val errors = MutableSharedFlow<AppError>()
-    val upserts = mutableListOf<List<ShoppingItem>>()
-    var upsertResult: AppResult<Unit> = AppResult.Success(Unit)
-    var removed: ShoppingItemId? = null
-    var clears = 0
-
-    suspend fun emit(items: List<ShoppingItem>) {
-        current = items
-        stream.emit(items)
-    }
-
-    override fun observeItems(
-        userId: UserId,
-        listId: ShoppingListId,
-    ): Flow<List<ShoppingItem>> = stream
-
-    override fun itemErrors(
-        userId: UserId,
-        listId: ShoppingListId,
-    ): Flow<AppError> = errors
-
-    override suspend fun getItems(
-        userId: UserId,
-        listId: ShoppingListId,
-    ): AppResult<List<ShoppingItem>> = AppResult.Success(current)
-
-    override suspend fun upsertItems(
-        userId: UserId,
-        listId: ShoppingListId,
-        items: List<ShoppingItem>,
-    ): AppResult<Unit> {
-        upserts += items
-        return upsertResult
-    }
-
-    override suspend fun removeItem(
-        userId: UserId,
-        listId: ShoppingListId,
-        itemId: ShoppingItemId,
-    ): AppResult<Unit> {
-        removed = itemId
-        return AppResult.Success(Unit)
-    }
-
-    override suspend fun removeCheckedItems(
-        userId: UserId,
-        listId: ShoppingListId,
-    ): AppResult<Unit> {
-        clears++
-        return AppResult.Success(Unit)
-    }
-}
-
-private class FakeIngredientPort : IngredientPort {
-    private val stream = MutableSharedFlow<List<Ingredient>>(replay = 1)
-    val errors = MutableSharedFlow<AppError>()
-
-    suspend fun emit(ingredients: List<Ingredient>) {
-        stream.emit(ingredients)
-    }
-
-    override fun observeIngredients(): Flow<List<Ingredient>> = stream
-
-    override fun ingredientErrors(): Flow<AppError> = errors
-
-    override suspend fun getIngredient(id: IngredientId): AppResult<Ingredient> =
-        AppResult.Failure(AppError.NotFound("ingredient"))
-}
-
 /** Everything on the one test dispatcher, so `advanceUntilIdle` drives the whole ViewModel. */
-private class TestDispatcherProvider(
-    private val dispatcher: CoroutineDispatcher,
-) : DispatcherProvider {
-    override val main: CoroutineDispatcher get() = dispatcher
-    override val io: CoroutineDispatcher get() = dispatcher
-    override val default: CoroutineDispatcher get() = dispatcher
-}

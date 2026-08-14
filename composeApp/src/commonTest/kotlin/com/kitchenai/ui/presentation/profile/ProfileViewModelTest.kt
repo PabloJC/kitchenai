@@ -2,7 +2,6 @@ package com.kitchenai.ui.presentation.profile
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
@@ -20,7 +19,7 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraint
-import kotlinx.coroutines.CoroutineDispatcher
+import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -392,14 +391,6 @@ private fun termRef(
 ): TermRef = TermRef(taxonomyId(taxonomy), unwrap(TermId.of(term)))
 
 private fun <T> unwrap(result: AppResult<T>): T = (result as AppResult.Success).data
-
-private class TestDispatcherProvider(
-    private val dispatcher: CoroutineDispatcher,
-) : DispatcherProvider {
-    override val main: CoroutineDispatcher get() = dispatcher
-    override val io: CoroutineDispatcher get() = dispatcher
-    override val default: CoroutineDispatcher get() = dispatcher
-}
 
 private class FakeUserProfilePort : UserProfilePort {
     val profiles = MutableSharedFlow<UserProfile>(replay = 1)

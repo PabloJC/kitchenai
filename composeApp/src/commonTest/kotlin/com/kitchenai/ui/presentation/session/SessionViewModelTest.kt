@@ -3,7 +3,6 @@ package com.kitchenai.ui.presentation.session
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.Taxonomy
@@ -21,6 +20,7 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.session.EnsureSession
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
+import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -225,15 +225,6 @@ class SessionViewModelTest {
 
 private val userId = (UserId.of("user-1") as AppResult.Success).data
 private const val UNAUTHORIZED_MESSAGE = "This account is not allowed to read its own data"
-
-private class TestDispatcherProvider(
-    private val dispatcher: CoroutineDispatcher,
-    private val defaultDispatcher: CoroutineDispatcher = dispatcher,
-) : DispatcherProvider {
-    override val main: CoroutineDispatcher get() = dispatcher
-    override val io: CoroutineDispatcher get() = dispatcher
-    override val default: CoroutineDispatcher get() = defaultDispatcher
-}
 
 private class FakeSessionPort : SessionPort {
     var signIn: AppResult<Session.SignedIn> = AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
