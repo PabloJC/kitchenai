@@ -6,6 +6,9 @@ import com.kitchenai.shared.domain.agent.AgentOrchestrator
 import com.kitchenai.shared.domain.agent.SuggestionOptions
 import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.HouseholdContext
+import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.MissingIngredient
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.PantryMatch
@@ -179,6 +182,21 @@ class SuggestionsViewModelTest {
         }
 
     @Test
+    fun `a missing catalogue ingredient is named rather than identified`() =
+        runTest(dispatcher) {
+            catalogue.emit(listOf(ingredient("rice", mapOf("en" to "Rice"))))
+            agent.answer = AppResult.Success(listOf(shortOfRice()))
+            val viewModel = started()
+
+            viewModel.generate()
+            advanceUntilIdle()
+
+            // The card names it. Every other fixture here carries free text, which is its own
+            // name and never asks the resolver — which is why this went unnoticed.
+            assertEquals(listOf("Rice"), viewModel.state.value.suggestions.single().missing)
+        }
+
+    @Test
     fun `the options the user set reach the use case`() =
         runTest(dispatcher) {
             agent.answer = AppResult.Success(emptyList())
@@ -231,7 +249,34 @@ class SuggestionsViewModelTest {
             cache = cache,
             observeIngredients = ObserveIngredients(catalogue),
             dispatchers = TestDispatcherProvider(dispatcher),
-        ).also { it.start(UserId.of("user-1").orFail()) }
+        ).also { it.start(UserId.of("user-1").orFail(), listOf("en")) }
+}
+
+private fun ingredient(
+    id: String,
+    labels: Map<String, String>,
+): Ingredient = Ingredient(IngredientId.of(id).orFail(), labels, null, emptyList())
+
+/** A dish whose one line is a catalogue ingredient the pantry does not cover. */
+private fun shortOfRice(): RecipeSuggestion {
+    val line = RecipeIngredient(IngredientId.of("rice").orFail(), null, null, false)
+    val recipe =
+        Recipe(
+            id = RecipeId.of("recipe-1").orFail(),
+            title = "Dish",
+            summary = null,
+            servings = 2,
+            totalMinutes = 20,
+            ingredients = listOf(line),
+            steps = listOf("Step"),
+            tags = emptyList(),
+            source = RecipeSource.Catalogue,
+        )
+    return RecipeSuggestion(
+        recipe = recipe,
+        match = PantryMatch(recipe.id, emptyList(), listOf(MissingIngredient(line, null)), emptyList()),
+        source = RecipeSource.Catalogue,
+    )
 }
 
 /**
