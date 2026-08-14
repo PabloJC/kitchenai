@@ -17,6 +17,7 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -157,8 +159,15 @@ class RecipeDetailViewModel(
      * a tap really can overlap the refresh after a cook.
      */
     private fun matching(block: suspend () -> Unit) {
-        loading.value?.cancel()
-        loading.value = viewModelScope.launch(dispatchers.default) { block() }
+        // Swapped atomically rather than cancel-then-assign. A stepper tap arrives on the main
+        // thread and the refresh after a cook on the pool, so two callers really can interleave:
+        // read-cancel-assign twice over would leave one of the two jobs owned by nobody and
+        // running anyway, which is the double flight this exists to prevent.
+        val next = viewModelScope.launch(dispatchers.default, CoroutineStart.LAZY) { block() }
+        loading.getAndUpdate { next }?.cancel()
+        // Started only once it is the one on record. A job cancelled by a later swap before it
+        // gets here never runs at all.
+        next.start()
     }
 
     private fun load(
