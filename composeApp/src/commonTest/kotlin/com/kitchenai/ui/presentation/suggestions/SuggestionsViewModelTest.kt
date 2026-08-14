@@ -4,6 +4,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.agent.AgentOrchestrator
 import com.kitchenai.shared.domain.agent.SuggestionOptions
+import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.HouseholdContext
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
@@ -147,6 +148,37 @@ class SuggestionsViewModelTest {
         }
 
     @Test
+    fun `a generated suggestion carries both halves of its provenance`() =
+        runTest(dispatcher) {
+            val by =
+                RecipeSource.Agent(
+                    agentId = AgentId.of("agent-1").orFail(),
+                    modelId = "model-1",
+                    generatedAt = kotlin.time.Instant.fromEpochSeconds(0),
+                )
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1", by)))
+            val viewModel = started()
+
+            viewModel.generate()
+            advanceUntilIdle()
+
+            // Agent and model both, not a boolean: support cannot chase a bad dish without them.
+            assertEquals(ProvenanceUi("agent-1", "model-1"), viewModel.state.value.suggestions.single().provenance)
+        }
+
+    @Test
+    fun `a catalogue dish is attributed to nobody`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
+            val viewModel = started()
+
+            viewModel.generate()
+            advanceUntilIdle()
+
+            assertEquals(null, viewModel.state.value.suggestions.single().provenance)
+        }
+
+    @Test
     fun `the options the user set reach the use case`() =
         runTest(dispatcher) {
             agent.answer = AppResult.Success(emptyList())
@@ -256,7 +288,10 @@ private class StubPantryPort : PantryPort {
     ): AppResult<Unit> = AppResult.Success(Unit)
 }
 
-private fun suggestion(id: String): RecipeSuggestion {
+private fun suggestion(
+    id: String,
+    source: RecipeSource = RecipeSource.Catalogue,
+): RecipeSuggestion {
     val recipe =
         Recipe(
             id = RecipeId.of(id).orFail(),
@@ -267,12 +302,12 @@ private fun suggestion(id: String): RecipeSuggestion {
             ingredients = listOf(RecipeIngredient(null, "salt", null, false)),
             steps = listOf("Step"),
             tags = emptyList(),
-            source = RecipeSource.Catalogue,
+            source = source,
         )
     return RecipeSuggestion(
         recipe = recipe,
         match = PantryMatch(recipe.id, emptyList(), emptyList(), recipe.ingredients),
-        source = RecipeSource.Catalogue,
+        source = source,
     )
 }
 

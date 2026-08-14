@@ -122,7 +122,8 @@ private fun RecipeSuggestion.toUi(resolver: LabelResolver): SuggestionUi {
         totalCount = held + short,
         missing = match.missing.map { it.ingredient.name(resolver) },
         unverifiable = match.unverifiable.map { line -> line.name(resolver) },
-        fromAgent = source is RecipeSource.Agent,
+        // Both ids travel as the response reported them; neither is named anywhere in this module.
+        provenance = (source as? RecipeSource.Agent)?.let { ProvenanceUi(it.agentId.value, it.modelId) },
     )
 }
 

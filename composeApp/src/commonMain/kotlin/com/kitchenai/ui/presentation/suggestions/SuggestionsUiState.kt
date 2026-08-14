@@ -29,7 +29,17 @@ data class SuggestionUi(
     val missing: List<String>,
     /** Lines the pantry can say nothing about. Never folded into [missing]: that would be a lie. */
     val unverifiable: List<String>,
-    val fromAgent: Boolean,
+    /** Null for anything not generated: a catalogue dish has nobody to attribute it to. */
+    val provenance: ProvenanceUi?,
+)
+
+/**
+ * Who wrote a suggestion, as the response reported it. Both halves, not a boolean: support
+ * cannot chase a bad dish knowing only that some model produced it.
+ */
+data class ProvenanceUi(
+    val agentId: String,
+    val modelId: String,
 )
 
 data class SuggestionOptionsUi(

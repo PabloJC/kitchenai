@@ -17,10 +17,12 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -74,12 +76,17 @@ class RecipeDetailViewModel(
      */
     private fun watchUnits() {
         viewModelScope.launch(dispatchers.default) {
-            reads.taxonomies().collect { published ->
-                published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
-                    launch {
-                        reads.taxonomy(unit.id).collect { terms ->
-                            units.value = terms
-                            recipe?.let { held -> render(held, currentMatch) }
+            // collectLatest and coroutineScope together: a second emission of the taxonomy list
+            // must replace the per-taxonomy collectors, not add to them. Plain collect leaves
+            // the previous ones running, so one unit ends up with a listener per emission.
+            reads.taxonomies().collectLatest { published ->
+                coroutineScope {
+                    published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
+                        launch {
+                            reads.taxonomy(unit.id).collect { terms ->
+                                units.value = terms
+                                recipe?.let { held -> render(held, currentMatch) }
+                            }
                         }
                     }
                 }

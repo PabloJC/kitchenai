@@ -98,6 +98,24 @@ class MatchRecipeAgainstPantryTest {
             assertTrue(error is AppError.Validation)
         }
 
+    @Test
+    fun `a dish no repository has ever heard of matches when the caller hands it over`() =
+        runTest {
+            // An empty catalogue is a generated dish exactly: its id was minted on this device.
+            val useCase =
+                MatchRecipeAgainstPantry(
+                    FakeRecipePort(),
+                    FakePantryPort(listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit)))),
+                    TimeProvider { now },
+                )
+
+            assertTrue(useCase(user, stored.id) is AppResult.Failure)
+
+            assertEquals(1f, useCase(user, stored).unwrap().coverage)
+            // The override still applies to a recipe handed over, or the stepper could not move it.
+            assertEquals(0f, useCase(user, stored, servings = stored.servings * 2).unwrap().coverage)
+        }
+
     private fun matcher(pantry: List<PantryItem>): MatchRecipeAgainstPantry =
         MatchRecipeAgainstPantry(
             FakeRecipePort(catalogue = listOf(stored)),

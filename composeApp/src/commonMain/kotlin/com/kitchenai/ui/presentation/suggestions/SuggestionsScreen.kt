@@ -155,9 +155,19 @@ private fun SuggestionCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(suggestion.title, style = MaterialTheme.typography.titleMedium)
-                if (suggestion.fromAgent) {
+                if (suggestion.provenance != null) {
                     Text(AGENT_LABEL, style = MaterialTheme.typography.labelSmall)
                 }
+            }
+            // Agent and model, not only that something generated this: whoever reports a bad
+            // dish has to be able to say which one wrote it.
+            suggestion.provenance?.let { by ->
+                Text(
+                    "${by.agentId} · ${by.modelId}",
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             suggestion.summary?.let { summary ->
                 Text(
