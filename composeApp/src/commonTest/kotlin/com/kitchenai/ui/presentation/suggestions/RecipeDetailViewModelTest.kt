@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.suggestions
 
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
@@ -9,7 +10,10 @@ import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.model.RecipeSource
+import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
+import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
@@ -257,6 +261,40 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
+    fun `an ingredient and its unit are shown as words once the catalogue answers`() =
+        runTest(dispatcher) {
+            val viewModel = started(pantry = listOf(holding(200.0)))
+            advanceUntilIdle()
+            // Before the catalogue answers the screen shows the identifier, which is the honest
+            // fallback and the state every other test in this file leaves it in.
+            assertEquals(listOf("rice"), viewModel.state.value.held.map { it.name })
+
+            catalogue.emit(listOf(ingredient("rice", mapOf("en" to "Rice"))))
+            taxonomies.taxonomies.emit(listOf(unitsTaxonomy(default = "en")))
+            taxonomies.terms.emit(listOf(term(gram, mapOf("en" to "g"))))
+            advanceUntilIdle()
+
+            val line = viewModel.state.value.held.single()
+            assertEquals("Rice", line.name)
+            assertEquals("200 g", line.quantity)
+        }
+
+    @Test
+    fun `a term the user cannot read falls back to the taxonomy default rather than its id`() =
+        runTest(dispatcher) {
+            val viewModel = started(pantry = listOf(holding(200.0)))
+            advanceUntilIdle()
+
+            // The user reads English; the term is labelled only in the taxonomy's own language.
+            catalogue.emit(listOf(ingredient("rice", mapOf("en" to "Rice"))))
+            taxonomies.taxonomies.emit(listOf(unitsTaxonomy(default = "es")))
+            taxonomies.terms.emit(listOf(term(gram, mapOf("es" to "gr"))))
+            advanceUntilIdle()
+
+            assertEquals("200 gr", viewModel.state.value.held.single().quantity)
+        }
+
+    @Test
     fun `an empty screen does not report that nothing is missing`() =
         runTest(dispatcher) {
             val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
@@ -290,6 +328,7 @@ class RecipeDetailViewModelTest {
 
     private val cache = SuggestionCache()
     private val taxonomies = FakeTaxonomyPort()
+    private val catalogue = FakeIngredientPort()
     private val items = FakeShoppingItemPort()
     private var lists = FakeShoppingListPort()
 
@@ -304,7 +343,7 @@ class RecipeDetailViewModelTest {
                 recipe = GetRecipeById(recipePort),
                 cache = cache,
                 match = MatchRecipeAgainstPantry(recipePort, pantryPort, time),
-                ingredients = ObserveIngredients(FakeIngredientPort()),
+                ingredients = ObserveIngredients(catalogue),
                 taxonomies = ObserveTaxonomies(taxonomies),
                 taxonomy = ObserveTaxonomy(taxonomies),
             )
@@ -325,6 +364,19 @@ class RecipeDetailViewModelTest {
         return RecipeDetailViewModel(reads, writes, TestDispatcherProvider(dispatcher))
             .also { it.start(user, dish.id, listOf("en"), "List") }
     }
+
+    private fun ingredient(
+        id: String,
+        labels: Map<String, String>,
+    ): Ingredient = Ingredient(IngredientId.of(id).orFail(), labels, null, emptyList())
+
+    private fun term(
+        ref: TermRef,
+        labels: Map<String, String>,
+    ): Term = Term(ref, labels, null, 0)
+
+    private fun unitsTaxonomy(default: String): Taxonomy =
+        Taxonomy(gram.taxonomy, mapOf("en" to "Units"), default, TaxonomyPurpose.UNITS)
 
     /** Distinct ids: a constant one would fold two drafted lines into a single item. */
     private fun sequentialIds(): IdGenerator {
