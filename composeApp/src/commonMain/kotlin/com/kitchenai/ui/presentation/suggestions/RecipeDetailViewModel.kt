@@ -46,9 +46,14 @@ class RecipeDetailViewModel(
     private val eventChannel = Channel<RecipeDetailEvent>(Channel.BUFFERED)
     val events: Flow<RecipeDetailEvent> = eventChannel.receiveAsFlow()
 
+    // Everything below is written by one coroutine and read by others, all on a real thread
+    // pool. A plain `var` gives those reads no happens-before edge, so this state lives in
+    // flows for the same reason the pantry screen's does.
     private val names = MutableStateFlow<List<Ingredient>>(emptyList())
     private val units = MutableStateFlow<List<Term>>(emptyList())
-    private var recipe: Recipe? = null
+    private val recipe = MutableStateFlow<Recipe?>(null)
+    private val currentMatch = MutableStateFlow<PantryMatch?>(null)
+    private val loading = MutableStateFlow<Job?>(null)
     private var user: UserId? = null
     private var id: RecipeId? = null
     private var started = false
@@ -64,7 +69,7 @@ class RecipeDetailViewModel(
         viewModelScope.launch(dispatchers.default) {
             reads.ingredients().collect { loaded ->
                 names.value = loaded
-                recipe?.let { held -> render(held, currentMatch) }
+                recipe.value?.let { held -> render(held, currentMatch.value) }
             }
         }
         watchUnits()
@@ -86,7 +91,7 @@ class RecipeDetailViewModel(
                         launch {
                             reads.taxonomy(unit.id).collect { terms ->
                                 units.value = terms
-                                recipe?.let { held -> render(held, currentMatch) }
+                                recipe.value?.let { held -> render(held, currentMatch.value) }
                             }
                         }
                     }
@@ -104,7 +109,7 @@ class RecipeDetailViewModel(
 
     fun save() =
         act { userId ->
-            val held = recipe ?: return@act null
+            val held = recipe.value ?: return@act null
             writes.save(userId, held).map { RecipeDetailEvent.Saved }
         }
 
@@ -112,7 +117,7 @@ class RecipeDetailViewModel(
     // and the match do: a generated dish is in no repository, so re-reading it would fail.
     fun addMissingToList() =
         act { userId ->
-            val held = recipe ?: return@act null
+            val held = recipe.value ?: return@act null
             when (val list = writes.defaultList(userId, emptyMap())) {
                 is AppResult.Failure -> AppResult.Failure(list.error)
                 is AppResult.Success ->
@@ -124,12 +129,9 @@ class RecipeDetailViewModel(
 
     fun cook() =
         act { userId ->
-            val held = recipe ?: return@act null
+            val held = recipe.value ?: return@act null
             writes.cook(userId, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
         }
-
-    private var currentMatch: PantryMatch? = null
-    private var loading: Job? = null
 
     private fun load(
         recipeId: RecipeId,
@@ -139,8 +141,8 @@ class RecipeDetailViewModel(
         // One load at a time. Each carries the servings it was started for, so a slower earlier
         // read landing last would put the buckets back to a count the stepper has already left —
         // the same disagreement the servings override exists to prevent.
-        loading?.cancel()
-        loading =
+        loading.value?.cancel()
+        loading.value =
             viewModelScope.launch(dispatchers.default) {
                 // The cache first: a generated dish was never written anywhere, so the repository
                 // would answer NotFound for the only kind of recipe this screen is reached with.
@@ -161,13 +163,13 @@ class RecipeDetailViewModel(
         found: Recipe,
         servings: Int?,
     ) {
-        recipe = found
+        recipe.value = found
         // Matched against the recipe in hand, never re-read by id: a generated dish is not in
         // any repository, and asking for it again is the failure this screen just had.
         when (val match = reads.match(userId, found, servings)) {
             is AppResult.Failure -> failed(match.error)
             is AppResult.Success -> {
-                currentMatch = match.data
+                currentMatch.value = match.data
                 render(found, match.data, servings ?: found.servings)
             }
         }
