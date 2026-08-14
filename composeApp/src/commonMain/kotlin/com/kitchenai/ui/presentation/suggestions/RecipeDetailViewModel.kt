@@ -56,14 +56,21 @@ class RecipeDetailViewModel(
     private val loading = MutableStateFlow<Job?>(null)
     private var user: UserId? = null
     private var id: RecipeId? = null
+    private var listLabels: Map<String, String> = emptyMap()
     private var started = false
 
     fun start(
         userId: UserId,
         recipeId: RecipeId,
+        languageTags: List<String>,
+        defaultListName: String,
     ) {
         user = userId
         id = recipeId
+        // Only used if this screen is the one that creates the list. It should not be — the
+        // session gate creates it first — but a list named by whoever got there first is worse
+        // than one named twice.
+        listLabels = languageTags.take(1).associateWith { defaultListName }
         if (started) return
         started = true
         viewModelScope.launch(dispatchers.default) {
@@ -118,7 +125,7 @@ class RecipeDetailViewModel(
     fun addMissingToList() =
         act { userId ->
             val held = recipe.value ?: return@act null
-            when (val list = writes.defaultList(userId, emptyMap())) {
+            when (val list = writes.defaultList(userId, listLabels)) {
                 is AppResult.Failure -> AppResult.Failure(list.error)
                 is AppResult.Success ->
                     writes
@@ -128,7 +135,9 @@ class RecipeDetailViewModel(
         }
 
     fun cook() =
-        act { userId ->
+        // A cook refused for missing ingredients is not a failure to apologise for: it is the
+        // answer, and the screen already lists which ones.
+        act(validation = { "You are missing ingredients for this" }) { userId ->
             val held = recipe.value ?: return@act null
             writes.cook(userId, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
         }
@@ -201,14 +210,19 @@ class RecipeDetailViewModel(
      * Every write goes through here, so "one at a time" and "no exception reaches the screen"
      * are stated once instead of three times.
      */
-    private fun act(block: suspend (UserId) -> AppResult<RecipeDetailEvent>?) {
+    private fun act(
+        // Only the caller knows what its own validation failure means. Read here it would be a
+        // guess: two of these actions can fail on the same field for opposite reasons.
+        validation: ((AppError.Validation) -> String)? = null,
+        block: suspend (UserId) -> AppResult<RecipeDetailEvent>?,
+    ) {
         val userId = user ?: return
         if (internalState.value.isWorking) return
         internalState.update { it.copy(isWorking = true) }
         viewModelScope.launch(dispatchers.default) {
             when (val outcome = block(userId)) {
                 null -> Unit
-                is AppResult.Failure -> announce(RecipeDetailEvent.Failed(outcome.error.describe()))
+                is AppResult.Failure -> announce(RecipeDetailEvent.Failed(outcome.error.describe(validation)))
                 is AppResult.Success -> {
                     if (outcome.data is RecipeDetailEvent.Saved) internalState.update { it.copy(isSaved = true) }
                     announce(outcome.data)
@@ -236,14 +250,15 @@ private fun RecipeIngredient.toUi(resolver: LabelResolver): IngredientLineUi =
     )
 
 /**
- * A cook refused for missing ingredients is not a failure to apologise for: it is the answer,
- * and the screen already lists which ones.
+ * [validation] lets an action say what its own refusal means. Without one the field and the
+ * reason are reported as they are: a sentence invented here would speak for three actions that
+ * fail for different reasons on the same field.
  */
-private fun AppError.describe(): String =
+private fun AppError.describe(validation: ((AppError.Validation) -> String)? = null): String =
     when (this) {
         is AppError.Network -> "No connection"
         is AppError.Unauthorized -> "This account is not allowed to do that"
         is AppError.NotFound -> "Cannot find $resource"
-        is AppError.Validation -> "You are missing ingredients for this"
+        is AppError.Validation -> validation?.invoke(this) ?: "Invalid $field: $reason"
         is AppError.Unknown -> "Something went wrong"
     }

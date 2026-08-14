@@ -30,6 +30,8 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.shopping.DEFAULT_LIST_NAME
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val HAVE_TITLE = "In your pantry"
@@ -60,7 +62,9 @@ fun RecipeDetailScreen(
     val snackbar = remember { SnackbarHostState() }
     var confirmingCook by remember { mutableStateOf(false) }
 
-    LaunchedEffect(userId, recipeId) { viewModel.start(userId, recipeId) }
+    LaunchedEffect(userId, recipeId) {
+        viewModel.start(userId, recipeId, platformLanguageTags(), DEFAULT_LIST_NAME)
+    }
     LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.announce(event) } }
 
     if (confirmingCook) {

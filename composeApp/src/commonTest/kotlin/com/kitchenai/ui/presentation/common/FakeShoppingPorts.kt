@@ -22,18 +22,30 @@ val defaultListId: ShoppingListId = (ShoppingListId.of("list-1") as AppResult.Su
  * copied: this is the third screen that needs them. The list already exists, which is the state
  * a screen opens in — the session gate created it.
  */
-class FakeShoppingListPort : ShoppingListPort {
+class FakeShoppingListPort(
+    /** Empty puts a screen in the state the session gate has not reached yet: no list at all. */
+    private val existing: Boolean = true,
+) : ShoppingListPort {
+    val created = mutableListOf<ShoppingList>()
+
     override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = emptyFlow()
 
     override fun listErrors(userId: UserId): Flow<AppError> = emptyFlow()
 
     override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> =
-        AppResult.Success(listOf(ShoppingList(defaultListId, userId, emptyMap(), Instant.fromEpochSeconds(0))))
+        if (!existing) {
+            AppResult.Success(emptyList())
+        } else {
+            AppResult.Success(listOf(ShoppingList(defaultListId, userId, emptyMap(), Instant.fromEpochSeconds(0))))
+        }
 
     override suspend fun upsertList(
         userId: UserId,
         list: ShoppingList,
-    ): AppResult<Unit> = AppResult.Success(Unit)
+    ): AppResult<Unit> {
+        created += list
+        return AppResult.Success(Unit)
+    }
 }
 
 /**

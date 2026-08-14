@@ -242,6 +242,21 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
+    fun `a list this screen has to create is not left without a name`() =
+        runTest(dispatcher) {
+            // The session gate normally gets there first. If it ever does not, the list it
+            // creates here must still be called something.
+            lists = FakeShoppingListPort(existing = false)
+            val viewModel = started(pantry = emptyList())
+            advanceUntilIdle()
+
+            viewModel.addMissingToList()
+            advanceUntilIdle()
+
+            assertEquals(mapOf("en" to "List"), lists.created.single().labels)
+        }
+
+    @Test
     fun `an empty screen does not report that nothing is missing`() =
         runTest(dispatcher) {
             val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
@@ -276,7 +291,7 @@ class RecipeDetailViewModelTest {
     private val cache = SuggestionCache()
     private val taxonomies = FakeTaxonomyPort()
     private val items = FakeShoppingItemPort()
-    private val lists = FakeShoppingListPort()
+    private var lists = FakeShoppingListPort()
 
     private fun started(
         pantry: List<PantryItem>,
@@ -308,7 +323,7 @@ class RecipeDetailViewModelTest {
                 defaultList = EnsureDefaultShoppingList(lists, IdGenerator { "list-1" }, time),
             )
         return RecipeDetailViewModel(reads, writes, TestDispatcherProvider(dispatcher))
-            .also { it.start(user, dish.id) }
+            .also { it.start(user, dish.id, listOf("en"), "List") }
     }
 
     /** Distinct ids: a constant one would fold two drafted lines into a single item. */

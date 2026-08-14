@@ -58,7 +58,7 @@ fun ShoppingScreen(
     val snackbar = remember { SnackbarHostState() }
     var confirmingClear by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), LIST_NAME) }
+    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), DEFAULT_LIST_NAME) }
     LaunchedEffect(Unit) {
         viewModel.events.collect { event -> snackbar.announce(event, viewModel::undoRemove) }
     }
@@ -225,7 +225,9 @@ private suspend fun SnackbarHostState.announce(
 }
 
 // The screen owns its own wording; every component it draws takes each string as a parameter.
-private const val LIST_NAME = "Shopping list"
+// This one is not private: the detail screen can reach the same list, and two spellings of the
+// name would mean two names depending on which screen got there first.
+internal const val DEFAULT_LIST_NAME = "Shopping list"
 private const val TO_BUY_TITLE = "To buy"
 private const val IN_CART_TITLE = "In the cart"
 private const val CLEAR_LABEL = "Clear"
