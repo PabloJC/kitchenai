@@ -11,6 +11,7 @@ import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.RecipeIngredient
+import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
@@ -51,12 +52,17 @@ class RecipeDetailViewModel(
     // flows for the same reason the pantry screen's does.
     private val names = MutableStateFlow<List<Ingredient>>(emptyList())
     private val units = MutableStateFlow<List<Term>>(emptyList())
+
+    // The taxonomies themselves, not only their terms: a term whose language the user does not
+    // read falls back to the tag its taxonomy declares, and that tag lives here.
+    private val vocabularies = MutableStateFlow<List<Taxonomy>>(emptyList())
     private val recipe = MutableStateFlow<Recipe?>(null)
     private val currentMatch = MutableStateFlow<PantryMatch?>(null)
     private val loading = MutableStateFlow<Job?>(null)
     private var user: UserId? = null
     private var id: RecipeId? = null
     private var listLabels: Map<String, String> = emptyMap()
+    private var languageTags: List<String> = emptyList()
     private var started = false
 
     fun start(
@@ -67,6 +73,7 @@ class RecipeDetailViewModel(
     ) {
         user = userId
         id = recipeId
+        this.languageTags = languageTags
         // Only used if this screen is the one that creates the list. It should not be — the
         // session gate creates it first — but a list named by whoever got there first is worse
         // than one named twice.
@@ -93,6 +100,7 @@ class RecipeDetailViewModel(
             // must replace the per-taxonomy collectors, not add to them. Plain collect leaves
             // the previous ones running, so one unit ends up with a listener per emission.
             reads.taxonomies().collectLatest { published ->
+                vocabularies.value = published
                 coroutineScope {
                     published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
                         launch {
@@ -189,7 +197,15 @@ class RecipeDetailViewModel(
         match: PantryMatch?,
         servings: Int = internalState.value.servings,
     ) {
-        val resolver = LabelResolver(terms = units.value, ingredients = names.value)
+        // All four, as the pantry screen passes them: without the tags there is no language to
+        // resolve into, and every lookup misses and renders its identifier instead.
+        val resolver =
+            LabelResolver(
+                terms = units.value,
+                ingredients = names.value,
+                taxonomies = vocabularies.value,
+                languageTags = languageTags,
+            )
         internalState.update { current ->
             current.copy(
                 title = found.title,
