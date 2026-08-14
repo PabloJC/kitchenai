@@ -19,12 +19,18 @@ class FakePantryPort(
 
     val held: List<PantryItem> get() = state.value
 
+    /** One-shot reads, counted: a superseded load is one that never got this far. */
+    var reads = 0
+        private set
+
     override fun observePantry(userId: UserId): Flow<List<PantryItem>> = if (readError == null) state else emptyFlow()
 
     override fun pantryErrors(userId: UserId): Flow<AppError> = emptyFlow()
 
-    override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> =
-        readError?.let { AppResult.Failure(it) } ?: AppResult.Success(state.value)
+    override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> {
+        reads++
+        return readError?.let { AppResult.Failure(it) } ?: AppResult.Success(state.value)
+    }
 
     override suspend fun upsert(
         userId: UserId,

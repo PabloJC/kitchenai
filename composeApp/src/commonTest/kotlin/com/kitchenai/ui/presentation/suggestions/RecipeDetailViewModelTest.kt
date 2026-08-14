@@ -125,6 +125,25 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
+    fun `a second stepper tap supersedes the first rather than racing it`() =
+        runTest(dispatcher) {
+            val pantry = FakePantryPort(listOf(holding(200.0)))
+            val viewModel = started(pantry = listOf(holding(200.0)), pantryPort = pantry)
+            advanceUntilIdle()
+            assertEquals(1, pantry.reads)
+
+            // Two taps before either load can run. The first must never reach the pantry: if it
+            // did, its answer for four could land after six and put the buckets back.
+            viewModel.setServings(4)
+            viewModel.setServings(6)
+            advanceUntilIdle()
+
+            assertEquals(2, pantry.reads)
+            assertEquals(6, viewModel.state.value.servings)
+            assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
+        }
+
+    @Test
     fun `cooking is refused while anything is missing and says so`() =
         runTest(dispatcher) {
             val pantry = FakePantryPort(emptyList())

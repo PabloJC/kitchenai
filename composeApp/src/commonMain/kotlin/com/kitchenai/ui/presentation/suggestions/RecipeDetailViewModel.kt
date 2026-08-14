@@ -16,6 +16,7 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -128,25 +129,31 @@ class RecipeDetailViewModel(
         }
 
     private var currentMatch: PantryMatch? = null
+    private var loading: Job? = null
 
     private fun load(
         recipeId: RecipeId,
         servings: Int?,
     ) {
         val userId = user ?: return
-        viewModelScope.launch(dispatchers.default) {
-            // The cache first: a generated dish was never written anywhere, so the repository
-            // would answer NotFound for the only kind of recipe this screen is reached with.
-            val cached = reads.cache[recipeId]
-            if (cached != null) {
-                matched(userId, cached, servings)
-                return@launch
+        // One load at a time. Each carries the servings it was started for, so a slower earlier
+        // read landing last would put the buckets back to a count the stepper has already left —
+        // the same disagreement the servings override exists to prevent.
+        loading?.cancel()
+        loading =
+            viewModelScope.launch(dispatchers.default) {
+                // The cache first: a generated dish was never written anywhere, so the repository
+                // would answer NotFound for the only kind of recipe this screen is reached with.
+                val cached = reads.cache[recipeId]
+                if (cached != null) {
+                    matched(userId, cached, servings)
+                    return@launch
+                }
+                when (val found = reads.recipe(recipeId)) {
+                    is AppResult.Failure -> failed(found.error)
+                    is AppResult.Success -> matched(userId, found.data, servings)
+                }
             }
-            when (val found = reads.recipe(recipeId)) {
-                is AppResult.Failure -> failed(found.error)
-                is AppResult.Success -> matched(userId, found.data, servings)
-            }
-        }
     }
 
     private suspend fun matched(
