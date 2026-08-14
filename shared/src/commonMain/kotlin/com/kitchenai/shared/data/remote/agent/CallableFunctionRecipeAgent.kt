@@ -20,20 +20,9 @@ import com.kitchenai.shared.domain.model.DietaryConstraint
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.port.IdGenerator
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 
 /** The deployed callable. Not a secret, and the only remote identifier in this module. */
 private const val SUGGEST_FUNCTION = "suggestRecipes"
-
-/**
- * Unknown keys are ignored so a server-side addition does not break a shipped client; a
- * **missing** required key still fails, which is the half that matters.
- */
-private val agentJson =
-    Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-    }
 
 /**
  * The one place the product talks to a model, and it does so through a function that holds the
@@ -56,15 +45,12 @@ internal class CallableFunctionRecipeAgent(
         }
 
     /**
-     * Both the call and the parse are caught here: a body that is not the JSON we asked for is
-     * the same class of problem as a call that never arrived, and neither may escape as an
+     * Both the call and its decoding are caught here: a body that is not the shape we asked for
+     * is the same class of problem as a call that never arrived, and neither may escape as an
      * exception.
      */
     private suspend fun decode(context: AgentContext): AppResult<SuggestResponseDto> =
-        runCatching {
-            val payload = agentJson.encodeToString(SuggestRequestDto.serializer(), context.toRequest())
-            agentJson.decodeFromString(SuggestResponseDto.serializer(), transport.call(SUGGEST_FUNCTION, payload))
-        }.fold(
+        runCatching { transport.call(SUGGEST_FUNCTION, context.toRequest()) }.fold(
             onSuccess = { decoded -> AppResult.Success(decoded) },
             // `runCatching` also catches cancellation; `toAppError` rethrows it.
             onFailure = { failure -> AppResult.Failure(failure.toAppError()) },

@@ -35,9 +35,15 @@ authenticates with its own service account.
 | `FUNCTIONS_REGION` | `europe-southwest1` | Where this project's Firestore lives. The function reads the whole catalogue on every call, so co-locating them is the single biggest thing here. |
 | `VERTEX_LOCATION` | `europe-west1` | Keeps inference in the EU. A pantry is a list of what someone eats and when it spoils, and it is the only thing this call sends anywhere. |
 
-Both are overridable. If a deploy rejects `europe-southwest1` for Cloud Functions v2, fall back
-to `europe-west1` and accept the extra hop to Firestore. If a model is not served from
-`europe-west1`, `global` works but routes outside the EU — a choice worth making deliberately.
+`europe-southwest1` is confirmed to work for Cloud Functions v2. If a model is ever not served
+from `europe-west1`, `global` works but routes outside the EU — a choice worth making
+deliberately rather than inheriting.
+
+**The client has to name the same region.** `Firebase.functions` with no argument calls
+`us-central1`, and a call to a region where nothing is deployed does not fail as "not found" —
+it surfaces as a generic error with nothing in the logs. The region is set in
+`shared/.../di/AgentDataModule.kt`, and it and `FUNCTIONS_REGION` change together or the app
+stops reaching the function.
 
 ## Rate limit
 
@@ -71,16 +77,20 @@ behaviour, not a misconfiguration.
 
 ## Prerequisites
 
-Checked against this project on 2026-08-13:
+All of these are satisfied on this project; the list is here for whoever sets up another one.
 
-- **Blaze plan — not yet.** `cloudbilling.googleapis.com` reports `billingEnabled: false`, so
-  the project is on Spark and a deploy will be refused. Upgrading needs a card and is the
+- **Blaze plan.** Cloud Functions do not run on Spark. Upgrading needs a card and is the
   owner's to do, in *Firebase console → Usage and billing → Modify plan*.
-- **Cloud Functions API — not enabled.** Expected; it has never been used here. Enabling it is
-  part of the first deploy, or can be done from the console.
-- **Vertex AI API** must be enabled in the Google Cloud project.
-- The catalogues must be seeded (`tools/seed.mjs`), or every request resolves to nothing and
-  the model is asked to cook from an empty kitchen.
+- **Vertex AI API** enabled in the Google Cloud project.
+- **Compute Engine API** enabled. This one is not obvious and it is what made the first deploy
+  here fail: Functions v2 runs on Cloud Run, which needs the default compute service account,
+  and with the API off the deploy reports `iam.serviceAccounts.actAs denied` — a permission
+  error for what is really a disabled service. `firebase deploy` enables Run, Eventarc and
+  Pub/Sub for you, but not this.
+- The catalogues seeded (`tools/seed.mjs`), or every request resolves to nothing and the model
+  is asked to cook from an empty kitchen.
+
+The Cloud Functions API needs no attention: the first deploy turns it on.
 
 ## Commands
 
@@ -95,6 +105,19 @@ npm --prefix functions test
 ```bash
 firebase deploy --only functions --project <your-project-id>
 ```
+
+## Proving it end to end
+
+`tools/smoke-agent.mjs` calls the deployed function the way the app does — anonymous sign-in,
+an App Check debug token exchanged for a real one, the callable protocol — so the whole chain
+can be checked without a screen:
+
+```bash
+node tools/smoke-agent.mjs --debug-token <from-logcat> --cert-sha1 <debug-keystore-sha1>
+```
+
+It is worth running after any change to the contract. It found both live defects this function
+has had: quantities arriving with no unit, and units arriving as labels rather than ids.
 
 ## Tests
 

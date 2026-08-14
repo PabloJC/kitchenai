@@ -22,12 +22,18 @@ import org.koin.dsl.module
 private const val SUGGEST_AGENT_ID = "pantry-suggest"
 
 /**
+ * Must match where the function is deployed. Without it the SDK calls `us-central1`, which is
+ * not a misconfiguration the caller can see: the request simply reaches nothing.
+ */
+private const val SUGGEST_REGION = "europe-southwest1"
+
+/**
  * The one agent implementation. A second one is another `single<RecipeAgent>` here and nothing
  * else — `agentModule` already collects them with `getAll`, so no registry is written twice.
  */
 val agentDataModule: Module =
     module {
-        single { Firebase.functions }
+        single { Firebase.functions(SUGGEST_REGION) }
         single<CallableTransport> { FunctionsCallableTransport(get()) }
         single {
             val ids: IdGenerator = get()

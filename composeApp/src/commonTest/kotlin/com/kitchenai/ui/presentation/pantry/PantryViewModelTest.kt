@@ -3,7 +3,6 @@ package com.kitchenai.ui.presentation.pantry
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItem
@@ -17,9 +16,7 @@ import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.IngredientPort
 import com.kitchenai.shared.domain.port.PantryPort
-import com.kitchenai.shared.domain.port.TaxonomyPort
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.AddPantryItem
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
@@ -28,12 +25,13 @@ import com.kitchenai.shared.domain.usecase.pantry.RemovePantryItem
 import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItem
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
-import kotlinx.coroutines.CoroutineDispatcher
+import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
+import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -222,7 +220,7 @@ class PantryViewModelTest {
             assertEquals("No connection", viewModel.state.value.error)
 
             // A different listener speaking says nothing about the broken one.
-            catalogue.ingredients.emit(listOf(ingredient))
+            catalogue.emit(listOf(ingredient))
             advanceUntilIdle()
             assertEquals("No connection", viewModel.state.value.error)
         }
@@ -310,7 +308,7 @@ class PantryViewModelTest {
     }
 
     private suspend fun seed() {
-        catalogue.ingredients.emit(listOf(ingredient))
+        catalogue.emit(listOf(ingredient))
         taxonomies.terms.emit(listOf(unitTerm, locationTerm))
         pantry.items.emit(listOf(item))
     }
@@ -372,14 +370,6 @@ private val locationTerm = Term(locationRef, mapOf("aa" to LOCATION_LABEL), null
 
 private fun <T> AppResult<T>.value(): T = (this as AppResult.Success).data
 
-private class TestDispatcherProvider(
-    private val dispatcher: CoroutineDispatcher,
-) : DispatcherProvider {
-    override val main: CoroutineDispatcher get() = dispatcher
-    override val io: CoroutineDispatcher get() = dispatcher
-    override val default: CoroutineDispatcher get() = dispatcher
-}
-
 private class FakePantryPort : PantryPort {
     val items = MutableSharedFlow<List<PantryItem>>(replay = 1)
     val errors = MutableSharedFlow<AppError>()
@@ -419,33 +409,4 @@ private class FakePantryPort : PantryPort {
     }
 }
 
-private class FakeIngredientPort : IngredientPort {
-    val ingredients = MutableSharedFlow<List<Ingredient>>(replay = 1)
-
-    override fun observeIngredients(): Flow<List<Ingredient>> = ingredients
-
-    override fun ingredientErrors(): Flow<AppError> = emptyFlow()
-
-    override suspend fun getIngredient(id: IngredientId): AppResult<Ingredient> =
-        AppResult.Failure(AppError.NotFound("Ingredient"))
-}
-
 /** One stream of terms, served per taxonomy: a vocabulary must not answer for another one. */
-private class FakeTaxonomyPort : TaxonomyPort {
-    val terms = MutableSharedFlow<List<Term>>(replay = 1)
-
-    // Replay without an initial value: a listener that has not answered emits nothing, and a
-    // fake that emits an empty catalogue on subscribe hides the difference.
-    val taxonomies = MutableSharedFlow<List<Taxonomy>>(replay = 1)
-
-    override fun observeTaxonomy(id: TaxonomyId): Flow<List<Term>> =
-        terms.map { known -> known.filter { term -> term.ref.taxonomy == id } }
-
-    override fun observeTaxonomies(): Flow<List<Taxonomy>> = taxonomies
-
-    override fun taxonomyErrors(id: TaxonomyId): Flow<AppError> = emptyFlow()
-
-    override fun taxonomiesErrors(): Flow<AppError> = emptyFlow()
-
-    override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(emptyList())
-}

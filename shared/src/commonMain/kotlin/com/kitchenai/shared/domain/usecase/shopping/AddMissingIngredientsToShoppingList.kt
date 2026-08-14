@@ -39,9 +39,24 @@ class AddMissingIngredientsToShoppingList(
         listId: ShoppingListId,
         recipeId: RecipeId,
         servings: Int,
+    ): AppResult<AddedToListSummary> =
+        when (val found = recipes.getRecipe(recipeId)) {
+            is AppResult.Failure -> found
+            is AppResult.Success -> invoke(userId, listId, found.data, servings)
+        }
+
+    /**
+     * For a recipe the caller already holds. A generated dish lives nowhere a repository can be
+     * asked about, so re-reading it by id would fail for the only kind this app suggests.
+     */
+    suspend operator fun invoke(
+        userId: UserId,
+        listId: ShoppingListId,
+        recipe: Recipe,
+        servings: Int,
     ): AppResult<AddedToListSummary> {
-        val recipe = scaledRecipe(recipeId, servings)
-        if (recipe is AppResult.Failure) return recipe
+        val scaled = recipe.scaledTo(servings)
+        if (scaled is AppResult.Failure) return scaled
         val held = pantry.getPantry(userId)
         if (held is AppResult.Failure) return held
         val current = shoppingItems.getItems(userId, listId)
@@ -49,20 +64,11 @@ class AddMissingIngredientsToShoppingList(
         return add(
             userId,
             listId,
-            (recipe as AppResult.Success).data,
+            (scaled as AppResult.Success).data,
             (held as AppResult.Success).data,
             (current as AppResult.Success).data,
         )
     }
-
-    private suspend fun scaledRecipe(
-        recipeId: RecipeId,
-        servings: Int,
-    ): AppResult<Recipe> =
-        when (val found = recipes.getRecipe(recipeId)) {
-            is AppResult.Failure -> found
-            is AppResult.Success -> found.data.scaledTo(servings)
-        }
 
     private suspend fun add(
         userId: UserId,

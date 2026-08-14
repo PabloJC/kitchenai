@@ -15,6 +15,7 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.freshnessAt
+import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -291,7 +292,7 @@ private fun PantryItem.toUi(
         id = id,
         ingredient = ingredient,
         name = resolver.label(ingredient) ?: ingredient.value,
-        quantityLabel = listOfNotNull(quantity.amount.trimmed(), unitLabel).joinToString(" "),
+        quantityLabel = formatQuantity(quantity.amount, unitLabel),
         amount = quantity.amount,
         unit = quantity.unit,
         location = location,
@@ -330,9 +331,6 @@ private fun List<PantryItem>.termTaxonomies(): Set<TaxonomyId> =
 
 private fun List<PantryItem>.locationTaxonomies(): Set<TaxonomyId> =
     mapNotNullTo(mutableSetOf()) { item -> item.location?.taxonomy }
-
-/** A whole number keeps no fraction: nobody writes "3.0 onions". */
-private fun Double.trimmed(): String = if (this == toLong().toDouble()) toLong().toString() else toString()
 
 /** The cause is dropped on purpose: it can carry paths and identifiers, and this ends up on screen. */
 private fun AppError.describe(): String =

@@ -3,24 +3,21 @@ package com.kitchenai.ui.presentation.session
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.ShoppingList
-import com.kitchenai.shared.domain.model.Taxonomy
-import com.kitchenai.shared.domain.model.TaxonomyId
-import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.SessionPort
 import com.kitchenai.shared.domain.port.ShoppingListPort
-import com.kitchenai.shared.domain.port.TaxonomyPort
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfilePort
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.session.EnsureSession
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
+import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
+import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -226,15 +223,6 @@ class SessionViewModelTest {
 private val userId = (UserId.of("user-1") as AppResult.Success).data
 private const val UNAUTHORIZED_MESSAGE = "This account is not allowed to read its own data"
 
-private class TestDispatcherProvider(
-    private val dispatcher: CoroutineDispatcher,
-    private val defaultDispatcher: CoroutineDispatcher = dispatcher,
-) : DispatcherProvider {
-    override val main: CoroutineDispatcher get() = dispatcher
-    override val io: CoroutineDispatcher get() = dispatcher
-    override val default: CoroutineDispatcher get() = defaultDispatcher
-}
-
 private class FakeSessionPort : SessionPort {
     var signIn: AppResult<Session.SignedIn> = AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
     var signInCount = 0
@@ -294,14 +282,3 @@ private class FakeUserProfilePort : UserProfilePort {
 }
 
 /** An empty catalogue: a new profile carries no term to validate against it. */
-private class FakeTaxonomyPort : TaxonomyPort {
-    override fun observeTaxonomy(id: TaxonomyId): Flow<List<Term>> = emptyFlow()
-
-    override fun observeTaxonomies(): Flow<List<Taxonomy>> = emptyFlow()
-
-    override fun taxonomyErrors(id: TaxonomyId): Flow<AppError> = emptyFlow()
-
-    override fun taxonomiesErrors(): Flow<AppError> = emptyFlow()
-
-    override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(emptyList())
-}

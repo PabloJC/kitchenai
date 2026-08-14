@@ -1,17 +1,20 @@
 package com.kitchenai.shared.data.remote.agent
 
+import com.kitchenai.shared.data.remote.agent.dto.SuggestRequestDto
+import com.kitchenai.shared.data.remote.agent.dto.SuggestResponseDto
+
 /**
  * The one call this feature makes, behind an interface so the adapter can be tested without a
- * Firebase project — and so a fake can do what a real callable does: time out, reject the call,
- * and hand back a body that parses but says nothing usable.
+ * Firebase project — and so a fake can do what a real callable does: reject the call, time out,
+ * and hand back a body whose shape is right and whose contents are not.
  *
- * It speaks JSON strings rather than objects because that is the boundary where trust ends:
- * whatever comes back is text until the validator has looked at it.
+ * It speaks DTOs rather than JSON text because the SDK owns the encoding: its callable uses its
+ * own encoder, and handing it a `JsonElement` fails at runtime with a message about formats.
  */
 internal fun interface CallableTransport {
-    /** Throws on transport failure; the adapter is what turns that into an [com.kitchenai.shared.core.AppError]. */
+    /** Throws on transport failure; the adapter turns that into an [com.kitchenai.shared.core.AppError]. */
     suspend fun call(
         name: String,
-        payload: String,
-    ): String
+        request: SuggestRequestDto,
+    ): SuggestResponseDto
 }

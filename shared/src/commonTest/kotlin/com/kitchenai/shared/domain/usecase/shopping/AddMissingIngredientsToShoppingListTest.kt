@@ -126,6 +126,26 @@ class AddMissingIngredientsToShoppingListTest {
             assertEquals(0, items.upsertCalls)
         }
 
+    @Test
+    fun `a dish no repository has ever heard of reaches the list when the caller hands it over`() =
+        runTest {
+            val dish = dishOf(twoHundredOfIngredientOne)
+            // An empty catalogue is a generated dish exactly: its id was minted on this device.
+            val useCase =
+                AddMissingIngredientsToShoppingList(
+                    FakeRecipePort(),
+                    FakePantryPort(),
+                    items,
+                    sequentialIds(),
+                    fixedTime(2_000),
+                )
+
+            assertTrue(useCase(user, list, dish.id, servings = 2) is AppResult.Failure)
+
+            assertEquals(AddedToListSummary(added = 1, skipped = 0), useCase(user, list, dish, servings = 2).unwrap())
+            assertEquals(ingredientId("ing-1"), items.itemsOf(list).single().ingredient)
+        }
+
     // Two servings, so that asking for four is a doubling and not the recipe as it stands.
     private fun dishOf(vararg lines: RecipeIngredient): Recipe = recipe(servings = 2, ingredients = lines.toList())
 

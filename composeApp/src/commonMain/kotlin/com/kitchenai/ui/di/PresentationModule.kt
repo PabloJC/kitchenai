@@ -14,6 +14,7 @@ val presentationModule: Module =
         includes(pantryPresentationModule)
         includes(profilePresentationModule)
         includes(shoppingPresentationModule)
+        includes(suggestionsPresentationModule)
     }
 
 /**
