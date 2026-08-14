@@ -28,6 +28,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.platformLanguageTags
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val GENERATE_LABEL = "Suggest something"
@@ -53,7 +54,7 @@ fun SuggestionsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
-    LaunchedEffect(userId) { viewModel.start(userId) }
+    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags()) }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event -> if (event is SuggestionsEvent.Failed) snackbar.showSnackbar(event.message) }
     }

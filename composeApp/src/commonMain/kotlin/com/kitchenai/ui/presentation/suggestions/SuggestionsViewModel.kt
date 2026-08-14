@@ -46,11 +46,16 @@ class SuggestionsViewModel(
     // open before the catalogue has arrived, and a suggestion generated later must still resolve.
     private val ingredients = MutableStateFlow<List<Ingredient>>(emptyList())
     private var user: UserId? = null
+    private var languageTags: List<String> = emptyList()
     private var started = false
 
     /** Idempotent: a configuration change composes the screen again and must not double the listener. */
-    fun start(userId: UserId) {
+    fun start(
+        userId: UserId,
+        languageTags: List<String>,
+    ) {
         user = userId
+        this.languageTags = languageTags
         if (started) return
         started = true
         viewModelScope.launch(dispatchers.default) {
@@ -84,7 +89,10 @@ class SuggestionsViewModel(
         internalState.update { current -> current.copy(options = block(current.options)) }
 
     private fun show(suggestions: List<RecipeSuggestion>) {
-        val resolver = LabelResolver(ingredients = ingredients.value)
+        // With no tags the resolve chain is empty, every lookup misses, and a card names a
+        // catalogue ingredient by its identifier. The card carries no quantities, so terms and
+        // taxonomies are not needed here — only a language to answer in.
+        val resolver = LabelResolver(ingredients = ingredients.value, languageTags = languageTags)
         // Before the state, so a card is never tappable before the dish behind it is reachable.
         cache.put(suggestions.map { it.recipe })
         internalState.update { current ->
