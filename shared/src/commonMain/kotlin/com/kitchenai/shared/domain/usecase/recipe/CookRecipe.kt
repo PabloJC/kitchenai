@@ -34,22 +34,27 @@ class CookRecipe(
         userId: UserId,
         recipeId: RecipeId,
         servings: Int,
-    ): AppResult<Unit> {
-        val recipe = scaledRecipe(recipeId, servings)
-        if (recipe is AppResult.Failure) return recipe
-        val held = pantry.getPantry(userId)
-        if (held is AppResult.Failure) return held
-        return cook(userId, (recipe as AppResult.Success).data, (held as AppResult.Success).data)
-    }
-
-    private suspend fun scaledRecipe(
-        recipeId: RecipeId,
-        servings: Int,
-    ): AppResult<Recipe> =
+    ): AppResult<Unit> =
         when (val found = recipes.getRecipe(recipeId)) {
             is AppResult.Failure -> found
-            is AppResult.Success -> found.data.scaledTo(servings)
+            is AppResult.Success -> invoke(userId, found.data, servings)
         }
+
+    /**
+     * For a recipe the caller already holds. A generated dish lives nowhere a repository can be
+     * asked about, so re-reading it by id would fail for the only kind this app suggests.
+     */
+    suspend operator fun invoke(
+        userId: UserId,
+        recipe: Recipe,
+        servings: Int,
+    ): AppResult<Unit> {
+        val scaled = recipe.scaledTo(servings)
+        if (scaled is AppResult.Failure) return scaled
+        val held = pantry.getPantry(userId)
+        if (held is AppResult.Failure) return held
+        return cook(userId, (scaled as AppResult.Success).data, (held as AppResult.Success).data)
+    }
 
     private suspend fun cook(
         userId: UserId,

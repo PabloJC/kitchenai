@@ -186,6 +186,43 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
+    fun `cooking a generated dish empties the pantry without saving it first`() =
+        runTest(dispatcher) {
+            cache.put(listOf(dish))
+            val pantry = FakePantryPort(listOf(holding(500.0)))
+            val viewModel =
+                started(
+                    pantry = listOf(holding(500.0)),
+                    pantryPort = pantry,
+                    recipePort = FakeRecipePort(catalogue = emptyList()),
+                )
+            advanceUntilIdle()
+
+            viewModel.cook()
+            advanceUntilIdle()
+
+            assertEquals(300.0, pantry.held.single().quantity.amount)
+        }
+
+    @Test
+    fun `adding what is missing works on a generated dish without saving it first`() =
+        runTest(dispatcher) {
+            cache.put(listOf(dish))
+            val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
+            advanceUntilIdle()
+            val seen = mutableListOf<RecipeDetailEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            viewModel.addMissingToList()
+            advanceUntilIdle()
+            collector.cancel()
+
+            // Both lines are wanted: the shortfall, and the one the pantry cannot check.
+            assertEquals(RecipeDetailEvent.AddedToList(added = 2, skipped = 0), seen.single())
+            assertEquals(2, items.upserts.single().size)
+        }
+
+    @Test
     fun `an empty screen does not report that nothing is missing`() =
         runTest(dispatcher) {
             val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
@@ -246,13 +283,19 @@ class RecipeDetailViewModelTest {
                         recipePort,
                         pantryPort,
                         items,
-                        IdGenerator { "shopping-1" },
+                        sequentialIds(),
                         time,
                     ),
                 defaultList = EnsureDefaultShoppingList(lists, IdGenerator { "list-1" }, time),
             )
         return RecipeDetailViewModel(reads, writes, TestDispatcherProvider(dispatcher))
             .also { it.start(user, dish.id) }
+    }
+
+    /** Distinct ids: a constant one would fold two drafted lines into a single item. */
+    private fun sequentialIds(): IdGenerator {
+        var next = 0
+        return IdGenerator { "shopping-${++next}" }
     }
 }
 
