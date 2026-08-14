@@ -103,6 +103,25 @@ class CookRecipeTest {
         }
 
     @Test
+    fun `a dish no repository has ever heard of cooks when the caller hands it over`() =
+        runTest {
+            val dish = dishOf(recipeIngredient("ing-1", quantity = Quantity(200.0, unit)))
+            val pantry = pantryOf(someOfIngredientOne)
+            // An empty catalogue is a generated dish exactly: its id was minted on this device.
+            val useCase =
+                CookRecipe(
+                    FakeRecipePort(),
+                    pantry,
+                    ConsumePantryItems(pantry, TimeProvider { now }),
+                    TimeProvider { now },
+                )
+
+            assertTrue(useCase(user, dish.id, servings = 2) is AppResult.Failure)
+            assertTrue(useCase(user, dish, servings = 2) is AppResult.Success)
+            assertEquals(Quantity(300.0, unit), pantry.quantityOf("item-1"))
+        }
+
+    @Test
     fun `a failing pantry read is reported and never reads as an empty pantry`() =
         runTest {
             val dish = dishOf(recipeIngredient("ing-1", quantity = Quantity(200.0, unit)))

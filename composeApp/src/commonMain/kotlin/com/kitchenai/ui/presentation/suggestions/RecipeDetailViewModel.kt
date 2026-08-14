@@ -100,22 +100,24 @@ class RecipeDetailViewModel(
             writes.save(userId, held).map { RecipeDetailEvent.Saved }
         }
 
+    // Both writes hand over the recipe in hand rather than its id, for the same reason the read
+    // and the match do: a generated dish is in no repository, so re-reading it would fail.
     fun addMissingToList() =
         act { userId ->
-            val recipeId = id ?: return@act null
+            val held = recipe ?: return@act null
             when (val list = writes.defaultList(userId, emptyMap())) {
                 is AppResult.Failure -> AppResult.Failure(list.error)
                 is AppResult.Success ->
                     writes
-                        .addMissing(userId, list.data, recipeId, internalState.value.servings)
+                        .addMissing(userId, list.data, held, internalState.value.servings)
                         .map { summary -> RecipeDetailEvent.AddedToList(summary.added, summary.skipped) }
             }
         }
 
     fun cook() =
         act { userId ->
-            val recipeId = id ?: return@act null
-            writes.cook(userId, recipeId, internalState.value.servings).map { RecipeDetailEvent.Cooked }
+            val held = recipe ?: return@act null
+            writes.cook(userId, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
         }
 
     private var currentMatch: PantryMatch? = null
