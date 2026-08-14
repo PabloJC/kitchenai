@@ -183,6 +183,35 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
+    fun `a cook that worked is never followed by a failure`() =
+        runTest(dispatcher) {
+            // Enough for one cook and not for the next, so the buckets have to move afterwards.
+            cache.put(listOf(dish))
+            val pantry = FakePantryPort(listOf(holding(350.0)))
+            val viewModel =
+                started(
+                    pantry = listOf(holding(350.0)),
+                    pantryPort = pantry,
+                    recipePort = FakeRecipePort(catalogue = emptyList()),
+                )
+            advanceUntilIdle()
+            val seen = mutableListOf<RecipeDetailEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            // A new generation replaces the cache while this screen is still open, so the dish
+            // this ViewModel is showing exists nowhere any longer.
+            cache.put(emptyList())
+            viewModel.cook()
+            advanceUntilIdle()
+            collector.cancel()
+
+            assertEquals(listOf<RecipeDetailEvent>(RecipeDetailEvent.Cooked), seen)
+            assertEquals(150.0, pantry.held.single().quantity.amount)
+            // And the buckets still refreshed: what is left no longer covers another serving.
+            assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
+        }
+
+    @Test
     fun `saving reports itself once and disables the button`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort(catalogue = listOf(dish))

@@ -175,6 +175,24 @@ class RecipeDetailViewModel(
             }
     }
 
+    /**
+     * The buckets after a cook, from the recipe in hand. Never by id: a generated dish may have
+     * left the cache by now, and the repository would answer NotFound for a cook that just
+     * succeeded.
+     *
+     * Silent when the re-match fails. The pantry has already changed and cannot be put back, so
+     * a stale bucket is a smaller lie than telling somebody their cook did not happen.
+     */
+    private suspend fun refreshMatch(userId: UserId) {
+        val held = recipe.value ?: return
+        val servings = internalState.value.servings
+        val match = reads.match(userId, held, servings)
+        if (match is AppResult.Success) {
+            currentMatch.value = match.data
+            render(held, match.data, servings)
+        }
+    }
+
     private suspend fun matched(
         userId: UserId,
         found: Recipe,
@@ -243,7 +261,7 @@ class RecipeDetailViewModel(
                     if (outcome.data is RecipeDetailEvent.Saved) internalState.update { it.copy(isSaved = true) }
                     announce(outcome.data)
                     // Cooking changed the pantry, so the buckets beside it are now stale.
-                    if (outcome.data is RecipeDetailEvent.Cooked) id?.let { load(it, internalState.value.servings) }
+                    if (outcome.data is RecipeDetailEvent.Cooked) refreshMatch(userId)
                 }
             }
             internalState.update { it.copy(isWorking = false) }
