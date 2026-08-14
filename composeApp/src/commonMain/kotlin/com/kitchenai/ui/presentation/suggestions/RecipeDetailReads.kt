@@ -10,6 +10,8 @@ import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantry
  */
 class RecipeDetailReads(
     val recipe: GetRecipeById,
+    /** Checked before the repository: a generated dish is only ever here. */
+    val cache: SuggestionCache,
     val match: MatchRecipeAgainstPantry,
     val ingredients: ObserveIngredients,
 )

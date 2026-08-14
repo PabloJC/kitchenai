@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
  */
 class SuggestionsViewModel(
     private val suggestRecipes: SuggestRecipes,
+    private val cache: SuggestionCache,
     private val observeIngredients: ObserveIngredients,
     private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
@@ -84,6 +85,8 @@ class SuggestionsViewModel(
 
     private fun show(suggestions: List<RecipeSuggestion>) {
         val resolver = LabelResolver(ingredients = ingredients.value)
+        // Before the state, so a card is never tappable before the dish behind it is reachable.
+        cache.put(suggestions.map { it.recipe })
         internalState.update { current ->
             current.copy(
                 suggestions = suggestions.map { suggestion -> suggestion.toUi(resolver) },

@@ -43,6 +43,19 @@ class MatchRecipeAgainstPantry(
                 }
         }
 
+    /**
+     * For a recipe the caller already holds. A generated dish lives nowhere a repository can be
+     * asked about, so re-reading it by id would fail for the only kind this app suggests.
+     */
+    suspend operator fun invoke(
+        userId: UserId,
+        recipe: Recipe,
+        servings: Int? = null,
+    ): AppResult<PantryMatch> =
+        recipe.at(servings).flatMap { scaled ->
+            pantry.getPantry(userId).map { held -> PantryMatcher.match(scaled, held, time.now()) }
+        }
+
     private fun Recipe.at(servings: Int?): AppResult<Recipe> =
         if (servings == null) AppResult.Success(this) else scaledTo(servings)
 }

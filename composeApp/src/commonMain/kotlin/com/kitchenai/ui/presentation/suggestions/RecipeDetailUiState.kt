@@ -21,8 +21,12 @@ data class RecipeDetailUiState(
     val isSaved: Boolean = false,
     val error: String? = null,
 ) {
-    /** Cooking is refused without every required line, so the button says so before it is tapped. */
-    val canCook: Boolean get() = !isLoading && !isWorking && missing.isEmpty()
+    /**
+     * Cooking is refused without every required line, so the button says so before it is tapped.
+     * `title` standing in for "a recipe loaded": without it an empty screen reports nothing
+     * missing, which is not the same as having everything.
+     */
+    val canCook: Boolean get() = !isLoading && !isWorking && title.isNotEmpty() && missing.isEmpty()
 }
 
 data class IngredientLineUi(

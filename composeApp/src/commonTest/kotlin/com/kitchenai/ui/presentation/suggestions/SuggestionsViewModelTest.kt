@@ -43,6 +43,7 @@ class SuggestionsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val catalogue = FakeIngredientPort()
     private val agent = RecordingOrchestrator()
+    private val cache = SuggestionCache()
     private val profile =
         UserProfile(
             userId = UserId.of("user-1").orFail(),
@@ -178,9 +179,24 @@ class SuggestionsViewModelTest {
             assertEquals(null, viewModel.state.value.error)
         }
 
+    @Test
+    fun `a generated dish is reachable before its card is`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
+            val viewModel = started()
+
+            viewModel.generate()
+            advanceUntilIdle()
+
+            // It exists nowhere else: the detail screen has only this to open.
+            val id = viewModel.state.value.suggestions.single().id
+            assertEquals("Dish", cache[id]?.title)
+        }
+
     private fun started(): SuggestionsViewModel =
         SuggestionsViewModel(
             suggestRecipes = SuggestRecipes(StubProfilePort(profile), StubPantryPort(), agent),
+            cache = cache,
             observeIngredients = ObserveIngredients(catalogue),
             dispatchers = TestDispatcherProvider(dispatcher),
         ).also { it.start(UserId.of("user-1").orFail()) }

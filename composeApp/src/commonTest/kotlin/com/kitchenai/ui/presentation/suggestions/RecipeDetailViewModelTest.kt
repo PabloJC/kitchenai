@@ -171,6 +171,29 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
+    fun `a generated dish opens from the cache which is the only place it exists`() =
+        runTest(dispatcher) {
+            // No catalogue at all: exactly a dish the model invented a moment ago.
+            cache.put(listOf(dish))
+            val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
+            advanceUntilIdle()
+
+            assertEquals("Dish", viewModel.state.value.title)
+            assertEquals(null, viewModel.state.value.error)
+        }
+
+    @Test
+    fun `an empty screen does not report that nothing is missing`() =
+        runTest(dispatcher) {
+            val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
+            advanceUntilIdle()
+
+            // Nothing loaded, so `missing` is empty — which is not the same as having everything.
+            assertTrue(viewModel.state.value.missing.isEmpty())
+            assertFalse(viewModel.state.value.canCook)
+        }
+
+    @Test
     fun `a recipe that cannot be read reports rather than rendering an empty dish`() =
         runTest(dispatcher) {
             val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
@@ -191,6 +214,7 @@ class RecipeDetailViewModelTest {
             updatedAt = now,
         )
 
+    private val cache = SuggestionCache()
     private val items = FakeShoppingItemPort()
     private val lists = FakeShoppingListPort()
 
@@ -203,6 +227,7 @@ class RecipeDetailViewModelTest {
         val reads =
             RecipeDetailReads(
                 recipe = GetRecipeById(recipePort),
+                cache = cache,
                 match = MatchRecipeAgainstPantry(recipePort, pantryPort, time),
                 ingredients = ObserveIngredients(FakeIngredientPort()),
             )

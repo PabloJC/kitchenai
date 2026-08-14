@@ -103,21 +103,29 @@ class RecipeDetailViewModel(
     ) {
         val userId = user ?: return
         viewModelScope.launch(dispatchers.default) {
+            // The cache first: a generated dish was never written anywhere, so the repository
+            // would answer NotFound for the only kind of recipe this screen is reached with.
+            val cached = reads.cache[recipeId]
+            if (cached != null) {
+                matched(userId, cached, servings)
+                return@launch
+            }
             when (val found = reads.recipe(recipeId)) {
                 is AppResult.Failure -> failed(found.error)
-                is AppResult.Success -> matched(userId, recipeId, found.data, servings)
+                is AppResult.Success -> matched(userId, found.data, servings)
             }
         }
     }
 
     private suspend fun matched(
         userId: UserId,
-        recipeId: RecipeId,
         found: Recipe,
         servings: Int?,
     ) {
         recipe = found
-        when (val match = reads.match(userId, recipeId, servings)) {
+        // Matched against the recipe in hand, never re-read by id: a generated dish is not in
+        // any repository, and asking for it again is the failure this screen just had.
+        when (val match = reads.match(userId, found, servings)) {
             is AppResult.Failure -> failed(match.error)
             is AppResult.Success -> {
                 currentMatch = match.data
