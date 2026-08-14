@@ -150,29 +150,35 @@ class RecipeDetailViewModel(
             writes.cook(userId, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
         }
 
+    /**
+     * One match at a time, whoever asked for it. A slower earlier read landing last would put
+     * the buckets back to a count the stepper has already left — the same disagreement the
+     * servings override exists to prevent — and the stepper is not gated while a write runs, so
+     * a tap really can overlap the refresh after a cook.
+     */
+    private fun matching(block: suspend () -> Unit) {
+        loading.value?.cancel()
+        loading.value = viewModelScope.launch(dispatchers.default) { block() }
+    }
+
     private fun load(
         recipeId: RecipeId,
         servings: Int?,
     ) {
         val userId = user ?: return
-        // One load at a time. Each carries the servings it was started for, so a slower earlier
-        // read landing last would put the buckets back to a count the stepper has already left —
-        // the same disagreement the servings override exists to prevent.
-        loading.value?.cancel()
-        loading.value =
-            viewModelScope.launch(dispatchers.default) {
-                // The cache first: a generated dish was never written anywhere, so the repository
-                // would answer NotFound for the only kind of recipe this screen is reached with.
-                val cached = reads.cache[recipeId]
-                if (cached != null) {
-                    matched(userId, cached, servings)
-                    return@launch
-                }
-                when (val found = reads.recipe(recipeId)) {
-                    is AppResult.Failure -> failed(found.error)
-                    is AppResult.Success -> matched(userId, found.data, servings)
-                }
+        matching {
+            // The cache first: a generated dish was never written anywhere, so the repository
+            // would answer NotFound for the only kind of recipe this screen is reached with.
+            val cached = reads.cache[recipeId]
+            if (cached != null) {
+                matched(userId, cached, servings)
+                return@matching
             }
+            when (val found = reads.recipe(recipeId)) {
+                is AppResult.Failure -> failed(found.error)
+                is AppResult.Success -> matched(userId, found.data, servings)
+            }
+        }
     }
 
     /**
@@ -180,16 +186,21 @@ class RecipeDetailViewModel(
      * left the cache by now, and the repository would answer NotFound for a cook that just
      * succeeded.
      *
+     * Reads the servings when it runs rather than when it was queued, so a stepper tap that
+     * overlapped the cook is answered for rather than overwritten.
+     *
      * Silent when the re-match fails. The pantry has already changed and cannot be put back, so
      * a stale bucket is a smaller lie than telling somebody their cook did not happen.
      */
-    private suspend fun refreshMatch(userId: UserId) {
+    private fun refreshMatch(userId: UserId) {
         val held = recipe.value ?: return
-        val servings = internalState.value.servings
-        val match = reads.match(userId, held, servings)
-        if (match is AppResult.Success) {
-            currentMatch.value = match.data
-            render(held, match.data, servings)
+        matching {
+            val servings = internalState.value.servings
+            val match = reads.match(userId, held, servings)
+            if (match is AppResult.Success) {
+                currentMatch.value = match.data
+                render(held, match.data, servings)
+            }
         }
     }
 
