@@ -38,8 +38,9 @@ export const suggestRecipes = onCall(
     // the round trips it does not make are worth more than anything else here.
     region: process.env.FUNCTIONS_REGION ?? 'europe-southwest1',
     enforceAppCheck: true,
-    // A model call is slower than a database read and must still not hang. The client gives up
-    // at 30s, so anything past that is work nobody is waiting for.
+    // A model call is slower than a database read and must still not hang. This is the budget
+    // for the work; the client waits longer on purpose, so this deadline is the one that fires
+    // and the caller gets an answer instead of giving up on a call still running.
     timeoutSeconds: 60,
     memory: '512MiB',
     // Ceiling on concurrent spend. A runaway client cannot turn into an unbounded bill.
