@@ -18,9 +18,16 @@ struct iOSApp: App {
         // Order matters: Firebase before anything Kotlin.
         FirebaseApp.configure()
 
+        // Read rather than defaulted: the region comes from Config.xcconfig through Info.plist,
+        // and a build that lost it must stop here instead of calling a region nobody chose.
+        guard let region = Bundle.main.object(forInfoDictionaryKey: "FunctionsRegion") as? String,
+              !region.isEmpty else {
+            fatalError("FunctionsRegion is missing from Info.plist. See iosApp/Configuration/Config.xcconfig.")
+        }
+
         // PresentationModuleKt, not SharedModuleKt: `initKoin` lives in :shared, which
         // cannot see :composeApp.
-        PresentationModuleKt.doInitKoinUi(appDeclaration: { _ in })
+        PresentationModuleKt.doInitKoinUi(functionsRegion: region, appDeclaration: { _ in })
     }
 
     var body: some Scene {

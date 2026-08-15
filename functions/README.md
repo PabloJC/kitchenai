@@ -41,9 +41,20 @@ deliberately rather than inheriting.
 
 **The client has to name the same region.** `Firebase.functions` with no argument calls
 `us-central1`, and a call to a region where nothing is deployed does not fail as "not found" —
-it surfaces as a generic error with nothing in the logs. The region is set in
-`shared/.../di/AgentDataModule.kt`, and it and `FUNCTIONS_REGION` change together or the app
-stops reaching the function.
+it surfaces as a generic error with nothing in the logs.
+
+The client no longer holds the value. `:shared` takes it as a parameter, and each platform
+supplies its own, so **three** places have to agree:
+
+| Where | What |
+|---|---|
+| `functions/` | `FUNCTIONS_REGION`, the deployment itself |
+| `gradle.properties` | `kitchenai.functionsRegion`, reaching Android through `BuildConfig` |
+| `iosApp/Configuration/Config.xcconfig` | `FUNCTIONS_REGION`, reaching iOS through `Info.plist` |
+
+Nothing defaults: an absent or blank value fails the Android build and stops the iOS app at
+launch. That is deliberate, because the failure it replaces — a call quietly reaching nothing —
+is the one nobody can diagnose from the app.
 
 ## Rate limit
 

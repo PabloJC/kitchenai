@@ -13,9 +13,9 @@ val coreModule: Module =
     }
 
 // One module per line and alphabetical: several issues append to this list in parallel.
-val sharedModules: List<Module> =
+fun sharedModules(functionsRegion: String): List<Module> =
     listOf(
-        agentDataModule,
+        agentDataModule(functionsRegion),
         agentModule,
         authModule,
         coreModule,
@@ -32,9 +32,16 @@ val sharedModules: List<Module> =
         shoppingModule,
     )
 
-/** Single entry point; called by MainActivity (Android) and iOSApp (iOS). */
-fun initKoin(appDeclaration: KoinAppDeclaration = {}) =
-    startKoin {
-        appDeclaration()
-        modules(sharedModules)
-    }
+/**
+ * Single entry point; called by MainActivity (Android) and iOSApp (iOS).
+ *
+ * [functionsRegion] has no default. A wrong region fails as a call that reaches nothing rather
+ * than as an error, so a default would be a value nobody chose behaving like one somebody did.
+ */
+fun initKoin(
+    functionsRegion: String,
+    appDeclaration: KoinAppDeclaration = {},
+) = startKoin {
+    appDeclaration()
+    modules(sharedModules(functionsRegion))
+}

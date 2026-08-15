@@ -16,9 +16,23 @@ android {
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
+
+        // The deployment coordinate reaches the app from here rather than from a constant in
+        // :shared. Absent rather than defaulted: a wrong region is a call that reaches nothing,
+        // so the build should stop instead of picking one.
+        // Blank, not just absent: an empty override reaches the SDK as no region at all, which
+        // is the silent failure this whole change exists to remove.
+        val functionsRegion =
+            providers.gradleProperty("kitchenai.functionsRegion").orNull
+                ?.takeIf { it.isNotBlank() }
+                ?: error("kitchenai.functionsRegion is missing or blank. See gradle.properties.")
+        buildConfigField("String", "FUNCTIONS_REGION", "\"$functionsRegion\"")
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     buildTypes {
         release {
