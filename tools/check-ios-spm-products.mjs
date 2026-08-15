@@ -36,7 +36,9 @@ const unknown = used.filter((name) => !(name in NATIVE_PRODUCT));
 const missing = [...new Set(used)]
   .filter((name) => name in NATIVE_PRODUCT)
   .map((name) => [name, NATIVE_PRODUCT[name]])
-  .filter(([, product]) => !declared.includes(`productName = ${product}`));
+  // The trailing semicolon matters: without it `FirebaseCore` is satisfied by a line declaring
+  // `FirebaseCoreExtension`, and the check passes on a product nobody added.
+  .filter(([, product]) => !declared.includes(`productName = ${product};`));
 
 if (unknown.length > 0) {
   // Loud rather than silent: an artefact this file has never heard of is exactly the case the
