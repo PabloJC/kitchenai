@@ -30,6 +30,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.profile_constraints
+import com.kitchenai.ui.resources.profile_included
 import com.kitchenai.ui.resources.profile_languages
 import com.kitchenai.ui.resources.profile_name
 import com.kitchenai.ui.resources.profile_no_preferences
@@ -165,7 +166,10 @@ private fun TransparencyRow(state: ProfileUiState) {
             SentLine(label = stringResource(Res.string.profile_constraints), value = state.constraintCount.toString())
             SentLine(label = stringResource(Res.string.profile_servings), value = state.servings.toString())
             SentLine(label = stringResource(Res.string.profile_languages), value = state.languageTags.joinToString())
-            SentLine(label = stringResource(Res.string.profile_pantry_contents), value = "included")
+            SentLine(
+                label = stringResource(Res.string.profile_pantry_contents),
+                value = stringResource(Res.string.profile_included),
+            )
         }
     }
 }

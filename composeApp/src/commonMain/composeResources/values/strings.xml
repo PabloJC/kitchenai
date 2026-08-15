@@ -96,4 +96,5 @@
     <string name="placeholder_title">Nothing here yet</string>
     <string name="placeholder_body">This screen is on its way</string>
     <string name="session_retry">Try again</string>
+    <string name="profile_included">included</string>
 </resources>

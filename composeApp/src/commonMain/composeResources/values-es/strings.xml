@@ -94,4 +94,5 @@
     <string name="placeholder_title">Aquí todavía no hay nada</string>
     <string name="placeholder_body">Esta pantalla está de camino</string>
     <string name="session_retry">Inténtalo otra vez</string>
+    <string name="profile_included">incluido</string>
 </resources>
