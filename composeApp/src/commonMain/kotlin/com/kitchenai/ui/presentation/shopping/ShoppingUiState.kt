@@ -29,7 +29,12 @@ data class ShoppingItemUi(
     val id: ShoppingItemId,
     val label: String,
     val quantity: String?,
-    val sourceRecipe: String?,
+    /**
+     * That a dish put this here, not which one. The id is all the item carries and no title can
+     * be resolved from it — a generated dish exists in no repository — so the honest signal is
+     * the fact rather than a line of hex the reader cannot use.
+     */
+    val fromRecipe: Boolean,
     val fromCatalogue: Boolean,
     val checked: Boolean,
 )

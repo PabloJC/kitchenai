@@ -5,12 +5,22 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.Quantity
+import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
+import com.kitchenai.shared.domain.model.Taxonomy
+import com.kitchenai.shared.domain.model.TaxonomyId
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
+import com.kitchenai.shared.domain.model.Term
+import com.kitchenai.shared.domain.model.TermId
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItem
 import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItems
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
@@ -20,6 +30,7 @@ import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemChecked
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
+import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +44,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -97,6 +109,32 @@ class ShoppingViewModelTest {
                 assertEquals(ShoppingEvent.CheckedCleared(2), awaitItem())
                 assertEquals(1, items.clears)
             }
+        }
+
+    @Test
+    fun `a line from a dish says so without showing the recipe's identifier`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1", sourceRecipe = recipeId), line("item-2")))
+            advanceUntilIdle()
+
+            // The id is a uuid minted on the device for a generated dish and resolves to no
+            // title anywhere, so the row carries the fact and not the identifier.
+            val (fromDish, byHand) = viewModel.state.value.unchecked
+            assertTrue(fromDish.fromRecipe)
+            assertFalse(byHand.fromRecipe)
+        }
+
+    @Test
+    fun `a quantity shows its unit rather than the term's identifier`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            taxonomies.taxonomies.emit(listOf(unitsTaxonomy))
+            taxonomies.terms.emit(listOf(gramTerm))
+            items.emit(listOf(line("item-1", quantity = Quantity(400.0, gram))))
+            advanceUntilIdle()
+
+            assertEquals("400 g", viewModel.state.value.unchecked.single().quantity)
         }
 
     @Test
@@ -229,6 +267,8 @@ class ShoppingViewModelTest {
             assertEquals("No connection", viewModel.state.value.error)
         }
 
+    private val taxonomies = FakeTaxonomyPort()
+
     private fun TestScope.started(): ShoppingViewModel {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         var generated = 0
@@ -239,6 +279,8 @@ class ShoppingViewModelTest {
                     ShoppingReads(
                         items = ObserveShoppingItems(items),
                         ingredients = ObserveIngredients(catalogue),
+                        taxonomies = ObserveTaxonomies(taxonomies),
+                        taxonomy = ObserveTaxonomy(taxonomies),
                     ),
                 writes =
                     ShoppingWrites(
@@ -257,6 +299,10 @@ class ShoppingViewModelTest {
 
 private val userId = unwrap(UserId.of("user-1"))
 private val ingredientId = unwrap(IngredientId.of("ing-1"))
+private val recipeId = unwrap(RecipeId.of("recipe-1"))
+private val gram = TermRef(unwrap(TaxonomyId.of("units")), unwrap(TermId.of("gram")))
+private val gramTerm = Term(gram, mapOf("en" to "g"), null, 0)
+private val unitsTaxonomy = Taxonomy(gram.taxonomy, mapOf("en" to "Units"), "en", TaxonomyPurpose.UNITS)
 
 private fun itemId(raw: String): ShoppingItemId = unwrap(ShoppingItemId.of(raw))
 
@@ -267,14 +313,16 @@ private fun line(
     raw: String,
     checked: Boolean = false,
     freeText: String? = null,
+    quantity: Quantity? = null,
+    sourceRecipe: RecipeId? = null,
 ): ShoppingItem =
     ShoppingItem(
         id = itemId(raw),
         ingredient = if (freeText == null) ingredientId else null,
         freeText = freeText,
-        quantity = null,
+        quantity = quantity,
         checked = checked,
-        sourceRecipe = null,
+        sourceRecipe = sourceRecipe,
         updatedAt = Instant.fromEpochSeconds(0),
     )
 

@@ -1,6 +1,8 @@
 package com.kitchenai.ui.presentation.shopping
 
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItems
 
 /**
@@ -11,4 +13,7 @@ import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItems
 class ShoppingReads(
     val items: ObserveShoppingItems,
     val ingredients: ObserveIngredients,
+    /** Units are terms, not ingredients: without these a quantity renders as a bare identifier. */
+    val taxonomies: ObserveTaxonomies,
+    val taxonomy: ObserveTaxonomy,
 )
