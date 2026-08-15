@@ -51,6 +51,16 @@ jobs:
       - run: ./gradlew detektAll --continue
       - run: ./gradlew ktlintCheck --continue
 
+      # Here rather than on the macOS runner: it reads two files and needs no toolchain, and the
+      # job it protects is the one that cannot see the problem. Linking the Kotlin framework
+      # succeeds with a Firebase SPM product missing; only Xcode fails, and nothing here runs it.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Every GitLive artefact has its iOS SPM product
+        run: node tools/check-ios-spm-products.mjs
+
       - name: Publish reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -162,6 +172,10 @@ jobs:
 
       # Link only: Kotlin/Native tests are disabled because the linker cannot find the
       # iOS Firebase frameworks, which Xcode supplies through SPM. See docs/infra.md.
+      #
+      # This links the framework and never opens iosApp.xcodeproj, so anything that only breaks
+      # inside Xcode passes here. The cheap half of that gap — a Firebase SPM product nobody
+      # registered — is checked in `Lint & Detekt`; building the app itself is still not done.
       - run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 
   # ---------------------------------------------------------------- #
