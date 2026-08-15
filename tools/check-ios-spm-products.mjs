@@ -28,8 +28,13 @@ const NATIVE_PRODUCT = {
 };
 
 // The dependency block, not the version catalogue: the catalogue declares artefacts nobody uses,
-// and an unused one needs no native product.
-const used = [...readFileSync(GRADLE, 'utf8').matchAll(/libs\.gitlive\.firebase\.(\w+)/g)].map((m) => m[1]);
+// and an unused one needs no native product. Comments are stripped first — a commented-out
+// dependency is not one, and demanding a product for it would fail the build over nothing.
+const gradle = readFileSync(GRADLE, 'utf8')
+  .split('\n')
+  .map((line) => line.replace(/\/\/.*$/, ''))
+  .join('\n');
+const used = [...gradle.matchAll(/libs\.gitlive\.firebase\.(\w+)/g)].map((m) => m[1]);
 const declared = readFileSync(PBXPROJ, 'utf8');
 
 const unknown = used.filter((name) => !(name in NATIVE_PRODUCT));
