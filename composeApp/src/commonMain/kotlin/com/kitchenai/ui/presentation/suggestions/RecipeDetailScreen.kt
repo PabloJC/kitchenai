@@ -203,14 +203,19 @@ private fun CookDialog(
     )
 }
 
-private suspend fun SnackbarHostState.announce(event: RecipeDetailEvent) {
-    val message =
-        when (event) {
-            // Both counts: "added" alone would hide that some lines were already there.
-            is RecipeDetailEvent.AddedToList -> "${event.added} added, ${event.skipped} already on the list"
-            RecipeDetailEvent.Cooked -> "Taken out of your pantry"
-            RecipeDetailEvent.Saved -> "Saved"
-            is RecipeDetailEvent.Failed -> event.message
-        }
-    showSnackbar(message)
-}
+private suspend fun SnackbarHostState.announce(event: RecipeDetailEvent) = showSnackbar(event.sentence())
+
+/**
+ * Separate from [announce] so the wording can be tested: there is no Compose test harness here,
+ * and the sentence is the part that can be wrong.
+ */
+internal fun RecipeDetailEvent.sentence(): String =
+    when (this) {
+        // Both counts, and "not needed" for the second: a skipped line is one the pantry already
+        // covers or one the recipe marks optional. Neither is "already on the list" — a line that
+        // was on the list is topped up and counted in `added`.
+        is RecipeDetailEvent.AddedToList -> "$added added, $skipped not needed"
+        RecipeDetailEvent.Cooked -> "Taken out of your pantry"
+        RecipeDetailEvent.Saved -> "Saved"
+        is RecipeDetailEvent.Failed -> message
+    }
