@@ -44,7 +44,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -112,17 +111,17 @@ class ShoppingViewModelTest {
         }
 
     @Test
-    fun `a line from a dish says so without showing the recipe's identifier`() =
+    fun `a line from a dish is indistinguishable from one added by hand`() =
         runTest(dispatcher) {
             val viewModel = started()
             items.emit(listOf(line("item-1", sourceRecipe = recipeId), line("item-2")))
             advanceUntilIdle()
 
-            // The id is a uuid minted on the device for a generated dish and resolves to no
-            // title anywhere, so the row carries the fact and not the identifier.
+            // The recipe id is a uuid minted on the device and resolves to no title anywhere, so
+            // nothing about it may reach the row. Compared whole rather than field by field: any
+            // future field carrying it would fail here rather than reach a reader.
             val (fromDish, byHand) = viewModel.state.value.unchecked
-            assertTrue(fromDish.fromRecipe)
-            assertFalse(byHand.fromRecipe)
+            assertEquals(byHand, fromDish.copy(id = byHand.id))
         }
 
     @Test

@@ -179,13 +179,6 @@ private fun ShoppingItemRow(
                     fontStyle = if (item.fromCatalogue) FontStyle.Normal else FontStyle.Italic,
                     textDecoration = if (item.checked) TextDecoration.LineThrough else null,
                 )
-                if (item.fromRecipe) {
-                    Text(
-                        text = FROM_RECIPE_LABEL,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
 
             item.quantity?.let { quantity ->
@@ -228,7 +221,6 @@ private suspend fun SnackbarHostState.announce(
 // This one is not private: the detail screen can reach the same list, and two spellings of the
 // name would mean two names depending on which screen got there first.
 internal const val DEFAULT_LIST_NAME = "Shopping list"
-private const val FROM_RECIPE_LABEL = "Added from a dish"
 private const val TO_BUY_TITLE = "To buy"
 private const val IN_CART_TITLE = "In the cart"
 private const val CLEAR_LABEL = "Clear"

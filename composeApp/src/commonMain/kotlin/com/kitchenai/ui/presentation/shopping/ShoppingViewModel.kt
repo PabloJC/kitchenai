@@ -302,8 +302,6 @@ class ShoppingViewModel(
             id = item.id,
             label = label(item, labels),
             quantity = item.quantity?.let { amount -> formatQuantity(amount, labels) },
-            // The recipe catalogue is not read here, so this is the identifier until a screen reads it.
-            fromRecipe = item.sourceRecipe != null,
             fromCatalogue = item.ingredient != null,
             checked = item.checked,
         )
