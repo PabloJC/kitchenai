@@ -27,6 +27,8 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.presentation.common.text
 import org.koin.compose.viewmodel.koinViewModel
 
 // The screen owns its wording: the navigation entry is one line and has nowhere to put it.
@@ -94,13 +96,13 @@ private fun PantryList(
 
     when {
         state.isLoading -> LoadingState(modifier)
-        state.items.isEmpty() && error != null -> ErrorState(message = error, modifier = modifier)
+        state.items.isEmpty() && error != null -> ErrorState(message = error.resolve(), modifier = modifier)
         state.items.isEmpty() -> EmptyState(title = EMPTY_TITLE, body = EMPTY_BODY, modifier = modifier)
         else ->
             LazyColumn(modifier = modifier) {
                 // A failed listener keeps the last good list underneath it: it stopped emitting,
                 // it did not report an empty pantry.
-                if (error != null) item(key = error) { ErrorState(message = error) }
+                if (error != null) item(key = error) { ErrorState(message = error.resolve()) }
                 sections.forEach { (title, rows) ->
                     item(key = title) { SectionHeader(title = title) }
                     items(rows, key = { row -> row.id.value }) { row ->
@@ -137,7 +139,7 @@ private suspend fun SnackbarHostState.announce(
             if (outcome == SnackbarResult.ActionPerformed) onUndo(event.restore)
         }
 
-        is PantryEvent.SaveFailed -> showSnackbar(message = event.message)
+        is PantryEvent.SaveFailed -> showSnackbar(message = event.message.text())
     }
 }
 

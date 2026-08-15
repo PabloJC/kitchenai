@@ -36,6 +36,10 @@ import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_missing_ingredients
+import com.kitchenai.ui.resources.error_not_found
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -165,7 +169,8 @@ class RecipeDetailViewModelTest {
             collector.cancel()
 
             val failure = seen.filterIsInstance<RecipeDetailEvent.Failed>().single()
-            assertTrue(failure.message.contains("missing ingredients"), failure.message)
+            // The cook's own sentence, not the generic validation one.
+            assertEquals(UiText.of(Res.string.error_missing_ingredients), failure.message)
             assertTrue(pantry.held.isEmpty())
         }
 
@@ -369,7 +374,7 @@ class RecipeDetailViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.isLoading)
-            assertEquals("Cannot find recipe", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_not_found, "recipe"), viewModel.state.value.error)
             assertTrue(viewModel.state.value.held.isEmpty())
         }
 

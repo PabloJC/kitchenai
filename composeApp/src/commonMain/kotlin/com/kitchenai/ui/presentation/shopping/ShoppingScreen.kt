@@ -42,6 +42,7 @@ import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -68,7 +69,7 @@ fun ShoppingScreen(
             SectionHeader(title = state.listName)
             state.error?.let { message ->
                 Text(
-                    text = message,
+                    text = message.resolve(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),

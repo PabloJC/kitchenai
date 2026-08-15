@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.domain.model.PantryItem
+import com.kitchenai.ui.presentation.common.UiText
 
 /** What happens once and must not be replayed on the next recomposition. */
 sealed interface PantryEvent {
@@ -14,5 +15,5 @@ sealed interface PantryEvent {
         val restore: PantryItem,
     ) : PantryEvent
 
-    data class SaveFailed(val message: String) : PantryEvent
+    data class SaveFailed(val message: UiText) : PantryEvent
 }

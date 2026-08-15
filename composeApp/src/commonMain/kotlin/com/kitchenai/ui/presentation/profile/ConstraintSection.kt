@@ -16,6 +16,7 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.presentation.common.resolve
 
 /**
  * One taxonomy, drawn from whatever the catalogue put in it. A section with no terms still
@@ -33,7 +34,7 @@ fun ConstraintSection(
 
         section.error?.let { message ->
             Text(
-                text = message,
+                text = message.resolve(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = Dimens.large),

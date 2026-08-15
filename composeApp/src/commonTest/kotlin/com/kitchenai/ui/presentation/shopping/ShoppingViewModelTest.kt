@@ -32,6 +32,9 @@ import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_no_connection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -146,7 +149,7 @@ class ShoppingViewModelTest {
             items.errors.emit(AppError.Network())
             advanceUntilIdle()
 
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
             assertEquals(1, viewModel.state.value.unchecked.size)
         }
 
@@ -211,7 +214,7 @@ class ShoppingViewModelTest {
             items.upsertResult = AppResult.Failure(AppError.Network())
             viewModel.setChecked(itemId("item-1"), checked = true)
             advanceUntilIdle()
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
 
             items.upsertResult = AppResult.Success(Unit)
             viewModel.setChecked(itemId("item-1"), checked = false)
@@ -228,12 +231,12 @@ class ShoppingViewModelTest {
 
             catalogue.errors.emit(AppError.Network())
             advanceUntilIdle()
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
 
             // An item emission is not the catalogue recovering, so the banner stays.
             items.emit(listOf(line("item-1"), line("item-2")))
             advanceUntilIdle()
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
 
             catalogue.emit(emptyList())
             advanceUntilIdle()
@@ -263,7 +266,7 @@ class ShoppingViewModelTest {
 
             // "Nothing to buy" is a different sentence from "this has not loaded".
             assertTrue(viewModel.state.value.isLoading)
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
         }
 
     private val taxonomies = FakeTaxonomyPort()

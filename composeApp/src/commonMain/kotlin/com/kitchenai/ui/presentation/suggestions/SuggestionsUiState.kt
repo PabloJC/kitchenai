@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.suggestions
 
 import com.kitchenai.shared.domain.model.RecipeId
+import com.kitchenai.ui.presentation.common.UiText
 
 /**
  * The suggestions screen's one state.
@@ -13,7 +14,7 @@ data class SuggestionsUiState(
     val suggestions: List<SuggestionUi> = emptyList(),
     val isGenerating: Boolean = false,
     val hasGenerated: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
     val options: SuggestionOptionsUi = SuggestionOptionsUi(),
 )
 

@@ -31,7 +31,14 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.presentation.shopping.DEFAULT_LIST_NAME
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.snack_added_to_list
+import com.kitchenai.ui.resources.snack_cooked
+import com.kitchenai.ui.resources.snack_saved
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val HAVE_TITLE = "In your pantry"
@@ -87,7 +94,7 @@ fun RecipeDetailScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
             Header(state, viewModel)
-            state.error?.let { message -> Text(message, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { message -> Text(message.resolve(), color = MaterialTheme.colorScheme.error) }
             Lines(HAVE_TITLE, state.held)
             Lines(MISSING_TITLE, state.missing)
             // Its own section with its own sentence: this is not "missing", and a reader who
@@ -203,19 +210,18 @@ private fun CookDialog(
     )
 }
 
-private suspend fun SnackbarHostState.announce(event: RecipeDetailEvent) = showSnackbar(event.sentence())
+private suspend fun SnackbarHostState.announce(event: RecipeDetailEvent) = showSnackbar(event.sentence().text())
 
 /**
  * Separate from [announce] so the wording can be tested: there is no Compose test harness here,
  * and the sentence is the part that can be wrong.
  */
-internal fun RecipeDetailEvent.sentence(): String =
+internal fun RecipeDetailEvent.sentence(): UiText =
     when (this) {
-        // Both counts, and "not needed" for the second: a skipped line is one the pantry already
-        // covers or one the recipe marks optional. Neither is "already on the list" — a line that
-        // was on the list is topped up and counted in `added`.
-        is RecipeDetailEvent.AddedToList -> "$added added, $skipped not needed"
-        RecipeDetailEvent.Cooked -> "Taken out of your pantry"
-        RecipeDetailEvent.Saved -> "Saved"
+        // Both counts. What "skipped" means is in the string itself now: a line the pantry
+        // covers or one the recipe marks optional, never one already on the list.
+        is RecipeDetailEvent.AddedToList -> UiText.of(Res.string.snack_added_to_list, added, skipped)
+        RecipeDetailEvent.Cooked -> UiText.of(Res.string.snack_cooked)
+        RecipeDetailEvent.Saved -> UiText.of(Res.string.snack_saved)
         is RecipeDetailEvent.Failed -> message
     }

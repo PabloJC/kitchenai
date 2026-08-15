@@ -26,6 +26,8 @@ import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -46,7 +48,7 @@ fun ProfileScreen(
     when {
         !state.isLoading -> ProfileContent(state = state, viewModel = viewModel, modifier = modifier)
         error == null -> LoadingState(modifier)
-        else -> ErrorState(message = error.message, modifier = modifier)
+        else -> ErrorState(message = error.message.resolve(), modifier = modifier)
     }
 }
 
@@ -116,7 +118,7 @@ private fun NameField(
 @Composable
 private fun ServingsStepper(
     servings: Int,
-    error: String?,
+    error: UiText?,
     onChange: (Int) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
@@ -174,7 +176,7 @@ private fun SentLine(
 @Composable
 private fun SaveRow(
     isSaving: Boolean,
-    message: String?,
+    message: UiText?,
     onSave: () -> Unit,
 ) {
     Column(
@@ -190,9 +192,9 @@ private fun SaveRow(
 
 /** In the error colour so it is not read as a hint. */
 @Composable
-private fun FieldMessage(message: String) {
+private fun FieldMessage(message: UiText) {
     Text(
-        text = message,
+        text = message.resolve(),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.error,
     )

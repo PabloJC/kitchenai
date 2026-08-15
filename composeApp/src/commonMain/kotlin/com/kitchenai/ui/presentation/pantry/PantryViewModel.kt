@@ -17,6 +17,14 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.freshnessAt
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_invalid_field
+import com.kitchenai.ui.resources.error_no_connection
+import com.kitchenai.ui.resources.error_not_found
+import com.kitchenai.ui.resources.error_timeout
+import com.kitchenai.ui.resources.error_unauthorized_own_data
+import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -66,7 +74,7 @@ class PantryViewModel(
 
     // One per listener. A single field meant a catalogue that recovered cleared a pantry that
     // had not, and clearing only the pantry's left the other three banners up for good.
-    private val errors = MutableStateFlow<Map<Source, String>>(emptyMap())
+    private val errors = MutableStateFlow<Map<Source, UiText>>(emptyMap())
 
     private var started = false
     private var user: UserId? = null
@@ -333,14 +341,14 @@ private fun List<PantryItem>.locationTaxonomies(): Set<TaxonomyId> =
     mapNotNullTo(mutableSetOf()) { item -> item.location?.taxonomy }
 
 /** The cause is dropped on purpose: it can carry paths and identifiers, and this ends up on screen. */
-private fun AppError.describe(): String =
+private fun AppError.describe(): UiText =
     when (this) {
-        is AppError.Network -> "No connection"
-        is AppError.Timeout -> "That took too long. Try again."
-        is AppError.Unauthorized -> "This account is not allowed to read its own data"
-        is AppError.NotFound -> "Cannot find $resource"
-        is AppError.Validation -> "Invalid $field: $reason"
-        is AppError.Unknown -> "Something went wrong"
+        is AppError.Network -> UiText.of(Res.string.error_no_connection)
+        is AppError.Timeout -> UiText.of(Res.string.error_timeout)
+        is AppError.Unauthorized -> UiText.of(Res.string.error_unauthorized_own_data)
+        is AppError.NotFound -> UiText.of(Res.string.error_not_found, resource)
+        is AppError.Validation -> UiText.of(Res.string.error_invalid_field, field, reason)
+        is AppError.Unknown -> UiText.of(Res.string.error_unknown)
     }
 
 /** The four sources a rendered pantry needs, so the combine stays one value rather than four. */
@@ -351,7 +359,7 @@ private data class Projection(
     val taxonomies: List<Taxonomy>,
     // In the projection, not written to the state on the side: a listener that fails before its
     // first emission changes nothing else, and the screen would spin for ever waiting for it.
-    val errors: Map<Source, String>,
+    val errors: Map<Source, UiText>,
 )
 
 /** The listeners this screen keeps open, each owning its own message. */

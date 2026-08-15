@@ -19,6 +19,13 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraint
 import com.kitchenai.ui.presentation.common.LabelResolver
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_no_connection
+import com.kitchenai.ui.resources.error_not_found
+import com.kitchenai.ui.resources.error_timeout
+import com.kitchenai.ui.resources.error_unauthorized_own_data
+import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -184,7 +191,7 @@ private data class CatalogueState(
     val failed: Boolean = false,
     val taxonomies: List<Taxonomy> = emptyList(),
     val terms: Map<TaxonomyId, List<Term>> = emptyMap(),
-    val errors: Map<TaxonomyId, String> = emptyMap(),
+    val errors: Map<TaxonomyId, UiText> = emptyMap(),
 ) {
     fun withTerms(
         id: TaxonomyId,
@@ -193,7 +200,7 @@ private data class CatalogueState(
 
     fun withError(
         id: TaxonomyId,
-        message: String,
+        message: UiText,
     ): CatalogueState = copy(errors = errors + (id to message))
 }
 
@@ -257,10 +264,13 @@ private fun sections(
 /** The cause is dropped on purpose: it can carry paths and identifiers, and this ends up on screen. */
 private fun AppError.toProfileError(): ProfileError =
     when (this) {
-        is AppError.Network -> ProfileError(null, "No connection")
-        is AppError.Timeout -> ProfileError(null, "That took too long. Try again.")
-        is AppError.Unauthorized -> ProfileError(null, "This account is not allowed to read its own data")
-        is AppError.NotFound -> ProfileError(null, "Cannot find $resource")
-        is AppError.Validation -> ProfileError(field, reason)
-        is AppError.Unknown -> ProfileError(null, "Something went wrong")
+        is AppError.Network -> ProfileError(null, UiText.of(Res.string.error_no_connection))
+        is AppError.Timeout -> ProfileError(null, UiText.of(Res.string.error_timeout))
+        is AppError.Unauthorized -> ProfileError(null, UiText.of(Res.string.error_unauthorized_own_data))
+        is AppError.NotFound -> ProfileError(null, UiText.of(Res.string.error_not_found, resource))
+        // The reason alone, not "Invalid <field>: <reason>": this one renders under the input it
+        // names, so repeating the field there would say the same thing twice. It is Raw because
+        // the domain wrote it — there is no key for a sentence this module did not author.
+        is AppError.Validation -> ProfileError(field, UiText.Raw(reason))
+        is AppError.Unknown -> ProfileError(null, UiText.of(Res.string.error_unknown))
     }

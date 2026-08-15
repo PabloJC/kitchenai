@@ -20,6 +20,9 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraint
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_no_connection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -157,7 +160,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             assertEquals(SERVINGS_FIELD, viewModel.state.value.error?.field)
-            assertEquals("must be at least 1", viewModel.state.value.errorFor(SERVINGS_FIELD))
+            assertEquals(UiText.Raw("must be at least 1"), viewModel.state.value.errorFor(SERVINGS_FIELD))
             assertNull(viewModel.state.value.generalError)
             assertEquals(0, profiles.saveCount)
         }
@@ -202,7 +205,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             val sections = viewModel.state.value.sections
-            assertEquals("No connection", sections.first().error)
+            assertEquals(UiText.of(Res.string.error_no_connection), sections.first().error)
             assertNull(sections.last().error)
             assertEquals(1, sections.last().terms.size)
             assertNull(viewModel.state.value.error)
@@ -219,7 +222,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             assertTrue(viewModel.state.value.isLoading)
-            assertEquals("No connection", viewModel.state.value.error?.message)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error?.message)
         }
 
     @Test
@@ -248,13 +251,13 @@ class ProfileViewModelTest {
             // A listener failure raises a banner and nothing clears it on its own.
             profiles.errors.emit(AppError.Network())
             advanceUntilIdle()
-            assertEquals("No connection", viewModel.state.value.generalError)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
 
             viewModel.save()
             advanceUntilIdle()
 
             // The refusal is what the user just caused, so it is what they are told.
-            assertEquals("references an unknown taxonomy", viewModel.state.value.generalError)
+            assertEquals(UiText.Raw("references an unknown taxonomy"), viewModel.state.value.generalError)
         }
 
     @Test
@@ -313,7 +316,7 @@ class ProfileViewModelTest {
 
             profiles.errors.emit(AppError.Network())
             advanceUntilIdle()
-            assertEquals("No connection", viewModel.state.value.generalError)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
 
             profiles.profiles.emit(profile())
             advanceUntilIdle()
@@ -350,7 +353,7 @@ class ProfileViewModelTest {
             viewModel.save()
             advanceUntilIdle()
 
-            assertEquals("references an unknown taxonomy", viewModel.state.value.generalError)
+            assertEquals(UiText.Raw("references an unknown taxonomy"), viewModel.state.value.generalError)
         }
 
     private fun viewModel(): ProfileViewModel =

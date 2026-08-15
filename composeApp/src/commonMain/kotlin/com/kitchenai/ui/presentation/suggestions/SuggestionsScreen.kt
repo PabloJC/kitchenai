@@ -29,6 +29,8 @@ import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.presentation.common.text
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val GENERATE_LABEL = "Suggest something"
@@ -56,7 +58,9 @@ fun SuggestionsScreen(
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags()) }
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { event -> if (event is SuggestionsEvent.Failed) snackbar.showSnackbar(event.message) }
+        viewModel.events.collect { event ->
+            if (event is SuggestionsEvent.Failed) snackbar.showSnackbar(event.message.text())
+        }
     }
 
     Scaffold(
@@ -75,7 +79,7 @@ fun SuggestionsScreen(
             ) {
                 Text(if (state.hasGenerated) REGENERATE_LABEL else GENERATE_LABEL)
             }
-            state.error?.let { message -> Text(message, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { message -> Text(message.resolve(), color = MaterialTheme.colorScheme.error) }
             Results(state, onOpen)
         }
     }

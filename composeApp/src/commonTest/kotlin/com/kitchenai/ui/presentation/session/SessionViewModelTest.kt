@@ -18,6 +18,10 @@ import com.kitchenai.shared.domain.usecase.session.EnsureSession
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_no_connection
+import com.kitchenai.ui.resources.error_unauthorized_own_data
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -78,7 +82,7 @@ class SessionViewModelTest {
             viewModel.state.test {
                 assertEquals(SessionUiState.Loading, awaitItem())
                 viewModel.start(listOf("aa"), "list")
-                assertEquals(SessionUiState.Failed("No connection"), awaitItem())
+                assertEquals(SessionUiState.Failed(UiText.of(Res.string.error_no_connection)), awaitItem())
 
                 sessions.signIn = AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
                 viewModel.retry()
@@ -221,7 +225,7 @@ class SessionViewModelTest {
 }
 
 private val userId = (UserId.of("user-1") as AppResult.Success).data
-private const val UNAUTHORIZED_MESSAGE = "This account is not allowed to read its own data"
+private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
 
 private class FakeSessionPort : SessionPort {
     var signIn: AppResult<Session.SignedIn> = AppResult.Success(Session.SignedIn(userId, isAnonymous = true))

@@ -17,6 +17,15 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_invalid_field
+import com.kitchenai.ui.resources.error_missing_ingredients
+import com.kitchenai.ui.resources.error_no_connection
+import com.kitchenai.ui.resources.error_not_found
+import com.kitchenai.ui.resources.error_timeout
+import com.kitchenai.ui.resources.error_unauthorized_action
+import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -147,7 +156,7 @@ class RecipeDetailViewModel(
     fun cook() =
         // A cook refused for missing ingredients is not a failure to apologise for: it is the
         // answer, and the screen already lists which ones.
-        act(validation = { "You are missing ingredients for this" }) { userId ->
+        act(validation = { UiText.of(Res.string.error_missing_ingredients) }) { userId ->
             val held = recipe.value ?: return@act null
             writes.cook(userId, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
         }
@@ -267,7 +276,7 @@ class RecipeDetailViewModel(
     private fun act(
         // Only the caller knows what its own validation failure means. Read here it would be a
         // guess: two of these actions can fail on the same field for opposite reasons.
-        validation: ((AppError.Validation) -> String)? = null,
+        validation: ((AppError.Validation) -> UiText)? = null,
         block: suspend (UserId) -> AppResult<RecipeDetailEvent>?,
     ) {
         val userId = user ?: return
@@ -308,12 +317,12 @@ private fun RecipeIngredient.toUi(resolver: LabelResolver): IngredientLineUi =
  * reason are reported as they are: a sentence invented here would speak for three actions that
  * fail for different reasons on the same field.
  */
-private fun AppError.describe(validation: ((AppError.Validation) -> String)? = null): String =
+private fun AppError.describe(validation: ((AppError.Validation) -> UiText)? = null): UiText =
     when (this) {
-        is AppError.Network -> "No connection"
-        is AppError.Timeout -> "That took too long. Try again."
-        is AppError.Unauthorized -> "This account is not allowed to do that"
-        is AppError.NotFound -> "Cannot find $resource"
-        is AppError.Validation -> validation?.invoke(this) ?: "Invalid $field: $reason"
-        is AppError.Unknown -> "Something went wrong"
+        is AppError.Network -> UiText.of(Res.string.error_no_connection)
+        is AppError.Timeout -> UiText.of(Res.string.error_timeout)
+        is AppError.Unauthorized -> UiText.of(Res.string.error_unauthorized_action)
+        is AppError.NotFound -> UiText.of(Res.string.error_not_found, resource)
+        is AppError.Validation -> validation?.invoke(this) ?: UiText.of(Res.string.error_invalid_field, field, reason)
+        is AppError.Unknown -> UiText.of(Res.string.error_unknown)
     }

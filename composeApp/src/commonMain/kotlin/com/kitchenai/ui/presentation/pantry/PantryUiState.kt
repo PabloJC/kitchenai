@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.ui.presentation.common.UiText
 
 /**
  * Everything the pantry screen draws.
@@ -15,7 +16,7 @@ import com.kitchenai.shared.domain.model.TermRef
 data class PantryUiState(
     val items: List<PantryItemUi> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null,
+    val error: UiText? = null,
     val editing: PantryItemUi? = null,
     val isEditorOpen: Boolean = false,
     val ingredients: List<Pair<IngredientId, String>> = emptyList(),

@@ -1,0 +1,15 @@
+<resources>
+    <string name="error_no_connection">Sin conexión</string>
+    <string name="error_timeout">Ha tardado demasiado. Inténtalo otra vez.</string>
+    <string name="error_unknown">Algo ha ido mal</string>
+    <string name="error_not_found">No se encuentra %1$s</string>
+    <string name="error_invalid_field">%1$s no es válido: %2$s</string>
+    <string name="error_unauthorized_suggestions">La app no ha podido demostrar quién es, así que no hay sugerencias</string>
+    <string name="error_missing_ingredients">Te faltan ingredientes para esto</string>
+    <string name="error_unauthorized_own_data">Esta cuenta no tiene permiso para leer sus propios datos</string>
+    <string name="error_unauthorized_list">Esta cuenta no tiene permiso para leer esta lista</string>
+    <string name="error_unauthorized_action">Esta cuenta no tiene permiso para hacer eso</string>
+    <string name="snack_added_to_list">%1$d añadidos, %2$d que no hacen falta</string>
+    <string name="snack_cooked">Descontado de tu despensa</string>
+    <string name="snack_saved">Guardado</string>
+</resources>

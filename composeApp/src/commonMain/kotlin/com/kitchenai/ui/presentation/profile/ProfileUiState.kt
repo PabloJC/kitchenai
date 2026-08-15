@@ -3,6 +3,7 @@ package com.kitchenai.ui.presentation.profile
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.ui.presentation.common.UiText
 
 /** The field names `SaveUserProfile` reports; the screen anchors its messages to them. */
 const val SERVINGS_FIELD = "household.servings"
@@ -29,20 +30,20 @@ data class ProfileUiState(
     val error: ProfileError? = null,
 ) {
     /** A message belongs to an input only when the use case named that input. */
-    fun errorFor(field: String): String? = error?.takeIf { it.field == field }?.message
+    fun errorFor(field: String): UiText? = error?.takeIf { it.field == field }?.message
 
     /**
      * What is left once every field has taken its own: the screen shows it beside the save
      * button. A failure naming a field this screen does not bind still shows up here, because
      * the alternative is dropping it and telling the user nothing.
      */
-    val generalError: String? get() = error?.takeIf { it.field !in BOUND_FIELDS }?.message
+    val generalError: UiText? get() = error?.takeIf { it.field !in BOUND_FIELDS }?.message
 }
 
 /** [field] is null when the failure belongs to the screen rather than to one of its inputs. */
 data class ProfileError(
     val field: String?,
-    val message: String,
+    val message: UiText,
 )
 
 /**
@@ -53,7 +54,7 @@ data class ConstraintSectionUi(
     val taxonomy: TaxonomyId,
     val title: String,
     val terms: List<TermChipUi>,
-    val error: String? = null,
+    val error: UiText? = null,
 )
 
 /** No [strength] is what "not selected" means, so the two can never disagree. */

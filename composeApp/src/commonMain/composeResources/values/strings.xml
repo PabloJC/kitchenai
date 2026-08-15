@@ -1,0 +1,17 @@
+<resources>
+    <!-- Errors. Named per screen where the screens disagree on purpose: the same AppError
+         means something different depending on what the reader was trying to do. -->
+    <string name="error_no_connection">No connection</string>
+    <string name="error_timeout">That took too long. Try again.</string>
+    <string name="error_unknown">Something went wrong</string>
+    <string name="error_not_found">Cannot find %1$s</string>
+    <string name="error_invalid_field">Invalid %1$s: %2$s</string>
+    <string name="error_unauthorized_suggestions">This app could not prove who it is, so suggestions are unavailable</string>
+    <string name="error_missing_ingredients">You are missing ingredients for this</string>
+    <string name="error_unauthorized_own_data">This account is not allowed to read its own data</string>
+    <string name="error_unauthorized_list">This account is not allowed to read this list</string>
+    <string name="error_unauthorized_action">This account is not allowed to do that</string>
+    <string name="snack_added_to_list">%1$d added, %2$d not needed</string>
+    <string name="snack_cooked">Taken out of your pantry</string>
+    <string name="snack_saved">Saved</string>
+</resources>
