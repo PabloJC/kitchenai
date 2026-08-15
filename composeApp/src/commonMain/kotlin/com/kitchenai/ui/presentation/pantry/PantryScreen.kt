@@ -165,8 +165,17 @@ private suspend fun SnackbarHostState.announce(
  * The four section names a row can fall under. Read once, in composition, so the grouping that
  * uses them is not: `ObservePantry` already sorts what runs out first to the top, so grouping in
  * encounter order needs no comparator here either.
+ *
+ * A data class on purpose. `remember` keys on this, and with identity equality a fresh instance
+ * per recomposition would invalidate the cache every time — which is the memoisation the caller
+ * asks for, silently not happening.
  */
-private class SectionTitles(val expired: String, val soon: String, val fresh: String, val undated: String) {
+private data class SectionTitles(
+    val expired: String,
+    val soon: String,
+    val fresh: String,
+    val undated: String,
+) {
     fun of(freshness: Freshness): String =
         when (freshness) {
             Freshness.Expired -> expired
