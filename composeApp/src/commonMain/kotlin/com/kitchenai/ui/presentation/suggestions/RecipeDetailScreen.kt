@@ -34,29 +34,28 @@ import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
-import com.kitchenai.ui.presentation.shopping.DEFAULT_LIST_NAME
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.detail_add_missing
+import com.kitchenai.ui.resources.detail_cancel
+import com.kitchenai.ui.resources.detail_cook
+import com.kitchenai.ui.resources.detail_cook_body
+import com.kitchenai.ui.resources.detail_cook_confirm
+import com.kitchenai.ui.resources.detail_cook_title
+import com.kitchenai.ui.resources.detail_have
+import com.kitchenai.ui.resources.detail_missing
+import com.kitchenai.ui.resources.detail_optional_suffix
+import com.kitchenai.ui.resources.detail_save
+import com.kitchenai.ui.resources.detail_saved
+import com.kitchenai.ui.resources.detail_servings
+import com.kitchenai.ui.resources.detail_steps
+import com.kitchenai.ui.resources.detail_unverifiable
+import com.kitchenai.ui.resources.detail_unverifiable_body
+import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.snack_added_to_list
 import com.kitchenai.ui.resources.snack_cooked
 import com.kitchenai.ui.resources.snack_saved
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
-
-private const val HAVE_TITLE = "In your pantry"
-private const val MISSING_TITLE = "You need to buy"
-private const val UNVERIFIABLE_TITLE = "Check manually"
-private const val UNVERIFIABLE_BODY = "Your pantry cannot say either way about these"
-private const val STEPS_TITLE = "Steps"
-private const val SERVINGS_LABEL = "Servings"
-private const val ADD_LABEL = "Add missing to list"
-private const val COOK_LABEL = "Cook this"
-private const val SAVE_LABEL = "Save"
-private const val SAVED_LABEL = "Saved"
-private const val COOK_DIALOG_TITLE = "Cook this?"
-private const val COOK_DIALOG_BODY =
-    "These ingredients will be subtracted from your pantry. This cannot be undone."
-private const val COOK_CONFIRM = "Cook it"
-private const val CANCEL = "Cancel"
-private const val OPTIONAL_SUFFIX = " (optional)"
 
 @Composable
 fun RecipeDetailScreen(
@@ -69,8 +68,12 @@ fun RecipeDetailScreen(
     val snackbar = remember { SnackbarHostState() }
     var confirmingCook by remember { mutableStateOf(false) }
 
+    // The same name the shopping screen would create the list under, read here because a
+    // LaunchedEffect block is a coroutine and not composition.
+    val defaultListName = stringResource(Res.string.shopping_default_list)
+
     LaunchedEffect(userId, recipeId) {
-        viewModel.start(userId, recipeId, platformLanguageTags(), DEFAULT_LIST_NAME)
+        viewModel.start(userId, recipeId, platformLanguageTags(), defaultListName)
     }
     LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.announce(event) } }
 
@@ -95,13 +98,13 @@ fun RecipeDetailScreen(
         ) {
             Header(state, viewModel)
             state.error?.let { message -> Text(message.resolve(), color = MaterialTheme.colorScheme.error) }
-            Lines(HAVE_TITLE, state.held)
-            Lines(MISSING_TITLE, state.missing)
+            Lines(stringResource(Res.string.detail_have), state.held)
+            Lines(stringResource(Res.string.detail_missing), state.missing)
             // Its own section with its own sentence: this is not "missing", and a reader who
             // took it for missing would go shopping for something they may already own.
             if (state.unverifiable.isNotEmpty()) {
-                SectionHeader(title = UNVERIFIABLE_TITLE)
-                Text(UNVERIFIABLE_BODY, style = MaterialTheme.typography.bodySmall)
+                SectionHeader(title = stringResource(Res.string.detail_unverifiable))
+                Text(stringResource(Res.string.detail_unverifiable_body), style = MaterialTheme.typography.bodySmall)
                 state.unverifiable.forEach { line -> LineRow(line) }
             }
             Steps(state.steps)
@@ -123,7 +126,7 @@ private fun Header(
         horizontalArrangement = Arrangement.spacedBy(Dimens.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(SERVINGS_LABEL, style = MaterialTheme.typography.labelSmall)
+        Text(stringResource(Res.string.detail_servings), style = MaterialTheme.typography.labelSmall)
         OutlinedButton(
             onClick = { viewModel.setServings(state.servings - 1) },
             enabled = state.servings > 1 && !state.isWorking,
@@ -152,7 +155,7 @@ private fun LineRow(line: IngredientLineUi) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(line.name + if (line.optional) OPTIONAL_SUFFIX else "")
+        Text(line.name + if (line.optional) stringResource(Res.string.detail_optional_suffix) else "")
         // Absent rather than zero: a line with no amount is "to taste", and inventing one for
         // it would be a number the recipe never gave.
         line.quantity?.let { amount -> Text(amount, style = MaterialTheme.typography.bodyMedium) }
@@ -162,7 +165,7 @@ private fun LineRow(line: IngredientLineUi) {
 @Composable
 private fun Steps(steps: List<String>) {
     if (steps.isEmpty()) return
-    SectionHeader(title = STEPS_TITLE)
+    SectionHeader(title = stringResource(Res.string.detail_steps))
     steps.forEachIndexed { index, step ->
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.small)) {
             Text("${index + 1}.", style = MaterialTheme.typography.titleMedium)
@@ -182,13 +185,13 @@ private fun Actions(
         horizontalArrangement = Arrangement.spacedBy(Dimens.small),
     ) {
         OutlinedButton(onClick = viewModel::save, enabled = !state.isWorking && !state.isSaved) {
-            Text(if (state.isSaved) SAVED_LABEL else SAVE_LABEL)
+            Text(if (state.isSaved) stringResource(Res.string.detail_saved) else stringResource(Res.string.detail_save))
         }
         OutlinedButton(
             onClick = viewModel::addMissingToList,
             enabled = !state.isWorking && state.missing.isNotEmpty(),
-        ) { Text(ADD_LABEL) }
-        Button(onClick = onCook, enabled = state.canCook) { Text(COOK_LABEL) }
+        ) { Text(stringResource(Res.string.detail_add_missing)) }
+        Button(onClick = onCook, enabled = state.canCook) { Text(stringResource(Res.string.detail_cook)) }
     }
 }
 
@@ -203,10 +206,10 @@ private fun CookDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(COOK_DIALOG_TITLE) },
-        text = { Text(COOK_DIALOG_BODY) },
-        confirmButton = { Button(onClick = onConfirm) { Text(COOK_CONFIRM) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(CANCEL) } },
+        title = { Text(stringResource(Res.string.detail_cook_title)) },
+        text = { Text(stringResource(Res.string.detail_cook_body)) },
+        confirmButton = { Button(onClick = onConfirm) { Text(stringResource(Res.string.detail_cook_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.detail_cancel)) } },
     )
 }
 

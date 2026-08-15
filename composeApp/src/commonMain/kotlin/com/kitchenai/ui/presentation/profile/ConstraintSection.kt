@@ -17,6 +17,11 @@ import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.strength_avoid
+import com.kitchenai.ui.resources.strength_exclude
+import com.kitchenai.ui.resources.strength_prefer
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * One taxonomy, drawn from whatever the catalogue put in it. A section with no terms still
@@ -90,12 +95,14 @@ private fun StrengthMarker(
     )
 }
 
-// Wording for a strength is safe to hold here: `ConstraintStrength` is app logic, not vocabulary.
+// A strength is app logic rather than catalogue vocabulary, so its wording is ours to write —
+// and therefore ours to translate.
+@Composable
 private fun ConstraintStrength.label(): String =
     when (this) {
-        ConstraintStrength.PREFER -> "Prefer"
-        ConstraintStrength.AVOID -> "Avoid"
-        ConstraintStrength.EXCLUDE -> "Exclude"
+        ConstraintStrength.PREFER -> stringResource(Res.string.strength_prefer)
+        ConstraintStrength.AVOID -> stringResource(Res.string.strength_avoid)
+        ConstraintStrength.EXCLUDE -> stringResource(Res.string.strength_exclude)
     }
 
 @Composable

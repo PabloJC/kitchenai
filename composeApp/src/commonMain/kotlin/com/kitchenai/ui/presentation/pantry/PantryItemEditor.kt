@@ -37,16 +37,18 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.pantry_amount
+import com.kitchenai.ui.resources.pantry_clear
+import com.kitchenai.ui.resources.pantry_done
+import com.kitchenai.ui.resources.pantry_expiry
+import com.kitchenai.ui.resources.pantry_no_expiry
+import com.kitchenai.ui.resources.pantry_save
+import com.kitchenai.ui.resources.pantry_search
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
 // Wording only. Every option the sheet offers comes from the catalogue.
-private const val SEARCH_LABEL = "Search the catalogue"
-private const val AMOUNT_LABEL = "Amount"
-private const val SAVE_LABEL = "Save"
-private const val CONFIRM_LABEL = "Done"
-private const val CLEAR_LABEL = "Clear"
-private const val EXPIRY_LABEL = "Expiry date"
-private const val NO_EXPIRY_LABEL = "No expiry date"
 
 /**
  * The add and edit sheet. It holds the draft locally and reports it once, so a half-typed amount
@@ -81,7 +83,7 @@ fun PantryItemEditor(
                 onSelect = { chosen -> ingredient = chosen },
             )
             QuantityField(
-                amountLabel = AMOUNT_LABEL,
+                amountLabel = stringResource(Res.string.pantry_amount),
                 units = state.units.map { (ref, label) -> ref.term.value to label },
                 onChange = { typed, unitId ->
                     amount = typed
@@ -102,7 +104,7 @@ fun PantryItemEditor(
                 onClick = { draft?.let(onSubmit) },
                 enabled = draft != null,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text(SAVE_LABEL) }
+            ) { Text(stringResource(Res.string.pantry_save)) }
         }
     }
 }
@@ -137,7 +139,7 @@ private fun IngredientPicker(
     OutlinedTextField(
         value = query,
         onValueChange = { input -> query = input },
-        label = { Text(SEARCH_LABEL) },
+        label = { Text(stringResource(Res.string.pantry_search)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -184,11 +186,11 @@ private fun ExpiryField(
         // The ISO date, in UTC: formatting one per locale needs a date library this module does
         // not depend on, and an approximate format is worse than an unambiguous one.
         Text(
-            text = value?.toString()?.substringBefore('T') ?: NO_EXPIRY_LABEL,
+            text = value?.toString()?.substringBefore('T') ?: stringResource(Res.string.pantry_no_expiry),
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = { picking = true }) { Text(EXPIRY_LABEL) }
-        if (value != null) TextButton(onClick = { onChange(null) }) { Text(CLEAR_LABEL) }
+        TextButton(onClick = { picking = true }) { Text(stringResource(Res.string.pantry_expiry)) }
+        if (value != null) TextButton(onClick = { onChange(null) }) { Text(stringResource(Res.string.pantry_clear)) }
     }
 
     if (picking) {
@@ -200,7 +202,7 @@ private fun ExpiryField(
                         onChange(picker.selectedDateMillis?.let { millis -> Instant.fromEpochMilliseconds(millis) })
                         picking = false
                     },
-                ) { Text(CONFIRM_LABEL) }
+                ) { Text(stringResource(Res.string.pantry_done)) }
             },
         ) { DatePicker(state = picker) }
     }
