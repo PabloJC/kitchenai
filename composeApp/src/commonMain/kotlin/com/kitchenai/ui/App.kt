@@ -21,6 +21,8 @@ import com.kitchenai.ui.presentation.session.SessionGate
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.placeholder_body
 import com.kitchenai.ui.resources.placeholder_title
+import com.kitchenai.ui.resources.session_retry
+import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.tab_ideas
 import com.kitchenai.ui.resources.tab_pantry
 import com.kitchenai.ui.resources.tab_profile
@@ -32,7 +34,10 @@ import org.jetbrains.compose.resources.stringResource
 fun App() {
     KitchenAiTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            SessionGate(defaultListName = "Shopping list", retryLabel = "Try again") { userId ->
+            SessionGate(
+                defaultListName = stringResource(Res.string.shopping_default_list),
+                retryLabel = stringResource(Res.string.session_retry),
+            ) { userId ->
                 val navController = rememberNavController()
                 AppShell(navController = navController, destinations = tabs) { padding ->
                     KitchenAiNavHost(

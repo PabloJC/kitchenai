@@ -36,9 +36,11 @@ import com.kitchenai.ui.resources.suggestions_empty_body
 import com.kitchenai.ui.resources.suggestions_empty_title
 import com.kitchenai.ui.resources.suggestions_generate
 import com.kitchenai.ui.resources.suggestions_generated
+import com.kitchenai.ui.resources.suggestions_missing
 import com.kitchenai.ui.resources.suggestions_nothing_body
 import com.kitchenai.ui.resources.suggestions_nothing_title
 import com.kitchenai.ui.resources.suggestions_only_pantry
+import com.kitchenai.ui.resources.suggestions_open
 import com.kitchenai.ui.resources.suggestions_quick
 import com.kitchenai.ui.resources.suggestions_regenerate
 import com.kitchenai.ui.resources.suggestions_working
@@ -211,7 +213,10 @@ private fun SuggestionCard(
                 )
             }
             if (suggestion.missing.isNotEmpty()) {
-                Text("Missing: ${suggestion.missing.joinToString()}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    stringResource(Res.string.suggestions_missing, suggestion.missing.joinToString()),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             // Its own line, its own wording. Folding these into "missing" would claim the pantry
             // knows something it does not.
@@ -222,7 +227,7 @@ private fun SuggestionCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Button(onClick = { onOpen(suggestion.id) }) { Text("Open") }
+            Button(onClick = { onOpen(suggestion.id) }) { Text(stringResource(Res.string.suggestions_open)) }
         }
     }
 }
