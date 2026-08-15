@@ -23,8 +23,10 @@ val presentationModule: Module =
  * `initKoin` lives in `:shared`, which cannot see `:composeApp`, so both entry points call
  * this instead.
  */
-fun initKoinUi(appDeclaration: KoinAppDeclaration = {}) =
-    initKoin {
-        appDeclaration()
-        modules(presentationModule)
-    }
+fun initKoinUi(
+    functionsRegion: String,
+    appDeclaration: KoinAppDeclaration = {},
+) = initKoin(functionsRegion) {
+    appDeclaration()
+    modules(presentationModule)
+}
