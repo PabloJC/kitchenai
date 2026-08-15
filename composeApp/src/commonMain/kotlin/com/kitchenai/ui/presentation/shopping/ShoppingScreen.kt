@@ -179,13 +179,6 @@ private fun ShoppingItemRow(
                     fontStyle = if (item.fromCatalogue) FontStyle.Normal else FontStyle.Italic,
                     textDecoration = if (item.checked) TextDecoration.LineThrough else null,
                 )
-                item.sourceRecipe?.let { recipe ->
-                    Text(
-                        text = recipe,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
 
             item.quantity?.let { quantity ->

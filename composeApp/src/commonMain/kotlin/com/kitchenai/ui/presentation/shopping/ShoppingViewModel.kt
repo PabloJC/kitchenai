@@ -10,14 +10,19 @@ import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
+import com.kitchenai.shared.domain.model.Taxonomy
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
+import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import com.kitchenai.ui.presentation.common.LabelResolver
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -56,6 +61,12 @@ class ShoppingViewModel(
     // empty list.
     private val items = MutableStateFlow<List<ShoppingItem>?>(null)
     private val catalogue = MutableStateFlow<List<Ingredient>>(emptyList())
+
+    // Units are terms and their fallback language lives on the taxonomy, so the resolver needs
+    // all three alongside the catalogue. Without them a quantity renders its bare term id.
+    private val units = MutableStateFlow<List<Term>>(emptyList())
+    private val vocabularies = MutableStateFlow<List<Taxonomy>>(emptyList())
+    private var languageTags: List<String> = emptyList()
     private val resolver = MutableStateFlow(LabelResolver())
 
     // One per source: a catalogue that recovers must not clear a still-broken item listener,
@@ -105,9 +116,11 @@ class ShoppingViewModel(
         if (started) return
         started = true
         this.userId.value = userId
-        resolver.value = LabelResolver(languageTags = languageTags)
+        this.languageTags = languageTags
+        rebuildResolver()
         listName.value = defaultListName
-        watchCatalogue(languageTags)
+        watchCatalogue()
+        watchUnits()
         viewModelScope.launch(dispatchers.default) {
             val labels = languageTags.take(1).associateWith { defaultListName }
             when (val list = ensureDefaultShoppingList(userId, labels)) {
@@ -214,11 +227,44 @@ class ShoppingViewModel(
         }
     }
 
-    private fun watchCatalogue(languageTags: List<String>) {
+    /** Rebuilt from every source at once: a resolver missing one of them answers with an id. */
+    private fun rebuildResolver() {
+        resolver.value =
+            LabelResolver(
+                terms = units.value,
+                ingredients = catalogue.value,
+                taxonomies = vocabularies.value,
+                languageTags = languageTags,
+            )
+    }
+
+    /** The unit vocabulary, as the detail screen watches it: a quantity is not a bare number. */
+    private fun watchUnits() {
+        viewModelScope.launch(dispatchers.default) {
+            // collectLatest and coroutineScope: a re-emission replaces the per-taxonomy
+            // collectors rather than adding a second one for the same taxonomy.
+            reads.taxonomies().collectLatest { published ->
+                vocabularies.value = published
+                rebuildResolver()
+                coroutineScope {
+                    published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
+                        launch {
+                            reads.taxonomy(unit.id).collect { terms ->
+                                units.value = terms
+                                rebuildResolver()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun watchCatalogue() {
         viewModelScope.launch(dispatchers.default) {
             reads.ingredients().collect { loaded ->
                 catalogue.value = loaded
-                resolver.value = LabelResolver(ingredients = loaded, languageTags = languageTags)
+                rebuildResolver()
                 catalogueError.value = null
             }
         }
@@ -256,8 +302,6 @@ class ShoppingViewModel(
             id = item.id,
             label = label(item, labels),
             quantity = item.quantity?.let { amount -> formatQuantity(amount, labels) },
-            // The recipe catalogue is not read here, so this is the identifier until a screen reads it.
-            sourceRecipe = item.sourceRecipe?.value,
             fromCatalogue = item.ingredient != null,
             checked = item.checked,
         )
