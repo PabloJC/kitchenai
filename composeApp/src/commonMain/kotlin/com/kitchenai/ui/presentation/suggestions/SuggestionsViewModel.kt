@@ -88,13 +88,18 @@ class SuggestionsViewModel(
     /**
      * A second tap while one is in flight is ignored rather than queued: two runs would bill
      * twice for an answer only one of which could be shown.
+     *
+     * The guard is a [MutableStateFlow.compareAndSet], not a read followed by an
+     * [MutableStateFlow.update]: the launch auto-generate and a tap on the button call this from
+     * different threads, and a check-then-set race between them is exactly two runs in flight.
      */
     fun generate() {
         val userId = user ?: return
-        if (internalState.value.isGenerating) return
-        internalState.update { it.copy(isGenerating = true, error = null) }
+        val idle = internalState.value
+        if (idle.isGenerating) return
+        if (!internalState.compareAndSet(idle, idle.copy(isGenerating = true, error = null))) return
         viewModelScope.launch(dispatchers.default) {
-            when (val answered = suggestRecipes(userId, internalState.value.options.toDomain())) {
+            when (val answered = suggestRecipes(userId, idle.options.toDomain())) {
                 is AppResult.Failure -> fail(answered.error)
                 is AppResult.Success -> generated(answered.data)
             }
