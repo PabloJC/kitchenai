@@ -3,15 +3,16 @@ package com.kitchenai.shared.data.repository
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.DispatcherProvider
+import com.kitchenai.shared.core.map
 import com.kitchenai.shared.data.local.RecipeEntity
 import com.kitchenai.shared.data.local.RecipeLocalDataSource
+import com.kitchenai.shared.data.local.localCall
 import com.kitchenai.shared.data.mapper.toDomain
 import com.kitchenai.shared.data.mapper.toDto
 import com.kitchenai.shared.data.remote.dto.RecipeDto
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlin.time.Instant
 
@@ -32,15 +33,11 @@ class RecipeRepository(
     private val dispatchers: DispatcherProvider,
 ) : RecipeRepositoryContract {
     override suspend fun getAll(): AppResult<List<Recipe>> =
-        withContext(dispatchers.io) {
-            AppResult.Success(localDataSource.getAll().map { it.toRecipe() }.decodedOrDropped())
-        }
+        localCall(dispatchers) { localDataSource.getAll() }
+            .map { entities -> entities.map { it.toRecipe() }.decodedOrDropped() }
 
     override suspend fun replaceAll(recipes: List<Recipe>): AppResult<Unit> =
-        withContext(dispatchers.io) {
-            localDataSource.replaceAll(recipes.map { it.toEntity(time.now()) })
-            AppResult.Success(Unit)
-        }
+        localCall(dispatchers) { localDataSource.replaceAll(recipes.map { it.toEntity(time.now()) }) }
 
     private fun Recipe.toEntity(savedAt: Instant): RecipeEntity {
         val dto = toDto(savedAt)
