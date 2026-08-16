@@ -4,6 +4,7 @@ import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeById
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipe
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantry
 
 /**
@@ -13,7 +14,7 @@ import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantry
 class RecipeDetailReads(
     val recipe: GetRecipeById,
     /** Checked before the repository: a generated dish is only ever here. */
-    val cache: SuggestionCache,
+    val storedRecipe: GetStoredRecipe,
     val match: MatchRecipeAgainstPantry,
     val ingredients: ObserveIngredients,
     /** Units are terms, not ingredients: without these a quantity renders as a bare number. */

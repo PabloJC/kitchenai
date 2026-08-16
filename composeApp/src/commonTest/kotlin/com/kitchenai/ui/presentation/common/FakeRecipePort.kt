@@ -11,13 +11,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 
-/** A catalogue that can also refuse, because a fake that only succeeds tests only success. */
+/**
+ * A catalogue that can also refuse, because a fake that only succeeds tests only success.
+ * [stored] seeds the local generation cache.
+ */
 class FakeRecipePort(
     private val catalogue: List<Recipe> = emptyList(),
+    stored: List<Recipe> = emptyList(),
     private val readError: AppError? = null,
 ) : RecipeRepositoryContract {
     private val state = MutableStateFlow<List<Recipe>>(emptyList())
-    private val cache = MutableStateFlow<List<Recipe>>(emptyList())
+    private val cache = MutableStateFlow(stored)
 
     val saved: List<Recipe> get() = state.value
 

@@ -25,6 +25,7 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.recipe.CookRecipe
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeById
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipe
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantry
 import com.kitchenai.shared.domain.usecase.recipe.SaveRecipe
 import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingList
@@ -191,21 +192,16 @@ class RecipeDetailViewModelTest {
     fun `a cook that worked is never followed by a failure`() =
         runTest(dispatcher) {
             // Enough for one cook and not for the next, so the buckets have to move afterwards.
-            cache.put(listOf(dish))
+            val recipes = FakeRecipePort(catalogue = emptyList(), stored = listOf(dish))
             val pantry = FakePantryPort(listOf(holding(350.0)))
-            val viewModel =
-                started(
-                    pantry = listOf(holding(350.0)),
-                    pantryPort = pantry,
-                    recipePort = FakeRecipePort(catalogue = emptyList()),
-                )
+            val viewModel = started(pantry = listOf(holding(350.0)), pantryPort = pantry, recipePort = recipes)
             advanceUntilIdle()
             val seen = mutableListOf<RecipeDetailEvent>()
             val collector = launch { viewModel.events.toList(seen) }
 
-            // A new generation replaces the cache while this screen is still open, so the dish
-            // this ViewModel is showing exists nowhere any longer.
-            cache.put(emptyList())
+            // A new generation replaces the stored one while this screen is still open, so the
+            // dish this ViewModel is showing exists nowhere any longer.
+            recipes.replaceAll(emptyList())
             viewModel.cook()
             advanceUntilIdle()
             collector.cancel()
@@ -219,13 +215,12 @@ class RecipeDetailViewModelTest {
     @Test
     fun `a stepper tap during a cook is answered for rather than overwritten`() =
         runTest(dispatcher) {
-            cache.put(listOf(dish))
             val pantry = FakePantryPort(listOf(holding(500.0)))
             val viewModel =
                 started(
                     pantry = listOf(holding(500.0)),
                     pantryPort = pantry,
-                    recipePort = FakeRecipePort(catalogue = emptyList()),
+                    recipePort = FakeRecipePort(catalogue = emptyList(), stored = listOf(dish)),
                 )
             advanceUntilIdle()
 
@@ -259,11 +254,11 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
-    fun `a generated dish opens from the cache which is the only place it exists`() =
+    fun `a generated dish opens from the last generation since it exists nowhere else`() =
         runTest(dispatcher) {
             // No catalogue at all: exactly a dish the model invented a moment ago.
-            cache.put(listOf(dish))
-            val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
+            val recipePort = FakeRecipePort(catalogue = emptyList(), stored = listOf(dish))
+            val viewModel = started(pantry = emptyList(), recipePort = recipePort)
             advanceUntilIdle()
 
             assertEquals("Dish", viewModel.state.value.title)
@@ -273,13 +268,12 @@ class RecipeDetailViewModelTest {
     @Test
     fun `cooking a generated dish empties the pantry without saving it first`() =
         runTest(dispatcher) {
-            cache.put(listOf(dish))
             val pantry = FakePantryPort(listOf(holding(500.0)))
             val viewModel =
                 started(
                     pantry = listOf(holding(500.0)),
                     pantryPort = pantry,
-                    recipePort = FakeRecipePort(catalogue = emptyList()),
+                    recipePort = FakeRecipePort(catalogue = emptyList(), stored = listOf(dish)),
                 )
             advanceUntilIdle()
 
@@ -292,8 +286,8 @@ class RecipeDetailViewModelTest {
     @Test
     fun `adding what is missing works on a generated dish without saving it first`() =
         runTest(dispatcher) {
-            cache.put(listOf(dish))
-            val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
+            val recipePort = FakeRecipePort(catalogue = emptyList(), stored = listOf(dish))
+            val viewModel = started(pantry = emptyList(), recipePort = recipePort)
             advanceUntilIdle()
             val seen = mutableListOf<RecipeDetailEvent>()
             val collector = launch { viewModel.events.toList(seen) }
@@ -388,7 +382,6 @@ class RecipeDetailViewModelTest {
             updatedAt = now,
         )
 
-    private val cache = SuggestionCache()
     private val taxonomies = FakeTaxonomyPort()
     private val catalogue = FakeIngredientPort()
     private val items = FakeShoppingItemPort()
@@ -403,7 +396,7 @@ class RecipeDetailViewModelTest {
         val reads =
             RecipeDetailReads(
                 recipe = GetRecipeById(recipePort),
-                cache = cache,
+                storedRecipe = GetStoredRecipe(recipePort),
                 match = MatchRecipeAgainstPantry(recipePort, pantryPort, time),
                 ingredients = ObserveIngredients(catalogue),
                 taxonomies = ObserveTaxonomies(taxonomies),

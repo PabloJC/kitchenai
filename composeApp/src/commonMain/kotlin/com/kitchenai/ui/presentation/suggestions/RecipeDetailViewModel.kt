@@ -185,11 +185,12 @@ class RecipeDetailViewModel(
     ) {
         val userId = user ?: return
         matching {
-            // The cache first: a generated dish was never written anywhere, so the repository
-            // would answer NotFound for the only kind of recipe this screen is reached with.
-            val cached = reads.cache[recipeId]
-            if (cached != null) {
-                matched(userId, cached, servings)
+            // The last generation first: a generated dish was never written anywhere else, so
+            // the repository would answer NotFound for the only kind of recipe this screen is
+            // reached with. A failed local read falls through to the repository, same as a miss.
+            val stored = (reads.storedRecipe(recipeId) as? AppResult.Success)?.data
+            if (stored != null) {
+                matched(userId, stored, servings)
                 return@matching
             }
             when (val found = reads.recipe(recipeId)) {

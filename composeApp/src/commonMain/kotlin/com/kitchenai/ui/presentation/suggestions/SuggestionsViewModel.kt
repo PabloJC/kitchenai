@@ -12,6 +12,8 @@ import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestions
+import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestions
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
@@ -32,15 +34,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Suggestions, on demand.
+ * Suggestions, ready on arrival.
  *
- * Nothing runs in `init`, and that is the one design decision on this screen. A model call
- * costs money and takes the better part of a minute; an automatic one on screen entry would
- * spend both every time somebody touched the tab.
+ * A launch shows whatever was stored from the last one immediately, then starts exactly one
+ * generation — never a second, however many times the tab is re-entered within the same
+ * session, which is what [started] guards. A model call costs money and takes the better part
+ * of a minute; the one thing that must never happen again is one firing per tab tap (#52, #133).
  */
 class SuggestionsViewModel(
     private val suggestRecipes: SuggestRecipes,
-    private val cache: SuggestionCache,
+    private val getStoredSuggestions: GetStoredSuggestions,
+    private val storeSuggestions: StoreSuggestions,
     private val observeIngredients: ObserveIngredients,
     private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
@@ -57,7 +61,7 @@ class SuggestionsViewModel(
     private var languageTags: List<String> = emptyList()
     private var started = false
 
-    /** Idempotent: a configuration change composes the screen again and must not double the listener. */
+    /** Idempotent: a configuration change composes the screen again and must not double the listener or the launch. */
     fun start(
         userId: UserId,
         languageTags: List<String>,
@@ -68,6 +72,10 @@ class SuggestionsViewModel(
         started = true
         viewModelScope.launch(dispatchers.default) {
             observeIngredients().collect { loaded -> ingredients.value = loaded }
+        }
+        viewModelScope.launch(dispatchers.default) {
+            showStored(userId)
+            generate()
         }
     }
 
@@ -88,7 +96,7 @@ class SuggestionsViewModel(
         viewModelScope.launch(dispatchers.default) {
             when (val answered = suggestRecipes(userId, internalState.value.options.toDomain())) {
                 is AppResult.Failure -> fail(answered.error)
-                is AppResult.Success -> show(answered.data)
+                is AppResult.Success -> generated(answered.data)
             }
         }
     }
@@ -96,20 +104,29 @@ class SuggestionsViewModel(
     private fun editOptions(block: (SuggestionOptionsUi) -> SuggestionOptionsUi) =
         internalState.update { current -> current.copy(options = block(current.options)) }
 
-    private fun show(suggestions: List<RecipeSuggestion>) {
+    /** What survived the last launch, shown while this one has nothing of its own yet. */
+    private suspend fun showStored(userId: UserId) {
+        val stored = (getStoredSuggestions(userId) as? AppResult.Success)?.data
+        if (stored.isNullOrEmpty()) return
+        render(stored)
+    }
+
+    /** A new generation replaces what was stored, on screen and on disk. */
+    private suspend fun generated(suggestions: List<RecipeSuggestion>) {
+        // The write's own failure does not undo a run the user already sees the result of: it
+        // only costs the next launch its head start.
+        storeSuggestions(suggestions.map { it.recipe })
+        render(suggestions)
+        internalState.update { it.copy(isGenerating = false, hasGenerated = true, error = null) }
+    }
+
+    private fun render(suggestions: List<RecipeSuggestion>) {
         // With no tags the resolve chain is empty, every lookup misses, and a card names a
         // catalogue ingredient by its identifier. The card carries no quantities, so terms and
         // taxonomies are not needed here — only a language to answer in.
         val resolver = LabelResolver(ingredients = ingredients.value, languageTags = languageTags)
-        // Before the state, so a card is never tappable before the dish behind it is reachable.
-        cache.put(suggestions.map { it.recipe })
         internalState.update { current ->
-            current.copy(
-                suggestions = suggestions.map { suggestion -> suggestion.toUi(resolver) },
-                isGenerating = false,
-                hasGenerated = true,
-                error = null,
-            )
+            current.copy(suggestions = suggestions.map { suggestion -> suggestion.toUi(resolver) })
         }
     }
 

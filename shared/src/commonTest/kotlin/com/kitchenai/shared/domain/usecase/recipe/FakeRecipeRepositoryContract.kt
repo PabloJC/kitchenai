@@ -17,17 +17,18 @@ import kotlinx.coroutines.flow.flowOf
 
 /**
  * In-memory [RecipeRepositoryContract]. [catalogue] holds recipes nobody saved, so that a test
- * can read one by id without first putting it in the user's library. The local generation cache
- * is a separate list: nothing here exercises it yet, so it stays a plain in-memory mirror.
+ * can read one by id without first putting it in the user's library. [stored] seeds the local
+ * generation cache, a separate list from [catalogue] and [saved].
  */
 class FakeRecipeRepositoryContract(
     saved: List<Recipe> = emptyList(),
     private val catalogue: List<Recipe> = emptyList(),
+    stored: List<Recipe> = emptyList(),
     private val readError: AppError? = null,
     private val writeError: AppError? = null,
 ) : RecipeRepositoryContract {
     private val state = MutableStateFlow(saved)
-    private val cache = MutableStateFlow<List<Recipe>>(emptyList())
+    private val cache = MutableStateFlow(stored)
 
     val recipes: List<Recipe> get() = state.value
 
@@ -53,10 +54,11 @@ class FakeRecipeRepositoryContract(
         recipeId: RecipeId,
     ): AppResult<Unit> = write { saved -> saved.filterNot { it.id == recipeId } }
 
-    override suspend fun getAll(): AppResult<List<Recipe>> = AppResult.Success(cache.value)
+    override suspend fun getAll(): AppResult<List<Recipe>> =
+        readError?.let { AppResult.Failure(it) } ?: AppResult.Success(cache.value)
 
     override suspend fun replaceAll(recipes: List<Recipe>): AppResult<Unit> =
-        AppResult.Success(Unit).also { cache.value = recipes }
+        writeError?.let { AppResult.Failure(it) } ?: AppResult.Success(Unit).also { cache.value = recipes }
 
     private fun write(edit: (List<Recipe>) -> List<Recipe>): AppResult<Unit> =
         writeError?.let { AppResult.Failure(it) } ?: AppResult.Success(Unit).also { state.value = edit(state.value) }

@@ -20,16 +20,21 @@ import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
+import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestions
+import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestions
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_timeout
 import com.kitchenai.ui.resources.error_unauthorized_suggestions
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -46,13 +51,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SuggestionsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
+    private val now = Instant.fromEpochSeconds(0)
     private val catalogue = FakeIngredientPort()
     private val agent = RecordingOrchestrator()
-    private val cache = SuggestionCache()
     private val profile =
         UserProfile(
             userId = UserId.of("user-1").orFail(),
@@ -76,13 +82,47 @@ class SuggestionsViewModelTest {
     }
 
     @Test
-    fun `asks for nothing until the user asks`() =
+    fun `a launch shows what was stored immediately before the new generation returns`() =
         runTest(dispatcher) {
+            val recipes = FakeRecipePort(stored = listOf(dish("recipe-1")))
+            agent.gate = CompletableDeferred()
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-2")))
+
+            val viewModel = started(recipes = recipes)
+            dispatcher.scheduler.runCurrent()
+
+            // The stored set is up, and the new run is still in flight behind it.
+            assertEquals(listOf("recipe-1"), viewModel.state.value.suggestions.map { it.id.value })
+            assertTrue(viewModel.state.value.isGenerating)
+
+            agent.gate?.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(listOf("recipe-2"), viewModel.state.value.suggestions.map { it.id.value })
+        }
+
+    @Test
+    fun `a launch generates exactly once`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(emptyList())
             started()
             advanceUntilIdle()
 
-            // The whole point of the screen: a tab tap must not bill for a model call.
-            assertEquals(0, agent.calls)
+            assertEquals(1, agent.calls)
+        }
+
+    @Test
+    fun `entering and leaving the tab again within the same session bills nothing further`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(emptyList())
+            val viewModel = started()
+            advanceUntilIdle()
+
+            // The screen is composed again, as it would be on a tab switch back.
+            viewModel.start(UserId.of("user-1").orFail(), listOf("en"))
+            advanceUntilIdle()
+
+            assertEquals(1, agent.calls)
         }
 
     @Test
@@ -248,26 +288,31 @@ class SuggestionsViewModelTest {
         }
 
     @Test
-    fun `a generated dish is reachable before its card is`() =
+    fun `a generated dish is stored so it is reachable after a restart`() =
         runTest(dispatcher) {
+            val recipes = FakeRecipePort()
             agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
-            val viewModel = started()
+            val viewModel = started(recipes = recipes)
 
             viewModel.generate()
             advanceUntilIdle()
 
-            // It exists nowhere else: the detail screen has only this to open.
+            // It exists nowhere else: the detail screen, on a fresh launch, has only this to open.
             val id = viewModel.state.value.suggestions.single().id
-            assertEquals("Dish", cache[id]?.title)
+            val stored = (recipes.getAll() as AppResult.Success).data
+            assertEquals("Dish", stored.single { it.id == id }.title)
         }
 
-    private fun started(): SuggestionsViewModel =
-        SuggestionsViewModel(
-            suggestRecipes = SuggestRecipes(StubProfilePort(profile), StubPantryPort(), agent),
-            cache = cache,
+    private fun started(recipes: FakeRecipePort = FakeRecipePort()): SuggestionsViewModel {
+        val pantry = StubPantryPort()
+        return SuggestionsViewModel(
+            suggestRecipes = SuggestRecipes(StubProfilePort(profile), pantry, agent),
+            getStoredSuggestions = GetStoredSuggestions(recipes, pantry, TimeProvider { now }),
+            storeSuggestions = StoreSuggestions(recipes),
             observeIngredients = ObserveIngredients(catalogue),
             dispatchers = TestDispatcherProvider(dispatcher),
         ).also { it.start(UserId.of("user-1").orFail(), listOf("en")) }
+    }
 }
 
 private fun ingredient(
@@ -300,10 +345,12 @@ private fun shortOfRice(): RecipeSuggestion {
 /**
  * The real use case over fake ports, so the wiring it does is exercised too. The orchestrator
  * is what counts calls, because the number of times a model is asked is the assertion this
- * screen exists to make.
+ * screen exists to make. [gate], when set, is awaited before answering — how a stored set is
+ * shown to still be up while a run has not landed yet is proven.
  */
 private class RecordingOrchestrator : AgentOrchestrator {
     var answer: AppResult<List<RecipeSuggestion>> = AppResult.Success(emptyList())
+    var gate: CompletableDeferred<Unit>? = null
     var calls = 0
         private set
     var lastOptions: SuggestionOptions? = null
@@ -316,6 +363,7 @@ private class RecordingOrchestrator : AgentOrchestrator {
     ): AppResult<List<RecipeSuggestion>> {
         calls++
         lastOptions = options
+        gate?.await()
         return answer
     }
 }
@@ -350,6 +398,11 @@ private class StubPantryPort : PantryRepositoryContract {
         items: List<PantryItem>,
     ): AppResult<Unit> = AppResult.Success(Unit)
 }
+
+private fun dish(
+    id: String,
+    source: RecipeSource = RecipeSource.Catalogue,
+): Recipe = suggestion(id, source).recipe
 
 private fun suggestion(
     id: String,
