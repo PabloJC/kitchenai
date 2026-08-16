@@ -14,6 +14,11 @@ androidxLifecycle   = "2.11.0-beta01"
 androidxNavigation  = "2.9.2"
 
 # --- Libraries ---------------------------------------------------------------
+# KSP no longer versions in lockstep with Kotlin (see google/ksp releases): 2.3.11 is the first
+# release documented to work with Kotlin 2.4.0's default module names. Bump both together.
+ksp                 = "2.3.11"
+room3               = "3.0.1"
+sqlite              = "2.7.0"
 gitliveFirebase     = "2.5.0"   # 2.6.0 did not publish dev.gitlive:firebase-app to Maven Central
 firebaseBom         = "34.9.0"
 googleServices      = "4.4.3"
@@ -30,6 +35,12 @@ detekt              = "2.0.0-alpha.6"
 ktlint              = "12.1.2"
 
 [libraries]
+# Room 3: KMP-native, KSP-only. commonMain gets the runtime and the bundled driver; the
+# compiler is a KSP processor, added per target below rather than as a regular dependency.
+androidx-room3-runtime   = { module = "androidx.room3:room3-runtime",   version.ref = "room3" }
+androidx-room3-compiler  = { module = "androidx.room3:room3-compiler",  version.ref = "room3" }
+androidx-sqlite-bundled  = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+
 # GitLive: a single Firebase API for commonMain
 gitlive-firebase-app       = { module = "dev.gitlive:firebase-app",       version.ref = "gitliveFirebase" }
 gitlive-firebase-common    = { module = "dev.gitlive:firebase-common",    version.ref = "gitliveFirebase" }
@@ -83,5 +94,7 @@ kotlinSerialization  = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 googleServices       = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+ksp                  = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+androidxRoom3        = { id = "androidx.room3", version.ref = "room3" }
 detekt               = { id = "dev.detekt", version.ref = "detekt" }
 ktlint               = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }

@@ -20,6 +20,7 @@ fun sharedModules(functionsRegion: String): List<Module> =
         authModule,
         coreModule,
         crossFeatureModule,
+        databaseModule,
         firebaseModule,
         pantryDataModule,
         pantryModule,

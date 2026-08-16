@@ -4,9 +4,16 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidxRoom3)
 }
 
 kotlin {
+    // Room's KMP support is the reason this module needs an expect/actual class at all
+    // (KitchenAiDatabaseConstructor): the compiler flag is silencing a warning about a feature
+    // this file exists to use, not opting into something experimental beyond that.
+    compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
+
     // AGP 9: replaces androidTarget {} plus the top-level android {} block.
     androidLibrary {
         namespace = "com.kitchenai.shared"
@@ -33,6 +40,9 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.koin.core)
 
+            implementation(libs.androidx.room3.runtime)
+            implementation(libs.androidx.sqlite.bundled)
+
             // api: the iOS framework needs to see these types
             api(libs.gitlive.firebase.app)
             api(libs.gitlive.firebase.common)
@@ -55,6 +65,18 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
         }
     }
+}
+
+// KSP has no commonMain configuration in a KMP module: the compiler runs once per target, so it
+// is wired here rather than as a regular dependency above.
+dependencies {
+    add("kspAndroid", libs.androidx.room3.compiler)
+    add("kspIosArm64", libs.androidx.room3.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room3.compiler)
+}
+
+room3 {
+    schemaDirectory("$projectDir/schemas")
 }
 
 // ---------------------------------------------------------------------------
