@@ -11,9 +11,9 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.TaxonomyPort
+import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -105,7 +105,7 @@ class SaveUserProfileTest {
     private fun AppResult<Unit>.errorOrNull(): AppError? = (this as? AppResult.Failure)?.error
 }
 
-private class RecordingProfilePort : UserProfilePort {
+private class RecordingProfilePort : UserProfileRepositoryContract {
     var saved: UserProfile? = null
         private set
 
@@ -121,7 +121,7 @@ private class RecordingProfilePort : UserProfilePort {
 
 private class FakeTaxonomyPort(
     private val catalogue: AppResult<List<Taxonomy>>,
-) : TaxonomyPort {
+) : TaxonomyRepositoryContract {
     override fun observeTaxonomy(id: TaxonomyId): Flow<List<Term>> = flowOf(emptyList())
 
     override fun observeTaxonomies(): Flow<List<Taxonomy>> = flowOf((catalogue as? AppResult.Success)?.data.orEmpty())

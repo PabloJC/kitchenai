@@ -14,7 +14,7 @@ import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ShoppingItemPort
+import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentReference
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FirebaseFirestore
@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * [ShoppingItemPort] over `users/{uid}/shoppingLists/{listId}/items`. Everything is keyed by the
+ * [ShoppingItemRepositoryContract] over `users/{uid}/shoppingLists/{listId}/items`. Everything is keyed by the
  * list, streams and error sinks alike: a screen watching one list downloads and hears about that
  * list only.
  */
@@ -34,7 +34,7 @@ class FirestoreShoppingItemRepository(
     private val paths: FirestorePaths,
     private val firestore: FirebaseFirestore,
     private val dispatchers: DispatcherProvider,
-) : ShoppingItemPort {
+) : ShoppingItemRepositoryContract {
     // Writes outlive the caller on purpose; the supervisor keeps one failure from cancelling
     // the writes queued after it.
     private val writes = CoroutineScope(SupervisorJob() + dispatchers.io)

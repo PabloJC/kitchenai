@@ -6,7 +6,7 @@ import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.ShoppingListPort
+import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 
 /**
@@ -17,7 +17,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
  * default written here would be a contextual constant.
  */
 class EnsureDefaultShoppingList(
-    private val shoppingList: ShoppingListPort,
+    private val shoppingList: ShoppingListRepositoryContract,
     private val ids: IdGenerator,
     private val time: TimeProvider,
 ) {

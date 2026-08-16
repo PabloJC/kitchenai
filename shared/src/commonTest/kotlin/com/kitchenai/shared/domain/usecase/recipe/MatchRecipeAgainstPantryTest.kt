@@ -6,7 +6,7 @@ import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.usecase.pantry.FakePantryPort
+import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.pantry.termRef
 import kotlinx.coroutines.test.runTest
@@ -47,7 +47,7 @@ class MatchRecipeAgainstPantryTest {
             val useCase =
                 MatchRecipeAgainstPantry(
                     FakeRecipePort(readError = AppError.Unauthorized()),
-                    FakePantryPort(),
+                    FakePantryRepositoryContract(),
                     TimeProvider { now },
                 )
 
@@ -60,7 +60,7 @@ class MatchRecipeAgainstPantryTest {
             val useCase =
                 MatchRecipeAgainstPantry(
                     FakeRecipePort(catalogue = listOf(stored)),
-                    FakePantryPort(readError = AppError.Network()),
+                    FakePantryRepositoryContract(readError = AppError.Network()),
                     TimeProvider { now },
                 )
 
@@ -88,7 +88,7 @@ class MatchRecipeAgainstPantryTest {
     @Test
     fun `an override the recipe cannot scale to fails without reading the pantry`() =
         runTest {
-            val pantry = FakePantryPort(readError = AppError.Network())
+            val pantry = FakePantryRepositoryContract(readError = AppError.Network())
             val recipes = FakeRecipePort(catalogue = listOf(stored))
             val useCase = MatchRecipeAgainstPantry(recipes, pantry, TimeProvider { now })
 
@@ -105,7 +105,7 @@ class MatchRecipeAgainstPantryTest {
             val useCase =
                 MatchRecipeAgainstPantry(
                     FakeRecipePort(),
-                    FakePantryPort(listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit)))),
+                    FakePantryRepositoryContract(listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit)))),
                     TimeProvider { now },
                 )
 
@@ -119,7 +119,7 @@ class MatchRecipeAgainstPantryTest {
     private fun matcher(pantry: List<PantryItem>): MatchRecipeAgainstPantry =
         MatchRecipeAgainstPantry(
             FakeRecipePort(catalogue = listOf(stored)),
-            FakePantryPort(pantry),
+            FakePantryRepositoryContract(pantry),
             TimeProvider { now },
         )
 

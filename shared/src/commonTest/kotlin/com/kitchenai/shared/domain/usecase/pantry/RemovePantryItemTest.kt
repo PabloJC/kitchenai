@@ -14,7 +14,7 @@ class RemovePantryItemTest {
     @Test
     fun `drops the holding from the pantry`() =
         runTest {
-            val port = FakePantryPort(held)
+            val port = FakePantryRepositoryContract(held)
 
             val result = RemovePantryItem(port)(user, pantryItemId("item-1"))
 
@@ -25,7 +25,7 @@ class RemovePantryItemTest {
     @Test
     fun `propagates the port failure`() =
         runTest {
-            val port = FakePantryPort(held, writeError = AppError.Network())
+            val port = FakePantryRepositoryContract(held, writeError = AppError.Network())
 
             val result = RemovePantryItem(port)(user, pantryItemId("item-1"))
 

@@ -7,8 +7,8 @@ import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ShoppingItemPort
-import com.kitchenai.shared.domain.port.ShoppingListPort
+import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
+import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -25,7 +25,7 @@ val defaultListId: ShoppingListId = (ShoppingListId.of("list-1") as AppResult.Su
 class FakeShoppingListPort(
     /** Empty puts a screen in the state the session gate has not reached yet: no list at all. */
     private val existing: Boolean = true,
-) : ShoppingListPort {
+) : ShoppingListRepositoryContract {
     val created = mutableListOf<ShoppingList>()
 
     override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = emptyFlow()
@@ -52,7 +52,7 @@ class FakeShoppingListPort(
  * Writes are recorded and never echoed: what a ViewModel renders has to come from the stream,
  * so a fake that wrote back would hide exactly the bug these screens can have.
  */
-class FakeShoppingItemPort : ShoppingItemPort {
+class FakeShoppingItemPort : ShoppingItemRepositoryContract {
     private val stream = MutableSharedFlow<List<ShoppingItem>>(replay = 1)
     private var current: List<ShoppingItem> = emptyList()
 

@@ -7,7 +7,7 @@ import com.kitchenai.shared.domain.model.IngredientId
 import kotlinx.coroutines.flow.Flow
 
 /** The catalogue seam. Read-only for the client: ingredients are shared data, not user data. */
-interface IngredientPort {
+interface IngredientRepositoryContract {
     fun observeIngredients(): Flow<List<Ingredient>>
 
     /** Failures of the listener above, which stops emitting rather than throwing. */

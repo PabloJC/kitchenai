@@ -10,8 +10,8 @@ import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.UserProfilePort
-import com.kitchenai.shared.domain.usecase.pantry.FakePantryPort
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
+import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.pantry.termRef
 import kotlinx.coroutines.flow.Flow
@@ -30,7 +30,8 @@ class SuggestRecipesTest {
     fun `hands the stored profile and pantry to the orchestrator`() =
         runTest {
             val orchestrator = RecordingOrchestrator()
-            val useCase = SuggestRecipes(FakeProfilePort(flowOf(stored)), FakePantryPort(held), orchestrator)
+            val useCase =
+                SuggestRecipes(FakeProfilePort(flowOf(stored)), FakePantryRepositoryContract(held), orchestrator)
 
             val result = useCase(user, SuggestionOptions(useOnlyPantry = true))
 
@@ -43,7 +44,7 @@ class SuggestRecipesTest {
     @Test
     fun `a failing pantry read is reported`() =
         runTest {
-            val pantry = FakePantryPort(readError = AppError.Network())
+            val pantry = FakePantryRepositoryContract(readError = AppError.Network())
             val useCase = SuggestRecipes(FakeProfilePort(flowOf(stored)), pantry, RecordingOrchestrator())
 
             assertTrue(useCase(user) is AppResult.Failure)
@@ -52,7 +53,12 @@ class SuggestRecipesTest {
     @Test
     fun `a profile listener that has already failed is reported and never hangs`() =
         runTest {
-            val useCase = SuggestRecipes(FakeProfilePort(emptyFlow()), FakePantryPort(held), RecordingOrchestrator())
+            val useCase =
+                SuggestRecipes(
+                    FakeProfilePort(emptyFlow()),
+                    FakePantryRepositoryContract(held),
+                    RecordingOrchestrator(),
+                )
 
             val result = useCase(user)
 
@@ -82,7 +88,7 @@ private class RecordingOrchestrator : AgentOrchestrator {
 
 private class FakeProfilePort(
     private val stream: Flow<UserProfile>,
-) : UserProfilePort {
+) : UserProfileRepositoryContract {
     override fun observeProfile(userId: UserId): Flow<UserProfile> = stream
 
     override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()

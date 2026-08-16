@@ -8,7 +8,7 @@ import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItems
-import com.kitchenai.shared.domain.usecase.pantry.FakePantryPort
+import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.pantry.pantryItemId
 import com.kitchenai.shared.domain.usecase.pantry.termRef
@@ -125,7 +125,7 @@ class CookRecipeTest {
     fun `a failing pantry read is reported and never reads as an empty pantry`() =
         runTest {
             val dish = dishOf(recipeIngredient("ing-1", quantity = Quantity(200.0, unit)))
-            val pantry = FakePantryPort(readError = AppError.Network())
+            val pantry = FakePantryRepositoryContract(readError = AppError.Network())
 
             assertTrue(cook(dish, pantry)(user, dish.id, servings = 2) is AppResult.Failure)
         }
@@ -133,11 +133,12 @@ class CookRecipeTest {
     // Two servings, so that asking for four is a doubling and not the recipe as it stands.
     private fun dishOf(vararg lines: RecipeIngredient): Recipe = recipe(servings = 2, ingredients = lines.toList())
 
-    private fun pantryOf(vararg held: PantryItem): FakePantryPort = FakePantryPort(held.toList())
+    private fun pantryOf(vararg held: PantryItem): FakePantryRepositoryContract =
+        FakePantryRepositoryContract(held.toList())
 
     private fun cook(
         dish: Recipe,
-        pantry: FakePantryPort,
+        pantry: FakePantryRepositoryContract,
     ): CookRecipe =
         CookRecipe(
             FakeRecipePort(catalogue = listOf(dish)),
@@ -146,5 +147,6 @@ class CookRecipeTest {
             TimeProvider { now },
         )
 
-    private fun FakePantryPort.quantityOf(id: String): Quantity = items.first { it.id == pantryItemId(id) }.quantity
+    private fun FakePantryRepositoryContract.quantityOf(id: String): Quantity =
+        items.first { it.id == pantryItemId(id) }.quantity
 }

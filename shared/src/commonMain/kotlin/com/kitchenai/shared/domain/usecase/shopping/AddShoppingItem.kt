@@ -9,7 +9,7 @@ import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.ShoppingItemPort
+import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 
 /**
@@ -19,7 +19,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
  * twice must leave one line, not two that a second device then has to reconcile.
  */
 class AddShoppingItem(
-    private val shoppingItems: ShoppingItemPort,
+    private val shoppingItems: ShoppingItemRepositoryContract,
     private val ids: IdGenerator,
     private val time: TimeProvider,
 ) {

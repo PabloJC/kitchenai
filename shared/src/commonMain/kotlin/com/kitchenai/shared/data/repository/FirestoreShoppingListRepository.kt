@@ -12,7 +12,7 @@ import com.kitchenai.shared.data.remote.firebase.reportingErrorsTo
 import com.kitchenai.shared.data.remote.firebase.toAppError
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ShoppingListPort
+import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.CoroutineScope
@@ -22,14 +22,14 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * [ShoppingListPort] over `users/{uid}/shoppingLists`: a snapshot listener to read, an
+ * [ShoppingListRepositoryContract] over `users/{uid}/shoppingLists`: a snapshot listener to read, an
  * optimistic merge write to change. The items of a list are a separate collection behind
  * [com.kitchenai.shared.data.repository.FirestoreShoppingItemRepository].
  */
 class FirestoreShoppingListRepository(
     private val paths: FirestorePaths,
     private val dispatchers: DispatcherProvider,
-) : ShoppingListPort {
+) : ShoppingListRepositoryContract {
     // Writes outlive the caller on purpose; the supervisor keeps one failure from cancelling
     // the writes queued after it.
     private val writes = CoroutineScope(SupervisorJob() + dispatchers.io)

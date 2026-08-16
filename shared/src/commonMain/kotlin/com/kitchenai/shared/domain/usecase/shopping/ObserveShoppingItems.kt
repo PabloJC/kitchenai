@@ -4,13 +4,13 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ShoppingItemPort
+import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Streams the items of a list in the order they are shown in. */
 class ObserveShoppingItems(
-    private val shoppingItems: ShoppingItemPort,
+    private val shoppingItems: ShoppingItemRepositoryContract,
 ) {
     operator fun invoke(
         userId: UserId,

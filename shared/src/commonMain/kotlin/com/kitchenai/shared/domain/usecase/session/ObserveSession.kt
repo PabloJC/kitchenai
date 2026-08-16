@@ -1,7 +1,7 @@
 package com.kitchenai.shared.domain.usecase.session
 
 import com.kitchenai.shared.domain.model.Session
-import com.kitchenai.shared.domain.port.SessionPort
+import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
  * `UseCase<P, R>`; presentation still depends on a use case rather than on the port.
  */
 class ObserveSession(
-    private val session: SessionPort,
+    private val session: SessionRepositoryContract,
 ) {
     operator fun invoke(): Flow<Session> = session.observeSession()
 }

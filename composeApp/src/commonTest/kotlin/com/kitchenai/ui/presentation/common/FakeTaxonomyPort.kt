@@ -5,14 +5,14 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.Term
-import com.kitchenai.shared.domain.port.TaxonomyPort
+import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 
 /** The vocabulary, shared by every screen that resolves an identifier into a word. */
-class FakeTaxonomyPort : TaxonomyPort {
+class FakeTaxonomyPort : TaxonomyRepositoryContract {
     val terms = MutableSharedFlow<List<Term>>(replay = 1)
 
     // Replay without an initial value: a listener that has not answered emits nothing, and a

@@ -14,7 +14,7 @@ class UpdatePantryItemTest {
     private val unitA = termRef("term-a")
     private val now = Instant.fromEpochSeconds(1_000)
     private val held = pantryItem("item-1", "ing-1", Quantity(200.0, unitA))
-    private val port = FakePantryPort(listOf(held))
+    private val port = FakePantryRepositoryContract(listOf(held))
     private val useCase = UpdatePantryItem(port, TimeProvider { now })
 
     @Test
@@ -49,7 +49,7 @@ class UpdatePantryItemTest {
     @Test
     fun `propagates a write failure`() =
         runTest {
-            val failing = FakePantryPort(listOf(held), writeError = AppError.Network())
+            val failing = FakePantryRepositoryContract(listOf(held), writeError = AppError.Network())
 
             val result = UpdatePantryItem(failing, TimeProvider { now })(user, held)
 

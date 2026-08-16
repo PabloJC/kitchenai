@@ -11,7 +11,7 @@ import com.kitchenai.shared.data.remote.firebase.reportingErrorsTo
 import com.kitchenai.shared.data.remote.firebase.toAppError
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
-import com.kitchenai.shared.domain.port.IngredientPort
+import com.kitchenai.shared.domain.port.IngredientRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.flow.Flow
@@ -19,13 +19,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * [IngredientPort] over the read-only `ingredients` collection. Its stream is keyed by nothing,
+ * [IngredientRepositoryContract] over the read-only `ingredients` collection. Its stream is keyed by nothing,
  * so it owns a single error sink.
  */
 class FirestoreIngredientRepository(
     private val paths: FirestorePaths,
     private val dispatchers: DispatcherProvider,
-) : IngredientPort {
+) : IngredientRepositoryContract {
     private val errors = errorSink()
 
     override fun observeIngredients(): Flow<List<Ingredient>> =

@@ -15,9 +15,9 @@ import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipePort
-import com.kitchenai.shared.domain.port.ShoppingItemPort
+import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
 
@@ -29,8 +29,8 @@ import com.kitchenai.shared.domain.service.PantryMatcher
  */
 class AddMissingIngredientsToShoppingList(
     private val recipes: RecipePort,
-    private val pantry: PantryPort,
-    private val shoppingItems: ShoppingItemPort,
+    private val pantry: PantryRepositoryContract,
+    private val shoppingItems: ShoppingItemRepositoryContract,
     private val ids: IdGenerator,
     private val time: TimeProvider,
 ) {

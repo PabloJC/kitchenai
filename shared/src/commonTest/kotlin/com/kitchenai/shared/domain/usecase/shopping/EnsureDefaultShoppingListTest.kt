@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 class EnsureDefaultShoppingListTest {
     private val user = userId()
     private val labels = mapOf("en" to "My list")
-    private val port = FakeShoppingListPort()
+    private val port = FakeShoppingListRepositoryContract()
     private val useCase = EnsureDefaultShoppingList(port, sequentialIds(), fixedTime(1_000))
 
     @Test

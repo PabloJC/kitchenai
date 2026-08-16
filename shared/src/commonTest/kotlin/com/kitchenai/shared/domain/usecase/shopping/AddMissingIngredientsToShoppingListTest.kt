@@ -7,7 +7,7 @@ import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeIngredient
-import com.kitchenai.shared.domain.usecase.pantry.FakePantryPort
+import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.recipe.FakeRecipePort
 import com.kitchenai.shared.domain.usecase.recipe.recipe
@@ -23,7 +23,7 @@ class AddMissingIngredientsToShoppingListTest {
     private val user = userId()
     private val list = listId()
     private val unit = termRef("taxonomy-1", "term-a")
-    private val items = FakeShoppingItemPort()
+    private val items = FakeShoppingItemRepositoryContract()
     private val twoHundredOfIngredientOne = recipeIngredient("ing-1", quantity = Quantity(200.0, unit))
 
     @Test
@@ -116,7 +116,7 @@ class AddMissingIngredientsToShoppingListTest {
             val useCase =
                 AddMissingIngredientsToShoppingList(
                     FakeRecipePort(readError = AppError.Unauthorized()),
-                    FakePantryPort(),
+                    FakePantryRepositoryContract(),
                     items,
                     sequentialIds(),
                     fixedTime(2_000),
@@ -134,7 +134,7 @@ class AddMissingIngredientsToShoppingListTest {
             val useCase =
                 AddMissingIngredientsToShoppingList(
                     FakeRecipePort(),
-                    FakePantryPort(),
+                    FakePantryRepositoryContract(),
                     items,
                     sequentialIds(),
                     fixedTime(2_000),
@@ -155,7 +155,7 @@ class AddMissingIngredientsToShoppingListTest {
     ): AddMissingIngredientsToShoppingList =
         AddMissingIngredientsToShoppingList(
             FakeRecipePort(catalogue = listOf(dish)),
-            FakePantryPort(held),
+            FakePantryRepositoryContract(held),
             items,
             sequentialIds(),
             fixedTime(2_000),

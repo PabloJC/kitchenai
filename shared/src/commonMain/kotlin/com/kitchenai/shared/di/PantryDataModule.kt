@@ -2,8 +2,8 @@ package com.kitchenai.shared.di
 
 import com.kitchenai.shared.data.repository.FirestoreIngredientRepository
 import com.kitchenai.shared.data.repository.FirestorePantryRepository
-import com.kitchenai.shared.domain.port.IngredientPort
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.IngredientRepositoryContract
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -13,6 +13,6 @@ import org.koin.dsl.module
  */
 val pantryDataModule: Module =
     module {
-        single<PantryPort> { FirestorePantryRepository(get(), get(), get()) }
-        single<IngredientPort> { FirestoreIngredientRepository(get(), get()) }
+        single<PantryRepositoryContract> { FirestorePantryRepository(get(), get(), get()) }
+        single<IngredientRepositoryContract> { FirestoreIngredientRepository(get(), get()) }
     }

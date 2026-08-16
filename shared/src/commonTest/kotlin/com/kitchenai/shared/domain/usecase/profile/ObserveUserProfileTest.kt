@@ -6,7 +6,7 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.HouseholdContext
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -49,7 +49,7 @@ class ObserveUserProfileTest {
 private class FakeProfilePort(
     private val stream: Flow<UserProfile>,
     private val failure: AppError? = null,
-) : UserProfilePort {
+) : UserProfileRepositoryContract {
     override fun observeProfile(userId: UserId): Flow<UserProfile> = stream
 
     override fun profileErrors(userId: UserId): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()

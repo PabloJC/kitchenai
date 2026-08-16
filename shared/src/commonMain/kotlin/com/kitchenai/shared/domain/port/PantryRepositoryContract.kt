@@ -8,7 +8,7 @@ import com.kitchenai.shared.domain.model.UserId
 import kotlinx.coroutines.flow.Flow
 
 /** The pantry seam: `domain` states what it needs from storage, `data` provides it. */
-interface PantryPort {
+interface PantryRepositoryContract {
     fun observePantry(userId: UserId): Flow<List<PantryItem>>
 
     /** Failures of the listener above, which stops emitting rather than throwing. */

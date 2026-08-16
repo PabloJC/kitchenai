@@ -19,8 +19,8 @@ import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.PantryPort
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
@@ -320,7 +320,7 @@ private class RecordingOrchestrator : AgentOrchestrator {
     }
 }
 
-private class StubProfilePort(private val profile: UserProfile) : UserProfilePort {
+private class StubProfilePort(private val profile: UserProfile) : UserProfileRepositoryContract {
     override fun observeProfile(userId: UserId): Flow<UserProfile> = flowOf(profile)
 
     override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()
@@ -328,7 +328,7 @@ private class StubProfilePort(private val profile: UserProfile) : UserProfilePor
     override suspend fun save(profile: UserProfile): AppResult<Unit> = AppResult.Success(Unit)
 }
 
-private class StubPantryPort : PantryPort {
+private class StubPantryPort : PantryRepositoryContract {
     override fun observePantry(userId: UserId): Flow<List<PantryItem>> = flowOf(emptyList())
 
     override fun pantryErrors(userId: UserId): Flow<AppError> = emptyFlow()

@@ -18,7 +18,7 @@ class ObservePantryTest {
     fun `orders by expiry first then by the most recently touched and leaves undated rows last`() =
         runTest {
             val port =
-                FakePantryPort(
+                FakePantryRepositoryContract(
                     listOf(
                         pantryItem("item-1", "ing-1", Quantity(1.0)),
                         pantryItem("item-2", "ing-2", Quantity(1.0), expiresAt = Instant.fromEpochSeconds(9_000)),
@@ -39,7 +39,7 @@ class ObservePantryTest {
     @Test
     fun `a failing listener reports on errors and emits no list`() =
         runTest {
-            val useCase = ObservePantry(FakePantryPort(readError = AppError.Unauthorized()))
+            val useCase = ObservePantry(FakePantryRepositoryContract(readError = AppError.Unauthorized()))
 
             useCase(user).test { awaitComplete() }
             useCase.errors(user).test {

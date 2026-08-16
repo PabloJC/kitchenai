@@ -5,12 +5,12 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 
 /** Overwrites a holding and restamps it. */
 class UpdatePantryItem(
-    private val pantry: PantryPort,
+    private val pantry: PantryRepositoryContract,
     private val time: TimeProvider,
 ) {
     // An amount of zero is a removal, and a removal has to be explicit: silently deleting a

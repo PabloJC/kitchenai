@@ -2,8 +2,8 @@ package com.kitchenai.shared.di
 
 import com.kitchenai.shared.data.repository.FirestoreShoppingItemRepository
 import com.kitchenai.shared.data.repository.FirestoreShoppingListRepository
-import com.kitchenai.shared.domain.port.ShoppingItemPort
-import com.kitchenai.shared.domain.port.ShoppingListPort
+import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
+import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -13,6 +13,6 @@ import org.koin.dsl.module
  */
 val shoppingDataModule: Module =
     module {
-        single<ShoppingListPort> { FirestoreShoppingListRepository(get(), get()) }
-        single<ShoppingItemPort> { FirestoreShoppingItemRepository(get(), get(), get()) }
+        single<ShoppingListRepositoryContract> { FirestoreShoppingListRepository(get(), get()) }
+        single<ShoppingItemRepositoryContract> { FirestoreShoppingItemRepository(get(), get(), get()) }
     }

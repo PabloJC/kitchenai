@@ -10,7 +10,7 @@ import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import kotlin.time.Instant
 
@@ -22,7 +22,7 @@ import kotlin.time.Instant
  * user has to reconcile. Different units never merge — the MVP converts nothing.
  */
 class AddPantryItem(
-    private val pantry: PantryPort,
+    private val pantry: PantryRepositoryContract,
     private val ids: IdGenerator,
     private val time: TimeProvider,
 ) {

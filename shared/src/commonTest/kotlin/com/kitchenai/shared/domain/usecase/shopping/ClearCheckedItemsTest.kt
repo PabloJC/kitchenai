@@ -13,7 +13,7 @@ class ClearCheckedItemsTest {
     @Test
     fun `only the checked lines are dropped`() =
         runTest {
-            val port = FakeShoppingItemPort()
+            val port = FakeShoppingItemRepositoryContract()
             port.seed(list, shoppingItem("milk").copy(checked = true), shoppingItem("bread"))
 
             ClearCheckedItems(port)(userId(), list)
@@ -24,7 +24,7 @@ class ClearCheckedItemsTest {
     @Test
     fun `the port failure travels back as it is`() =
         runTest {
-            val result = ClearCheckedItems(FakeShoppingItemPort(AppError.Network()))(userId(), list)
+            val result = ClearCheckedItems(FakeShoppingItemRepositoryContract(AppError.Network()))(userId(), list)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Network)

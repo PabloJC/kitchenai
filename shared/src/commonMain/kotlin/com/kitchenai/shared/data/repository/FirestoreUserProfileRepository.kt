@@ -12,7 +12,7 @@ import com.kitchenai.shared.data.remote.firebase.reportingErrorsTo
 import com.kitchenai.shared.data.remote.firebase.toAppError
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -21,13 +21,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.transform
 
 /**
- * [UserProfilePort] over the `users/{uid}` document: a snapshot listener to read, so the screen
+ * [UserProfileRepositoryContract] over the `users/{uid}` document: a snapshot listener to read, so the screen
  * still renders from the offline cache, and a merging write to save.
  */
 class FirestoreUserProfileRepository(
     private val paths: FirestorePaths,
     private val dispatchers: DispatcherProvider,
-) : UserProfilePort {
+) : UserProfileRepositoryContract {
     private val errors = KeyedErrorSinks<UserId>()
 
     override fun observeProfile(userId: UserId): Flow<UserProfile> {

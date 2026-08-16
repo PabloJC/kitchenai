@@ -8,10 +8,10 @@ import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.SessionPort
-import com.kitchenai.shared.domain.port.ShoppingListPort
+import com.kitchenai.shared.domain.port.SessionRepositoryContract
+import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.session.EnsureSession
@@ -227,7 +227,7 @@ class SessionViewModelTest {
 private val userId = (UserId.of("user-1") as AppResult.Success).data
 private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
 
-private class FakeSessionPort : SessionPort {
+private class FakeSessionPort : SessionRepositoryContract {
     var signIn: AppResult<Session.SignedIn> = AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
     var signInCount = 0
 
@@ -242,7 +242,7 @@ private class FakeSessionPort : SessionPort {
 }
 
 /** It never keeps what it is given: a second bootstrap has to be visible as a second write. */
-private class FakeShoppingListPort : ShoppingListPort {
+private class FakeShoppingListPort : ShoppingListRepositoryContract {
     var upsert: AppResult<Unit> = AppResult.Success(Unit)
     var upsertCount = 0
 
@@ -261,7 +261,7 @@ private class FakeShoppingListPort : ShoppingListPort {
     }
 }
 
-private class FakeUserProfilePort : UserProfilePort {
+private class FakeUserProfilePort : UserProfileRepositoryContract {
     val profiles = MutableSharedFlow<UserProfile>(replay = 1)
     val errors = MutableSharedFlow<AppError>()
     var saveResult: AppResult<Unit> = AppResult.Success(Unit)

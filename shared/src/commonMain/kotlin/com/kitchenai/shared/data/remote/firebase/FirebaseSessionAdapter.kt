@@ -4,7 +4,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Session
-import com.kitchenai.shared.domain.port.SessionPort
+import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import dev.gitlive.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.onStart
 class FirebaseSessionAdapter(
     private val auth: FirebaseAuth,
     private val dispatchers: DispatcherProvider,
-) : SessionPort {
+) : SessionRepositoryContract {
     /**
      * A restored user is readable synchronously, so emitting it up front removes the
      * signed-out flash while the listener registers. A null `currentUser` is deliberately not

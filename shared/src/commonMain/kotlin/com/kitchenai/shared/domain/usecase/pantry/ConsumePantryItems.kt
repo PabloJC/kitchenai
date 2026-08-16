@@ -6,7 +6,7 @@ import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 
 /**
@@ -16,7 +16,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
  * leaves the pantry exactly as it was rather than half applied.
  */
 class ConsumePantryItems(
-    private val pantry: PantryPort,
+    private val pantry: PantryRepositoryContract,
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(
