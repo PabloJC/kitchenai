@@ -55,6 +55,10 @@ class SuggestionsViewModel(
     // The catalogue names the lines a suggestion carries. It streams because the screen may be
     // open before the catalogue has arrived, and a suggestion generated later must still resolve.
     private val ingredients = MutableStateFlow<List<Ingredient>>(emptyList())
+
+    // What is on screen in domain shape, so it can be re-resolved into words again once the
+    // catalogue answers, rather than only at the moment it was first shown.
+    private var current: List<RecipeSuggestion> = emptyList()
     private var user: UserId? = null
     private var languageTags: List<String> = emptyList()
     private var started = false
@@ -69,7 +73,13 @@ class SuggestionsViewModel(
         if (started) return
         started = true
         viewModelScope.launch {
-            observeIngredients().collect { loaded -> ingredients.value = loaded }
+            observeIngredients().collect { loaded ->
+                ingredients.value = loaded
+                // The stored set can be on screen already, showing catalogue ids where the
+                // resolver had nothing yet: a local read is near-instant and does not wait for
+                // this listener the way the 20-60s model call used to.
+                reresolve()
+            }
         }
         viewModelScope.launch {
             showStored(userId)
@@ -123,12 +133,18 @@ class SuggestionsViewModel(
     }
 
     private fun render(suggestions: List<RecipeSuggestion>) {
+        current = suggestions
+        reresolve()
+    }
+
+    /** Re-applies the resolver to whatever is on screen, for when the catalogue answers after the fact. */
+    private fun reresolve() {
         // With no tags the resolve chain is empty, every lookup misses, and a card names a
         // catalogue ingredient by its identifier. The card carries no quantities, so terms and
         // taxonomies are not needed here — only a language to answer in.
         val resolver = LabelResolver(ingredients = ingredients.value, languageTags = languageTags)
-        internalState.update { current ->
-            current.copy(suggestions = suggestions.map { suggestion -> suggestion.toUi(resolver) })
+        internalState.update { state ->
+            state.copy(suggestions = current.map { suggestion -> suggestion.toUi(resolver) })
         }
     }
 

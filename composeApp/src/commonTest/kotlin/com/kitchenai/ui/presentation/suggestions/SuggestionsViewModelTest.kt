@@ -101,6 +101,26 @@ class SuggestionsViewModelTest {
         }
 
     @Test
+    fun `a stored suggestion's ingredient names update once the catalogue answers`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort(stored = listOf(shortOfRice().recipe))
+            agent.gate = CompletableDeferred()
+
+            val viewModel = started(recipes = recipes)
+            dispatcher.scheduler.runCurrent()
+
+            // Shown immediately, before the catalogue listener (started alongside it) has
+            // necessarily answered: the honest fallback is the raw id, not a blank card.
+            assertEquals(listOf("rice"), viewModel.state.value.suggestions.single().missing)
+
+            catalogue.emit(listOf(ingredient("rice", mapOf("en" to "Rice"))))
+            dispatcher.scheduler.runCurrent()
+
+            // The same card, re-resolved — not only a suggestion generated after this point.
+            assertEquals(listOf("Rice"), viewModel.state.value.suggestions.single().missing)
+        }
+
+    @Test
     fun `a launch generates exactly once`() =
         runTest(dispatcher) {
             agent.answer = AppResult.Success(emptyList())
