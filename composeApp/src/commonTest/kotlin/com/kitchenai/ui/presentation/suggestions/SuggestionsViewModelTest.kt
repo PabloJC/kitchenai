@@ -28,7 +28,6 @@ import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestions
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
-import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
@@ -310,7 +309,6 @@ class SuggestionsViewModelTest {
             getStoredSuggestions = GetStoredSuggestions(recipes, pantry, TimeProvider { now }),
             storeSuggestions = StoreSuggestions(recipes),
             observeIngredients = ObserveIngredients(catalogue),
-            dispatchers = TestDispatcherProvider(dispatcher),
         ).also { it.start(UserId.of("user-1").orFail(), listOf("en")) }
     }
 }

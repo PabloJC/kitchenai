@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.agent.SuggestionOptions
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.RecipeIngredient
@@ -46,7 +45,6 @@ class SuggestionsViewModel(
     private val getStoredSuggestions: GetStoredSuggestions,
     private val storeSuggestions: StoreSuggestions,
     private val observeIngredients: ObserveIngredients,
-    private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(SuggestionsUiState())
     val state: StateFlow<SuggestionsUiState> = internalState.asStateFlow()
@@ -70,10 +68,10 @@ class SuggestionsViewModel(
         this.languageTags = languageTags
         if (started) return
         started = true
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             observeIngredients().collect { loaded -> ingredients.value = loaded }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             showStored(userId)
             generate()
         }
@@ -89,17 +87,16 @@ class SuggestionsViewModel(
      * A second tap while one is in flight is ignored rather than queued: two runs would bill
      * twice for an answer only one of which could be shown.
      *
-     * The guard is a [MutableStateFlow.compareAndSet], not a read followed by an
-     * [MutableStateFlow.update]: the launch auto-generate and a tap on the button call this from
-     * different threads, and a check-then-set race between them is exactly two runs in flight.
+     * Safe against the launch auto-generate racing a tap on the button precisely because neither
+     * this nor [start] ever names a dispatcher: both run confined to [viewModelScope]'s own Main,
+     * so the guard below and the auto-generate's call to this are never truly concurrent.
      */
     fun generate() {
         val userId = user ?: return
-        val idle = internalState.value
-        if (idle.isGenerating) return
-        if (!internalState.compareAndSet(idle, idle.copy(isGenerating = true, error = null))) return
-        viewModelScope.launch(dispatchers.default) {
-            when (val answered = suggestRecipes(userId, idle.options.toDomain())) {
+        if (internalState.value.isGenerating) return
+        internalState.update { it.copy(isGenerating = true, error = null) }
+        viewModelScope.launch {
+            when (val answered = suggestRecipes(userId, internalState.value.options.toDomain())) {
                 is AppResult.Failure -> fail(answered.error)
                 is AppResult.Success -> generated(answered.data)
             }

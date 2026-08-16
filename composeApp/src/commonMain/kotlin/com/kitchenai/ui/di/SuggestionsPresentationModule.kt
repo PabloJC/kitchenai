@@ -10,7 +10,7 @@ import org.koin.dsl.module
 
 val suggestionsPresentationModule: Module =
     module {
-        viewModel { SuggestionsViewModel(get(), get(), get(), get(), get()) }
+        viewModel { SuggestionsViewModel(get(), get(), get(), get()) }
         factory { RecipeDetailReads(get(), get(), get(), get(), get(), get()) }
         factory { RecipeDetailWrites(get(), get(), get(), get()) }
         viewModel { RecipeDetailViewModel(get(), get(), get()) }
