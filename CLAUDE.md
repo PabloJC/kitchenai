@@ -56,13 +56,18 @@ and `runBlocking` are forbidden outside tests.
 **Use cases.** One class = one operation, with `operator fun invoke`. Imperative names:
 `GetRecipeById`, `SaveShoppingList`.
 
-**Local data sources.** A device-local backend (Room, `DataStore`, files) gets a class named
-`<Entity>LocalDataSource`, living in `shared/data/local/` next to the storage it wraps, and
-implementing a domain port named `Local<Entity>Port`. Neither is ever called `<Entity>Repository`
-or `<Entity>CachePort`: nothing is being cached (there is no remote copy it is a faster read of)
-and nothing is being coordinated (there is exactly one backend behind the port, same as a
-`Firestore<Entity>Repository` behind a plain `<Entity>Port`). `LocalRecipePort` /
-`RecipeLocalDataSource` (#137) is the first pair of these.
+**Repositories and data sources.** The layering is `UseCases -> Repositories -> DataSources
+(Local and Remote)`. Domain declares a `<Entity>RepositoryContract`; a single `<Entity>Repository`
+in `data/repository/` implements it and is the only thing a use case may depend on for that
+entity. A repository owns the domain mapping and coordinates one or more data sources — it never
+touches a database driver, an HTTP client or the filesystem itself. A data source wraps exactly
+one backend and stays in that backend's own shape (`<Entity>Entity` for Room, a DTO for
+Firestore), never a domain type: `<Entity>LocalDataSource` lives in `shared/data/local/` next to
+the storage it wraps; `<Entity>RemoteDataSource` would live in `shared/data/remote/`.
+`RecipeRepositoryContract` / `RecipeRepository` / `RecipeLocalDataSource` (#137) are the first of
+these — there is no remote data source behind `RecipeRepository` yet, and it is intentionally a
+different seam from the pre-existing `RecipePort` (#139 unifies them). Every other domain
+interface still ends in `*Port`, pending #138.
 
 **ViewModels.** They expose a single `StateFlow<XxxUiState>`. No business logic: they
 orchestrate use cases. One-shot events go through a `Channel`, not through state.

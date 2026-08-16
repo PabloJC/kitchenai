@@ -1,7 +1,9 @@
-package com.kitchenai.shared.data.local
+package com.kitchenai.shared.data.repository
 
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.testDispatchers
+import com.kitchenai.shared.data.local.FakeRecipeDao
+import com.kitchenai.shared.data.local.RecipeLocalDataSource
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.termRef
@@ -15,10 +17,10 @@ import kotlin.test.assertEquals
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class RecipeLocalDataSourceTest {
-    private val dao = FakeRecipeDao()
-    private val dataSource =
-        RecipeLocalDataSource(dao, TimeProvider { SAVED_AT }, testDispatchers(UnconfinedTestDispatcher()))
+class RecipeRepositoryTest {
+    private val localDataSource = RecipeLocalDataSource(FakeRecipeDao())
+    private val repository =
+        RecipeRepository(localDataSource, TimeProvider { SAVED_AT }, testDispatchers(UnconfinedTestDispatcher()))
 
     @Test
     fun `a recipe written on one launch is readable on the next`() =
@@ -27,19 +29,19 @@ class RecipeLocalDataSourceTest {
                 recipe(ingredients = listOf(recipeIngredient("ing-1", quantity = Quantity(2.0, termRef("term-1")))))
                     .copy(steps = listOf("step-1"), tags = listOf(termRef("t-1")))
 
-            dataSource.replaceAll(listOf(original))
+            repository.replaceAll(listOf(original))
 
-            assertEquals(AppResult.Success(listOf(original)), dataSource.getAll())
+            assertEquals(AppResult.Success(listOf(original)), repository.getAll())
         }
 
     @Test
     fun `a replaced generation leaves nothing behind`() =
         runTest {
-            dataSource.replaceAll(listOf(recipe(id = "recipe-1")))
+            repository.replaceAll(listOf(recipe(id = "recipe-1")))
 
-            dataSource.replaceAll(listOf(recipe(id = "recipe-2")))
+            repository.replaceAll(listOf(recipe(id = "recipe-2")))
 
-            assertEquals(AppResult.Success(listOf(recipe(id = "recipe-2"))), dataSource.getAll())
+            assertEquals(AppResult.Success(listOf(recipe(id = "recipe-2"))), repository.getAll())
         }
 
     private companion object {
