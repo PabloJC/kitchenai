@@ -7,7 +7,7 @@ import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
-import com.kitchenai.shared.domain.port.TaxonomyPort
+import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -52,7 +52,7 @@ class ObserveTaxonomyTest {
 private class StubTaxonomyPort(
     private val terms: List<Term> = emptyList(),
     private val failure: AppError? = null,
-) : TaxonomyPort {
+) : TaxonomyRepositoryContract {
     override fun observeTaxonomy(id: TaxonomyId): Flow<List<Term>> = if (failure == null) flowOf(terms) else emptyFlow()
 
     override fun observeTaxonomies(): Flow<List<Taxonomy>> = flowOf(emptyList())

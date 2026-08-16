@@ -5,7 +5,7 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.getOrElse
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.SessionPort
+import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import com.kitchenai.shared.domain.usecase.NoParams
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,7 +73,7 @@ internal val anonymousUser =
 /** Stateful on purpose: idempotence can only be proven if signing in changes what is observed. */
 internal class FakeSessionPort(
     initial: Session,
-) : SessionPort {
+) : SessionRepositoryContract {
     private val state = MutableStateFlow(initial)
 
     var signInResult: AppResult<Session.SignedIn> = AppResult.Success(anonymousUser)

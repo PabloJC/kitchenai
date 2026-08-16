@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
  * can carry a failure forces every consumer to handle an error it cannot act on, so
  * connection failures surface on the suspend calls instead.
  */
-interface SessionPort {
+interface SessionRepositoryContract {
     fun observeSession(): Flow<Session>
 
     suspend fun signInAnonymously(): AppResult<Session.SignedIn>

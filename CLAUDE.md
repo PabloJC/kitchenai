@@ -65,9 +65,12 @@ one backend and stays in that backend's own shape (`<Entity>Entity` for Room, a 
 Firestore), never a domain type: `<Entity>LocalDataSource` lives in `shared/data/local/` next to
 the storage it wraps; `<Entity>RemoteDataSource` would live in `shared/data/remote/`.
 `RecipeRepositoryContract` / `RecipeRepository` / `RecipeLocalDataSource` (#137) are the first of
-these — there is no remote data source behind `RecipeRepository` yet, and it is intentionally a
-different seam from the pre-existing `RecipePort` (#139 unifies them). Every other domain
-interface still ends in `*Port`, pending #138.
+these — there is no remote data source behind `RecipeRepository` yet. Every other repository-backed
+domain interface follows the same `*RepositoryContract` naming (#138), with one deliberate
+exception: `RecipePort` stays as it is, because renaming it would collide with
+`RecipeRepositoryContract`, a different seam for a different concern (the read-only catalogue and
+saved recipes, over Firestore, versus the local generation cache). #139 resolves that by merging
+the two rather than by renaming one around the other.
 
 **ViewModels.** They expose a single `StateFlow<XxxUiState>`. No business logic: they
 orchestrate use cases. One-shot events go through a `Channel`, not through state.

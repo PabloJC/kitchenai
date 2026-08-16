@@ -8,13 +8,13 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * One user's shopping lists. The items inside a list are a separate collection and a separate
- * port — see [ShoppingItemPort].
+ * port — see [ShoppingItemRepositoryContract].
  *
  * The observer emits data only and a failing listener stops emitting: it never throws, and the
  * failure travels on [listErrors]. Every mutation is an upsert of a whole document, which is
  * what makes a repeated write harmless.
  */
-interface ShoppingListPort {
+interface ShoppingListRepositoryContract {
     fun observeLists(userId: UserId): Flow<List<ShoppingList>>
 
     /** Failures of the listener above, which stops emitting rather than throwing. */

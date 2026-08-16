@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
  * nothing to name a [Term] with — so the failure travels on its own error stream, keyed the
  * same way as the observer, not per emission.
  */
-interface TaxonomyPort {
+interface TaxonomyRepositoryContract {
     fun observeTaxonomy(id: TaxonomyId): Flow<List<Term>>
 
     fun observeTaxonomies(): Flow<List<Taxonomy>>

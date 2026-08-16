@@ -3,12 +3,12 @@ package com.kitchenai.shared.domain.usecase.profile
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import kotlinx.coroutines.flow.Flow
 
 /** The profile stream as the UI consumes it. A failing listener reports on [errors]. */
 class ObserveUserProfile(
-    private val profiles: UserProfilePort,
+    private val profiles: UserProfileRepositoryContract,
 ) {
     operator fun invoke(userId: UserId): Flow<UserProfile> = profiles.observeProfile(userId)
 

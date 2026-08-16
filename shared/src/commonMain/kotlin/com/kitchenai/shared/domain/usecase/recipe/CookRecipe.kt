@@ -10,7 +10,7 @@ import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipePort
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
@@ -26,7 +26,7 @@ import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItems
  */
 class CookRecipe(
     private val recipes: RecipePort,
-    private val pantry: PantryPort,
+    private val pantry: PantryRepositoryContract,
     private val consume: ConsumePantryItems,
     private val time: TimeProvider,
 ) {

@@ -10,7 +10,7 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -18,14 +18,14 @@ import kotlinx.coroutines.flow.flowOf
 import kotlin.time.Instant
 
 /**
- * In-memory [PantryPort] that counts its writes, so a test can prove that a batched call
+ * In-memory [PantryRepositoryContract] that counts its writes, so a test can prove that a batched call
  * stays a single round trip.
  */
-class FakePantryPort(
+class FakePantryRepositoryContract(
     initial: List<PantryItem> = emptyList(),
     private val readError: AppError? = null,
     private val writeError: AppError? = null,
-) : PantryPort {
+) : PantryRepositoryContract {
     private val state = MutableStateFlow(initial)
 
     var upsertCalls = 0

@@ -5,7 +5,7 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ShoppingItemPort
+import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 
 /**
@@ -14,7 +14,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
  * inversions would cancel each other out and leave the line unchecked.
  */
 class SetShoppingItemChecked(
-    private val shoppingItems: ShoppingItemPort,
+    private val shoppingItems: ShoppingItemRepositoryContract,
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(

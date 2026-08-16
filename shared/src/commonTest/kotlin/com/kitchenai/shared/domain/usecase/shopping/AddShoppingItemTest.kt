@@ -12,7 +12,7 @@ class AddShoppingItemTest {
     private val user = userId()
     private val grams = termRef("unit", "gram")
     private val millilitres = termRef("unit", "millilitre")
-    private val port = FakeShoppingItemPort()
+    private val port = FakeShoppingItemRepositoryContract()
     private val useCase = AddShoppingItem(port, sequentialIds(), fixedTime(2_000))
 
     @Test

@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
  * Everything here is keyed by `listId`, including [itemErrors]: one list's broken listener
  * must not be reported to a screen watching another list.
  */
-interface ShoppingItemPort {
+interface ShoppingItemRepositoryContract {
     fun observeItems(
         userId: UserId,
         listId: ShoppingListId,

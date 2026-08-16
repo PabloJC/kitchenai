@@ -6,8 +6,8 @@ import com.kitchenai.shared.domain.agent.AgentOrchestrator
 import com.kitchenai.shared.domain.agent.SuggestionOptions
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.PantryPort
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import kotlinx.coroutines.flow.firstOrNull
 
 /**
@@ -17,8 +17,8 @@ import kotlinx.coroutines.flow.firstOrNull
  * `first` on an ended stream would throw across a layer boundary instead of failing.
  */
 class SuggestRecipes(
-    private val profiles: UserProfilePort,
-    private val pantry: PantryPort,
+    private val profiles: UserProfileRepositoryContract,
+    private val pantry: PantryRepositoryContract,
     private val orchestrator: AgentOrchestrator,
 ) {
     suspend operator fun invoke(

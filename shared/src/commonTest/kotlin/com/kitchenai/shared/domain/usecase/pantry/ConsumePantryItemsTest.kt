@@ -14,7 +14,7 @@ class ConsumePantryItemsTest {
     private val unitA = termRef("term-a")
     private val unitB = termRef("term-b")
     private val port =
-        FakePantryPort(
+        FakePantryRepositoryContract(
             listOf(
                 pantryItem("item-1", "ing-1", Quantity(200.0, unitA)),
                 pantryItem("item-2", "ing-2", Quantity(4.0)),

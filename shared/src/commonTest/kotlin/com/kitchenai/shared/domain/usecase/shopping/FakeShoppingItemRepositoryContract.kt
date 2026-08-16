@@ -6,7 +6,7 @@ import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ShoppingItemPort
+import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -14,11 +14,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /** Items keyed by list, so a test can break one list's listener and leave the others alone. */
-class FakeShoppingItemPort(
+class FakeShoppingItemRepositoryContract(
     private val failure: AppError? = null,
     // Which item listener broke. Null means all of them, which is what most tests want.
     private val failingList: ShoppingListId? = null,
-) : ShoppingItemPort {
+) : ShoppingItemRepositoryContract {
     private val items = MutableStateFlow<Map<String, List<ShoppingItem>>>(emptyMap())
 
     var upsertCalls: Int = 0

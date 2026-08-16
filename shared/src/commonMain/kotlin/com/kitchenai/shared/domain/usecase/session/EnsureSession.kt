@@ -2,7 +2,7 @@ package com.kitchenai.shared.domain.usecase.session
 
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Session
-import com.kitchenai.shared.domain.port.SessionPort
+import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import com.kitchenai.shared.domain.usecase.NoParams
 import com.kitchenai.shared.domain.usecase.UseCase
 import kotlinx.coroutines.flow.first
@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.first
  * an already signed-in user must not create a second anonymous account.
  */
 class EnsureSession(
-    private val session: SessionPort,
+    private val session: SessionRepositoryContract,
 ) : UseCase<NoParams, Session.SignedIn> {
     override suspend fun invoke(params: NoParams): AppResult<Session.SignedIn> =
         when (val current = session.observeSession().first()) {

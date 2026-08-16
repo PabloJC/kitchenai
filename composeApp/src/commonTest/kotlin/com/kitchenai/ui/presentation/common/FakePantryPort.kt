@@ -5,7 +5,7 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.emptyFlow
 class FakePantryPort(
     items: List<PantryItem> = emptyList(),
     private val readError: AppError? = null,
-) : PantryPort {
+) : PantryRepositoryContract {
     private val state = MutableStateFlow(items)
 
     val held: List<PantryItem> get() = state.value

@@ -6,7 +6,7 @@ import com.kitchenai.shared.domain.usecase.session.SignOut
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
-// The SessionPort binding lives with its Firebase adapter, which is out of this issue's scope.
+// The SessionRepositoryContract binding lives with its Firebase adapter, which is out of this issue's scope.
 val sessionModule: Module =
     module {
         factory { ObserveSession(get()) }

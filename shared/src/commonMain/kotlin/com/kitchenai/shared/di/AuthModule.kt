@@ -1,7 +1,7 @@
 package com.kitchenai.shared.di
 
 import com.kitchenai.shared.data.remote.firebase.FirebaseSessionAdapter
-import com.kitchenai.shared.domain.port.SessionPort
+import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.FirebaseAuth
 import dev.gitlive.firebase.auth.auth
@@ -13,5 +13,5 @@ val authModule: Module =
     module {
         single<FirebaseAuth> { Firebase.auth }
 
-        single<SessionPort> { FirebaseSessionAdapter(get(), get()) }
+        single<SessionRepositoryContract> { FirebaseSessionAdapter(get(), get()) }
     }

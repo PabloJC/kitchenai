@@ -2,8 +2,8 @@ package com.kitchenai.shared.di
 
 import com.kitchenai.shared.data.repository.FirestoreTaxonomyRepository
 import com.kitchenai.shared.data.repository.FirestoreUserProfileRepository
-import com.kitchenai.shared.domain.port.TaxonomyPort
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -15,6 +15,6 @@ import org.koin.dsl.module
  */
 val profileDataModule: Module =
     module {
-        single<UserProfilePort> { FirestoreUserProfileRepository(get(), get()) }
-        single<TaxonomyPort> { FirestoreTaxonomyRepository(get(), get()) }
+        single<UserProfileRepositoryContract> { FirestoreUserProfileRepository(get(), get()) }
+        single<TaxonomyRepositoryContract> { FirestoreTaxonomyRepository(get(), get()) }
     }

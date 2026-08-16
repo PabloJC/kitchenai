@@ -4,7 +4,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
-import com.kitchenai.shared.domain.port.IngredientPort
+import com.kitchenai.shared.domain.port.IngredientRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
  *
  * Nothing is emitted until a test asks, because a real listener sends nothing until it has data.
  */
-class FakeIngredientPort : IngredientPort {
+class FakeIngredientPort : IngredientRepositoryContract {
     private val stream = MutableSharedFlow<List<Ingredient>>(replay = 1)
     val errors = MutableSharedFlow<AppError>()
 

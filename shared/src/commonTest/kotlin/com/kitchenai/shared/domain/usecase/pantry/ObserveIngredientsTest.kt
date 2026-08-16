@@ -5,7 +5,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
-import com.kitchenai.shared.domain.port.IngredientPort
+import com.kitchenai.shared.domain.port.IngredientRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -41,7 +41,7 @@ class ObserveIngredientsTest {
     private class FakeIngredientPort(
         private val answer: List<Ingredient> = emptyList(),
         private val failure: AppError? = null,
-    ) : IngredientPort {
+    ) : IngredientRepositoryContract {
         override fun observeIngredients(): Flow<List<Ingredient>> = if (failure == null) flowOf(answer) else emptyFlow()
 
         override fun ingredientErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()

@@ -2,7 +2,7 @@ package com.kitchenai.shared.domain.usecase.profile
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.domain.model.Taxonomy
-import com.kitchenai.shared.domain.port.TaxonomyPort
+import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
  * a particular taxonomy is there, so something has to say it, and this is that something.
  */
 class ObserveTaxonomies(
-    private val taxonomies: TaxonomyPort,
+    private val taxonomies: TaxonomyRepositoryContract,
 ) {
     operator fun invoke(): Flow<List<Taxonomy>> = taxonomies.observeTaxonomies()
 

@@ -4,9 +4,9 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.TaxonomyPort
+import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 
 /**
  * Validates the profile against the live catalogue and stamps [UserProfile.updatedAt] before
@@ -14,8 +14,8 @@ import com.kitchenai.shared.domain.port.UserProfilePort
  * would be unresolvable for every reader.
  */
 class SaveUserProfile(
-    private val profiles: UserProfilePort,
-    private val taxonomies: TaxonomyPort,
+    private val profiles: UserProfileRepositoryContract,
+    private val taxonomies: TaxonomyRepositoryContract,
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(profile: UserProfile): AppResult<Unit> {

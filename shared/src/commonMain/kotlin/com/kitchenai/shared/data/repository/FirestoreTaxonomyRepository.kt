@@ -13,7 +13,7 @@ import com.kitchenai.shared.data.remote.firebase.toAppError
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.Term
-import com.kitchenai.shared.domain.port.TaxonomyPort
+import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.flow.Flow
@@ -21,14 +21,14 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * [TaxonomyPort] over the read-only `taxonomies` collection. Reads are snapshot listeners rather
+ * [TaxonomyRepositoryContract] over the read-only `taxonomies` collection. Reads are snapshot listeners rather
  * than one-shot gets so the catalogue keeps rendering from the offline cache; [getTaxonomies] is
  * the exception, because validating a profile cannot wait on a listener that may have failed.
  */
 class FirestoreTaxonomyRepository(
     private val paths: FirestorePaths,
     private val dispatchers: DispatcherProvider,
-) : TaxonomyPort {
+) : TaxonomyRepositoryContract {
     private val termErrors = KeyedErrorSinks<TaxonomyId>()
 
     // The catalogue listener takes no argument, so it owns a single sink.

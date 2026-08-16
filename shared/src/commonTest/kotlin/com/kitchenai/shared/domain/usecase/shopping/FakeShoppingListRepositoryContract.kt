@@ -4,7 +4,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ShoppingListPort
+import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -14,9 +14,9 @@ import kotlinx.coroutines.flow.flowOf
  * In-memory store with the convergence properties the real adapter must have: an upsert
  * replaces a document by id and a repeated upsert changes nothing.
  */
-class FakeShoppingListPort(
+class FakeShoppingListRepositoryContract(
     private val failure: AppError? = null,
-) : ShoppingListPort {
+) : ShoppingListRepositoryContract {
     private val lists = MutableStateFlow<List<ShoppingList>>(emptyList())
 
     var upsertListCalls: Int = 0

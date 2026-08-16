@@ -7,7 +7,7 @@ import com.kitchenai.shared.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
 
 /** The seam towards wherever the profile is stored; `domain` never learns it is Firestore. */
-interface UserProfilePort {
+interface UserProfileRepositoryContract {
     fun observeProfile(userId: UserId): Flow<UserProfile>
 
     /** Failures of the listener above, which stops emitting rather than throwing. */

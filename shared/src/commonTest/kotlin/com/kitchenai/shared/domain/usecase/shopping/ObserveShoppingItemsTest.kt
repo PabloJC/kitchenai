@@ -14,7 +14,7 @@ class ObserveShoppingItemsTest {
     @Test
     fun `unchecked lines come first and each group is ordered by its last update`() =
         runTest {
-            val port = FakeShoppingItemPort()
+            val port = FakeShoppingItemRepositoryContract()
             port.seed(
                 list,
                 shoppingItem("bought-late", seconds = 40).copy(checked = true),
@@ -35,7 +35,7 @@ class ObserveShoppingItemsTest {
     @Test
     fun `a failing listener reports on errors instead of emitting an empty list`() =
         runTest {
-            val useCase = ObserveShoppingItems(FakeShoppingItemPort(AppError.Network()))
+            val useCase = ObserveShoppingItems(FakeShoppingItemRepositoryContract(AppError.Network()))
 
             useCase(user, list).test { awaitComplete() }
             useCase.errors(user, list).test {
@@ -47,7 +47,7 @@ class ObserveShoppingItemsTest {
     @Test
     fun `one list's broken listener is not reported on another list's errors`() =
         runTest {
-            val port = FakeShoppingItemPort(AppError.Network(), failingList = listId("other"))
+            val port = FakeShoppingItemRepositoryContract(AppError.Network(), failingList = listId("other"))
 
             ObserveShoppingItems(port).errors(user, list).test { awaitComplete() }
         }

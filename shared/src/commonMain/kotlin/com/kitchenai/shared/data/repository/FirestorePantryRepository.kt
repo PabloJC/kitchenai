@@ -13,7 +13,7 @@ import com.kitchenai.shared.data.remote.firebase.toAppError
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.firestore.QuerySnapshot
@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * [PantryPort] over `users/{uid}/pantry`: a snapshot listener to read, optimistic writes to
+ * [PantryRepositoryContract] over `users/{uid}/pantry`: a snapshot listener to read, optimistic writes to
  * change. GitLive's `set` and `delete` only resolve once the server acknowledges them, so
  * awaiting one would leave the user watching a spinner for a write the cache already applied.
  */
@@ -32,7 +32,7 @@ class FirestorePantryRepository(
     private val paths: FirestorePaths,
     private val firestore: FirebaseFirestore,
     private val dispatchers: DispatcherProvider,
-) : PantryPort {
+) : PantryRepositoryContract {
     // Writes outlive the caller on purpose; the supervisor keeps one failure from cancelling
     // the writes queued after it.
     private val writes = CoroutineScope(SupervisorJob() + dispatchers.io)

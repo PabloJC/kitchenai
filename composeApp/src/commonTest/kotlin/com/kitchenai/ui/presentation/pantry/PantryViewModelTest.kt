@@ -16,7 +16,7 @@ import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.PantryPort
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.AddPantryItem
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
@@ -374,7 +374,7 @@ private val locationTerm = Term(locationRef, mapOf("aa" to LOCATION_LABEL), null
 
 private fun <T> AppResult<T>.value(): T = (this as AppResult.Success).data
 
-private class FakePantryPort : PantryPort {
+private class FakePantryPort : PantryRepositoryContract {
     val items = MutableSharedFlow<List<PantryItem>>(replay = 1)
     val errors = MutableSharedFlow<AppError>()
     val upserted = mutableListOf<PantryItem>()

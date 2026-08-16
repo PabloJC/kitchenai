@@ -11,9 +11,9 @@ import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.TaxonomyPort
+import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.port.UserProfilePort
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
@@ -395,7 +395,7 @@ private fun termRef(
 
 private fun <T> unwrap(result: AppResult<T>): T = (result as AppResult.Success).data
 
-private class FakeUserProfilePort : UserProfilePort {
+private class FakeUserProfilePort : UserProfileRepositoryContract {
     val profiles = MutableSharedFlow<UserProfile>(replay = 1)
     val errors = MutableSharedFlow<AppError>()
     var saveCount = 0
@@ -415,7 +415,7 @@ private class FakeUserProfilePort : UserProfilePort {
 }
 
 /** Keyed exactly like the port it stands for, so one broken taxonomy can be told from all of them. */
-private class FakeTaxonomyPort : TaxonomyPort {
+private class FakeTaxonomyPort : TaxonomyRepositoryContract {
     // Replay without an initial value: a listener that has not answered emits nothing, which is
     // the state the screen has to tell apart from an empty catalogue.
     val taxonomies = MutableSharedFlow<List<Taxonomy>>(replay = 1)

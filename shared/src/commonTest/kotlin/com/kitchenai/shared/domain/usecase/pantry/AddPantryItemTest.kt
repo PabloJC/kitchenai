@@ -18,13 +18,14 @@ class AddPantryItemTest {
     private val later = Instant.fromEpochSeconds(9_000)
     private val sooner = Instant.fromEpochSeconds(5_000)
 
-    private fun useCase(port: FakePantryPort) = AddPantryItem(port, IdGenerator { "generated-1" }, TimeProvider { now })
+    private fun useCase(port: FakePantryRepositoryContract) =
+        AddPantryItem(port, IdGenerator { "generated-1" }, TimeProvider { now })
 
     @Test
     fun `tops up the held row when the ingredient and the unit match`() =
         runTest {
             val held = pantryItem("item-1", "ing-1", Quantity(200.0, unitA), expiresAt = later)
-            val port = FakePantryPort(listOf(held))
+            val port = FakePantryRepositoryContract(listOf(held))
 
             val result = useCase(port)(user, ingredientId("ing-1"), Quantity(50.0, unitA), null, sooner)
 
@@ -38,7 +39,7 @@ class AddPantryItemTest {
     @Test
     fun `keeps a separate row when the unit differs because nothing is converted`() =
         runTest {
-            val port = FakePantryPort(listOf(pantryItem("item-1", "ing-1", Quantity(200.0, unitA))))
+            val port = FakePantryRepositoryContract(listOf(pantryItem("item-1", "ing-1", Quantity(200.0, unitA))))
 
             useCase(port)(user, ingredientId("ing-1"), Quantity(1.0, unitB), null, null)
 
@@ -48,7 +49,7 @@ class AddPantryItemTest {
     @Test
     fun `a new holding takes the generated id and the current time`() =
         runTest {
-            val result = useCase(FakePantryPort())(user, ingredientId("ing-1"), Quantity(3.0), null, null)
+            val result = useCase(FakePantryRepositoryContract())(user, ingredientId("ing-1"), Quantity(3.0), null, null)
 
             assertTrue(result is AppResult.Success)
             assertEquals(pantryItemId("generated-1"), result.data.id)
@@ -58,7 +59,7 @@ class AddPantryItemTest {
     @Test
     fun `rejects an amount of zero without touching the port`() =
         runTest {
-            val port = FakePantryPort()
+            val port = FakePantryRepositoryContract()
 
             val result = useCase(port)(user, ingredientId("ing-1"), Quantity(0.0, unitA), null, null)
 
@@ -70,7 +71,7 @@ class AddPantryItemTest {
     @Test
     fun `propagates a write failure instead of reporting the item as added`() =
         runTest {
-            val port = FakePantryPort(writeError = AppError.Network())
+            val port = FakePantryRepositoryContract(writeError = AppError.Network())
 
             val result = useCase(port)(user, ingredientId("ing-1"), Quantity(3.0), null, null)
 
