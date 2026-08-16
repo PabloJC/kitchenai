@@ -9,23 +9,25 @@ import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.RecipePort
+import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 
 /**
- * In-memory [RecipePort]. [catalogue] holds recipes nobody saved, so that a test can read one
- * by id without first putting it in the user's library.
+ * In-memory [RecipeRepositoryContract]. [catalogue] holds recipes nobody saved, so that a test
+ * can read one by id without first putting it in the user's library. The local generation cache
+ * is a separate list: nothing here exercises it yet, so it stays a plain in-memory mirror.
  */
-class FakeRecipePort(
+class FakeRecipeRepositoryContract(
     saved: List<Recipe> = emptyList(),
     private val catalogue: List<Recipe> = emptyList(),
     private val readError: AppError? = null,
     private val writeError: AppError? = null,
-) : RecipePort {
+) : RecipeRepositoryContract {
     private val state = MutableStateFlow(saved)
+    private val cache = MutableStateFlow<List<Recipe>>(emptyList())
 
     val recipes: List<Recipe> get() = state.value
 
@@ -50,6 +52,11 @@ class FakeRecipePort(
         userId: UserId,
         recipeId: RecipeId,
     ): AppResult<Unit> = write { saved -> saved.filterNot { it.id == recipeId } }
+
+    override suspend fun getAll(): AppResult<List<Recipe>> = AppResult.Success(cache.value)
+
+    override suspend fun replaceAll(recipes: List<Recipe>): AppResult<Unit> =
+        AppResult.Success(Unit).also { cache.value = recipes }
 
     private fun write(edit: (List<Recipe>) -> List<Recipe>): AppResult<Unit> =
         writeError?.let { AppResult.Failure(it) } ?: AppResult.Success(Unit).also { state.value = edit(state.value) }

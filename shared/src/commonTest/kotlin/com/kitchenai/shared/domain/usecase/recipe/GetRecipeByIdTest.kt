@@ -13,7 +13,7 @@ class GetRecipeByIdTest {
     @Test
     fun `reads a recipe nobody has saved`() =
         runTest {
-            val result = GetRecipeById(FakeRecipePort(catalogue = listOf(stored)))(stored.id)
+            val result = GetRecipeById(FakeRecipeRepositoryContract(catalogue = listOf(stored)))(stored.id)
 
             assertEquals(AppResult.Success(stored), result)
         }
@@ -21,7 +21,7 @@ class GetRecipeByIdTest {
     @Test
     fun `an unknown id is not found`() =
         runTest {
-            val result = GetRecipeById(FakeRecipePort())(stored.id)
+            val result = GetRecipeById(FakeRecipeRepositoryContract())(stored.id)
 
             assertTrue(result is AppResult.Failure)
         }
@@ -29,7 +29,7 @@ class GetRecipeByIdTest {
     @Test
     fun `a failing read is reported`() =
         runTest {
-            val result = GetRecipeById(FakeRecipePort(readError = AppError.Network()))(stored.id)
+            val result = GetRecipeById(FakeRecipeRepositoryContract(readError = AppError.Network()))(stored.id)
 
             assertTrue(result is AppResult.Failure)
         }

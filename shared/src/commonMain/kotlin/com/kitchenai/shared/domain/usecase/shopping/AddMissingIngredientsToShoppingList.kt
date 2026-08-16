@@ -16,7 +16,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
-import com.kitchenai.shared.domain.port.RecipePort
+import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
@@ -28,7 +28,7 @@ import com.kitchenai.shared.domain.service.PantryMatcher
  * good once that listener had failed.
  */
 class AddMissingIngredientsToShoppingList(
-    private val recipes: RecipePort,
+    private val recipes: RecipeRepositoryContract,
     private val pantry: PantryRepositoryContract,
     private val shoppingItems: ShoppingItemRepositoryContract,
     private val ids: IdGenerator,

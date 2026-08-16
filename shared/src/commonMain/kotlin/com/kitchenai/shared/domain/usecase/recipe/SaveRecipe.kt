@@ -4,11 +4,11 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.RecipePort
+import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 
 /** Keeps a recipe under the user, whatever produced it. */
 class SaveRecipe(
-    private val recipes: RecipePort,
+    private val recipes: RecipeRepositoryContract,
 ) {
     suspend operator fun invoke(
         userId: UserId,

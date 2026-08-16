@@ -11,7 +11,7 @@ import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
-import com.kitchenai.shared.domain.port.RecipePort
+import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
 import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItems
@@ -25,7 +25,7 @@ import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItems
  * they are held, and nothing can prove they are not.
  */
 class CookRecipe(
-    private val recipes: RecipePort,
+    private val recipes: RecipeRepositoryContract,
     private val pantry: PantryRepositoryContract,
     private val consume: ConsumePantryItems,
     private val time: TimeProvider,

@@ -5,7 +5,7 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.RecipePort
+import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -15,8 +15,9 @@ import kotlinx.coroutines.flow.flowOf
 class FakeRecipePort(
     private val catalogue: List<Recipe> = emptyList(),
     private val readError: AppError? = null,
-) : RecipePort {
+) : RecipeRepositoryContract {
     private val state = MutableStateFlow<List<Recipe>>(emptyList())
+    private val cache = MutableStateFlow<List<Recipe>>(emptyList())
 
     val saved: List<Recipe> get() = state.value
 
@@ -45,4 +46,9 @@ class FakeRecipePort(
         state.value = state.value.filterNot { it.id == recipeId }
         return AppResult.Success(Unit)
     }
+
+    override suspend fun getAll(): AppResult<List<Recipe>> = AppResult.Success(cache.value)
+
+    override suspend fun replaceAll(recipes: List<Recipe>): AppResult<Unit> =
+        AppResult.Success(Unit).also { cache.value = recipes }
 }

@@ -13,7 +13,7 @@ class ObserveSavedRecipesTest {
         runTest {
             val saved = listOf(recipe("recipe-1"), recipe("recipe-2"))
 
-            ObserveSavedRecipes(FakeRecipePort(saved))(user).test {
+            ObserveSavedRecipes(FakeRecipeRepositoryContract(saved))(user).test {
                 assertEquals(saved, awaitItem())
                 cancelAndIgnoreRemainingEvents()
             }
@@ -22,7 +22,7 @@ class ObserveSavedRecipesTest {
     @Test
     fun `a failing listener reports on errors and emits no list`() =
         runTest {
-            val useCase = ObserveSavedRecipes(FakeRecipePort(readError = AppError.Unauthorized()))
+            val useCase = ObserveSavedRecipes(FakeRecipeRepositoryContract(readError = AppError.Unauthorized()))
 
             useCase(user).test { awaitComplete() }
             useCase.errors(user).test {
