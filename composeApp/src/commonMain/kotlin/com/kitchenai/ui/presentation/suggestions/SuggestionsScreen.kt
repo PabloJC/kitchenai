@@ -122,15 +122,17 @@ private fun Results(
     onOpen: (RecipeId) -> Unit,
 ) {
     when {
-        // A skeleton rather than a spinner: the call takes the better part of a minute, and a
-        // blank screen for that long reads as a hang rather than as work.
-        state.isGenerating -> Skeleton()
+        // Before isGenerating: a stored set from the last launch stays on screen while a new one
+        // runs behind it, rather than being hidden by a skeleton for the better part of a minute.
         state.suggestions.isNotEmpty() ->
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
                 items(state.suggestions, key = { it.id.value }) { suggestion ->
                     SuggestionCard(suggestion, onOpen)
                 }
             }
+        // A skeleton rather than a spinner: the call takes the better part of a minute, and a
+        // blank screen for that long reads as a hang rather than as work.
+        state.isGenerating -> Skeleton()
         // Generated and found nothing is not the same as never asked, and neither is an error.
         state.hasGenerated && state.error == null ->
             EmptyState(
