@@ -9,7 +9,7 @@ import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
-import com.kitchenai.shared.domain.usecase.recipe.FakeRecipePort
+import com.kitchenai.shared.domain.usecase.recipe.FakeRecipeRepositoryContract
 import com.kitchenai.shared.domain.usecase.recipe.recipe
 import com.kitchenai.shared.domain.usecase.recipe.recipeId
 import com.kitchenai.shared.domain.usecase.recipe.recipeIngredient
@@ -115,7 +115,7 @@ class AddMissingIngredientsToShoppingListTest {
         runTest {
             val useCase =
                 AddMissingIngredientsToShoppingList(
-                    FakeRecipePort(readError = AppError.Unauthorized()),
+                    FakeRecipeRepositoryContract(readError = AppError.Unauthorized()),
                     FakePantryRepositoryContract(),
                     items,
                     sequentialIds(),
@@ -133,7 +133,7 @@ class AddMissingIngredientsToShoppingListTest {
             // An empty catalogue is a generated dish exactly: its id was minted on this device.
             val useCase =
                 AddMissingIngredientsToShoppingList(
-                    FakeRecipePort(),
+                    FakeRecipeRepositoryContract(),
                     FakePantryRepositoryContract(),
                     items,
                     sequentialIds(),
@@ -154,7 +154,7 @@ class AddMissingIngredientsToShoppingListTest {
         held: List<PantryItem> = emptyList(),
     ): AddMissingIngredientsToShoppingList =
         AddMissingIngredientsToShoppingList(
-            FakeRecipePort(catalogue = listOf(dish)),
+            FakeRecipeRepositoryContract(catalogue = listOf(dish)),
             FakePantryRepositoryContract(held),
             items,
             sequentialIds(),

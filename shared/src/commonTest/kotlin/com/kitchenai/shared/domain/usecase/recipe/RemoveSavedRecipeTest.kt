@@ -12,7 +12,7 @@ class RemoveSavedRecipeTest {
     @Test
     fun `drops the recipe from the saved ones`() =
         runTest {
-            val port = FakeRecipePort(listOf(stored))
+            val port = FakeRecipeRepositoryContract(listOf(stored))
 
             RemoveSavedRecipe(port)(user, stored.id)
 
@@ -22,7 +22,7 @@ class RemoveSavedRecipeTest {
     @Test
     fun `removing a recipe that is not there is not an error`() =
         runTest {
-            val port = FakeRecipePort()
+            val port = FakeRecipeRepositoryContract()
 
             assertTrue(RemoveSavedRecipe(port)(user, stored.id) is AppResult.Success)
         }
@@ -30,7 +30,7 @@ class RemoveSavedRecipeTest {
     @Test
     fun `a failing write is reported`() =
         runTest {
-            val port = FakeRecipePort(listOf(stored), writeError = AppError.Network())
+            val port = FakeRecipeRepositoryContract(listOf(stored), writeError = AppError.Network())
 
             assertTrue(RemoveSavedRecipe(port)(user, stored.id) is AppResult.Failure)
         }

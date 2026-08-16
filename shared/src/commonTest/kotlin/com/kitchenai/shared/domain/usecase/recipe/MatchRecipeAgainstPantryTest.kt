@@ -46,7 +46,7 @@ class MatchRecipeAgainstPantryTest {
         runTest {
             val useCase =
                 MatchRecipeAgainstPantry(
-                    FakeRecipePort(readError = AppError.Unauthorized()),
+                    FakeRecipeRepositoryContract(readError = AppError.Unauthorized()),
                     FakePantryRepositoryContract(),
                     TimeProvider { now },
                 )
@@ -59,7 +59,7 @@ class MatchRecipeAgainstPantryTest {
         runTest {
             val useCase =
                 MatchRecipeAgainstPantry(
-                    FakeRecipePort(catalogue = listOf(stored)),
+                    FakeRecipeRepositoryContract(catalogue = listOf(stored)),
                     FakePantryRepositoryContract(readError = AppError.Network()),
                     TimeProvider { now },
                 )
@@ -89,7 +89,7 @@ class MatchRecipeAgainstPantryTest {
     fun `an override the recipe cannot scale to fails without reading the pantry`() =
         runTest {
             val pantry = FakePantryRepositoryContract(readError = AppError.Network())
-            val recipes = FakeRecipePort(catalogue = listOf(stored))
+            val recipes = FakeRecipeRepositoryContract(catalogue = listOf(stored))
             val useCase = MatchRecipeAgainstPantry(recipes, pantry, TimeProvider { now })
 
             // Network is what the pantry would answer; a validation failure proves it was never asked.
@@ -104,7 +104,7 @@ class MatchRecipeAgainstPantryTest {
             // An empty catalogue is a generated dish exactly: its id was minted on this device.
             val useCase =
                 MatchRecipeAgainstPantry(
-                    FakeRecipePort(),
+                    FakeRecipeRepositoryContract(),
                     FakePantryRepositoryContract(listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit)))),
                     TimeProvider { now },
                 )
@@ -118,7 +118,7 @@ class MatchRecipeAgainstPantryTest {
 
     private fun matcher(pantry: List<PantryItem>): MatchRecipeAgainstPantry =
         MatchRecipeAgainstPantry(
-            FakeRecipePort(catalogue = listOf(stored)),
+            FakeRecipeRepositoryContract(catalogue = listOf(stored)),
             FakePantryRepositoryContract(pantry),
             TimeProvider { now },
         )

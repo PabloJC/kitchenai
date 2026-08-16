@@ -9,7 +9,7 @@ import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
-import com.kitchenai.shared.domain.port.RecipePort
+import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
 
@@ -24,7 +24,7 @@ import com.kitchenai.shared.domain.service.PantryMatcher
  * saying one thing and the buckets beside them saying another.
  */
 class MatchRecipeAgainstPantry(
-    private val recipes: RecipePort,
+    private val recipes: RecipeRepositoryContract,
     private val pantry: PantryRepositoryContract,
     private val time: TimeProvider,
 ) {

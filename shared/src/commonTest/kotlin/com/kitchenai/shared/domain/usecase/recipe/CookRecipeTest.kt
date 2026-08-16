@@ -110,7 +110,7 @@ class CookRecipeTest {
             // An empty catalogue is a generated dish exactly: its id was minted on this device.
             val useCase =
                 CookRecipe(
-                    FakeRecipePort(),
+                    FakeRecipeRepositoryContract(),
                     pantry,
                     ConsumePantryItems(pantry, TimeProvider { now }),
                     TimeProvider { now },
@@ -141,7 +141,7 @@ class CookRecipeTest {
         pantry: FakePantryRepositoryContract,
     ): CookRecipe =
         CookRecipe(
-            FakeRecipePort(catalogue = listOf(dish)),
+            FakeRecipeRepositoryContract(catalogue = listOf(dish)),
             pantry,
             ConsumePantryItems(pantry, TimeProvider { now }),
             TimeProvider { now },
