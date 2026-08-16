@@ -10,7 +10,7 @@ import org.koin.dsl.module
 // One binding per line: every screen issue appends one of its own.
 val presentationModule: Module =
     module {
-        viewModel { SessionViewModel(get(), get(), get(), get(), get(), get()) }
+        viewModel { SessionViewModel(get(), get(), get(), get(), get()) }
         includes(pantryPresentationModule)
         includes(profilePresentationModule)
         includes(shoppingPresentationModule)

@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.PantryMatch
@@ -26,7 +25,6 @@ import com.kitchenai.ui.resources.error_not_found
 import com.kitchenai.ui.resources.error_timeout
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.error_unknown
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -35,7 +33,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -50,7 +47,6 @@ import kotlinx.coroutines.launch
 class RecipeDetailViewModel(
     private val reads: RecipeDetailReads,
     private val writes: RecipeDetailWrites,
-    private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(RecipeDetailUiState())
     val state: StateFlow<RecipeDetailUiState> = internalState.asStateFlow()
@@ -58,9 +54,9 @@ class RecipeDetailViewModel(
     private val eventChannel = Channel<RecipeDetailEvent>(Channel.BUFFERED)
     val events: Flow<RecipeDetailEvent> = eventChannel.receiveAsFlow()
 
-    // Everything below is written by one coroutine and read by others, all on a real thread
-    // pool. A plain `var` gives those reads no happens-before edge, so this state lives in
-    // flows for the same reason the pantry screen's does.
+    // Not exposed and never collected on their own — everything here runs confined to Main, so
+    // a plain `var` would be just as safe. Kept as flows only so `.value` reads stay uniform with
+    // `internalState`'s; see #147 for whether that uniformity is worth keeping.
     private val names = MutableStateFlow<List<Ingredient>>(emptyList())
     private val units = MutableStateFlow<List<Term>>(emptyList())
 
@@ -91,7 +87,7 @@ class RecipeDetailViewModel(
         listLabels = languageTags.take(1).associateWith { defaultListName }
         if (started) return
         started = true
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.ingredients().collect { loaded ->
                 names.value = loaded
                 recipe.value?.let { held -> render(held, currentMatch.value) }
@@ -106,7 +102,7 @@ class RecipeDetailViewModel(
      * quantity, and the taxonomy that holds units is the one that declares that purpose.
      */
     private fun watchUnits() {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             // collectLatest and coroutineScope together: a second emission of the taxonomy list
             // must replace the per-taxonomy collectors, not add to them. Plain collect leaves
             // the previous ones running, so one unit ends up with a listener per emission.
@@ -168,15 +164,11 @@ class RecipeDetailViewModel(
      * a tap really can overlap the refresh after a cook.
      */
     private fun matching(block: suspend () -> Unit) {
-        // Swapped atomically rather than cancel-then-assign. A stepper tap arrives on the main
-        // thread and the refresh after a cook on the pool, so two callers really can interleave:
-        // read-cancel-assign twice over would leave one of the two jobs owned by nobody and
-        // running anyway, which is the double flight this exists to prevent.
-        val next = viewModelScope.launch(dispatchers.default, CoroutineStart.LAZY) { block() }
-        loading.getAndUpdate { next }?.cancel()
-        // Started only once it is the one on record. A job cancelled by a later swap before it
-        // gets here never runs at all.
-        next.start()
+        // Plain cancel-then-assign. Every caller reaches here on Main and nothing below suspends
+        // before the assignment, so no two of them can interleave inside this function; the
+        // atomic swap this used to do was guarding against a background dispatcher that is gone.
+        loading.value?.cancel()
+        loading.value = viewModelScope.launch { block() }
     }
 
     private fun load(
@@ -283,7 +275,7 @@ class RecipeDetailViewModel(
         val userId = user ?: return
         if (internalState.value.isWorking) return
         internalState.update { it.copy(isWorking = true) }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             when (val outcome = block(userId)) {
                 null -> Unit
                 is AppResult.Failure -> announce(RecipeDetailEvent.Failed(outcome.error.describe(validation)))

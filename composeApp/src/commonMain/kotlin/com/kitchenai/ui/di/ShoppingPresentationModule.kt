@@ -12,5 +12,5 @@ val shoppingPresentationModule: Module =
     module {
         factory { ShoppingReads(get(), get(), get(), get()) }
         factory { ShoppingWrites(get(), get(), get(), get()) }
-        viewModel { ShoppingViewModel(get(), get(), get(), get()) }
+        viewModel { ShoppingViewModel(get(), get(), get()) }
     }

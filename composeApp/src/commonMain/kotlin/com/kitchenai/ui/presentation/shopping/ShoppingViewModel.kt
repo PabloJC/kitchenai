@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
@@ -51,7 +50,6 @@ class ShoppingViewModel(
     private val ensureDefaultShoppingList: EnsureDefaultShoppingList,
     private val reads: ShoppingReads,
     private val writes: ShoppingWrites,
-    private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     // Buffered: an undo offer emitted while the screen is recomposing must wait, not disappear.
     private val _events = Channel<ShoppingEvent>(Channel.BUFFERED)
@@ -129,7 +127,7 @@ class ShoppingViewModel(
         listName.value = defaultListName
         watchCatalogue()
         watchUnits()
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             val labels = languageTags.take(1).associateWith { defaultListName }
             when (val list = ensureDefaultShoppingList(userId, labels)) {
                 is AppResult.Failure -> {
@@ -220,14 +218,14 @@ class ShoppingViewModel(
         userId: UserId,
         listId: ShoppingListId,
     ) {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.items(userId, listId).collect { loaded ->
                 items.value = loaded
                 itemsError.value = null
                 itemsAnswered.value = true
             }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.items.errors(userId, listId).collect { error ->
                 itemsError.value = error.describe()
                 itemsAnswered.value = true
@@ -248,7 +246,7 @@ class ShoppingViewModel(
 
     /** The unit vocabulary, as the detail screen watches it: a quantity is not a bare number. */
     private fun watchUnits() {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             // collectLatest and coroutineScope: a re-emission replaces the per-taxonomy
             // collectors rather than adding a second one for the same taxonomy.
             reads.taxonomies().collectLatest { published ->
@@ -269,14 +267,14 @@ class ShoppingViewModel(
     }
 
     private fun watchCatalogue() {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.ingredients().collect { loaded ->
                 catalogue.value = loaded
                 rebuildResolver()
                 catalogueError.value = null
             }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.ingredients.errors().collect { error ->
                 catalogueError.value = error.describe()
             }
@@ -348,7 +346,7 @@ class ShoppingViewModel(
     private fun edit(block: suspend (UserId, ShoppingListId) -> AppResult<*>): Boolean {
         val user = userId.value ?: return false
         val list = listId.value ?: return false
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             // A write that lands clears the last one that did not: the banner belongs to the
             // most recent attempt, not to the first that ever failed.
             when (val result = block(user, list)) {

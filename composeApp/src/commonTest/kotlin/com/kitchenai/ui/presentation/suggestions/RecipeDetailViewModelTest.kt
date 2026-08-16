@@ -36,7 +36,6 @@ import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
-import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_missing_ingredients
@@ -416,7 +415,7 @@ class RecipeDetailViewModelTest {
                     ),
                 defaultList = EnsureDefaultShoppingList(lists, IdGenerator { "list-1" }, time),
             )
-        return RecipeDetailViewModel(reads, writes, TestDispatcherProvider(dispatcher))
+        return RecipeDetailViewModel(reads, writes)
             .also { it.start(user, dish.id, listOf("en"), "List") }
     }
 

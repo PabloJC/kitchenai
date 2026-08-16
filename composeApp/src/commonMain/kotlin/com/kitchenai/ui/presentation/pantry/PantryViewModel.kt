@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
@@ -54,7 +53,6 @@ import kotlin.time.Instant
 class PantryViewModel(
     private val reads: PantryReads,
     private val writes: PantryWrites,
-    private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PantryUiState())
     val state: StateFlow<PantryUiState> = _state.asStateFlow()
@@ -111,7 +109,7 @@ class PantryViewModel(
         val userId = user ?: return
         val editing = _state.value.editing
         closeEditor()
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             val quantity = Quantity(draft.amount, draft.unit)
             val result =
                 if (editing == null) {
@@ -125,7 +123,7 @@ class PantryViewModel(
 
     fun remove(item: PantryItemUi) {
         val userId = user ?: return
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             // The row is captured before the write: undo restores it under its own id rather than
             // adding a second holding of the same ingredient.
             val original = held.value?.firstOrNull { candidate -> candidate.id == item.id } ?: return@launch
@@ -139,13 +137,13 @@ class PantryViewModel(
     /** Takes the row to restore rather than remembering one: two quick removals do not race. */
     fun undoRemove(item: PantryItem) {
         val userId = user ?: return
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             writes.update(userId, item).reportFailure()
         }
     }
 
     private fun watchPantry(userId: UserId) {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.pantry(userId).collect { items ->
                 held.value = items
                 // Clearing belongs here rather than in render(): re-emitting an unchanged list
@@ -153,19 +151,19 @@ class PantryViewModel(
                 recovered(Source.PANTRY)
             }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.pantry.errors(userId).collect { error -> fail(Source.PANTRY, error) }
         }
     }
 
     private fun watchCatalogue() {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.ingredients().collect { ingredients ->
                 catalogue.value = ingredients
                 recovered(Source.CATALOGUE)
             }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.ingredients.errors().collect { error -> fail(Source.CATALOGUE, error) }
         }
     }
@@ -184,22 +182,22 @@ class PantryViewModel(
                 declared.purposeful() + ingredients.unitTaxonomies() + items.orEmpty().termTaxonomies()
             }.distinctUntilChanged()
 
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             ids.flatMapLatest(::termsOf).collect { terms ->
                 vocabulary.value = terms
                 recovered(Source.TERMS)
             }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.taxonomies().collect { loaded ->
                 vocabularies.value = loaded
                 recovered(Source.TAXONOMIES)
             }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             reads.taxonomies.errors().collect { error -> fail(Source.TAXONOMIES, error) }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             ids.flatMapLatest { watched ->
                 watched.map { id -> reads.taxonomy.errors(id) }.merge()
             }.collect { error -> fail(Source.TERMS, error) }
@@ -214,7 +212,7 @@ class PantryViewModel(
         }
 
     private fun watchProjection() {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             combine(held, catalogue, vocabulary, vocabularies, errors, ::Projection)
                 .collect { projection -> render(projection) }
         }

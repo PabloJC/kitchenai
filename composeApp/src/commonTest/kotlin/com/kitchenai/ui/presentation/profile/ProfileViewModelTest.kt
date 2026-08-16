@@ -19,7 +19,6 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraint
-import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
@@ -363,7 +362,6 @@ class ProfileViewModelTest {
             observeTaxonomy = ObserveTaxonomy(catalogue),
             saveUserProfile = SaveUserProfile(profiles, catalogue, TimeProvider { Instant.fromEpochSeconds(500) }),
             toggleDietaryConstraint = ToggleDietaryConstraint(),
-            dispatchers = TestDispatcherProvider(dispatcher),
         )
 
     private fun profile(): UserProfile = UserProfile.newFor(userId, listOf("xx"), Instant.fromEpochSeconds(1))

@@ -31,7 +31,6 @@ import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
-import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
@@ -291,7 +290,6 @@ class ShoppingViewModelTest {
                         remove = RemoveShoppingItem(items),
                         clearChecked = ClearCheckedItems(items),
                     ),
-                dispatchers = TestDispatcherProvider(dispatcher),
             )
         viewModel.start(userId, listOf("en"), "list")
         advanceUntilIdle()
