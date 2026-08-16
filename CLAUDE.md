@@ -56,6 +56,14 @@ and `runBlocking` are forbidden outside tests.
 **Use cases.** One class = one operation, with `operator fun invoke`. Imperative names:
 `GetRecipeById`, `SaveShoppingList`.
 
+**Local data sources.** A device-local backend (Room, `DataStore`, files) gets a class named
+`<Entity>LocalDataSource`, living in `shared/data/local/` next to the storage it wraps, and
+implementing a domain port named `Local<Entity>Port`. Neither is ever called `<Entity>Repository`
+or `<Entity>CachePort`: nothing is being cached (there is no remote copy it is a faster read of)
+and nothing is being coordinated (there is exactly one backend behind the port, same as a
+`Firestore<Entity>Repository` behind a plain `<Entity>Port`). `LocalRecipePort` /
+`RecipeLocalDataSource` (#137) is the first pair of these.
+
 **ViewModels.** They expose a single `StateFlow<XxxUiState>`. No business logic: they
 orchestrate use cases. One-shot events go through a `Channel`, not through state.
 
