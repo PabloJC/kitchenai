@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
@@ -46,7 +45,6 @@ class ProfileViewModel(
     private val observeTaxonomy: ObserveTaxonomy,
     private val saveUserProfile: SaveUserProfile,
     private val toggleDietaryConstraint: ToggleDietaryConstraint,
-    private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     private val draft = MutableStateFlow<ProfileDraft?>(null)
     private val catalogue = MutableStateFlow(CatalogueState())
@@ -99,7 +97,7 @@ class ProfileViewModel(
         if (saving.value) return
         saving.value = true
         writeFailure.value = null
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             when (val result = saveUserProfile(editing)) {
                 is AppResult.Failure -> writeFailure.value = result.error.toProfileError()
                 is AppResult.Success -> draft.update { current -> current?.copy(edited = false) }
@@ -123,10 +121,10 @@ class ProfileViewModel(
     }
 
     private fun watchProfile(userId: UserId) {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             observeUserProfile(userId).collect { loaded -> onProfile(loaded) }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             observeUserProfile.errors(userId).collect { error ->
                 profileFailure.value = error.toProfileError()
             }
@@ -140,10 +138,10 @@ class ProfileViewModel(
     }
 
     private fun watchCatalogue() {
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             observeTaxonomies().collect { loaded -> onTaxonomies(loaded) }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             observeTaxonomies.errors().collect { error ->
                 catalogue.update { state -> state.copy(answered = true, failed = true) }
                 catalogueFailure.value = error.toProfileError()
@@ -157,7 +155,7 @@ class ProfileViewModel(
         // The term listeners belong to the catalogue that named them; a new catalogue replaces them.
         termListeners?.cancel()
         termListeners =
-            viewModelScope.launch(dispatchers.default) {
+            viewModelScope.launch {
                 loaded.forEach { taxonomy -> watchTerms(taxonomy.id) }
             }
     }

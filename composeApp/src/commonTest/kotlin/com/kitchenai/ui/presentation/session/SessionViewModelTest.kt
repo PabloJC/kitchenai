@@ -17,12 +17,10 @@ import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.session.EnsureSession
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
-import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_unauthorized_own_data
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -211,7 +209,7 @@ class SessionViewModelTest {
             assertEquals(2, profiles.saveCount())
         }
 
-    private fun viewModel(default: CoroutineDispatcher = dispatcher): SessionViewModel {
+    private fun viewModel(): SessionViewModel {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         return SessionViewModel(
             ensureSession = EnsureSession(sessions),
@@ -219,7 +217,6 @@ class SessionViewModelTest {
             observeUserProfile = ObserveUserProfile(profiles),
             saveUserProfile = SaveUserProfile(profiles, FakeTaxonomyPort(), time),
             time = time,
-            dispatchers = TestDispatcherProvider(dispatcher, default),
         )
     }
 }

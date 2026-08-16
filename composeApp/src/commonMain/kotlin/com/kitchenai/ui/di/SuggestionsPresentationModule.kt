@@ -13,5 +13,5 @@ val suggestionsPresentationModule: Module =
         viewModel { SuggestionsViewModel(get(), get(), get(), get()) }
         factory { RecipeDetailReads(get(), get(), get(), get(), get(), get()) }
         factory { RecipeDetailWrites(get(), get(), get(), get()) }
-        viewModel { RecipeDetailViewModel(get(), get(), get()) }
+        viewModel { RecipeDetailViewModel(get(), get()) }
     }

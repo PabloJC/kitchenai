@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TimeProvider
@@ -39,7 +38,6 @@ class SessionViewModel(
     private val observeUserProfile: ObserveUserProfile,
     private val saveUserProfile: SaveUserProfile,
     private val time: TimeProvider,
-    private val dispatchers: DispatcherProvider,
 ) : ViewModel() {
     private val _state = MutableStateFlow<SessionUiState>(SessionUiState.Loading)
     val state: StateFlow<SessionUiState> = _state.asStateFlow()
@@ -49,9 +47,10 @@ class SessionViewModel(
     private var defaultListName: String = ""
     private var bootstrap: Job? = null
 
-    // The three flags below are read and written from several coroutines on a multi-threaded
-    // dispatcher, so every check-then-act over them happens under this lock. It is never held
-    // across a write to Firestore.
+    // The three flags below are read and written from genuinely independent coroutines —
+    // bootstrap and the profile error listener both reach createProfile() on their own — so
+    // every check-then-act over them happens under this lock, not because of which dispatcher
+    // any of them runs on. It is never held across a write to Firestore.
     private val flags = Mutex()
     private var watching = false
     private var profileMissing = false
@@ -82,7 +81,7 @@ class SessionViewModel(
     }
 
     private fun launchBootstrap(): Job =
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             _state.value = SessionUiState.Loading
             val userId =
                 when (val session = ensureSession(NoParams)) {
@@ -109,10 +108,10 @@ class SessionViewModel(
     private suspend fun watchProfile(userId: UserId) {
         val alreadyWatching = flags.withLock { watching.also { watching = true } }
         if (alreadyWatching) return
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             observeUserProfile(userId).collect { loaded -> profile.value = loaded }
         }
-        viewModelScope.launch(dispatchers.default) {
+        viewModelScope.launch {
             observeUserProfile.errors(userId).collect { error -> onProfileError(userId, error) }
         }
     }

@@ -27,7 +27,6 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
-import com.kitchenai.ui.presentation.common.TestDispatcherProvider
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
@@ -334,7 +333,6 @@ class PantryViewModelTest {
                     remove = RemovePantryItem(pantry),
                     time = time,
                 ),
-            dispatchers = TestDispatcherProvider(dispatcher),
         )
     }
 }
