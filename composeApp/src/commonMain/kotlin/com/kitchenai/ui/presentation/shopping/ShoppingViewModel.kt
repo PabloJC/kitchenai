@@ -42,9 +42,10 @@ import kotlinx.coroutines.launch
  * write back within the frame, and a second device's edit arrives the same way. Keeping a local
  * copy would look like an optimistic update and behave like a divergence.
  *
- * Every coroutine it starts runs on the injected dispatcher, so the caches below are
- * `MutableStateFlow` rather than plain fields: two collectors on a real pool write them and the
- * public methods read them, and a `var` gives no visibility guarantee between the two.
+ * The caches below are `MutableStateFlow` rather than plain fields, but not for thread safety:
+ * every coroutine this class starts runs confined to Main, same as the public methods that read
+ * them. They stay flows so `.value` reads are uniform across the class; see #147 for whether
+ * that uniformity is worth keeping.
  */
 class ShoppingViewModel(
     private val ensureDefaultShoppingList: EnsureDefaultShoppingList,

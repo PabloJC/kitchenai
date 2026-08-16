@@ -252,8 +252,10 @@ class PantryViewModel(
     }
 
     /**
-     * `update` rather than a read and a write: four collectors on a real pool touch this map,
-     * and `value = value + …` loses whichever lands second. The projection reads it from here.
+     * `update` rather than `value = value + …`, for the map's own sake and not for thread
+     * safety: every collector that reaches this runs confined to Main, and `error.describe()`
+     * never suspends, so nothing can interleave inside the call either way. The projection reads
+     * the merged map from here.
      */
     private fun fail(
         source: Source,
