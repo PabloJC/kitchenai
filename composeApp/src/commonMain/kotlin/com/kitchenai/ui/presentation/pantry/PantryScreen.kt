@@ -116,7 +116,10 @@ private fun PantryList(
             LazyColumn(modifier = modifier) {
                 // A failed listener keeps the last good list underneath it: it stopped emitting,
                 // it did not report an empty pantry.
-                if (error != null) item(key = error) { ErrorState(message = error.resolve()) }
+                // Keyed on a constant rather than on error itself: LazyListScope.item requires a
+                // Bundle-saveable key, and UiText wraps a StringResource that is not one. There is
+                // at most one error item here, so a fixed key is exact rather than a workaround.
+                if (error != null) item(key = "pantry-error") { ErrorState(message = error.resolve()) }
                 sections.forEach { (title, rows) ->
                     item(key = title) { SectionHeader(title = title) }
                     items(rows, key = { row -> row.id.value }) { row ->
