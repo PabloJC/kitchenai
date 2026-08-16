@@ -26,6 +26,22 @@ import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.profile_constraints
+import com.kitchenai.ui.resources.profile_included
+import com.kitchenai.ui.resources.profile_languages
+import com.kitchenai.ui.resources.profile_name
+import com.kitchenai.ui.resources.profile_no_preferences
+import com.kitchenai.ui.resources.profile_no_vocabulary
+import com.kitchenai.ui.resources.profile_pantry_contents
+import com.kitchenai.ui.resources.profile_save
+import com.kitchenai.ui.resources.profile_saving
+import com.kitchenai.ui.resources.profile_sent_title
+import com.kitchenai.ui.resources.profile_servings
+import com.kitchenai.ui.resources.profile_vocabulary_failed
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -46,7 +62,7 @@ fun ProfileScreen(
     when {
         !state.isLoading -> ProfileContent(state = state, viewModel = viewModel, modifier = modifier)
         error == null -> LoadingState(modifier)
-        else -> ErrorState(message = error.message, modifier = modifier)
+        else -> ErrorState(message = error.message.resolve(), modifier = modifier)
     }
 }
 
@@ -74,12 +90,12 @@ private fun ProfileContent(
         if (state.isCatalogueLoaded && state.sections.isEmpty()) {
             item {
                 EmptyState(
-                    title = "No preferences to show",
+                    title = stringResource(Res.string.profile_no_preferences),
                     body =
                         if (state.hasCatalogueFailed) {
-                            "The vocabulary could not be loaded, so there is nothing to choose from yet."
+                            stringResource(Res.string.profile_vocabulary_failed)
                         } else {
-                            "This catalogue has no vocabulary in it yet."
+                            stringResource(Res.string.profile_no_vocabulary)
                         },
                 )
             }
@@ -106,7 +122,7 @@ private fun NameField(
     OutlinedTextField(
         value = name,
         onValueChange = onChange,
-        label = { Text("Name") },
+        label = { Text(stringResource(Res.string.profile_name)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
     )
@@ -116,7 +132,7 @@ private fun NameField(
 @Composable
 private fun ServingsStepper(
     servings: Int,
-    error: String?,
+    error: UiText?,
     onChange: (Int) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
@@ -125,7 +141,7 @@ private fun ServingsStepper(
             horizontalArrangement = Arrangement.spacedBy(Dimens.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "Servings", modifier = Modifier.weight(1f))
+            Text(text = stringResource(Res.string.profile_servings), modifier = Modifier.weight(1f))
             TextButton(onClick = { onChange(servings - 1) }, enabled = servings > 1) { Text("-") }
             Text(text = servings.toString(), style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = { onChange(servings + 1) }) { Text("+") }
@@ -142,15 +158,18 @@ private fun ServingsStepper(
 @Composable
 private fun TransparencyRow(state: ProfileUiState) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        SectionHeader(title = "Sent with every suggestion")
+        SectionHeader(title = stringResource(Res.string.profile_sent_title))
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
             verticalArrangement = Arrangement.spacedBy(Dimens.extraSmall),
         ) {
-            SentLine(label = "Constraints", value = state.constraintCount.toString())
-            SentLine(label = "Servings", value = state.servings.toString())
-            SentLine(label = "Languages", value = state.languageTags.joinToString())
-            SentLine(label = "Pantry contents", value = "included")
+            SentLine(label = stringResource(Res.string.profile_constraints), value = state.constraintCount.toString())
+            SentLine(label = stringResource(Res.string.profile_servings), value = state.servings.toString())
+            SentLine(label = stringResource(Res.string.profile_languages), value = state.languageTags.joinToString())
+            SentLine(
+                label = stringResource(Res.string.profile_pantry_contents),
+                value = stringResource(Res.string.profile_included),
+            )
         }
     }
 }
@@ -174,7 +193,7 @@ private fun SentLine(
 @Composable
 private fun SaveRow(
     isSaving: Boolean,
-    message: String?,
+    message: UiText?,
     onSave: () -> Unit,
 ) {
     Column(
@@ -183,16 +202,16 @@ private fun SaveRow(
     ) {
         message?.let { text -> FieldMessage(text) }
         Button(onClick = onSave, enabled = !isSaving, modifier = Modifier.fillMaxWidth()) {
-            Text(if (isSaving) "Saving" else "Save")
+            Text(if (isSaving) stringResource(Res.string.profile_saving) else stringResource(Res.string.profile_save))
         }
     }
 }
 
 /** In the error colour so it is not read as a hint. */
 @Composable
-private fun FieldMessage(message: String) {
+private fun FieldMessage(message: UiText) {
     Text(
-        text = message,
+        text = message.resolve(),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.error,
     )

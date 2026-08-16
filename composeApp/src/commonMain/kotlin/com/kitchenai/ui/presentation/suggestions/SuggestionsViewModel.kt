@@ -14,6 +14,14 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
 import com.kitchenai.ui.presentation.common.LabelResolver
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_invalid_field
+import com.kitchenai.ui.resources.error_no_connection
+import com.kitchenai.ui.resources.error_not_found
+import com.kitchenai.ui.resources.error_timeout
+import com.kitchenai.ui.resources.error_unauthorized_suggestions
+import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,12 +154,12 @@ private fun RecipeIngredient.name(resolver: LabelResolver): String {
  * `Unauthorized` gets its own sentence: it means App Check or sign-in is wrong, and "no
  * connection" would send someone to restart their router over a problem inside the app.
  */
-private fun AppError.describe(): String =
+private fun AppError.describe(): UiText =
     when (this) {
-        is AppError.Network -> "No connection"
-        is AppError.Timeout -> "That took too long. Try again."
-        is AppError.Unauthorized -> "This app could not prove who it is, so suggestions are unavailable"
-        is AppError.NotFound -> "Cannot find $resource"
-        is AppError.Validation -> "Invalid $field: $reason"
-        is AppError.Unknown -> "Something went wrong"
+        is AppError.Network -> UiText.of(Res.string.error_no_connection)
+        is AppError.Timeout -> UiText.of(Res.string.error_timeout)
+        is AppError.Unauthorized -> UiText.of(Res.string.error_unauthorized_suggestions)
+        is AppError.NotFound -> UiText.of(Res.string.error_not_found, resource)
+        is AppError.Validation -> UiText.of(Res.string.error_invalid_field, field, reason)
+        is AppError.Unknown -> UiText.of(Res.string.error_unknown)
     }

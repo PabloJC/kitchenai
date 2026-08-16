@@ -28,6 +28,10 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_no_connection
+import com.kitchenai.ui.resources.error_unauthorized_own_data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -148,7 +152,7 @@ class PantryViewModelTest {
 
             val state = viewModel.state.value
             assertEquals(false, state.isLoading)
-            assertEquals("No connection", state.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), state.error)
         }
 
     @Test
@@ -160,7 +164,7 @@ class PantryViewModelTest {
             advanceUntilIdle()
 
             val state = viewModel.state.value
-            assertEquals("No connection", state.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), state.error)
             assertEquals(1, state.items.size)
             assertEquals(false, state.isLoading)
         }
@@ -217,12 +221,12 @@ class PantryViewModelTest {
 
             pantry.errors.emit(AppError.Network())
             advanceUntilIdle()
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
 
             // A different listener speaking says nothing about the broken one.
             catalogue.emit(listOf(ingredient))
             advanceUntilIdle()
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
         }
 
     @Test
@@ -232,7 +236,7 @@ class PantryViewModelTest {
 
             pantry.errors.emit(AppError.Network())
             advanceUntilIdle()
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
 
             pantry.items.emit(listOf(item))
             advanceUntilIdle()
@@ -338,7 +342,7 @@ class PantryViewModelTest {
 private const val INGREDIENT_LABEL = "ingredient-label"
 private const val UNIT_LABEL = "unit-label"
 private const val LOCATION_LABEL = "location-label"
-private const val UNAUTHORIZED_MESSAGE = "This account is not allowed to read its own data"
+private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
 
 private val languageTags = listOf("aa")
 private val userId = UserId.of("user-1").value()

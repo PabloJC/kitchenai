@@ -18,13 +18,26 @@ import com.kitchenai.ui.navigation.KitchenAiNavHost
 import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.navigation.ShellDestination
 import com.kitchenai.ui.presentation.session.SessionGate
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.placeholder_body
+import com.kitchenai.ui.resources.placeholder_title
+import com.kitchenai.ui.resources.session_retry
+import com.kitchenai.ui.resources.shopping_default_list
+import com.kitchenai.ui.resources.tab_ideas
+import com.kitchenai.ui.resources.tab_pantry
+import com.kitchenai.ui.resources.tab_profile
+import com.kitchenai.ui.resources.tab_shopping
+import org.jetbrains.compose.resources.stringResource
 
 /** The composition root, and the only place in the shell that holds wording. */
 @Composable
 fun App() {
     KitchenAiTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            SessionGate(defaultListName = "Shopping list", retryLabel = "Try again") { userId ->
+            SessionGate(
+                defaultListName = stringResource(Res.string.shopping_default_list),
+                retryLabel = stringResource(Res.string.session_retry),
+            ) { userId ->
                 val navController = rememberNavController()
                 AppShell(navController = navController, destinations = tabs) { padding ->
                     KitchenAiNavHost(
@@ -42,14 +55,17 @@ fun App() {
 /** Stands in for a screen that has not landed yet; it goes away one entry at a time. */
 @Composable
 private fun PlaceholderScreen() {
-    EmptyState(title = "Nothing here yet", body = "This screen is on its way")
+    EmptyState(
+        title = stringResource(Res.string.placeholder_title),
+        body = stringResource(Res.string.placeholder_body),
+    )
 }
 
 /** Recipe detail is reached from a suggestion, so it is not one of these. */
 private val tabs =
     listOf(
-        ShellDestination(Route.Pantry, "Pantry", Icons.Outlined.Kitchen),
-        ShellDestination(Route.ShoppingList, "Shopping", Icons.Outlined.ShoppingCart),
-        ShellDestination(Route.Suggestions, "Ideas", Icons.AutoMirrored.Outlined.MenuBook),
-        ShellDestination(Route.Profile, "Profile", Icons.Outlined.Person),
+        ShellDestination(Route.Pantry, Res.string.tab_pantry, Icons.Outlined.Kitchen),
+        ShellDestination(Route.ShoppingList, Res.string.tab_shopping, Icons.Outlined.ShoppingCart),
+        ShellDestination(Route.Suggestions, Res.string.tab_ideas, Icons.AutoMirrored.Outlined.MenuBook),
+        ShellDestination(Route.Profile, Res.string.tab_profile, Icons.Outlined.Person),
     )

@@ -12,6 +12,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -42,7 +43,7 @@ fun SessionGate(
 
         is SessionUiState.Failed ->
             ErrorState(
-                message = resolved.message,
+                message = resolved.message.resolve(),
                 modifier = safe,
                 retryLabel = retryLabel,
                 onRetry = viewModel::retry,

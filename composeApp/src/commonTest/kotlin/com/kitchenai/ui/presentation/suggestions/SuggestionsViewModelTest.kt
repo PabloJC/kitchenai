@@ -25,6 +25,11 @@ import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.TestDispatcherProvider
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_no_connection
+import com.kitchenai.ui.resources.error_timeout
+import com.kitchenai.ui.resources.error_unauthorized_suggestions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -132,9 +137,9 @@ class SuggestionsViewModelTest {
             viewModel.generate()
             advanceUntilIdle()
 
-            val message = viewModel.state.value.error.orEmpty()
-            assertTrue(message.contains("prove who it is"), message)
-            assertFalse(message.contains("connection"), message)
+            // Its own sentence, not the connection one: the key is the assertion now, which
+            // survives a reword and a translation where matching on prose did neither.
+            assertEquals(UiText.of(Res.string.error_unauthorized_suggestions), viewModel.state.value.error)
         }
 
     @Test
@@ -147,9 +152,7 @@ class SuggestionsViewModelTest {
             advanceUntilIdle()
 
             // A cold start is the likeliest cause here, and the connection is not at fault.
-            val message = viewModel.state.value.error.orEmpty()
-            assertFalse(message.contains("connection"), message)
-            assertTrue(message.contains("again"), message)
+            assertEquals(UiText.of(Res.string.error_timeout), viewModel.state.value.error)
         }
 
     @Test
@@ -161,7 +164,7 @@ class SuggestionsViewModelTest {
             viewModel.generate()
             advanceUntilIdle()
 
-            assertEquals("No connection", viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
             assertFalse(viewModel.state.value.isGenerating)
         }
 

@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.shopping
 
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.ShoppingItemId
+import com.kitchenai.ui.presentation.common.UiText
 
 /**
  * What the shopping screen shows. Two lists rather than one with a flag: the screen draws two
@@ -18,7 +19,7 @@ data class ShoppingUiState(
     val isLoading: Boolean = true,
     // The list never arrived, which is a different screen from a list that arrived empty.
     val failedToLoad: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 )
 
 /**

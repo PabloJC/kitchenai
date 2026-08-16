@@ -27,18 +27,23 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.presentation.common.text
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.pantry_add
+import com.kitchenai.ui.resources.pantry_empty_body
+import com.kitchenai.ui.resources.pantry_empty_title
+import com.kitchenai.ui.resources.pantry_removed
+import com.kitchenai.ui.resources.pantry_section_expired
+import com.kitchenai.ui.resources.pantry_section_fresh
+import com.kitchenai.ui.resources.pantry_section_soon
+import com.kitchenai.ui.resources.pantry_section_undated
+import com.kitchenai.ui.resources.pantry_undo
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 // The screen owns its wording: the navigation entry is one line and has nowhere to put it.
-private const val ADD_LABEL = "Add"
-private const val UNDO_LABEL = "Undo"
-private const val REMOVED_LABEL = "Removed"
-private const val EMPTY_TITLE = "The pantry is empty"
-private const val EMPTY_BODY = "Add what you already have and the suggestions start working"
-private const val EXPIRED_SECTION = "Expired"
-private const val EXPIRING_SOON_SECTION = "Use soon"
-private const val FRESH_SECTION = "Fresh"
-private const val UNDATED_SECTION = "No expiry date"
 
 /**
  * The inventory, maintained standing up and with one hand: adding is one tap away and no action
@@ -62,7 +67,9 @@ fun PantryScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.openEditor(null) }) { Text(ADD_LABEL) }
+            FloatingActionButton(
+                onClick = { viewModel.openEditor(null) },
+            ) { Text(stringResource(Res.string.pantry_add)) }
         },
     ) { padding ->
         PantryList(
@@ -90,17 +97,29 @@ private fun PantryList(
     modifier: Modifier = Modifier,
 ) {
     val error = state.error
-    val sections = remember(state.items) { state.items.groupBy { item -> item.freshness.section() } }
+    // Resolved before the grouping: section() reads the catalogue's language, and remember's
+    // block is not composition.
+    val titles = sectionTitles()
+    val sections =
+        remember(state.items, titles) { state.items.groupBy { item -> titles.of(item.freshness) } }
 
     when {
         state.isLoading -> LoadingState(modifier)
-        state.items.isEmpty() && error != null -> ErrorState(message = error, modifier = modifier)
-        state.items.isEmpty() -> EmptyState(title = EMPTY_TITLE, body = EMPTY_BODY, modifier = modifier)
+        state.items.isEmpty() && error != null -> ErrorState(message = error.resolve(), modifier = modifier)
+        state.items.isEmpty() ->
+            EmptyState(
+                title = stringResource(Res.string.pantry_empty_title),
+                body = stringResource(Res.string.pantry_empty_body),
+                modifier = modifier,
+            )
         else ->
             LazyColumn(modifier = modifier) {
                 // A failed listener keeps the last good list underneath it: it stopped emitting,
                 // it did not report an empty pantry.
-                if (error != null) item(key = error) { ErrorState(message = error) }
+                // Keyed on a constant rather than on error itself: LazyListScope.item requires a
+                // Bundle-saveable key, and UiText wraps a StringResource that is not one. There is
+                // at most one error item here, so a fixed key is exact rather than a workaround.
+                if (error != null) item(key = "pantry-error") { ErrorState(message = error.resolve()) }
                 sections.forEach { (title, rows) ->
                     item(key = title) { SectionHeader(title = title) }
                     items(rows, key = { row -> row.id.value }) { row ->
@@ -133,22 +152,47 @@ private suspend fun SnackbarHostState.announce(
 ) {
     when (event) {
         is PantryEvent.ItemRemoved -> {
-            val outcome = showSnackbar(message = "$REMOVED_LABEL: ${event.name}", actionLabel = UNDO_LABEL)
+            val outcome =
+                showSnackbar(
+                    message = "${getString(Res.string.pantry_removed)}: ${event.name}",
+                    actionLabel = getString(Res.string.pantry_undo),
+                )
             if (outcome == SnackbarResult.ActionPerformed) onUndo(event.restore)
         }
 
-        is PantryEvent.SaveFailed -> showSnackbar(message = event.message)
+        is PantryEvent.SaveFailed -> showSnackbar(message = event.message.text())
     }
 }
 
 /**
- * The section a row belongs to. `ObservePantry` already sorts what runs out first to the top, so
- * grouping in encounter order needs no comparator here.
+ * The four section names a row can fall under. Read once, in composition, so the grouping that
+ * uses them is not: `ObservePantry` already sorts what runs out first to the top, so grouping in
+ * encounter order needs no comparator here either.
+ *
+ * A data class on purpose. `remember` keys on this, and with identity equality a fresh instance
+ * per recomposition would invalidate the cache every time — which is the memoisation the caller
+ * asks for, silently not happening.
  */
-private fun Freshness.section(): String =
-    when (this) {
-        Freshness.Expired -> EXPIRED_SECTION
-        is Freshness.ExpiringSoon -> EXPIRING_SOON_SECTION
-        Freshness.Fresh -> FRESH_SECTION
-        Freshness.Unknown -> UNDATED_SECTION
-    }
+private data class SectionTitles(
+    val expired: String,
+    val soon: String,
+    val fresh: String,
+    val undated: String,
+) {
+    fun of(freshness: Freshness): String =
+        when (freshness) {
+            Freshness.Expired -> expired
+            is Freshness.ExpiringSoon -> soon
+            Freshness.Fresh -> fresh
+            Freshness.Unknown -> undated
+        }
+}
+
+@Composable
+private fun sectionTitles(): SectionTitles =
+    SectionTitles(
+        expired = stringResource(Res.string.pantry_section_expired),
+        soon = stringResource(Res.string.pantry_section_soon),
+        fresh = stringResource(Res.string.pantry_section_fresh),
+        undated = stringResource(Res.string.pantry_section_undated),
+    )

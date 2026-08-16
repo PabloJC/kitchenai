@@ -42,6 +42,25 @@ import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.shopping_cancel
+import com.kitchenai.ui.resources.shopping_clear
+import com.kitchenai.ui.resources.shopping_clear_body
+import com.kitchenai.ui.resources.shopping_clear_title
+import com.kitchenai.ui.resources.shopping_cleared_suffix
+import com.kitchenai.ui.resources.shopping_default_list
+import com.kitchenai.ui.resources.shopping_empty_body
+import com.kitchenai.ui.resources.shopping_empty_title
+import com.kitchenai.ui.resources.shopping_failed_body
+import com.kitchenai.ui.resources.shopping_failed_title
+import com.kitchenai.ui.resources.shopping_in_cart
+import com.kitchenai.ui.resources.shopping_removed_suffix
+import com.kitchenai.ui.resources.shopping_to_buy
+import com.kitchenai.ui.resources.shopping_undo
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -58,7 +77,9 @@ fun ShoppingScreen(
     val snackbar = remember { SnackbarHostState() }
     var confirmingClear by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), DEFAULT_LIST_NAME) }
+    val defaultListName = stringResource(Res.string.shopping_default_list)
+
+    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     LaunchedEffect(Unit) {
         viewModel.events.collect { event -> snackbar.announce(event, viewModel::undoRemove) }
     }
@@ -66,24 +87,25 @@ fun ShoppingScreen(
     Scaffold(modifier = modifier, snackbarHost = { SnackbarHost(snackbar) }) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
             SectionHeader(title = state.listName)
-            state.error?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
-                )
-            }
+            state.error?.let { message -> ErrorBanner(message) }
 
             when {
                 state.isLoading -> LoadingState(Modifier.weight(1f))
                 // The banner above already carries the reason; this only avoids claiming the
                 // list is empty when it never loaded.
                 state.failedToLoad ->
-                    EmptyState(title = FAILED_TITLE, body = FAILED_BODY, modifier = Modifier.weight(1f))
+                    EmptyState(
+                        title = stringResource(Res.string.shopping_failed_title),
+                        body = stringResource(Res.string.shopping_failed_body),
+                        modifier = Modifier.weight(1f),
+                    )
 
                 state.unchecked.isEmpty() && state.checked.isEmpty() ->
-                    EmptyState(title = EMPTY_TITLE, body = EMPTY_BODY, modifier = Modifier.weight(1f))
+                    EmptyState(
+                        title = stringResource(Res.string.shopping_empty_title),
+                        body = stringResource(Res.string.shopping_empty_body),
+                        modifier = Modifier.weight(1f),
+                    )
                 else ->
                     ShoppingItems(
                         state = state,
@@ -123,7 +145,7 @@ private fun ShoppingItems(
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
-        item { SectionHeader(title = TO_BUY_TITLE) }
+        item { SectionHeader(title = stringResource(Res.string.shopping_to_buy)) }
         items(state.unchecked, key = { line -> line.id.value }) { line ->
             ShoppingItemRow(
                 item = line,
@@ -135,8 +157,12 @@ private fun ShoppingItems(
         if (state.checked.isNotEmpty()) {
             item {
                 SectionHeader(
-                    title = IN_CART_TITLE,
-                    trailing = { TextButton(onClick = onClearChecked) { Text(CLEAR_LABEL) } },
+                    title = stringResource(Res.string.shopping_in_cart),
+                    trailing = {
+                        TextButton(
+                            onClick = onClearChecked,
+                        ) { Text(stringResource(Res.string.shopping_clear)) }
+                    },
                 )
             }
             items(state.checked, key = { line -> line.id.value }) { line ->
@@ -195,10 +221,21 @@ private fun ClearCheckedDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(CLEAR_TITLE) },
-        text = { Text(CLEAR_BODY) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(CLEAR_LABEL) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(CANCEL_LABEL) } },
+        title = { Text(stringResource(Res.string.shopping_clear_title)) },
+        text = { Text(stringResource(Res.string.shopping_clear_body)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(Res.string.shopping_clear)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.shopping_cancel)) } },
+    )
+}
+
+/** Above the list rather than replacing it: a failed listener leaves the last good lines standing. */
+@Composable
+private fun ErrorBanner(message: UiText) {
+    Text(
+        text = message.resolve(),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
     )
 }
 
@@ -209,28 +246,19 @@ private suspend fun SnackbarHostState.announce(
 ) {
     when (event) {
         is ShoppingEvent.ItemRemoved -> {
-            val undone = showSnackbar("${event.label} $REMOVED_SUFFIX", UNDO_LABEL) == SnackbarResult.ActionPerformed
+            val undone =
+                showSnackbar(
+                    "${event.label} ${getString(Res.string.shopping_removed_suffix)}",
+                    getString(Res.string.shopping_undo),
+                ) == SnackbarResult.ActionPerformed
             if (undone) onUndo(event.restore)
         }
 
-        is ShoppingEvent.CheckedCleared -> showSnackbar("${event.count} $CLEARED_SUFFIX")
+        is ShoppingEvent.CheckedCleared ->
+            showSnackbar("${event.count} ${getString(Res.string.shopping_cleared_suffix)}")
     }
 }
 
 // The screen owns its own wording; every component it draws takes each string as a parameter.
 // This one is not private: the detail screen can reach the same list, and two spellings of the
 // name would mean two names depending on which screen got there first.
-internal const val DEFAULT_LIST_NAME = "Shopping list"
-private const val TO_BUY_TITLE = "To buy"
-private const val IN_CART_TITLE = "In the cart"
-private const val CLEAR_LABEL = "Clear"
-private const val CANCEL_LABEL = "Cancel"
-private const val CLEAR_TITLE = "Clear what is in the cart?"
-private const val CLEAR_BODY = "The ticked lines are removed from the list on every device."
-private const val FAILED_TITLE = "The list did not load"
-private const val FAILED_BODY = "Check the message above and try again"
-private const val EMPTY_TITLE = "Nothing to buy"
-private const val EMPTY_BODY = "Add what you need and tick it off as you go."
-private const val REMOVED_SUFFIX = "removed"
-private const val CLEARED_SUFFIX = "lines cleared"
-private const val UNDO_LABEL = "Undo"

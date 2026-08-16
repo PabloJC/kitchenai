@@ -16,6 +16,14 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import com.kitchenai.ui.presentation.common.LabelResolver
+import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_invalid_field
+import com.kitchenai.ui.resources.error_no_connection
+import com.kitchenai.ui.resources.error_not_found
+import com.kitchenai.ui.resources.error_timeout
+import com.kitchenai.ui.resources.error_unauthorized_list
+import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -71,8 +79,8 @@ class ShoppingViewModel(
 
     // One per source: a catalogue that recovers must not clear a still-broken item listener,
     // and the item listener answering — with data or with a failure — is what ends loading.
-    private val itemsError = MutableStateFlow<String?>(null)
-    private val catalogueError = MutableStateFlow<String?>(null)
+    private val itemsError = MutableStateFlow<UiText?>(null)
+    private val catalogueError = MutableStateFlow<UiText?>(null)
     private val itemsAnswered = MutableStateFlow(false)
 
     // User-owned, so they belong to the screen rather than to a listener.
@@ -80,7 +88,7 @@ class ShoppingViewModel(
     private val listName = MutableStateFlow("")
 
     /** A rejected write outlives the next emission: the listener echo must not wipe the reason. */
-    private val writeFailure = MutableStateFlow<String?>(null)
+    private val writeFailure = MutableStateFlow<UiText?>(null)
 
     private val lines =
         combine(items, itemsError, itemsAnswered, resolver) { loaded, error, answered, labels ->
@@ -278,10 +286,10 @@ class ShoppingViewModel(
     /** Pure: it takes what every source says and produces the one state that follows from it. */
     private fun project(
         lines: LinesState,
-        catalogueError: String?,
+        catalogueError: UiText?,
         draft: ShoppingDraftUi,
         listName: String,
-        writeFailure: String?,
+        writeFailure: UiText?,
     ): ShoppingUiState =
         ShoppingUiState(
             listName = listName,
@@ -366,20 +374,20 @@ sealed interface ShoppingEvent {
 private const val SUGGESTION_LIMIT = 6
 
 /** The cause is dropped on purpose: it can carry paths and identifiers, and this ends up on screen. */
-private fun AppError.describe(): String =
+private fun AppError.describe(): UiText =
     when (this) {
-        is AppError.Network -> "No connection"
-        is AppError.Timeout -> "That took too long. Try again."
-        is AppError.Unauthorized -> "This account is not allowed to read this list"
-        is AppError.NotFound -> "Cannot find $resource"
-        is AppError.Validation -> "Invalid $field: $reason"
-        is AppError.Unknown -> "Something went wrong"
+        is AppError.Network -> UiText.of(Res.string.error_no_connection)
+        is AppError.Timeout -> UiText.of(Res.string.error_timeout)
+        is AppError.Unauthorized -> UiText.of(Res.string.error_unauthorized_list)
+        is AppError.NotFound -> UiText.of(Res.string.error_not_found, resource)
+        is AppError.Validation -> UiText.of(Res.string.error_invalid_field, field, reason)
+        is AppError.Unknown -> UiText.of(Res.string.error_unknown)
     }
 
 /** What the item listener has produced so far, as one value rather than four fields. */
 private data class LinesState(
     val lines: List<ShoppingItemUi> = emptyList(),
-    val error: String? = null,
+    val error: UiText? = null,
     val isLoading: Boolean = true,
     val failedToLoad: Boolean = false,
 )

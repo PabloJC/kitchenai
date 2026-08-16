@@ -18,6 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.shopping_add
+import com.kitchenai.ui.resources.shopping_add_field
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The inline add line, pinned under the list and above the keyboard.
@@ -62,7 +66,7 @@ fun ShoppingAddField(
                 OutlinedTextField(
                     value = draft.text,
                     onValueChange = onDraftChange,
-                    label = { Text(FIELD_LABEL) },
+                    label = { Text(stringResource(Res.string.shopping_add_field)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { onAdd() }),
@@ -82,11 +86,8 @@ fun ShoppingAddField(
                 onClick = onAdd,
                 enabled = picked != null || draft.text.isNotBlank(),
             ) {
-                Text(ADD_LABEL)
+                Text(stringResource(Res.string.shopping_add))
             }
         }
     }
 }
-
-private const val FIELD_LABEL = "Add an item"
-private const val ADD_LABEL = "Add"

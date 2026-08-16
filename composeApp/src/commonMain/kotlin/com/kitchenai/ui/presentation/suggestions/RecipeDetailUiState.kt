@@ -1,5 +1,7 @@
 package com.kitchenai.ui.presentation.suggestions
 
+import com.kitchenai.ui.presentation.common.UiText
+
 /**
  * The detail screen's one state.
  *
@@ -19,7 +21,7 @@ data class RecipeDetailUiState(
     val isLoading: Boolean = true,
     val isWorking: Boolean = false,
     val isSaved: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 ) {
     /**
      * Cooking is refused without every required line, so the button says so before it is tapped.

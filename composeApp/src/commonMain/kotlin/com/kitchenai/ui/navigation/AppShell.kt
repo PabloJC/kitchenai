@@ -15,6 +15,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The frame every tab is drawn inside. Recipe detail is reached from a tab and is not one, so
@@ -38,7 +39,7 @@ fun AppShell(
                         selected = entry.isOn(destination.route),
                         onClick = { navController.switchTo(destination.route) },
                         icon = { Icon(destination.icon, contentDescription = null) },
-                        label = { Text(destination.label) },
+                        label = { Text(stringResource(destination.label)) },
                     )
                 }
             }

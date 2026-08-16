@@ -29,19 +29,25 @@ import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.presentation.common.text
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.suggestions_empty_body
+import com.kitchenai.ui.resources.suggestions_empty_title
+import com.kitchenai.ui.resources.suggestions_generate
+import com.kitchenai.ui.resources.suggestions_generated
+import com.kitchenai.ui.resources.suggestions_missing
+import com.kitchenai.ui.resources.suggestions_nothing_body
+import com.kitchenai.ui.resources.suggestions_nothing_title
+import com.kitchenai.ui.resources.suggestions_only_pantry
+import com.kitchenai.ui.resources.suggestions_open
+import com.kitchenai.ui.resources.suggestions_quick
+import com.kitchenai.ui.resources.suggestions_regenerate
+import com.kitchenai.ui.resources.suggestions_working
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
-private const val GENERATE_LABEL = "Suggest something"
-private const val REGENERATE_LABEL = "Suggest again"
-private const val ONLY_PANTRY_LABEL = "Only what I have"
-private const val QUICK_LABEL = "Under 30 minutes"
 private const val QUICK_MINUTES = 30
-private const val EMPTY_TITLE = "No suggestions yet"
-private const val EMPTY_BODY = "Ask for ideas built from what your pantry already holds"
-private const val NOTHING_TITLE = "Nothing to suggest"
-private const val NOTHING_BODY = "Add a few things to your pantry and ask again"
-private const val WORKING_LABEL = "Reading your pantry and thinking of dishes. This takes a moment."
-private const val AGENT_LABEL = "Generated"
 private const val SKELETON_CARDS = 3
 
 @Composable
@@ -56,7 +62,9 @@ fun SuggestionsScreen(
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags()) }
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { event -> if (event is SuggestionsEvent.Failed) snackbar.showSnackbar(event.message) }
+        viewModel.events.collect { event ->
+            if (event is SuggestionsEvent.Failed) snackbar.showSnackbar(event.message.text())
+        }
     }
 
     Scaffold(
@@ -73,9 +81,17 @@ fun SuggestionsScreen(
                 enabled = !state.isGenerating,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (state.hasGenerated) REGENERATE_LABEL else GENERATE_LABEL)
+                Text(
+                    if (state.hasGenerated) {
+                        stringResource(
+                            Res.string.suggestions_regenerate,
+                        )
+                    } else {
+                        stringResource(Res.string.suggestions_generate)
+                    },
+                )
             }
-            state.error?.let { message -> Text(message, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { message -> Text(message.resolve(), color = MaterialTheme.colorScheme.error) }
             Results(state, onOpen)
         }
     }
@@ -90,12 +106,12 @@ private fun Options(
         FilterChip(
             selected = state.options.useOnlyPantry,
             onClick = { viewModel.setUseOnlyPantry(!state.options.useOnlyPantry) },
-            label = { Text(ONLY_PANTRY_LABEL) },
+            label = { Text(stringResource(Res.string.suggestions_only_pantry)) },
         )
         FilterChip(
             selected = state.options.maxMinutes != null,
             onClick = { viewModel.setMaxMinutes(if (state.options.maxMinutes == null) QUICK_MINUTES else null) },
-            label = { Text(QUICK_LABEL) },
+            label = { Text(stringResource(Res.string.suggestions_quick)) },
         )
     }
 }
@@ -116,8 +132,16 @@ private fun Results(
                 }
             }
         // Generated and found nothing is not the same as never asked, and neither is an error.
-        state.hasGenerated && state.error == null -> EmptyState(title = NOTHING_TITLE, body = NOTHING_BODY)
-        !state.hasGenerated -> EmptyState(title = EMPTY_TITLE, body = EMPTY_BODY)
+        state.hasGenerated && state.error == null ->
+            EmptyState(
+                title = stringResource(Res.string.suggestions_nothing_title),
+                body = stringResource(Res.string.suggestions_nothing_body),
+            )
+        !state.hasGenerated ->
+            EmptyState(
+                title = stringResource(Res.string.suggestions_empty_title),
+                body = stringResource(Res.string.suggestions_empty_body),
+            )
         else -> Unit
     }
 }
@@ -125,7 +149,7 @@ private fun Results(
 @Composable
 private fun Skeleton() {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
-        Text(WORKING_LABEL, style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(Res.string.suggestions_working), style = MaterialTheme.typography.bodyMedium)
         repeat(SKELETON_CARDS) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
@@ -157,7 +181,7 @@ private fun SuggestionCard(
             ) {
                 Text(suggestion.title, style = MaterialTheme.typography.titleMedium)
                 if (suggestion.provenance != null) {
-                    Text(AGENT_LABEL, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(Res.string.suggestions_generated), style = MaterialTheme.typography.labelSmall)
                 }
             }
             // Agent and model, not only that something generated this: whoever reports a bad
@@ -189,7 +213,10 @@ private fun SuggestionCard(
                 )
             }
             if (suggestion.missing.isNotEmpty()) {
-                Text("Missing: ${suggestion.missing.joinToString()}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    stringResource(Res.string.suggestions_missing, suggestion.missing.joinToString()),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             // Its own line, its own wording. Folding these into "missing" would claim the pantry
             // knows something it does not.
@@ -200,7 +227,7 @@ private fun SuggestionCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Button(onClick = { onOpen(suggestion.id) }) { Text("Open") }
+            Button(onClick = { onOpen(suggestion.id) }) { Text(stringResource(Res.string.suggestions_open)) }
         }
     }
 }
