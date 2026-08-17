@@ -63,14 +63,12 @@
     <string name="detail_cook_confirm">Cook it</string>
     <string name="detail_cancel">Cancel</string>
     <string name="detail_optional_suffix"> (optional)</string>
-    <string name="suggestions_generate">Suggest something</string>
-    <string name="suggestions_regenerate">Suggest again</string>
     <string name="suggestions_only_pantry">Only what I have</string>
     <string name="suggestions_quick">Under 30 minutes</string>
     <string name="suggestions_empty_title">No suggestions yet</string>
-    <string name="suggestions_empty_body">Ask for ideas built from what your pantry already holds</string>
+    <string name="suggestions_empty_body">Pull down for ideas built from what your pantry already holds</string>
     <string name="suggestions_nothing_title">Nothing to suggest</string>
-    <string name="suggestions_nothing_body">Add a few things to your pantry and ask again</string>
+    <string name="suggestions_nothing_body">Add a few things to your pantry, then pull down to try again</string>
     <string name="suggestions_working">Reading your pantry and thinking of dishes. This takes a moment.</string>
     <string name="suggestions_generated">Generated</string>
     <string name="suggestions_missing">Missing: %1$s</string>

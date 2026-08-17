@@ -61,14 +61,12 @@
     <string name="detail_cook_confirm">Cocinarlo</string>
     <string name="detail_cancel">Cancelar</string>
     <string name="detail_optional_suffix"> (opcional)</string>
-    <string name="suggestions_generate">Sugiéreme algo</string>
-    <string name="suggestions_regenerate">Sugiéreme otra vez</string>
     <string name="suggestions_only_pantry">Solo lo que tengo</string>
     <string name="suggestions_quick">Menos de 30 minutos</string>
     <string name="suggestions_empty_title">Todavía no hay sugerencias</string>
-    <string name="suggestions_empty_body">Pide ideas hechas con lo que ya hay en tu despensa</string>
+    <string name="suggestions_empty_body">Desliza hacia abajo para pedir ideas hechas con lo que ya hay en tu despensa</string>
     <string name="suggestions_nothing_title">Nada que sugerir</string>
-    <string name="suggestions_nothing_body">Añade algunas cosas a tu despensa y vuelve a pedir</string>
+    <string name="suggestions_nothing_body">Añade algunas cosas a tu despensa y desliza hacia abajo para volver a intentarlo</string>
     <string name="suggestions_working">Leyendo tu despensa y pensando platos. Esto tarda un momento.</string>
     <string name="suggestions_generated">Generado</string>
     <string name="suggestions_missing">Faltan: %1$s</string>
