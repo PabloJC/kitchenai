@@ -14,11 +14,11 @@ import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
-import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
-import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
-import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraint
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
@@ -357,11 +357,12 @@ class ProfileViewModelTest {
 
     private fun viewModel(): ProfileViewModel =
         ProfileViewModel(
-            observeUserProfile = ObserveUserProfile(profiles),
-            observeTaxonomies = ObserveTaxonomies(catalogue),
-            observeTaxonomy = ObserveTaxonomy(catalogue),
-            saveUserProfile = SaveUserProfile(profiles, catalogue, TimeProvider { Instant.fromEpochSeconds(500) }),
-            toggleDietaryConstraint = ToggleDietaryConstraint(),
+            observeUserProfile = ObserveUserProfileUseCase(profiles),
+            observeTaxonomies = ObserveTaxonomiesUseCase(catalogue),
+            observeTaxonomy = ObserveTaxonomyUseCase(catalogue),
+            saveUserProfile =
+                SaveUserProfileUseCase(profiles, catalogue, TimeProvider { Instant.fromEpochSeconds(500) }),
+            toggleDietaryConstraint = ToggleDietaryConstraintUseCase(),
         )
 
     private fun profile(): UserProfile = UserProfile.newFor(userId, listOf("xx"), Instant.fromEpochSeconds(1))

@@ -39,8 +39,8 @@ import kotlinx.coroutines.launch
  * which is worse than having no stepper at all.
  */
 class RecipeDetailViewModel(
-    private val reads: RecipeDetailReads,
-    private val writes: RecipeDetailWrites,
+    private val reads: RecipeDetailReadsDelegate,
+    private val writes: RecipeDetailWritesDelegate,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(RecipeDetailUiState())
     val state: StateFlow<RecipeDetailUiState> = internalState.asStateFlow()

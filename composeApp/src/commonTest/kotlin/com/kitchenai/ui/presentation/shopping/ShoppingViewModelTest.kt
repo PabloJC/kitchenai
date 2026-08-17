@@ -18,15 +18,15 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
-import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItem
-import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItems
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
-import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItems
-import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItem
-import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemChecked
+import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
+import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItemsUseCase
+import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItemsUseCase
+import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItemUseCase
+import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemCheckedUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
@@ -275,20 +275,20 @@ class ShoppingViewModelTest {
         var generated = 0
         val viewModel =
             ShoppingViewModel(
-                ensureDefaultShoppingList = EnsureDefaultShoppingList(lists, IdGenerator { "list-1" }, time),
+                ensureDefaultShoppingList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
                 reads =
-                    ShoppingReads(
-                        items = ObserveShoppingItems(items),
-                        ingredients = ObserveIngredients(catalogue),
-                        taxonomies = ObserveTaxonomies(taxonomies),
-                        taxonomy = ObserveTaxonomy(taxonomies),
+                    ShoppingReadsDelegate(
+                        items = ObserveShoppingItemsUseCase(items),
+                        ingredients = ObserveIngredientsUseCase(catalogue),
+                        taxonomies = ObserveTaxonomiesUseCase(taxonomies),
+                        taxonomy = ObserveTaxonomyUseCase(taxonomies),
                     ),
                 writes =
-                    ShoppingWrites(
-                        add = AddShoppingItem(items, IdGenerator { "added-${++generated}" }, time),
-                        setChecked = SetShoppingItemChecked(items, time),
-                        remove = RemoveShoppingItem(items),
-                        clearChecked = ClearCheckedItems(items),
+                    ShoppingWritesDelegate(
+                        add = AddShoppingItemUseCase(items, IdGenerator { "added-${++generated}" }, time),
+                        setChecked = SetShoppingItemCheckedUseCase(items, time),
+                        remove = RemoveShoppingItemUseCase(items),
+                        clearChecked = ClearCheckedItemsUseCase(items),
                     ),
             )
         viewModel.start(userId, listOf("en"), "list")

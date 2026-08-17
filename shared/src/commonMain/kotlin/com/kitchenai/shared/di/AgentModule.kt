@@ -6,7 +6,7 @@ import com.kitchenai.shared.domain.agent.AgentSelectionStrategy
 import com.kitchenai.shared.domain.agent.DefaultAgentOrchestrator
 import com.kitchenai.shared.domain.agent.DefaultAgentSelectionStrategy
 import com.kitchenai.shared.domain.agent.RecipeAgent
-import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
+import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -19,5 +19,5 @@ val agentModule: Module =
         single<AgentRegistry> { AgentRegistry { getAll<RecipeAgent>() } }
         single<AgentSelectionStrategy> { DefaultAgentSelectionStrategy() }
         single<AgentOrchestrator> { DefaultAgentOrchestrator(get(), get(), get()) }
-        factory { SuggestRecipes(get(), get(), get()) }
+        factory { SuggestRecipesUseCase(get(), get(), get()) }
     }
