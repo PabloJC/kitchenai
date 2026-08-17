@@ -1,9 +1,9 @@
 package com.kitchenai.ui.di
 
-import com.kitchenai.ui.presentation.suggestions.RecipeDetailReadsDelegate
-import com.kitchenai.ui.presentation.suggestions.RecipeDetailViewModel
-import com.kitchenai.ui.presentation.suggestions.RecipeDetailWritesDelegate
-import com.kitchenai.ui.presentation.suggestions.SuggestionsViewModel
+import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailReadsDelegate
+import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailViewModel
+import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailWritesDelegate
+import com.kitchenai.ui.presentation.suggestions.list.SuggestionsViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module

@@ -1,4 +1,4 @@
-package com.kitchenai.ui.presentation.suggestions
+package com.kitchenai.ui.presentation.suggestions.detail
 
 import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.ui.designsystem.format.formatQuantity

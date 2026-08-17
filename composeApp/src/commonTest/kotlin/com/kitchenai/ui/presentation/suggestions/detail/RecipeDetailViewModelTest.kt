@@ -1,4 +1,4 @@
-package com.kitchenai.ui.presentation.suggestions
+package com.kitchenai.ui.presentation.suggestions.detail
 
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient

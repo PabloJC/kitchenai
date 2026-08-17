@@ -1,4 +1,4 @@
-package com.kitchenai.ui.presentation.suggestions
+package com.kitchenai.ui.presentation.suggestions.detail
 
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
