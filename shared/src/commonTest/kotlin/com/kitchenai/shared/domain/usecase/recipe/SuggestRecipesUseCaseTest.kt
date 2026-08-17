@@ -33,12 +33,26 @@ class SuggestRecipesUseCaseTest {
             val useCase =
                 SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), FakePantryRepositoryContract(held), orchestrator)
 
-            val result = useCase(user, SuggestionOptions(useOnlyPantry = true))
+            val result = useCase(user, listOf("en"), SuggestionOptions(useOnlyPantry = true))
 
             assertTrue(result is AppResult.Success)
             assertEquals(stored, orchestrator.profile)
             assertEquals(held, orchestrator.pantry)
             assertEquals(true, orchestrator.options?.useOnlyPantry)
+        }
+
+    /** #131: the profile's own stored tags are a fact about the person, not about this request. */
+    @Test
+    fun `the caller's language reaches the orchestrator rather than the profile's stored one`() =
+        runTest {
+            val orchestrator = RecordingOrchestrator()
+            val useCase =
+                SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), FakePantryRepositoryContract(held), orchestrator)
+
+            useCase(user, listOf("es"))
+
+            assertEquals(listOf("xx"), stored.languageTags)
+            assertEquals(listOf("es"), orchestrator.languageTags)
         }
 
     @Test
@@ -47,7 +61,7 @@ class SuggestRecipesUseCaseTest {
             val pantry = FakePantryRepositoryContract(readError = AppError.Network())
             val useCase = SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), pantry, RecordingOrchestrator())
 
-            assertTrue(useCase(user) is AppResult.Failure)
+            assertTrue(useCase(user, listOf("en")) is AppResult.Failure)
         }
 
     @Test
@@ -60,7 +74,7 @@ class SuggestRecipesUseCaseTest {
                     RecordingOrchestrator(),
                 )
 
-            val result = useCase(user)
+            val result = useCase(user, listOf("en"))
 
             assertEquals(AppError.NotFound("profile"), (result as AppResult.Failure).error)
         }
@@ -73,15 +87,19 @@ private class RecordingOrchestrator : AgentOrchestrator {
         private set
     var options: SuggestionOptions? = null
         private set
+    var languageTags: List<String>? = null
+        private set
 
     override suspend fun suggest(
         profile: UserProfile,
         pantry: List<PantryItem>,
         options: SuggestionOptions,
+        languageTags: List<String>,
     ): AppResult<List<RecipeSuggestion>> {
         this.profile = profile
         this.pantry = pantry
         this.options = options
+        this.languageTags = languageTags
         return AppResult.Success(emptyList())
     }
 }

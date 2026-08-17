@@ -29,11 +29,12 @@ class DefaultAgentOrchestrator(
         profile: UserProfile,
         pantry: List<PantryItem>,
         options: SuggestionOptions,
+        languageTags: List<String>,
     ): AppResult<List<RecipeSuggestion>> {
         val candidates = selection.select(AgentCapability.SUGGEST_FROM_PANTRY, registry.agents())
         if (candidates.isEmpty()) return AppResult.Failure(AppError.NotFound("agent"))
         val now = time.now()
-        val context = AgentContextBuilder.build(profile, pantry, options, now)
+        val context = AgentContextBuilder.build(profile, pantry, options, languageTags, now)
         return ask(candidates, context).map { answer -> verify(answer, profile, pantry, options, now) }
     }
 

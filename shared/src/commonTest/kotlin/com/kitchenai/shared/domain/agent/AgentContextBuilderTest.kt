@@ -16,6 +16,7 @@ class AgentContextBuilderTest {
     private val now = Instant.fromEpochSeconds(1_000_000)
     private val unit = termRef("term-1")
     private val options = SuggestionOptions()
+    private val languageTags = listOf("xx")
 
     @Test
     fun `an expired holding never reaches the context`() {
@@ -25,7 +26,7 @@ class AgentContextBuilderTest {
                 pantryItem("item-2", "ing-2", Quantity(1.0, unit), expiresAt = now + 30.days),
             )
 
-        val context = AgentContextBuilder.build(profile(), pantry, options, now)
+        val context = AgentContextBuilder.build(profile(), pantry, options, languageTags, now)
 
         assertEquals(listOf(ingredientId("ing-2")), context.pantry.map { it.ingredient })
     }
@@ -39,7 +40,7 @@ class AgentContextBuilderTest {
                 pantryItem("item-3", "ing-3", Quantity(1.0, unit)),
             )
 
-        val context = AgentContextBuilder.build(profile(), pantry, options, now)
+        val context = AgentContextBuilder.build(profile(), pantry, options, languageTags, now)
 
         assertEquals(listOf(true, false, false), context.pantry.map { it.expiring })
     }
@@ -53,7 +54,8 @@ class AgentContextBuilderTest {
                 pantryItem("item-3", "ing-3", Quantity(1.0, unit), expiresAt = now + 2.days),
             )
 
-        val context = AgentContextBuilder.build(profile(), pantry, options.copy(maxPantryEntries = 2), now)
+        val capped = options.copy(maxPantryEntries = 2)
+        val context = AgentContextBuilder.build(profile(), pantry, capped, languageTags, now)
 
         assertEquals(listOf(ingredientId("ing-3"), ingredientId("ing-2")), context.pantry.map { it.ingredient })
     }
@@ -63,11 +65,21 @@ class AgentContextBuilderTest {
         val constraint = DietaryConstraint(termRef("term-2"), ConstraintStrength.EXCLUDE)
         val stored = profile(constraints = listOf(constraint), servings = 4)
 
-        val context = AgentContextBuilder.build(stored, emptyList(), options, now)
+        val context = AgentContextBuilder.build(stored, emptyList(), options, languageTags, now)
 
         assertEquals(4, context.servings)
         assertEquals(listOf(constraint), context.constraints)
-        assertEquals(stored.languageTags, context.languageTags)
         assertTrue(context.pantry.isEmpty())
+    }
+
+    /** #131: the profile's own tags are a fact about the person, captured once on first launch. */
+    @Test
+    fun `the language answered in is the caller's rather than the profile's stored one`() {
+        val stored = profile()
+
+        val context = AgentContextBuilder.build(stored, emptyList(), options, listOf("es"), now)
+
+        assertEquals(listOf("xx"), stored.languageTags)
+        assertEquals(listOf("es"), context.languageTags)
     }
 }

@@ -98,7 +98,7 @@ class SuggestionsViewModel(
         if (internalState.value.isGenerating) return
         internalState.update { it.copy(isGenerating = true, error = null) }
         viewModelScope.launch {
-            when (val answered = suggestRecipes(userId, internalState.value.options.toDomain())) {
+            when (val answered = suggestRecipes(userId, languageTags, internalState.value.options.toDomain())) {
                 is AppResult.Failure -> fail(answered.error)
                 is AppResult.Success -> generated(answered.data)
             }

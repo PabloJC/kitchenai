@@ -11,16 +11,22 @@ import kotlin.time.Instant
  *
  * Pure, synchronous and total: [now] is a parameter rather than a clock, so what an agent is
  * sent is reproducible from the same profile and the same pantry.
+ *
+ * [languageTags] comes from the caller, not from [profile]: the language to answer *this*
+ * request in is a fact about the device asking, and the stored profile is a fact about the
+ * person that must not be silently overwritten by whatever locale happened to be active on
+ * first launch (#131).
  */
 object AgentContextBuilder {
     fun build(
         profile: UserProfile,
         pantry: List<PantryItem>,
         options: SuggestionOptions,
+        languageTags: List<String>,
         now: Instant,
     ): AgentContext =
         AgentContext(
-            languageTags = profile.languageTags,
+            languageTags = languageTags,
             servings = profile.household.servings,
             constraints = profile.constraints,
             preferences = profile.preferences,
