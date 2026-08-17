@@ -1,4 +1,4 @@
-package com.kitchenai.ui.presentation.suggestions
+package com.kitchenai.ui.presentation.suggestions.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

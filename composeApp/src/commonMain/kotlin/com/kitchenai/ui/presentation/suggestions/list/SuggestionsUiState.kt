@@ -1,4 +1,4 @@
-package com.kitchenai.ui.presentation.suggestions
+package com.kitchenai.ui.presentation.suggestions.list
 
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.ui.presentation.common.UiText

@@ -12,8 +12,8 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.presentation.pantry.PantryScreen
 import com.kitchenai.ui.presentation.profile.ProfileScreen
 import com.kitchenai.ui.presentation.shopping.ShoppingScreen
-import com.kitchenai.ui.presentation.suggestions.RecipeDetailScreen
-import com.kitchenai.ui.presentation.suggestions.SuggestionsScreen
+import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailScreen
+import com.kitchenai.ui.presentation.suggestions.list.SuggestionsScreen
 
 /**
  * The whole graph. [userId] travels as a parameter rather than in a singleton: a uid kept in

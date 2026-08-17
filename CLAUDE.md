@@ -83,6 +83,13 @@ and no `object` holding mutable state.
 
 **File names.** One public type per file, named after it.
 
+**Folder layout under `presentation/`.** One folder per screen, holding that screen's
+composable, ViewModel, `UiState`, events, delegates, mappers and screen-specific composables
+(`PantryItemEditor`, `ShoppingAddField`, `ConstraintSection`) — nothing another screen also uses.
+A screen belonging to a feature with more than one nests under it: `suggestions/list/`,
+`suggestions/detail/`. Anything two screens share moves up to `presentation/common/`, where
+`LabelResolver` and `UiText` live. The package declaration matches the directory (#149).
+
 **Language.** Everything written in the repository is in English: code, comments, KDoc, test
 names, commit messages, documentation, workflow step names and anything a script prints.
 
