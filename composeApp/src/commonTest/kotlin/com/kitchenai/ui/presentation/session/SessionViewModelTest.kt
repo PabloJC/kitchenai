@@ -12,10 +12,10 @@ import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
-import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
-import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
-import com.kitchenai.shared.domain.usecase.session.EnsureSession
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
+import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
+import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
@@ -212,10 +212,10 @@ class SessionViewModelTest {
     private fun viewModel(): SessionViewModel {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         return SessionViewModel(
-            ensureSession = EnsureSession(sessions),
-            ensureDefaultShoppingList = EnsureDefaultShoppingList(lists, IdGenerator { "list-1" }, time),
-            observeUserProfile = ObserveUserProfile(profiles),
-            saveUserProfile = SaveUserProfile(profiles, FakeTaxonomyPort(), time),
+            ensureSession = EnsureSessionUseCase(sessions),
+            ensureDefaultShoppingList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
+            observeUserProfile = ObserveUserProfileUseCase(profiles),
+            saveUserProfile = SaveUserProfileUseCase(profiles, FakeTaxonomyPort(), time),
             time = time,
         )
     }

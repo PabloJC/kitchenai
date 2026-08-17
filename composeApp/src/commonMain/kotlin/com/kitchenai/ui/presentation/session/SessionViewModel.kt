@@ -8,10 +8,10 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.NoParams
-import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
-import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
-import com.kitchenai.shared.domain.usecase.session.EnsureSession
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
+import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
+import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_own_data
@@ -28,10 +28,10 @@ import kotlinx.coroutines.sync.withLock
  * `users/{uid}`.
  */
 class SessionViewModel(
-    private val ensureSession: EnsureSession,
-    private val ensureDefaultShoppingList: EnsureDefaultShoppingList,
-    private val observeUserProfile: ObserveUserProfile,
-    private val saveUserProfile: SaveUserProfile,
+    private val ensureSession: EnsureSessionUseCase,
+    private val ensureDefaultShoppingList: EnsureDefaultShoppingListUseCase,
+    private val observeUserProfile: ObserveUserProfileUseCase,
+    private val saveUserProfile: SaveUserProfileUseCase,
     private val time: TimeProvider,
 ) : ViewModel() {
     private val _state = MutableStateFlow<SessionUiState>(SessionUiState.Loading)

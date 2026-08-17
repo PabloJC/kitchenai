@@ -1,21 +1,21 @@
 package com.kitchenai.shared.di
 
-import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItem
-import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItems
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
-import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItems
-import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItem
-import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemChecked
+import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
+import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItemsUseCase
+import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItemsUseCase
+import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItemUseCase
+import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemCheckedUseCase
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /** Shopping use cases. Both port bindings come with the Firestore adapter. */
 val shoppingModule: Module =
     module {
-        factory { AddShoppingItem(get(), get(), get()) }
-        factory { ClearCheckedItems(get()) }
-        factory { EnsureDefaultShoppingList(get(), get(), get()) }
-        factory { ObserveShoppingItems(get()) }
-        factory { RemoveShoppingItem(get()) }
-        factory { SetShoppingItemChecked(get(), get()) }
+        factory { AddShoppingItemUseCase(get(), get(), get()) }
+        factory { ClearCheckedItemsUseCase(get()) }
+        factory { EnsureDefaultShoppingListUseCase(get(), get(), get()) }
+        factory { ObserveShoppingItemsUseCase(get()) }
+        factory { RemoveShoppingItemUseCase(get()) }
+        factory { SetShoppingItemCheckedUseCase(get(), get()) }
     }

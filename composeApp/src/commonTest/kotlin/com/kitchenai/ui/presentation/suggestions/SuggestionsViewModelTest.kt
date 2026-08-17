@@ -22,10 +22,10 @@ import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
-import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestions
-import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestions
-import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
+import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.UiText
@@ -325,10 +325,10 @@ class SuggestionsViewModelTest {
     private fun started(recipes: FakeRecipePort = FakeRecipePort()): SuggestionsViewModel {
         val pantry = StubPantryPort()
         return SuggestionsViewModel(
-            suggestRecipes = SuggestRecipes(StubProfilePort(profile), pantry, agent),
-            getStoredSuggestions = GetStoredSuggestions(recipes, pantry, TimeProvider { now }),
-            storeSuggestions = StoreSuggestions(recipes),
-            observeIngredients = ObserveIngredients(catalogue),
+            suggestRecipes = SuggestRecipesUseCase(StubProfilePort(profile), pantry, agent),
+            getStoredSuggestions = GetStoredSuggestionsUseCase(recipes, pantry, TimeProvider { now }),
+            storeSuggestions = StoreSuggestionsUseCase(recipes),
+            observeIngredients = ObserveIngredientsUseCase(catalogue),
         ).also { it.start(UserId.of("user-1").orFail(), listOf("en")) }
     }
 }

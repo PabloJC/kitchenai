@@ -11,7 +11,7 @@ import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
+import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
@@ -42,9 +42,9 @@ import kotlinx.coroutines.launch
  * that uniformity is worth keeping.
  */
 class ShoppingViewModel(
-    private val ensureDefaultShoppingList: EnsureDefaultShoppingList,
-    private val reads: ShoppingReads,
-    private val writes: ShoppingWrites,
+    private val ensureDefaultShoppingList: EnsureDefaultShoppingListUseCase,
+    private val reads: ShoppingReadsDelegate,
+    private val writes: ShoppingWritesDelegate,
 ) : ViewModel() {
     // Buffered: an undo offer emitted while the screen is recomposing must wait, not disappear.
     private val _events = Channel<ShoppingEvent>(Channel.BUFFERED)

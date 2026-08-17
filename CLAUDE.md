@@ -53,8 +53,13 @@ never swallow.
 **Concurrency.** No hardcoded `Dispatchers.IO`: inject `DispatcherProvider`. `GlobalScope`
 and `runBlocking` are forbidden outside tests.
 
-**Use cases.** One class = one operation, with `operator fun invoke`. Imperative names:
-`GetRecipeById`, `SaveShoppingList`.
+**Use cases.** One class = one operation, with `operator fun invoke`. Imperative names, `*UseCase`
+suffix: `GetRecipeByIdUseCase`, `SaveUserProfileUseCase` (#148).
+
+**ViewModel delegates.** A ViewModel that needs more than a couple of use cases groups them by
+role — `PantryReadsDelegate`, `PantryWritesDelegate` — so the constructor states two roles instead
+of listing every use case. The read/write split is load-bearing (`RecipeDetailWritesDelegate` is
+what `act()` serialises writes over) and a rename must not collapse it into one `*Delegate` (#148).
 
 **Repositories and data sources.** The layering is `UseCases -> Repositories -> DataSources
 (Local and Remote)`. Domain declares a `<Entity>RepositoryContract`; a single `<Entity>Repository`

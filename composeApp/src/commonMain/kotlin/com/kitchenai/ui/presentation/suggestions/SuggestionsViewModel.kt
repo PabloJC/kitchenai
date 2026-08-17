@@ -7,10 +7,10 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
-import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestions
-import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestions
-import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
+import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
@@ -33,10 +33,10 @@ import kotlinx.coroutines.launch
  * of a minute; the one thing that must never happen again is one firing per tab tap (#52, #133).
  */
 class SuggestionsViewModel(
-    private val suggestRecipes: SuggestRecipes,
-    private val getStoredSuggestions: GetStoredSuggestions,
-    private val storeSuggestions: StoreSuggestions,
-    private val observeIngredients: ObserveIngredients,
+    private val suggestRecipes: SuggestRecipesUseCase,
+    private val getStoredSuggestions: GetStoredSuggestionsUseCase,
+    private val storeSuggestions: StoreSuggestionsUseCase,
+    private val observeIngredients: ObserveIngredientsUseCase,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(SuggestionsUiState())
     val state: StateFlow<SuggestionsUiState> = internalState.asStateFlow()

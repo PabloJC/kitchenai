@@ -5,7 +5,7 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.UiText
 
-/** The field names `SaveUserProfile` reports; the screen anchors its messages to them. */
+/** The field names `SaveUserProfileUseCase` reports; the screen anchors its messages to them. */
 const val SERVINGS_FIELD = "household.servings"
 
 const val CONSTRAINTS_FIELD = "constraints"

@@ -10,11 +10,11 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
-import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
-import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
-import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraint
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
 import com.kitchenai.ui.presentation.common.UiText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -31,11 +31,11 @@ import kotlinx.coroutines.launch
  * is inside them comes from the catalogue alone; nothing here knows a single term.
  */
 class ProfileViewModel(
-    private val observeUserProfile: ObserveUserProfile,
-    private val observeTaxonomies: ObserveTaxonomies,
-    private val observeTaxonomy: ObserveTaxonomy,
-    private val saveUserProfile: SaveUserProfile,
-    private val toggleDietaryConstraint: ToggleDietaryConstraint,
+    private val observeUserProfile: ObserveUserProfileUseCase,
+    private val observeTaxonomies: ObserveTaxonomiesUseCase,
+    private val observeTaxonomy: ObserveTaxonomyUseCase,
+    private val saveUserProfile: SaveUserProfileUseCase,
+    private val toggleDietaryConstraint: ToggleDietaryConstraintUseCase,
 ) : ViewModel() {
     private val draft = MutableStateFlow<ProfileDraft?>(null)
     private val catalogue = MutableStateFlow(CatalogueState())

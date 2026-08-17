@@ -37,14 +37,14 @@ import kotlinx.coroutines.launch
  * The pantry projected for the screen: holdings resolved into words, plus the four actions that
  * change them.
  *
- * It computes nothing it could ask for. Merging quantities belongs to [AddPantryItem] and the
- * order of the list to [ObservePantry]; if this class ever compares two amounts, the logic has
+ * It computes nothing it could ask for. Merging quantities belongs to [AddPantryItemUseCase] and the
+ * order of the list to [ObservePantryUseCase]; if this class ever compares two amounts, the logic has
  * moved into the wrong layer.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PantryViewModel(
-    private val reads: PantryReads,
-    private val writes: PantryWrites,
+    private val reads: PantryReadsDelegate,
+    private val writes: PantryWritesDelegate,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PantryUiState())
     val state: StateFlow<PantryUiState> = _state.asStateFlow()

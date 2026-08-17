@@ -19,17 +19,17 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItems
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
-import com.kitchenai.shared.domain.usecase.recipe.CookRecipe
-import com.kitchenai.shared.domain.usecase.recipe.GetRecipeById
-import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipe
-import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantry
-import com.kitchenai.shared.domain.usecase.recipe.SaveRecipe
-import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingList
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
+import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
+import com.kitchenai.shared.domain.usecase.recipe.CookRecipeUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipeUseCase
+import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
+import com.kitchenai.shared.domain.usecase.recipe.SaveRecipeUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
@@ -393,27 +393,27 @@ class RecipeDetailViewModelTest {
     ): RecipeDetailViewModel {
         val time = TimeProvider { now }
         val reads =
-            RecipeDetailReads(
-                recipe = GetRecipeById(recipePort),
-                storedRecipe = GetStoredRecipe(recipePort),
-                match = MatchRecipeAgainstPantry(recipePort, pantryPort, time),
-                ingredients = ObserveIngredients(catalogue),
-                taxonomies = ObserveTaxonomies(taxonomies),
-                taxonomy = ObserveTaxonomy(taxonomies),
+            RecipeDetailReadsDelegate(
+                recipe = GetRecipeByIdUseCase(recipePort),
+                storedRecipe = GetStoredRecipeUseCase(recipePort),
+                match = MatchRecipeAgainstPantryUseCase(recipePort, pantryPort, time),
+                ingredients = ObserveIngredientsUseCase(catalogue),
+                taxonomies = ObserveTaxonomiesUseCase(taxonomies),
+                taxonomy = ObserveTaxonomyUseCase(taxonomies),
             )
         val writes =
-            RecipeDetailWrites(
-                save = SaveRecipe(recipePort),
-                cook = CookRecipe(recipePort, pantryPort, ConsumePantryItems(pantryPort, time), time),
+            RecipeDetailWritesDelegate(
+                save = SaveRecipeUseCase(recipePort),
+                cook = CookRecipeUseCase(recipePort, pantryPort, ConsumePantryItemsUseCase(pantryPort, time), time),
                 addMissing =
-                    AddMissingIngredientsToShoppingList(
+                    AddMissingIngredientsToShoppingListUseCase(
                         recipePort,
                         pantryPort,
                         items,
                         sequentialIds(),
                         time,
                     ),
-                defaultList = EnsureDefaultShoppingList(lists, IdGenerator { "list-1" }, time),
+                defaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
             )
         return RecipeDetailViewModel(reads, writes)
             .also { it.start(user, dish.id, listOf("en"), "List") }

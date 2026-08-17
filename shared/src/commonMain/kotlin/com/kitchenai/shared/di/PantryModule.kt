@@ -1,21 +1,21 @@
 package com.kitchenai.shared.di
 
-import com.kitchenai.shared.domain.usecase.pantry.AddPantryItem
-import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItems
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
-import com.kitchenai.shared.domain.usecase.pantry.ObservePantry
-import com.kitchenai.shared.domain.usecase.pantry.RemovePantryItem
-import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItem
+import com.kitchenai.shared.domain.usecase.pantry.AddPantryItemUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
+import com.kitchenai.shared.domain.usecase.pantry.RemovePantryItemUseCase
+import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItemUseCase
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /** The pantry use cases. The ports they ask for are bound by the data layer. */
 val pantryModule: Module =
     module {
-        factory { AddPantryItem(get(), get(), get()) }
-        factory { ConsumePantryItems(get(), get()) }
-        factory { ObserveIngredients(get()) }
-        factory { ObservePantry(get()) }
-        factory { RemovePantryItem(get()) }
-        factory { UpdatePantryItem(get(), get()) }
+        factory { AddPantryItemUseCase(get(), get(), get()) }
+        factory { ConsumePantryItemsUseCase(get(), get()) }
+        factory { ObserveIngredientsUseCase(get()) }
+        factory { ObservePantryUseCase(get()) }
+        factory { RemovePantryItemUseCase(get()) }
+        factory { UpdatePantryItemUseCase(get(), get()) }
     }

@@ -18,13 +18,13 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.usecase.pantry.AddPantryItem
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
-import com.kitchenai.shared.domain.usecase.pantry.ObservePantry
-import com.kitchenai.shared.domain.usecase.pantry.RemovePantryItem
-import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItem
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
+import com.kitchenai.shared.domain.usecase.pantry.AddPantryItemUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
+import com.kitchenai.shared.domain.usecase.pantry.RemovePantryItemUseCase
+import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItemUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
@@ -320,17 +320,17 @@ class PantryViewModelTest {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         return PantryViewModel(
             reads =
-                PantryReads(
-                    pantry = ObservePantry(pantry),
-                    ingredients = ObserveIngredients(catalogue),
-                    taxonomy = ObserveTaxonomy(taxonomies),
-                    taxonomies = ObserveTaxonomies(taxonomies),
+                PantryReadsDelegate(
+                    pantry = ObservePantryUseCase(pantry),
+                    ingredients = ObserveIngredientsUseCase(catalogue),
+                    taxonomy = ObserveTaxonomyUseCase(taxonomies),
+                    taxonomies = ObserveTaxonomiesUseCase(taxonomies),
                 ),
             writes =
-                PantryWrites(
-                    add = AddPantryItem(pantry, IdGenerator { "item-2" }, time),
-                    update = UpdatePantryItem(pantry, time),
-                    remove = RemovePantryItem(pantry),
+                PantryWritesDelegate(
+                    add = AddPantryItemUseCase(pantry, IdGenerator { "item-2" }, time),
+                    update = UpdatePantryItemUseCase(pantry, time),
+                    remove = RemovePantryItemUseCase(pantry),
                     time = time,
                 ),
         )
