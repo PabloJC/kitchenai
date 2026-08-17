@@ -16,5 +16,6 @@ interface AgentOrchestrator {
         profile: UserProfile,
         pantry: List<PantryItem>,
         options: SuggestionOptions,
+        languageTags: List<String>,
     ): AppResult<List<RecipeSuggestion>>
 }

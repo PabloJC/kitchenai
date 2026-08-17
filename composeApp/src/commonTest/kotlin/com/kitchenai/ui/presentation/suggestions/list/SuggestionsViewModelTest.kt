@@ -291,6 +291,23 @@ class SuggestionsViewModelTest {
             assertEquals(2, sent.maxResults)
         }
 
+    /**
+     * #131: the profile's own stored tags stay whatever they were on first launch; the language
+     * an agent is asked to answer in has to come from the device, every time, or a user who
+     * changes their device language keeps getting suggestions in the old one forever.
+     */
+    @Test
+    fun `the device's current language reaches the agent rather than the profile's stored one`() =
+        runTest(dispatcher) {
+            val viewModel = started(languageTags = listOf("es"))
+
+            viewModel.generate()
+            advanceUntilIdle()
+
+            assertEquals(listOf("en"), profile.languageTags)
+            assertEquals(listOf("es"), agent.lastLanguageTags)
+        }
+
     @Test
     fun `a failure clears when the next run succeeds`() =
         runTest(dispatcher) {
@@ -322,14 +339,17 @@ class SuggestionsViewModelTest {
             assertEquals("Dish", stored.single { it.id == id }.title)
         }
 
-    private fun started(recipes: FakeRecipePort = FakeRecipePort()): SuggestionsViewModel {
+    private fun started(
+        recipes: FakeRecipePort = FakeRecipePort(),
+        languageTags: List<String> = listOf("en"),
+    ): SuggestionsViewModel {
         val pantry = StubPantryPort()
         return SuggestionsViewModel(
             suggestRecipes = SuggestRecipesUseCase(StubProfilePort(profile), pantry, agent),
             getStoredSuggestions = GetStoredSuggestionsUseCase(recipes, pantry, TimeProvider { now }),
             storeSuggestions = StoreSuggestionsUseCase(recipes),
             observeIngredients = ObserveIngredientsUseCase(catalogue),
-        ).also { it.start(UserId.of("user-1").orFail(), listOf("en")) }
+        ).also { it.start(UserId.of("user-1").orFail(), languageTags) }
     }
 }
 
@@ -373,14 +393,18 @@ private class RecordingOrchestrator : AgentOrchestrator {
         private set
     var lastOptions: SuggestionOptions? = null
         private set
+    var lastLanguageTags: List<String>? = null
+        private set
 
     override suspend fun suggest(
         profile: UserProfile,
         pantry: List<PantryItem>,
         options: SuggestionOptions,
+        languageTags: List<String>,
     ): AppResult<List<RecipeSuggestion>> {
         calls++
         lastOptions = options
+        lastLanguageTags = languageTags
         gate?.await()
         return answer
     }

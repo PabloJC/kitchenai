@@ -25,6 +25,7 @@ class DefaultAgentOrchestratorTest {
     private val now = Instant.fromEpochSeconds(1_000_000)
     private val unit = termRef("term-1")
     private val options = SuggestionOptions()
+    private val languageTags = listOf("xx")
 
     @Test
     fun `a failing agent falls through to the next candidate`() =
@@ -32,7 +33,7 @@ class DefaultAgentOrchestratorTest {
             val failing = FakeRecipeAgent("agent-1", AppResult.Failure(AppError.Network()))
             val answering = FakeRecipeAgent("agent-2", agentAnswer("agent-2", listOf(recipe())))
 
-            val result = orchestrator(failing, answering).suggest(profile(), emptyList(), options)
+            val result = orchestrator(failing, answering).suggest(profile(), emptyList(), options, languageTags)
 
             assertEquals(1, result.unwrap().size)
             assertEquals(1, answering.calls)
@@ -44,7 +45,7 @@ class DefaultAgentOrchestratorTest {
             val rejected = FakeRecipeAgent("agent-1", AppResult.Failure(AppError.Unauthorized()))
             val answering = FakeRecipeAgent("agent-2", agentAnswer("agent-2", listOf(recipe())))
 
-            val result = orchestrator(rejected, answering).suggest(profile(), emptyList(), options)
+            val result = orchestrator(rejected, answering).suggest(profile(), emptyList(), options, languageTags)
 
             assertTrue((result as AppResult.Failure).error is AppError.Unauthorized)
             assertEquals(0, answering.calls)
@@ -53,7 +54,7 @@ class DefaultAgentOrchestratorTest {
     @Test
     fun `an empty registry is reported as not found`() =
         runTest {
-            val result = orchestrator().suggest(profile(), emptyList(), options)
+            val result = orchestrator().suggest(profile(), emptyList(), options, languageTags)
 
             assertEquals(AppError.NotFound("agent"), (result as AppResult.Failure).error)
         }
@@ -68,7 +69,7 @@ class DefaultAgentOrchestratorTest {
                     setOf(AgentCapability.PLAN_WEEK),
                 )
 
-            val result = orchestrator(other).suggest(profile(), emptyList(), options)
+            val result = orchestrator(other).suggest(profile(), emptyList(), options, languageTags)
 
             assertEquals(AppError.NotFound("agent"), (result as AppResult.Failure).error)
             assertEquals(0, other.calls)
@@ -96,7 +97,8 @@ class DefaultAgentOrchestratorTest {
                     ),
                 )
 
-            val result = orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(stored, emptyList(), options)
+            val result =
+                orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(stored, emptyList(), options, languageTags)
 
             assertEquals(listOf(recipeId("recipe-2")), result.unwrap().map { it.recipe.id })
         }
@@ -108,8 +110,10 @@ class DefaultAgentOrchestratorTest {
             val answer = agentAnswer("agent-1", listOf(proposed))
             val held = listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit)))
 
-            val covered = orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(profile(), held, options)
-            val bare = orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(profile(), emptyList(), options)
+            val covered =
+                orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(profile(), held, options, languageTags)
+            val bare =
+                orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(profile(), emptyList(), options, languageTags)
 
             assertEquals(1f, covered.unwrap().single().match.coverage)
             assertEquals(0f, bare.unwrap().single().match.coverage)
@@ -121,7 +125,8 @@ class DefaultAgentOrchestratorTest {
             // The fixture claims the catalogue as its source; an agent saying so does not make it true.
             val answer = agentAnswer("agent-1", listOf(recipe()))
 
-            val result = orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(profile(), emptyList(), options)
+            val result =
+                orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(profile(), emptyList(), options, languageTags)
 
             assertEquals(RecipeSource.Agent(agentId("agent-1"), "model-agent-1", now), result.unwrap().single().source)
         }
@@ -133,7 +138,7 @@ class DefaultAgentOrchestratorTest {
 
             val result =
                 orchestrator(FakeRecipeAgent("agent-1", answer))
-                    .suggest(profile(), emptyList(), options.copy(maxResults = 1))
+                    .suggest(profile(), emptyList(), options.copy(maxResults = 1), languageTags)
 
             assertEquals(listOf(recipeId("recipe-1")), result.unwrap().map { it.recipe.id })
         }
@@ -144,7 +149,7 @@ class DefaultAgentOrchestratorTest {
             val agent = FakeRecipeAgent("agent-1", agentAnswer("agent-1", emptyList()))
             val held: List<PantryItem> = listOf(pantryItem("item-1", "ing-1", Quantity(1.0, unit)))
 
-            orchestrator(agent).suggest(profile(), held, options.copy(useOnlyPantry = true))
+            orchestrator(agent).suggest(profile(), held, options.copy(useOnlyPantry = true), languageTags)
 
             val context = requireNotNull(agent.received)
             assertTrue(context.options.useOnlyPantry)

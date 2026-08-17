@@ -15,6 +15,10 @@ import kotlinx.coroutines.flow.firstOrNull
  *
  * The profile is read with `firstOrNull`: a listener that has failed ends its stream, and
  * `first` on an ended stream would throw across a layer boundary instead of failing.
+ *
+ * [languageTags] names the language to answer in and comes from the caller rather than the
+ * profile: the stored value is captured once, on first launch, and never revisited, so reading
+ * it here would answer in whatever locale that first launch happened to be in (#131).
  */
 class SuggestRecipesUseCase(
     private val profiles: UserProfileRepositoryContract,
@@ -23,6 +27,7 @@ class SuggestRecipesUseCase(
 ) {
     suspend operator fun invoke(
         userId: UserId,
+        languageTags: List<String>,
         options: SuggestionOptions = SuggestionOptions(),
     ): AppResult<List<RecipeSuggestion>> {
         val profile =
@@ -30,7 +35,7 @@ class SuggestRecipesUseCase(
                 ?: return AppResult.Failure(AppError.NotFound("profile"))
         return when (val held = pantry.getPantry(userId)) {
             is AppResult.Failure -> held
-            is AppResult.Success -> orchestrator.suggest(profile, held.data, options)
+            is AppResult.Success -> orchestrator.suggest(profile, held.data, options, languageTags)
         }
     }
 }
