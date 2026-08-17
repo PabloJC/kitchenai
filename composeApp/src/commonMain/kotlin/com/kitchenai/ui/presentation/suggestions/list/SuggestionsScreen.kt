@@ -3,6 +3,7 @@ package com.kitchenai.ui.presentation.suggestions.list
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +16,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -92,7 +94,7 @@ fun SuggestionsScreen(
                 )
             }
             state.error?.let { message -> Text(message.resolve(), color = MaterialTheme.colorScheme.error) }
-            Results(state, onOpen)
+            Results(state, onOpen, onRefresh = viewModel::generate)
         }
     }
 }
@@ -120,31 +122,41 @@ private fun Options(
 private fun Results(
     state: SuggestionsUiState,
     onOpen: (RecipeId) -> Unit,
+    onRefresh: () -> Unit,
 ) {
-    when {
-        // Before isGenerating: a stored set from the last launch stays on screen while a new one
-        // runs behind it, rather than being hidden by a skeleton for the better part of a minute.
-        state.suggestions.isNotEmpty() ->
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
-                items(state.suggestions, key = { it.id.value }) { suggestion ->
-                    SuggestionCard(suggestion, onOpen)
+    // Pulling down calls the same generate() the button does, guarded the same way: a pull
+    // while one is already in flight is a no-op rather than a second run.
+    PullToRefreshBox(
+        isRefreshing = state.isGenerating,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        when {
+            // Before isGenerating: a stored set from the last launch stays on screen while a new
+            // one runs behind it, rather than being hidden by a skeleton for the better part of
+            // a minute.
+            state.suggestions.isNotEmpty() ->
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
+                    items(state.suggestions, key = { it.id.value }) { suggestion ->
+                        SuggestionCard(suggestion, onOpen)
+                    }
                 }
-            }
-        // A skeleton rather than a spinner: the call takes the better part of a minute, and a
-        // blank screen for that long reads as a hang rather than as work.
-        state.isGenerating -> Skeleton()
-        // Generated and found nothing is not the same as never asked, and neither is an error.
-        state.hasGenerated && state.error == null ->
-            EmptyState(
-                title = stringResource(Res.string.suggestions_nothing_title),
-                body = stringResource(Res.string.suggestions_nothing_body),
-            )
-        !state.hasGenerated ->
-            EmptyState(
-                title = stringResource(Res.string.suggestions_empty_title),
-                body = stringResource(Res.string.suggestions_empty_body),
-            )
-        else -> Unit
+            // A skeleton rather than a spinner: the call takes the better part of a minute, and
+            // a blank screen for that long reads as a hang rather than as work.
+            state.isGenerating -> Skeleton()
+            // Generated and found nothing is not the same as never asked, and neither is an error.
+            state.hasGenerated && state.error == null ->
+                EmptyState(
+                    title = stringResource(Res.string.suggestions_nothing_title),
+                    body = stringResource(Res.string.suggestions_nothing_body),
+                )
+            !state.hasGenerated ->
+                EmptyState(
+                    title = stringResource(Res.string.suggestions_empty_title),
+                    body = stringResource(Res.string.suggestions_empty_body),
+                )
+            else -> Unit
+        }
     }
 }
 
