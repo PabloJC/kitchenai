@@ -12,14 +12,9 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.session.EnsureSession
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
-import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.error_invalid_field
-import com.kitchenai.ui.resources.error_no_connection
-import com.kitchenai.ui.resources.error_not_found
-import com.kitchenai.ui.resources.error_timeout
 import com.kitchenai.ui.resources.error_unauthorized_own_data
-import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -149,17 +144,6 @@ class SessionViewModel(
     }
 
     private fun fail(error: AppError) {
-        _state.value = SessionUiState.Failed(error.describe())
+        _state.value = SessionUiState.Failed(error.describe(Res.string.error_unauthorized_own_data))
     }
 }
-
-/** The cause is dropped on purpose: it can carry paths and identifiers, and this ends up on screen. */
-private fun AppError.describe(): UiText =
-    when (this) {
-        is AppError.Network -> UiText.of(Res.string.error_no_connection)
-        is AppError.Timeout -> UiText.of(Res.string.error_timeout)
-        is AppError.Unauthorized -> UiText.of(Res.string.error_unauthorized_own_data)
-        is AppError.NotFound -> UiText.of(Res.string.error_not_found, resource)
-        is AppError.Validation -> UiText.of(Res.string.error_invalid_field, field, reason)
-        is AppError.Unknown -> UiText.of(Res.string.error_unknown)
-    }

@@ -31,3 +31,8 @@ class LabelResolver(
 
     fun label(id: IngredientId): String? = ingredientLabels[id]?.resolve(languageTags)
 }
+
+/** A miss renders the identifier: ugly and honest beats a placeholder hiding a missing label. */
+internal fun LabelResolver.wordFor(ref: TermRef): String = label(ref) ?: ref.term.value
+
+internal fun LabelResolver.nameOf(ingredient: Ingredient): String = label(ingredient.id) ?: ingredient.id.value

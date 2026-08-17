@@ -2,7 +2,6 @@ package com.kitchenai.ui.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.Taxonomy
@@ -11,20 +10,12 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.model.resolve
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomies
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomy
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfile
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraint
-import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
-import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.error_no_connection
-import com.kitchenai.ui.resources.error_not_found
-import com.kitchenai.ui.resources.error_timeout
-import com.kitchenai.ui.resources.error_unauthorized_own_data
-import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -174,13 +165,13 @@ class ProfileViewModel(
 }
 
 /** The profile being edited, and whether it holds changes that have not been written. */
-private data class ProfileDraft(
+internal data class ProfileDraft(
     val profile: UserProfile,
     val edited: Boolean = false,
 )
 
 /** The catalogue as the screen needs it: what exists, what is in it, and what failed to load. */
-private data class CatalogueState(
+internal data class CatalogueState(
     // Distinguishes a catalogue with nothing in it from one that has not answered yet: the
     // screen must not say the vocabulary failed to load while it is still on its way.
     val answered: Boolean = false,
@@ -201,74 +192,3 @@ private data class CatalogueState(
         message: UiText,
     ): CatalogueState = copy(errors = errors + (id to message))
 }
-
-private fun uiState(
-    draft: ProfileDraft?,
-    catalogue: CatalogueState,
-    saving: Boolean,
-    failure: ProfileError?,
-): ProfileUiState {
-    val profile = draft?.profile
-    return ProfileUiState(
-        displayName = profile?.displayName.orEmpty(),
-        servings = profile?.household?.servings ?: 1,
-        constraintCount = profile?.constraints?.size ?: 0,
-        languageTags = profile?.languageTags.orEmpty(),
-        sections = sections(catalogue, profile),
-        isCatalogueLoaded = catalogue.answered,
-        hasCatalogueFailed = catalogue.failed,
-        isLoading = draft == null,
-        isSaving = saving,
-        error = failure,
-    )
-}
-
-/**
- * One section per taxonomy the catalogue published, in its order. A label that resolves to
- * nothing falls back to the identifier: ugly and honest beats inventing a word.
- */
-private fun sections(
-    catalogue: CatalogueState,
-    profile: UserProfile?,
-): List<ConstraintSectionUi> {
-    val tags = profile?.languageTags.orEmpty()
-    val resolver =
-        LabelResolver(
-            terms = catalogue.terms.values.flatten(),
-            taxonomies = catalogue.taxonomies,
-            languageTags = tags,
-        )
-    val strengths = profile?.constraints.orEmpty().associate { it.term to it.strength }
-    // A vocabulary the app reads structurally — units, storage places — is not a matter of taste,
-    // and offering it here let a user avoid a freezer. Which ones those are is the catalogue's
-    // to say, so nothing is named: they are the ones that declare a purpose.
-    return catalogue.taxonomies.filter { taxonomy -> taxonomy.purpose == null }.map { taxonomy ->
-        ConstraintSectionUi(
-            taxonomy = taxonomy.id,
-            title = taxonomy.labels.resolve(tags, taxonomy.defaultLanguageTag) ?: taxonomy.id.value,
-            terms =
-                catalogue.terms[taxonomy.id].orEmpty().map { term ->
-                    TermChipUi(
-                        term = term.ref,
-                        label = resolver.label(term.ref) ?: term.ref.term.value,
-                        strength = strengths[term.ref],
-                    )
-                },
-            error = catalogue.errors[taxonomy.id],
-        )
-    }
-}
-
-/** The cause is dropped on purpose: it can carry paths and identifiers, and this ends up on screen. */
-private fun AppError.toProfileError(): ProfileError =
-    when (this) {
-        is AppError.Network -> ProfileError(null, UiText.of(Res.string.error_no_connection))
-        is AppError.Timeout -> ProfileError(null, UiText.of(Res.string.error_timeout))
-        is AppError.Unauthorized -> ProfileError(null, UiText.of(Res.string.error_unauthorized_own_data))
-        is AppError.NotFound -> ProfileError(null, UiText.of(Res.string.error_not_found, resource))
-        // The reason alone, not "Invalid <field>: <reason>": this one renders under the input it
-        // names, so repeating the field there would say the same thing twice. It is Raw because
-        // the domain wrote it — there is no key for a sentence this module did not author.
-        is AppError.Validation -> ProfileError(field, UiText.Raw(reason))
-        is AppError.Unknown -> ProfileError(null, UiText.of(Res.string.error_unknown))
-    }

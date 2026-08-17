@@ -4,10 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.domain.agent.SuggestionOptions
 import com.kitchenai.shared.domain.model.Ingredient
-import com.kitchenai.shared.domain.model.RecipeIngredient
-import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredients
@@ -15,14 +12,9 @@ import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestions
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestions
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipes
 import com.kitchenai.ui.presentation.common.LabelResolver
-import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.error_invalid_field
-import com.kitchenai.ui.resources.error_no_connection
-import com.kitchenai.ui.resources.error_not_found
-import com.kitchenai.ui.resources.error_timeout
 import com.kitchenai.ui.resources.error_unauthorized_suggestions
-import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -149,52 +141,10 @@ class SuggestionsViewModel(
     }
 
     private suspend fun fail(error: AppError) {
-        val message = error.describe()
+        val message = error.describe(Res.string.error_unauthorized_suggestions)
         // Both: the banner survives a rotation, the event does not, and a failure the user
         // scrolled past still has to be findable.
         internalState.update { it.copy(isGenerating = false, hasGenerated = true, error = message) }
         eventChannel.send(SuggestionsEvent.Failed(message))
     }
 }
-
-private fun SuggestionOptionsUi.toDomain(): SuggestionOptions =
-    SuggestionOptions(maxResults = maxResults, maxMinutes = maxMinutes, useOnlyPantry = useOnlyPantry)
-
-private fun RecipeSuggestion.toUi(resolver: LabelResolver): SuggestionUi {
-    val held = match.covered.count { !it.ingredient.optional }
-    val short = match.missing.count { !it.ingredient.optional }
-    return SuggestionUi(
-        id = recipe.id,
-        title = recipe.title,
-        summary = recipe.summary,
-        totalMinutes = recipe.totalMinutes,
-        coverage = match.coverage,
-        heldCount = held,
-        totalCount = held + short,
-        missing = match.missing.map { it.ingredient.name(resolver) },
-        unverifiable = match.unverifiable.map { line -> line.name(resolver) },
-        // Both ids travel as the response reported them; neither is named anywhere in this module.
-        provenance = (source as? RecipeSource.Agent)?.let { ProvenanceUi(it.agentId.value, it.modelId) },
-    )
-}
-
-/** Free text is already its own name; a catalogue line falls back to its identifier. */
-private fun RecipeIngredient.name(resolver: LabelResolver): String {
-    freeText?.let { return it }
-    val id = ingredient ?: return ""
-    return resolver.label(id) ?: id.value
-}
-
-/**
- * `Unauthorized` gets its own sentence: it means App Check or sign-in is wrong, and "no
- * connection" would send someone to restart their router over a problem inside the app.
- */
-private fun AppError.describe(): UiText =
-    when (this) {
-        is AppError.Network -> UiText.of(Res.string.error_no_connection)
-        is AppError.Timeout -> UiText.of(Res.string.error_timeout)
-        is AppError.Unauthorized -> UiText.of(Res.string.error_unauthorized_suggestions)
-        is AppError.NotFound -> UiText.of(Res.string.error_not_found, resource)
-        is AppError.Validation -> UiText.of(Res.string.error_invalid_field, field, reason)
-        is AppError.Unknown -> UiText.of(Res.string.error_unknown)
-    }

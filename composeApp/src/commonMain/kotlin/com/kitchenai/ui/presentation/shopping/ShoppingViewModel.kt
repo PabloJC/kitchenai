@@ -2,10 +2,8 @@ package com.kitchenai.ui.presentation.shopping
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
-import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
@@ -16,13 +14,9 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingList
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.error_invalid_field
-import com.kitchenai.ui.resources.error_no_connection
-import com.kitchenai.ui.resources.error_not_found
-import com.kitchenai.ui.resources.error_timeout
 import com.kitchenai.ui.resources.error_unauthorized_list
-import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -92,7 +86,7 @@ class ShoppingViewModel(
     private val lines =
         combine(items, itemsError, itemsAnswered, resolver) { loaded, error, answered, labels ->
             LinesState(
-                lines = loaded.orEmpty().map { item -> toUi(item, labels) },
+                lines = loaded.orEmpty().map { item -> item.toUi(labels) },
                 error = error,
                 isLoading = !answered,
                 failedToLoad = error != null && loaded == null,
@@ -132,7 +126,7 @@ class ShoppingViewModel(
             val labels = languageTags.take(1).associateWith { defaultListName }
             when (val list = ensureDefaultShoppingList(userId, labels)) {
                 is AppResult.Failure -> {
-                    itemsError.value = list.error.describe()
+                    itemsError.value = list.error.describe(Res.string.error_unauthorized_list)
                     itemsAnswered.value = true
                 }
                 is AppResult.Success -> {
@@ -155,7 +149,7 @@ class ShoppingViewModel(
         val item = items.value?.firstOrNull { it.id == itemId } ?: return
         edit { user, list ->
             val result = writes.remove(user, list, itemId)
-            if (result is AppResult.Success) _events.send(ShoppingEvent.ItemRemoved(label(item, resolver.value), item))
+            if (result is AppResult.Success) _events.send(ShoppingEvent.ItemRemoved(item.label(resolver.value), item))
             result
         }
     }
@@ -228,7 +222,7 @@ class ShoppingViewModel(
         }
         viewModelScope.launch {
             reads.items.errors(userId, listId).collect { error ->
-                itemsError.value = error.describe()
+                itemsError.value = error.describe(Res.string.error_unauthorized_list)
                 itemsAnswered.value = true
             }
         }
@@ -277,7 +271,7 @@ class ShoppingViewModel(
         }
         viewModelScope.launch {
             reads.ingredients.errors().collect { error ->
-                catalogueError.value = error.describe()
+                catalogueError.value = error.describe(Res.string.error_unauthorized_list)
             }
         }
     }
@@ -301,34 +295,6 @@ class ShoppingViewModel(
             error = writeFailure ?: lines.error ?: catalogueError,
         )
 
-    private fun toUi(
-        item: ShoppingItem,
-        labels: LabelResolver,
-    ): ShoppingItemUi =
-        ShoppingItemUi(
-            id = item.id,
-            label = label(item, labels),
-            quantity = item.quantity?.let { amount -> formatQuantity(amount, labels) },
-            fromCatalogue = item.ingredient != null,
-            checked = item.checked,
-        )
-
-    /** A catalogue miss renders the identifier: ugly and honest beats a placeholder that hides it. */
-    private fun label(
-        item: ShoppingItem,
-        labels: LabelResolver,
-    ): String = item.freeText ?: item.ingredient?.let { id -> labels.label(id) ?: id.value }.orEmpty()
-
-    private fun formatQuantity(
-        quantity: Quantity,
-        labels: LabelResolver,
-    ): String {
-        val whole = quantity.amount.toLong()
-        val amount = if (quantity.amount == whole.toDouble()) whole.toString() else quantity.amount.toString()
-        val unit = quantity.unit?.let { ref -> labels.label(ref) ?: ref.term.value }
-        return listOfNotNull(amount, unit).joinToString(" ")
-    }
-
     private fun suggest(query: String): List<IngredientSuggestion> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return emptyList()
@@ -351,7 +317,7 @@ class ShoppingViewModel(
             // A write that lands clears the last one that did not: the banner belongs to the
             // most recent attempt, not to the first that ever failed.
             when (val result = block(user, list)) {
-                is AppResult.Failure -> writeFailure.value = result.error.describe()
+                is AppResult.Failure -> writeFailure.value = result.error.describe(Res.string.error_unauthorized_list)
                 is AppResult.Success -> writeFailure.value = null
             }
         }
@@ -371,17 +337,6 @@ sealed interface ShoppingEvent {
 }
 
 private const val SUGGESTION_LIMIT = 6
-
-/** The cause is dropped on purpose: it can carry paths and identifiers, and this ends up on screen. */
-private fun AppError.describe(): UiText =
-    when (this) {
-        is AppError.Network -> UiText.of(Res.string.error_no_connection)
-        is AppError.Timeout -> UiText.of(Res.string.error_timeout)
-        is AppError.Unauthorized -> UiText.of(Res.string.error_unauthorized_list)
-        is AppError.NotFound -> UiText.of(Res.string.error_not_found, resource)
-        is AppError.Validation -> UiText.of(Res.string.error_invalid_field, field, reason)
-        is AppError.Unknown -> UiText.of(Res.string.error_unknown)
-    }
 
 /** What the item listener has produced so far, as one value rather than four fields. */
 private data class LinesState(

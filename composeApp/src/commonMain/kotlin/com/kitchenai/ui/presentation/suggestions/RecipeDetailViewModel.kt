@@ -9,22 +9,16 @@ import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
-import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.error_invalid_field
 import com.kitchenai.ui.resources.error_missing_ingredients
-import com.kitchenai.ui.resources.error_no_connection
-import com.kitchenai.ui.resources.error_not_found
-import com.kitchenai.ui.resources.error_timeout
 import com.kitchenai.ui.resources.error_unauthorized_action
-import com.kitchenai.ui.resources.error_unknown
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -278,7 +272,10 @@ class RecipeDetailViewModel(
         viewModelScope.launch {
             when (val outcome = block(userId)) {
                 null -> Unit
-                is AppResult.Failure -> announce(RecipeDetailEvent.Failed(outcome.error.describe(validation)))
+                is AppResult.Failure -> {
+                    val message = outcome.error.describe(Res.string.error_unauthorized_action, validation)
+                    announce(RecipeDetailEvent.Failed(message))
+                }
                 is AppResult.Success -> {
                     if (outcome.data is RecipeDetailEvent.Saved) internalState.update { it.copy(isSaved = true) }
                     announce(outcome.data)
@@ -293,29 +290,8 @@ class RecipeDetailViewModel(
     private suspend fun announce(event: RecipeDetailEvent) = eventChannel.send(event)
 
     private suspend fun failed(error: AppError) {
-        internalState.update { it.copy(isLoading = false, isWorking = false, error = error.describe()) }
-        announce(RecipeDetailEvent.Failed(error.describe()))
+        val message = error.describe(Res.string.error_unauthorized_action)
+        internalState.update { it.copy(isLoading = false, isWorking = false, error = message) }
+        announce(RecipeDetailEvent.Failed(message))
     }
 }
-
-private fun RecipeIngredient.toUi(resolver: LabelResolver): IngredientLineUi =
-    IngredientLineUi(
-        name = freeText ?: ingredient?.let { resolver.label(it) ?: it.value }.orEmpty(),
-        quantity = quantity?.let { held -> formatQuantity(held.amount, held.unit?.let(resolver::label)) },
-        optional = optional,
-    )
-
-/**
- * [validation] lets an action say what its own refusal means. Without one the field and the
- * reason are reported as they are: a sentence invented here would speak for three actions that
- * fail for different reasons on the same field.
- */
-private fun AppError.describe(validation: ((AppError.Validation) -> UiText)? = null): UiText =
-    when (this) {
-        is AppError.Network -> UiText.of(Res.string.error_no_connection)
-        is AppError.Timeout -> UiText.of(Res.string.error_timeout)
-        is AppError.Unauthorized -> UiText.of(Res.string.error_unauthorized_action)
-        is AppError.NotFound -> UiText.of(Res.string.error_not_found, resource)
-        is AppError.Validation -> validation?.invoke(this) ?: UiText.of(Res.string.error_invalid_field, field, reason)
-        is AppError.Unknown -> UiText.of(Res.string.error_unknown)
-    }
