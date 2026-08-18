@@ -342,7 +342,7 @@ class SuggestionsViewModelTest {
         }
 
     @Test
-    fun `a saved recipe is exposed separately from the generated suggestions, matched against the pantry`() =
+    fun `a saved recipe is exposed separately from the generated suggestions and matched against the pantry`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort()
             recipes.saveRecipe(UserId.of("user-1").orFail(), dish("recipe-1"))
