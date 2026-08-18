@@ -48,8 +48,9 @@
     <string name="shopping_undo">Deshacer</string>
     <string name="detail_title">Receta</string>
     <string name="nav_back">Atrás</string>
-    <string name="detail_have">En tu despensa</string>
-    <string name="detail_missing">Tienes que comprar</string>
+    <string name="detail_ingredients">Ingredientes</string>
+    <string name="detail_have">En despensa</string>
+    <string name="detail_missing">Hay que comprar</string>
     <string name="detail_unverifiable">Compruébalo tú</string>
     <string name="detail_unverifiable_body">Tu despensa no puede decir ni que sí ni que no de estos</string>
     <string name="detail_steps">Pasos</string>

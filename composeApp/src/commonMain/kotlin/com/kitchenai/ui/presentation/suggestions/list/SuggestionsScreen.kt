@@ -30,6 +30,8 @@ import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
+import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.resolve
@@ -171,64 +173,85 @@ private fun SuggestionCard(
     onOpen: (RecipeId) -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(Dimens.large),
-            verticalArrangement = Arrangement.spacedBy(Dimens.small),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+        Column {
+            // The slot a photograph will occupy once the catalogue has one: even tonal and
+            // empty, it is what sets the card's proportions rather than leaving it a text slab.
+            RecipeImagePlaceholder()
+            Column(
+                modifier = Modifier.padding(Dimens.large),
+                verticalArrangement = Arrangement.spacedBy(Dimens.small),
             ) {
-                Text(suggestion.title, style = MaterialTheme.typography.titleMedium)
-                if (suggestion.provenance != null) {
-                    Text(stringResource(Res.string.suggestions_generated), style = MaterialTheme.typography.labelSmall)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(suggestion.title, style = MaterialTheme.typography.titleMedium)
+                    if (suggestion.provenance != null) {
+                        Text(
+                            stringResource(Res.string.suggestions_generated),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
                 }
+                // Agent and model, not only that something generated this: whoever reports a bad
+                // dish has to be able to say which one wrote it.
+                suggestion.provenance?.let { by ->
+                    Text(
+                        "${by.agentId} · ${by.modelId}",
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                suggestion.summary?.let { summary ->
+                    Text(
+                        summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                // Its own row rather than a bare line lost among the others: the one metadata
+                // fact this card has, given the same visual weight the prototype's badge gives it.
+                suggestion.totalMinutes?.let { minutes ->
+                    Tag(
+                        label = "$minutes min",
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                SuggestionCoverage(suggestion, onOpen)
             }
-            // Agent and model, not only that something generated this: whoever reports a bad
-            // dish has to be able to say which one wrote it.
-            suggestion.provenance?.let { by ->
-                Text(
-                    "${by.agentId} · ${by.modelId}",
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            suggestion.summary?.let { summary ->
-                Text(
-                    summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            suggestion.totalMinutes?.let {
-                    minutes ->
-                Text("$minutes min", style = MaterialTheme.typography.labelSmall)
-            }
-            CoverageBar(fraction = suggestion.coverage) {
-                Text(
-                    "${suggestion.heldCount} of ${suggestion.totalCount} ingredients",
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-            if (suggestion.missing.isNotEmpty()) {
-                Text(
-                    stringResource(Res.string.suggestions_missing, suggestion.missing.joinToString()),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            // Its own line, its own wording. Folding these into "missing" would claim the pantry
-            // knows something it does not.
-            if (suggestion.unverifiable.isNotEmpty()) {
-                Text(
-                    "Check manually: ${suggestion.unverifiable.joinToString()}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Button(onClick = { onOpen(suggestion.id) }) { Text(stringResource(Res.string.suggestions_open)) }
         }
     }
+}
+
+@Composable
+private fun SuggestionCoverage(
+    suggestion: SuggestionUi,
+    onOpen: (RecipeId) -> Unit,
+) {
+    CoverageBar(fraction = suggestion.coverage) {
+        Text(
+            "${suggestion.heldCount} of ${suggestion.totalCount} ingredients",
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+    if (suggestion.missing.isNotEmpty()) {
+        Text(
+            stringResource(Res.string.suggestions_missing, suggestion.missing.joinToString()),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    // Its own line, its own wording. Folding these into "missing" would claim the pantry knows
+    // something it does not.
+    if (suggestion.unverifiable.isNotEmpty()) {
+        Text(
+            "Check manually: ${suggestion.unverifiable.joinToString()}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Button(onClick = { onOpen(suggestion.id) }) { Text(stringResource(Res.string.suggestions_open)) }
 }

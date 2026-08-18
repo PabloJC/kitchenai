@@ -18,6 +18,7 @@ data class RecipeDetailUiState(
     val missing: List<IngredientLineUi> = emptyList(),
     val unverifiable: List<IngredientLineUi> = emptyList(),
     val steps: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val isWorking: Boolean = false,
     val isSaved: Boolean = false,

@@ -16,6 +16,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
+import com.kitchenai.ui.presentation.common.wordFor
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_missing_ingredients
 import com.kitchenai.ui.resources.error_unauthorized_action
@@ -250,6 +251,7 @@ class RecipeDetailViewModel(
                 missing = match?.missing.orEmpty().map { it.ingredient.toUi(resolver) },
                 unverifiable = match?.unverifiable.orEmpty().map { it.toUi(resolver) },
                 steps = found.steps,
+                tags = found.tags.map(resolver::wordFor),
                 isLoading = false,
                 error = null,
             )
