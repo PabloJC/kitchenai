@@ -57,7 +57,7 @@
     <string name="detail_unverifiable_body">Your pantry cannot say either way about these</string>
     <string name="detail_steps">Steps</string>
     <string name="detail_servings">Servings</string>
-    <string name="detail_add_missing">Add missing to list</string>
+    <string name="detail_add_missing">Add missing</string>
     <string name="detail_cook">Cook this</string>
     <string name="detail_save">Save</string>
     <string name="detail_saved">Saved</string>

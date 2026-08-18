@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,13 +22,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -35,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +58,8 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.navigation.DetailTopBarState
+import com.kitchenai.ui.navigation.TopBarAction
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
@@ -84,6 +92,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun RecipeDetailScreen(
     userId: UserId,
     recipeId: RecipeId,
+    detailTopBar: DetailTopBarState,
     modifier: Modifier = Modifier,
     viewModel: RecipeDetailViewModel = koinViewModel(),
 ) {
@@ -99,6 +108,7 @@ fun RecipeDetailScreen(
         viewModel.start(userId, recipeId, platformLanguageTags(), defaultListName)
     }
     LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.announce(event) } }
+    PublishTopBar(state, viewModel, detailTopBar)
 
     if (confirmingCook) {
         CookDialog(
@@ -143,6 +153,38 @@ fun RecipeDetailScreen(
     }
 }
 
+/**
+ * AppShell owns the one top bar every screen shares; this is this screen's turn to say what
+ * belongs in it, and to hand it back once this screen is no longer the one showing.
+ */
+@Composable
+private fun PublishTopBar(
+    state: RecipeDetailUiState,
+    viewModel: RecipeDetailViewModel,
+    detailTopBar: DetailTopBarState,
+) {
+    val savedTint = MaterialTheme.colorScheme.primary
+    val favoriteLabel = stringResource(if (state.isSaved) Res.string.detail_saved else Res.string.detail_save)
+    DisposableEffect(state.title, state.isSaved, state.isWorking) {
+        detailTopBar.title = state.title.ifBlank { null }
+        detailTopBar.action =
+            TopBarAction(
+                icon = if (state.isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                contentDescription = favoriteLabel,
+                enabled = !state.isWorking && !state.isSaved,
+                tint = if (state.isSaved) savedTint else null,
+                onClick = viewModel::save,
+            )
+        onDispose {}
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            detailTopBar.title = null
+            detailTopBar.action = null
+        }
+    }
+}
+
 @Composable
 private fun Header(
     state: RecipeDetailUiState,
@@ -155,16 +197,7 @@ private fun Header(
         modifier = Modifier.padding(horizontal = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(state.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-            // A heart, not a third button beside "Add missing" and "Cook this": saving is not an
-            // action someone takes on the way out, and the prototype never gave it that weight.
-            FavoriteToggle(saved = state.isSaved, enabled = !state.isWorking, onToggle = viewModel::save)
-        }
+        Text(state.title, style = MaterialTheme.typography.headlineSmall)
         state.summary?.let { summary -> Text(summary, style = MaterialTheme.typography.bodyMedium) }
         state.totalMinutes?.let { minutes -> Text("$minutes min", style = MaterialTheme.typography.labelSmall) }
         if (state.tags.isNotEmpty()) {
@@ -179,25 +212,6 @@ private fun Header(
             }
         }
         ServingsStepper(state, viewModel)
-    }
-}
-
-/**
- * Filled and primary once saved, outlined before: the same one-directional save this screen has
- * always had, just an icon instead of a text button — there is no "unsave" to toggle back to.
- */
-@Composable
-private fun FavoriteToggle(
-    saved: Boolean,
-    enabled: Boolean,
-    onToggle: () -> Unit,
-) {
-    IconButton(onClick = onToggle, enabled = enabled && !saved) {
-        Icon(
-            imageVector = if (saved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-            contentDescription = stringResource(if (saved) Res.string.detail_saved else Res.string.detail_save),
-            tint = if (saved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -381,9 +395,27 @@ private fun Actions(
             OutlinedButton(
                 onClick = viewModel::addMissingToList,
                 enabled = !state.isWorking && state.missing.isNotEmpty(),
-                modifier = Modifier.weight(1f),
-            ) { Text(stringResource(Res.string.detail_add_missing)) }
-            Button(onClick = onCook, enabled = state.canCook, modifier = Modifier.weight(1f)) {
+                modifier = Modifier.weight(1f).height(Dimens.touchTarget),
+            ) {
+                Icon(
+                    Icons.Outlined.ShoppingCart,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(Dimens.small))
+                Text(stringResource(Res.string.detail_add_missing))
+            }
+            Button(
+                onClick = onCook,
+                enabled = state.canCook,
+                modifier = Modifier.weight(1f).height(Dimens.touchTarget),
+            ) {
+                Icon(
+                    Icons.Outlined.LocalFireDepartment,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(Dimens.small))
                 Text(stringResource(Res.string.detail_cook))
             }
         }

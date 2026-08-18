@@ -55,7 +55,7 @@
     <string name="detail_unverifiable_body">Tu despensa no puede decir ni que sí ni que no de estos</string>
     <string name="detail_steps">Pasos</string>
     <string name="detail_servings">Raciones</string>
-    <string name="detail_add_missing">Añadir lo que falta a la lista</string>
+    <string name="detail_add_missing">Añadir lo que falta</string>
     <string name="detail_cook">Cocinar esto</string>
     <string name="detail_save">Guardar</string>
     <string name="detail_saved">Guardado</string>
