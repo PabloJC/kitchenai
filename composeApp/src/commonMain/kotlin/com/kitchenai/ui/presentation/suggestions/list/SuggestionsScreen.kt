@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +45,6 @@ import com.kitchenai.ui.resources.suggestions_missing
 import com.kitchenai.ui.resources.suggestions_nothing_body
 import com.kitchenai.ui.resources.suggestions_nothing_title
 import com.kitchenai.ui.resources.suggestions_only_pantry
-import com.kitchenai.ui.resources.suggestions_open
 import com.kitchenai.ui.resources.suggestions_quick
 import com.kitchenai.ui.resources.suggestions_working
 import org.jetbrains.compose.resources.stringResource
@@ -188,7 +186,9 @@ private fun SuggestionCard(
     suggestion: SuggestionUi,
     onOpen: (RecipeId) -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    // The whole card opens the recipe: a dedicated "Open" button repeated what tapping the card
+    // already does everywhere else in the app.
+    Card(onClick = { onOpen(suggestion.id) }, modifier = Modifier.fillMaxWidth()) {
         Column {
             // The slot a photograph will occupy once the catalogue has one: even tonal and
             // empty, it is what sets the card's proportions rather than leaving it a text slab.
@@ -237,17 +237,14 @@ private fun SuggestionCard(
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                SuggestionCoverage(suggestion, onOpen)
+                SuggestionCoverage(suggestion)
             }
         }
     }
 }
 
 @Composable
-private fun SuggestionCoverage(
-    suggestion: SuggestionUi,
-    onOpen: (RecipeId) -> Unit,
-) {
+private fun SuggestionCoverage(suggestion: SuggestionUi) {
     CoverageBar(fraction = suggestion.coverage) {
         Text(
             "${suggestion.heldCount} of ${suggestion.totalCount} ingredients",
@@ -269,5 +266,4 @@ private fun SuggestionCoverage(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    Button(onClick = { onOpen(suggestion.id) }) { Text(stringResource(Res.string.suggestions_open)) }
 }

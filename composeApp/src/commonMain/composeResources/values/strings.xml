@@ -75,7 +75,6 @@
     <string name="suggestions_working">Reading your pantry and thinking of dishes. This takes a moment.</string>
     <string name="suggestions_generated">Generated</string>
     <string name="suggestions_missing">Missing: %1$s</string>
-    <string name="suggestions_open">Open</string>
     <string name="profile_name">Name</string>
     <string name="profile_servings">Servings</string>
     <string name="profile_constraints">Constraints</string>

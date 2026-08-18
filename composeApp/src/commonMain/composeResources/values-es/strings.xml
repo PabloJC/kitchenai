@@ -73,7 +73,6 @@
     <string name="suggestions_working">Leyendo tu despensa y pensando platos. Esto tarda un momento.</string>
     <string name="suggestions_generated">Generado</string>
     <string name="suggestions_missing">Faltan: %1$s</string>
-    <string name="suggestions_open">Abrir</string>
     <string name="profile_name">Nombre</string>
     <string name="profile_servings">Raciones</string>
     <string name="profile_constraints">Restricciones</string>
