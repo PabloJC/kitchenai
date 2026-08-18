@@ -48,6 +48,8 @@
     <string name="shopping_removed_suffix">removed</string>
     <string name="shopping_cleared_suffix">lines cleared</string>
     <string name="shopping_undo">Undo</string>
+    <string name="detail_title">Recipe</string>
+    <string name="nav_back">Back</string>
     <string name="detail_have">In your pantry</string>
     <string name="detail_missing">You need to buy</string>
     <string name="detail_unverifiable">Check manually</string>

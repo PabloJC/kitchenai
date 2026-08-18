@@ -3,6 +3,7 @@ package com.kitchenai.ui.presentation.suggestions.detail
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -87,7 +88,13 @@ fun RecipeDetailScreen(
         )
     }
 
-    Scaffold(modifier = modifier, snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+    // The insets are AppShell's; a second round here would open a gap between the toolbar and
+    // the bottom bar rather than closing one.
+    Scaffold(
+        modifier = modifier,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbar) },
+    ) { padding ->
         if (state.isLoading) {
             LoadingState(Modifier.padding(padding))
             return@Scaffold

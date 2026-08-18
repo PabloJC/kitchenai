@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.pantry
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -65,6 +66,10 @@ fun PantryScreen(
 
     Scaffold(
         modifier = modifier,
+        // The insets are AppShell's: its own Scaffold already sizes the content area to sit
+        // between the toolbar and the bottom bar, and a second round here would open a gap on
+        // both edges rather than closing one.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             FloatingActionButton(
