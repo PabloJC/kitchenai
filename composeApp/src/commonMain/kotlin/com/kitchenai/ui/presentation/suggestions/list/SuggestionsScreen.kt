@@ -36,7 +36,6 @@ import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.suggestions_empty_body
 import com.kitchenai.ui.resources.suggestions_empty_title
-import com.kitchenai.ui.resources.suggestions_generate
 import com.kitchenai.ui.resources.suggestions_generated
 import com.kitchenai.ui.resources.suggestions_missing
 import com.kitchenai.ui.resources.suggestions_nothing_body
@@ -44,7 +43,6 @@ import com.kitchenai.ui.resources.suggestions_nothing_title
 import com.kitchenai.ui.resources.suggestions_only_pantry
 import com.kitchenai.ui.resources.suggestions_open
 import com.kitchenai.ui.resources.suggestions_quick
-import com.kitchenai.ui.resources.suggestions_regenerate
 import com.kitchenai.ui.resources.suggestions_working
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -78,21 +76,6 @@ fun SuggestionsScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
             Options(state, viewModel)
-            Button(
-                onClick = viewModel::generate,
-                enabled = !state.isGenerating,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    if (state.hasGenerated) {
-                        stringResource(
-                            Res.string.suggestions_regenerate,
-                        )
-                    } else {
-                        stringResource(Res.string.suggestions_generate)
-                    },
-                )
-            }
             state.error?.let { message -> Text(message.resolve(), color = MaterialTheme.colorScheme.error) }
             Results(state, onOpen, onRefresh = viewModel::generate)
         }
