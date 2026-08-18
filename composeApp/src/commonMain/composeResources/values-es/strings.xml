@@ -72,6 +72,7 @@
     <string name="suggestions_nothing_body">Añade algunas cosas a tu despensa y desliza hacia abajo para volver a intentarlo</string>
     <string name="suggestions_working">Leyendo tu despensa y pensando platos. Esto tarda un momento.</string>
     <string name="suggestions_generated">Generado</string>
+    <string name="suggestions_saved_title">Recetas guardadas</string>
     <string name="suggestions_missing">Faltan: %1$s</string>
     <string name="profile_name">Nombre</string>
     <string name="profile_servings">Raciones</string>

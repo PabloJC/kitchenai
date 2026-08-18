@@ -24,6 +24,8 @@ import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
+import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
@@ -339,6 +341,22 @@ class SuggestionsViewModelTest {
             assertEquals("Dish", stored.single { it.id == id }.title)
         }
 
+    @Test
+    fun `a saved recipe is exposed separately from the generated suggestions, matched against the pantry`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort()
+            recipes.saveRecipe(UserId.of("user-1").orFail(), dish("recipe-1"))
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-2")))
+
+            val viewModel = started(recipes = recipes)
+            advanceUntilIdle()
+
+            // Two different facts, two different fields: what was just generated, and what was
+            // kept on some earlier visit. Neither list is the other with items removed.
+            assertEquals(listOf("recipe-2"), viewModel.state.value.suggestions.map { it.id.value })
+            assertEquals(listOf("recipe-1"), viewModel.state.value.savedRecipes.map { it.id.value })
+        }
+
     private fun started(
         recipes: FakeRecipePort = FakeRecipePort(),
         languageTags: List<String> = listOf("en"),
@@ -349,6 +367,8 @@ class SuggestionsViewModelTest {
             getStoredSuggestions = GetStoredSuggestionsUseCase(recipes, pantry, TimeProvider { now }),
             storeSuggestions = StoreSuggestionsUseCase(recipes),
             observeIngredients = ObserveIngredientsUseCase(catalogue),
+            observeSavedRecipes = ObserveSavedRecipesUseCase(recipes),
+            matchRecipe = MatchRecipeAgainstPantryUseCase(recipes, pantry, TimeProvider { now }),
         ).also { it.start(UserId.of("user-1").orFail(), languageTags) }
     }
 }

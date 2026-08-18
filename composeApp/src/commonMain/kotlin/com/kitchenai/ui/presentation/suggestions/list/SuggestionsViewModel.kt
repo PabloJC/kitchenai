@@ -5,10 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
+import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
@@ -37,6 +40,8 @@ class SuggestionsViewModel(
     private val getStoredSuggestions: GetStoredSuggestionsUseCase,
     private val storeSuggestions: StoreSuggestionsUseCase,
     private val observeIngredients: ObserveIngredientsUseCase,
+    private val observeSavedRecipes: ObserveSavedRecipesUseCase,
+    private val matchRecipe: MatchRecipeAgainstPantryUseCase,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(SuggestionsUiState())
     val state: StateFlow<SuggestionsUiState> = internalState.asStateFlow()
@@ -51,6 +56,7 @@ class SuggestionsViewModel(
     // What is on screen in domain shape, so it can be re-resolved into words again once the
     // catalogue answers, rather than only at the moment it was first shown.
     private var current: List<RecipeSuggestion> = emptyList()
+    private var currentSaved: List<RecipeSuggestion> = emptyList()
     private var user: UserId? = null
     private var languageTags: List<String> = emptyList()
     private var started = false
@@ -72,6 +78,9 @@ class SuggestionsViewModel(
                 // this listener the way the 20-60s model call used to.
                 reresolve()
             }
+        }
+        viewModelScope.launch {
+            observeSavedRecipes(userId).collect { recipes -> matchSaved(userId, recipes) }
         }
         viewModelScope.launch {
             showStored(userId)
@@ -129,6 +138,23 @@ class SuggestionsViewModel(
         reresolve()
     }
 
+    /**
+     * A saved recipe carries no match of its own — matching is what a suggestion's orchestrator
+     * stamps on the way out, and a save just keeps the [Recipe]. Computed here the same way
+     * [RecipeDetailViewModel] does it, so the coverage bar means the same thing on every card.
+     */
+    private suspend fun matchSaved(
+        userId: UserId,
+        recipes: List<Recipe>,
+    ) {
+        currentSaved =
+            recipes.mapNotNull { recipe ->
+                val match = matchRecipe(userId, recipe) as? AppResult.Success ?: return@mapNotNull null
+                RecipeSuggestion(recipe, match.data, recipe.source)
+            }
+        reresolve()
+    }
+
     /** Re-applies the resolver to whatever is on screen, for when the catalogue answers after the fact. */
     private fun reresolve() {
         // With no tags the resolve chain is empty, every lookup misses, and a card names a
@@ -136,7 +162,10 @@ class SuggestionsViewModel(
         // taxonomies are not needed here — only a language to answer in.
         val resolver = LabelResolver(ingredients = ingredients.value, languageTags = languageTags)
         internalState.update { state ->
-            state.copy(suggestions = current.map { suggestion -> suggestion.toUi(resolver) })
+            state.copy(
+                suggestions = current.map { suggestion -> suggestion.toUi(resolver) },
+                savedRecipes = currentSaved.map { suggestion -> suggestion.toUi(resolver) },
+            )
         }
     }
 

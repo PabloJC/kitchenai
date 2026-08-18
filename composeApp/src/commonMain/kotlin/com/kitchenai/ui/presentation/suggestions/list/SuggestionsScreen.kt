@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +33,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
+import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SkeletonBar
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
@@ -46,6 +49,7 @@ import com.kitchenai.ui.resources.suggestions_nothing_body
 import com.kitchenai.ui.resources.suggestions_nothing_title
 import com.kitchenai.ui.resources.suggestions_only_pantry
 import com.kitchenai.ui.resources.suggestions_quick
+import com.kitchenai.ui.resources.suggestions_saved_title
 import com.kitchenai.ui.resources.suggestions_working
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -122,31 +126,43 @@ private fun Results(
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
-        when {
-            // Before isGenerating: a stored set from the last launch stays on screen while a new
-            // one runs behind it, rather than being hidden by a skeleton for the better part of
-            // a minute.
-            state.suggestions.isNotEmpty() ->
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
-                    items(state.suggestions, key = { it.id.value }) { suggestion ->
-                        SuggestionCard(suggestion, onOpen)
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
+            when {
+                // Before isGenerating: a stored set from the last launch stays on screen while a
+                // new one runs behind it, rather than being hidden by a skeleton for the better
+                // part of a minute.
+                state.suggestions.isNotEmpty() ->
+                    items(state.suggestions, key = { it.id.value }) { suggestion -> SuggestionCard(suggestion, onOpen) }
+                // A skeleton rather than a spinner: the call takes the better part of a minute,
+                // and a blank screen for that long reads as a hang rather than as work.
+                state.isGenerating -> item { Skeleton() }
+                // Generated and found nothing is not the same as never asked, and neither is an error.
+                state.hasGenerated && state.error == null ->
+                    item {
+                        EmptyState(
+                            title = stringResource(Res.string.suggestions_nothing_title),
+                            body = stringResource(Res.string.suggestions_nothing_body),
+                        )
                     }
-                }
-            // A skeleton rather than a spinner: the call takes the better part of a minute, and
-            // a blank screen for that long reads as a hang rather than as work.
-            state.isGenerating -> Skeleton()
-            // Generated and found nothing is not the same as never asked, and neither is an error.
-            state.hasGenerated && state.error == null ->
-                EmptyState(
-                    title = stringResource(Res.string.suggestions_nothing_title),
-                    body = stringResource(Res.string.suggestions_nothing_body),
-                )
-            !state.hasGenerated ->
-                EmptyState(
-                    title = stringResource(Res.string.suggestions_empty_title),
-                    body = stringResource(Res.string.suggestions_empty_body),
-                )
-            else -> Unit
+                !state.hasGenerated ->
+                    item {
+                        EmptyState(
+                            title = stringResource(Res.string.suggestions_empty_title),
+                            body = stringResource(Res.string.suggestions_empty_body),
+                        )
+                    }
+                else -> Unit
+            }
+            // Always last: a save is a standing choice the user made on some earlier visit, not
+            // this session's answer, so it never competes with what was just generated for the
+            // top of the list.
+            if (state.savedRecipes.isNotEmpty()) {
+                item { SectionHeader(title = stringResource(Res.string.suggestions_saved_title)) }
+                items(
+                    state.savedRecipes,
+                    key = { "saved-${it.id.value}" },
+                ) { suggestion -> SuggestionCard(suggestion, onOpen) }
+            }
         }
     }
 }
@@ -202,23 +218,17 @@ private fun SuggestionCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(suggestion.title, style = MaterialTheme.typography.titleMedium)
+                    Text(suggestion.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    // The prototype's subtle badge, not the raw agent and model id: which model
+                    // wrote a dish is a support detail, not something a reader needs on the card.
                     if (suggestion.provenance != null) {
-                        Text(
-                            stringResource(Res.string.suggestions_generated),
-                            style = MaterialTheme.typography.labelSmall,
+                        Tag(
+                            label = stringResource(Res.string.suggestions_generated),
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            icon = Icons.Filled.AutoAwesome,
                         )
                     }
-                }
-                // Agent and model, not only that something generated this: whoever reports a bad
-                // dish has to be able to say which one wrote it.
-                suggestion.provenance?.let { by ->
-                    Text(
-                        "${by.agentId} · ${by.modelId}",
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
                 suggestion.summary?.let { summary ->
                     Text(
