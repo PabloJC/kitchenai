@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.suggestions.detail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,11 +16,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -37,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
@@ -147,7 +155,16 @@ private fun Header(
         modifier = Modifier.padding(horizontal = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),
     ) {
-        Text(state.title, style = MaterialTheme.typography.headlineSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(state.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            // A heart, not a third button beside "Add missing" and "Cook this": saving is not an
+            // action someone takes on the way out, and the prototype never gave it that weight.
+            FavoriteToggle(saved = state.isSaved, enabled = !state.isWorking, onToggle = viewModel::save)
+        }
         state.summary?.let { summary -> Text(summary, style = MaterialTheme.typography.bodyMedium) }
         state.totalMinutes?.let { minutes -> Text("$minutes min", style = MaterialTheme.typography.labelSmall) }
         if (state.tags.isNotEmpty()) {
@@ -162,6 +179,25 @@ private fun Header(
             }
         }
         ServingsStepper(state, viewModel)
+    }
+}
+
+/**
+ * Filled and primary once saved, outlined before: the same one-directional save this screen has
+ * always had, just an icon instead of a text button — there is no "unsave" to toggle back to.
+ */
+@Composable
+private fun FavoriteToggle(
+    saved: Boolean,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+) {
+    IconButton(onClick = onToggle, enabled = enabled && !saved) {
+        Icon(
+            imageVector = if (saved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = stringResource(if (saved) Res.string.detail_saved else Res.string.detail_save),
+            tint = if (saved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -286,7 +322,27 @@ private fun StepsCard(steps: List<String>) {
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
             Text(stringResource(Res.string.detail_steps), style = MaterialTheme.typography.titleMedium)
-            steps.forEachIndexed { index, step -> StepRow(index + 1, step, connecting = index != steps.lastIndex) }
+            val ruleColor = MaterialTheme.colorScheme.outlineVariant
+            Column(
+                // One rule running the length of the list, not a segment per row: drawn behind
+                // the circles once this column's own height is known, rather than guessed at
+                // row by row against text of unknown length.
+                modifier =
+                    Modifier.drawBehind {
+                        if (steps.size < 2) return@drawBehind
+                        val x = Dimens.huge.toPx() / 2
+                        val inset = Dimens.huge.toPx() / 2
+                        drawLine(
+                            color = ruleColor,
+                            start = Offset(x, inset),
+                            end = Offset(x, size.height - inset),
+                            strokeWidth = DividerDefaults.Thickness.toPx(),
+                        )
+                    },
+                verticalArrangement = Arrangement.spacedBy(Dimens.medium),
+            ) {
+                steps.forEachIndexed { index, step -> StepRow(index + 1, step, isFirst = index == 0) }
+            }
         }
     }
 }
@@ -295,31 +351,16 @@ private fun StepsCard(steps: List<String>) {
 private fun StepRow(
     number: Int,
     step: String,
-    connecting: Boolean,
+    isFirst: Boolean,
 ) {
+    val colors = MaterialTheme.colorScheme
+    val fill = if (isFirst) colors.primaryContainer else colors.surfaceContainerHighest
+    val onFill = if (isFirst) colors.onPrimaryContainer else colors.onSurfaceVariant
+    var circle = Modifier.size(Dimens.huge).clip(CircleShape).background(fill)
+    if (!isFirst) circle = circle.border(DividerDefaults.Thickness, colors.outlineVariant, CircleShape)
     Row(horizontalArrangement = Arrangement.spacedBy(Dimens.medium)) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(Dimens.huge)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(number.toString(), style = MaterialTheme.typography.titleMedium)
-            }
-            // A short rule rather than one stretched to the next circle: the text beside it can
-            // be any length, and a line built to match it would need a custom layout pass.
-            if (connecting) {
-                Box(
-                    modifier =
-                        Modifier
-                            .padding(vertical = Dimens.extraSmall)
-                            .size(width = DividerDefaults.Thickness, height = Dimens.large)
-                            .background(MaterialTheme.colorScheme.outlineVariant),
-                )
-            }
+        Box(modifier = circle, contentAlignment = Alignment.Center) {
+            Text(number.toString(), style = MaterialTheme.typography.titleMedium, color = onFill)
         }
         Text(step, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = Dimens.small))
     }
@@ -337,14 +378,6 @@ private fun Actions(
             modifier = Modifier.fillMaxWidth().padding(Dimens.large),
             horizontalArrangement = Arrangement.spacedBy(Dimens.small),
         ) {
-            OutlinedButton(
-                onClick = viewModel::save,
-                enabled = !state.isWorking && !state.isSaved,
-                modifier = Modifier.weight(1f),
-            ) {
-                val label = if (state.isSaved) Res.string.detail_saved else Res.string.detail_save
-                Text(stringResource(label))
-            }
             OutlinedButton(
                 onClick = viewModel::addMissingToList,
                 enabled = !state.isWorking && state.missing.isNotEmpty(),
