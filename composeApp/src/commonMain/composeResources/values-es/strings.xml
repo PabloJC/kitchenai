@@ -46,6 +46,8 @@
     <string name="shopping_removed_suffix">eliminado</string>
     <string name="shopping_cleared_suffix">líneas vaciadas</string>
     <string name="shopping_undo">Deshacer</string>
+    <string name="detail_title">Receta</string>
+    <string name="nav_back">Atrás</string>
     <string name="detail_have">En tu despensa</string>
     <string name="detail_missing">Tienes que comprar</string>
     <string name="detail_unverifiable">Compruébalo tú</string>

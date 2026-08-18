@@ -1,11 +1,16 @@
 package com.kitchenai.ui.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -15,12 +20,17 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.detail_title
+import com.kitchenai.ui.resources.nav_back
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * The frame every tab is drawn inside. Recipe detail is reached from a tab and is not one, so
- * it never appears in [destinations].
+ * it never appears in [destinations] — that absence is what tells this bar to draw a back
+ * arrow instead of relying on the caller to say so.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppShell(
     navController: NavHostController,
@@ -29,9 +39,27 @@ fun AppShell(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val entry by navController.currentBackStackEntryAsState()
+    val tab = destinations.firstOrNull { entry.isOn(it.route) }
 
     Scaffold(
         modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(tab?.label ?: Res.string.detail_title)) },
+                navigationIcon = {
+                    // Only the routes absent from destinations need a way out: every tab is
+                    // reached by tapping the bar below, never by going back into it.
+                    if (tab == null) {
+                        IconButton(onClick = navController::navigateUp) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(Res.string.nav_back),
+                            )
+                        }
+                    }
+                },
+            )
+        },
         bottomBar = {
             NavigationBar {
                 destinations.forEach { destination ->
