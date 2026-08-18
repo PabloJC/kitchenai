@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +32,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
+import com.kitchenai.ui.designsystem.component.SkeletonBar
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
@@ -52,6 +54,8 @@ import org.koin.compose.viewmodel.koinViewModel
 
 private const val QUICK_MINUTES = 30
 private const val SKELETON_CARDS = 3
+private const val SKELETON_TITLE_WIDTH = 0.7f
+private const val SKELETON_SUMMARY_WIDTH = 0.85f
 
 @Composable
 fun SuggestionsScreen(
@@ -153,15 +157,27 @@ private fun Results(
 private fun Skeleton() {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
         Text(stringResource(Res.string.suggestions_working), style = MaterialTheme.typography.bodyMedium)
-        repeat(SKELETON_CARDS) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(Dimens.large),
-                    verticalArrangement = Arrangement.spacedBy(Dimens.small),
-                ) {
-                    CoverageBar(fraction = 0f)
-                    CoverageBar(fraction = 0f)
-                }
+        repeat(SKELETON_CARDS) { SkeletonCard() }
+    }
+}
+
+/**
+ * The same shape as [SuggestionCard] — the placeholder image, a title bar, two summary lines and
+ * a coverage bar — so the layout does not jump once real cards replace it.
+ */
+@Composable
+private fun SkeletonCard() {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            RecipeImagePlaceholder()
+            Column(
+                modifier = Modifier.padding(Dimens.large),
+                verticalArrangement = Arrangement.spacedBy(Dimens.small),
+            ) {
+                SkeletonBar(Modifier.fillMaxWidth(SKELETON_TITLE_WIDTH).height(Dimens.large))
+                SkeletonBar(Modifier.fillMaxWidth().height(Dimens.medium))
+                SkeletonBar(Modifier.fillMaxWidth(SKELETON_SUMMARY_WIDTH).height(Dimens.medium))
+                CoverageBar(fraction = 0f)
             }
         }
     }
