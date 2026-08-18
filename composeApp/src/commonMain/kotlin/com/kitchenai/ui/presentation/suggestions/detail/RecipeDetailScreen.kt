@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -58,6 +57,7 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.designsystem.theme.PillShape
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.TopBarAction
 import com.kitchenai.ui.platform.platformLanguageTags
@@ -223,7 +223,7 @@ private fun ServingsStepper(
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(percent = 50),
+        shape = PillShape,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = Dimens.small, vertical = Dimens.extraSmall),

@@ -142,6 +142,11 @@ class SuggestionsViewModel(
      * A saved recipe carries no match of its own — matching is what a suggestion's orchestrator
      * stamps on the way out, and a save just keeps the [Recipe]. Computed here the same way
      * [RecipeDetailViewModel] does it, so the coverage bar means the same thing on every card.
+     *
+     * A recipe whose own match fails is dropped from the section rather than shown broken or
+     * blamed with a banner: one card silently missing costs less than a section-wide error over
+     * what is otherwise a working list, and the pantry listener behind [matchRecipe] retries
+     * itself on its own.
      */
     private suspend fun matchSaved(
         userId: UserId,

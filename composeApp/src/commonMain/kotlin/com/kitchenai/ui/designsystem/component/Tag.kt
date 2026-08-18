@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -16,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.designsystem.theme.PillShape
 
 /**
  * A read-only pill of coloured text: an ingredient's pantry status, a recipe's tag, or — with
@@ -33,7 +33,7 @@ fun Tag(
         modifier = modifier,
         color = containerColor,
         contentColor = contentColor,
-        shape = RoundedCornerShape(percent = 50),
+        shape = PillShape,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = Dimens.small, vertical = Dimens.extraSmall),

@@ -350,6 +350,30 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
+    fun `a tag resolves to its label even though its taxonomy is not the units one`() =
+        runTest(dispatcher) {
+            val cuisine = TermRef(TaxonomyId.of("cuisines").orFail(), TermId.of("italian").orFail())
+            val tagged = dish.copy(id = RecipeId.of("recipe-2").orFail(), tags = listOf(cuisine))
+            val viewModel =
+                started(
+                    pantry = emptyList(),
+                    recipePort = FakeRecipePort(catalogue = listOf(tagged)),
+                    recipeId = tagged.id,
+                )
+            advanceUntilIdle()
+            // Before the catalogue answers: the same honest fallback an ingredient gets.
+            assertEquals(listOf("italian"), viewModel.state.value.tags)
+
+            taxonomies.taxonomies.emit(listOf(cuisinesTaxonomy(default = "en")))
+            taxonomies.terms.emit(listOf(term(cuisine, mapOf("en" to "Italian"))))
+            advanceUntilIdle()
+
+            // A tag's taxonomy carries no `purpose` — watching only UNITS-purpose taxonomies,
+            // as this screen once did, would leave this stuck on "italian" forever.
+            assertEquals(listOf("Italian"), viewModel.state.value.tags)
+        }
+
+    @Test
     fun `an empty screen does not report that nothing is missing`() =
         runTest(dispatcher) {
             val viewModel = started(pantry = emptyList(), recipePort = FakeRecipePort(catalogue = emptyList()))
@@ -390,6 +414,7 @@ class RecipeDetailViewModelTest {
         pantry: List<PantryItem>,
         pantryPort: FakePantryPort = FakePantryPort(pantry),
         recipePort: FakeRecipePort = FakeRecipePort(catalogue = listOf(dish)),
+        recipeId: RecipeId = dish.id,
     ): RecipeDetailViewModel {
         val time = TimeProvider { now }
         val reads =
@@ -416,7 +441,7 @@ class RecipeDetailViewModelTest {
                 defaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
             )
         return RecipeDetailViewModel(reads, writes)
-            .also { it.start(user, dish.id, listOf("en"), "List") }
+            .also { it.start(user, recipeId, listOf("en"), "List") }
     }
 
     private fun ingredient(
@@ -431,6 +456,10 @@ class RecipeDetailViewModelTest {
 
     private fun unitsTaxonomy(default: String): Taxonomy =
         Taxonomy(gram.taxonomy, mapOf("en" to "Units"), default, TaxonomyPurpose.UNITS)
+
+    /** No `purpose` at all — the same as diets, allergens and every other tag vocabulary seeded. */
+    private fun cuisinesTaxonomy(default: String): Taxonomy =
+        Taxonomy(TaxonomyId.of("cuisines").orFail(), mapOf("en" to "Cuisines"), default, null)
 
     /** Distinct ids: a constant one would fold two drafted lines into a single item. */
     private fun sequentialIds(): IdGenerator {
