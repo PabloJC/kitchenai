@@ -12,6 +12,8 @@ import com.kitchenai.ui.presentation.common.UiText
  */
 data class SuggestionsUiState(
     val suggestions: List<SuggestionUi> = emptyList(),
+    /** Below the suggested ones, always — a save is a standing choice, not this session's answer. */
+    val savedRecipes: List<SuggestionUi> = emptyList(),
     val isGenerating: Boolean = false,
     val hasGenerated: Boolean = false,
     val error: UiText? = null,

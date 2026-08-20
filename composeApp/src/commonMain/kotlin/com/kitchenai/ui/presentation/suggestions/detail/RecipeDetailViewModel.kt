@@ -10,23 +10,28 @@ import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.Taxonomy
+import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
+import com.kitchenai.ui.presentation.common.wordFor
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_missing_ingredients
 import com.kitchenai.ui.resources.error_unauthorized_action
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -38,6 +43,7 @@ import kotlinx.coroutines.launch
  * without re-matching would show amounts for four beside buckets still answering for two,
  * which is worse than having no stepper at all.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class RecipeDetailViewModel(
     private val reads: RecipeDetailReadsDelegate,
     private val writes: RecipeDetailWritesDelegate,
@@ -52,7 +58,10 @@ class RecipeDetailViewModel(
     // a plain `var` would be just as safe. Kept as flows only so `.value` reads stay uniform with
     // `internalState`'s; see #147 for whether that uniformity is worth keeping.
     private val names = MutableStateFlow<List<Ingredient>>(emptyList())
-    private val units = MutableStateFlow<List<Term>>(emptyList())
+
+    // Every term this recipe's own quantities and tags could point at. Not only units: a tag is
+    // a TermRef into whatever taxonomy the catalogue seeded it from, and that is never fixed.
+    private val vocabulary = MutableStateFlow<List<Term>>(emptyList())
 
     // The taxonomies themselves, not only their terms: a term whose language the user does not
     // read falls back to the tag its taxonomy declares, and that tag lives here.
@@ -87,34 +96,43 @@ class RecipeDetailViewModel(
                 recipe.value?.let { held -> render(held, currentMatch.value) }
             }
         }
-        watchUnits()
+        watchVocabulary()
         load(recipeId, servings = null)
     }
 
     /**
-     * The unit vocabulary, which the catalogue names rather than this app: "200" is not a
-     * quantity, and the taxonomy that holds units is the one that declares that purpose.
+     * The taxonomies watched are the ones this recipe actually points at, not a fixed set named
+     * here: the one the catalogue declares for units, plus whichever taxonomies this recipe's
+     * own tags belong to. A tag can come from any vocabulary the catalogue seeds — diets,
+     * cuisines, whatever is added later — so the set can only be read off the recipe itself.
+     *
+     * [flatMapLatest] over the combined id set replaces the whole set of per-taxonomy listeners
+     * whenever the taxonomy list or the loaded recipe changes, rather than accumulating one
+     * listener per emission.
      */
-    private fun watchUnits() {
+    private fun watchVocabulary() {
         viewModelScope.launch {
-            // collectLatest and coroutineScope together: a second emission of the taxonomy list
-            // must replace the per-taxonomy collectors, not add to them. Plain collect leaves
-            // the previous ones running, so one unit ends up with a listener per emission.
-            reads.taxonomies().collectLatest { published ->
-                vocabularies.value = published
-                coroutineScope {
-                    published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
-                        launch {
-                            reads.taxonomy(unit.id).collect { terms ->
-                                units.value = terms
-                                recipe.value?.let { held -> render(held, currentMatch.value) }
-                            }
-                        }
-                    }
-                }
+            reads.taxonomies().collect { published -> vocabularies.value = published }
+        }
+        val watchedIds =
+            combine(vocabularies, recipe) { declared, found ->
+                val unitTaxonomies = declared.filter { it.purpose == TaxonomyPurpose.UNITS }.map { it.id }
+                unitTaxonomies.toSet() + found?.tags.orEmpty().map { it.taxonomy }.toSet()
+            }.distinctUntilChanged()
+        viewModelScope.launch {
+            watchedIds.flatMapLatest(::termsOf).collect { terms ->
+                vocabulary.value = terms
+                recipe.value?.let { held -> render(held, currentMatch.value) }
             }
         }
     }
+
+    private fun termsOf(ids: Set<TaxonomyId>): Flow<List<Term>> =
+        if (ids.isEmpty()) {
+            flowOf(emptyList())
+        } else {
+            combine(ids.map { id -> reads.taxonomy(id) }) { loaded -> loaded.toList().flatten() }
+        }
 
     /** Re-scales and re-matches together; neither is useful without the other. */
     fun setServings(servings: Int) {
@@ -235,7 +253,7 @@ class RecipeDetailViewModel(
         // resolve into, and every lookup misses and renders its identifier instead.
         val resolver =
             LabelResolver(
-                terms = units.value,
+                terms = vocabulary.value,
                 ingredients = names.value,
                 taxonomies = vocabularies.value,
                 languageTags = languageTags,
@@ -250,6 +268,7 @@ class RecipeDetailViewModel(
                 missing = match?.missing.orEmpty().map { it.ingredient.toUi(resolver) },
                 unverifiable = match?.unverifiable.orEmpty().map { it.toUi(resolver) },
                 steps = found.steps,
+                tags = found.tags.map(resolver::wordFor),
                 isLoading = false,
                 error = null,
             )

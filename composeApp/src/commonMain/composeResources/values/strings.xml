@@ -50,13 +50,14 @@
     <string name="shopping_undo">Undo</string>
     <string name="detail_title">Recipe</string>
     <string name="nav_back">Back</string>
-    <string name="detail_have">In your pantry</string>
-    <string name="detail_missing">You need to buy</string>
+    <string name="detail_ingredients">Ingredients</string>
+    <string name="detail_have">In Pantry</string>
+    <string name="detail_missing">Need to buy</string>
     <string name="detail_unverifiable">Check manually</string>
     <string name="detail_unverifiable_body">Your pantry cannot say either way about these</string>
     <string name="detail_steps">Steps</string>
     <string name="detail_servings">Servings</string>
-    <string name="detail_add_missing">Add missing to list</string>
+    <string name="detail_add_missing">Add missing</string>
     <string name="detail_cook">Cook this</string>
     <string name="detail_save">Save</string>
     <string name="detail_saved">Saved</string>
@@ -73,8 +74,8 @@
     <string name="suggestions_nothing_body">Add a few things to your pantry, then pull down to try again</string>
     <string name="suggestions_working">Reading your pantry and thinking of dishes. This takes a moment.</string>
     <string name="suggestions_generated">Generated</string>
+    <string name="suggestions_saved_title">Saved recipes</string>
     <string name="suggestions_missing">Missing: %1$s</string>
-    <string name="suggestions_open">Open</string>
     <string name="profile_name">Name</string>
     <string name="profile_servings">Servings</string>
     <string name="profile_constraints">Constraints</string>

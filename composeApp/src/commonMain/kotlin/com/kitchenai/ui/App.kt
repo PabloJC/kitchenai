@@ -9,11 +9,13 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.theme.KitchenAiTheme
 import com.kitchenai.ui.navigation.AppShell
+import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.KitchenAiNavHost
 import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.navigation.ShellDestination
@@ -39,10 +41,12 @@ fun App() {
                 retryLabel = stringResource(Res.string.session_retry),
             ) { userId ->
                 val navController = rememberNavController()
-                AppShell(navController = navController, destinations = tabs) { padding ->
+                val detailTopBar = remember { DetailTopBarState() }
+                AppShell(navController = navController, destinations = tabs, detailTopBar = detailTopBar) { padding ->
                     KitchenAiNavHost(
                         navController = navController,
                         userId = userId,
+                        detailTopBar = detailTopBar,
                         placeholder = { _ -> PlaceholderScreen() },
                         modifier = Modifier.padding(padding),
                     )
