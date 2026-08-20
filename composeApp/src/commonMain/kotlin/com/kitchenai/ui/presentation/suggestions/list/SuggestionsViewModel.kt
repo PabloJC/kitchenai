@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -42,6 +44,7 @@ class SuggestionsViewModel(
     private val observeIngredients: ObserveIngredientsUseCase,
     private val observeSavedRecipes: ObserveSavedRecipesUseCase,
     private val matchRecipe: MatchRecipeAgainstPantryUseCase,
+    private val observePantry: ObservePantryUseCase,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(SuggestionsUiState())
     val state: StateFlow<SuggestionsUiState> = internalState.asStateFlow()
@@ -80,7 +83,11 @@ class SuggestionsViewModel(
             }
         }
         viewModelScope.launch {
-            observeSavedRecipes(userId).collect { recipes -> matchSaved(userId, recipes) }
+            // matchRecipe reads the pantry itself, but only once per call — combine so a saved
+            // recipe's coverage is recomputed on a pantry change too, not only when the saved
+            // list itself does.
+            combine(observeSavedRecipes(userId), observePantry(userId)) { recipes, _ -> recipes }
+                .collect { recipes -> matchSaved(userId, recipes) }
         }
         viewModelScope.launch {
             showStored(userId)
@@ -142,11 +149,12 @@ class SuggestionsViewModel(
      * A saved recipe carries no match of its own — matching is what a suggestion's orchestrator
      * stamps on the way out, and a save just keeps the [Recipe]. Computed here the same way
      * [RecipeDetailViewModel] does it, so the coverage bar means the same thing on every card.
+     * [matchRecipe] itself reads the pantry once per call, not as a listener — [start] is what
+     * re-invokes this whenever the pantry changes, so the result here does not go stale on its own.
      *
      * A recipe whose own match fails is dropped from the section rather than shown broken or
      * blamed with a banner: one card silently missing costs less than a section-wide error over
-     * what is otherwise a working list, and the pantry listener behind [matchRecipe] retries
-     * itself on its own.
+     * what is otherwise a working list.
      */
     private suspend fun matchSaved(
         userId: UserId,

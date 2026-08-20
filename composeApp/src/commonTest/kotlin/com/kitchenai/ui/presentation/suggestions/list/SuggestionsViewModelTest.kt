@@ -12,6 +12,7 @@ import com.kitchenai.shared.domain.model.MissingIngredient
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.PantryMatch
+import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.RecipeIngredient
@@ -19,16 +20,17 @@ import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
@@ -357,18 +359,50 @@ class SuggestionsViewModelTest {
             assertEquals(listOf("recipe-1"), viewModel.state.value.savedRecipes.map { it.id.value })
         }
 
+    @Test
+    fun `a saved recipe's match refreshes when the pantry changes and not only when the saved list does`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort()
+            recipes.saveRecipe(UserId.of("user-1").orFail(), shortOfRice().recipe)
+            val pantry = FakePantryPort()
+            agent.answer = AppResult.Success(emptyList())
+
+            val viewModel = started(recipes = recipes, pantryPort = pantry)
+            advanceUntilIdle()
+
+            assertEquals(listOf("rice"), viewModel.state.value.savedRecipes.single().missing)
+
+            pantry.upsert(UserId.of("user-1").orFail(), riceHolding())
+            advanceUntilIdle()
+
+            // matchRecipe reads the pantry once per call rather than as a listener; this is
+            // start()'s own combine re-invoking it, not something matchRecipe did on its own.
+            assertTrue(viewModel.state.value.savedRecipes.single().missing.isEmpty())
+        }
+
+    private fun riceHolding(): PantryItem =
+        PantryItem(
+            id = PantryItemId.of("item-1").orFail(),
+            ingredient = IngredientId.of("rice").orFail(),
+            quantity = Quantity(1.0),
+            location = null,
+            expiresAt = null,
+            updatedAt = now,
+        )
+
     private fun started(
         recipes: FakeRecipePort = FakeRecipePort(),
         languageTags: List<String> = listOf("en"),
+        pantryPort: FakePantryPort = FakePantryPort(),
     ): SuggestionsViewModel {
-        val pantry = StubPantryPort()
         return SuggestionsViewModel(
-            suggestRecipes = SuggestRecipesUseCase(StubProfilePort(profile), pantry, agent),
-            getStoredSuggestions = GetStoredSuggestionsUseCase(recipes, pantry, TimeProvider { now }),
+            suggestRecipes = SuggestRecipesUseCase(StubProfilePort(profile), pantryPort, agent),
+            getStoredSuggestions = GetStoredSuggestionsUseCase(recipes, pantryPort, TimeProvider { now }),
             storeSuggestions = StoreSuggestionsUseCase(recipes),
             observeIngredients = ObserveIngredientsUseCase(catalogue),
             observeSavedRecipes = ObserveSavedRecipesUseCase(recipes),
-            matchRecipe = MatchRecipeAgainstPantryUseCase(recipes, pantry, TimeProvider { now }),
+            matchRecipe = MatchRecipeAgainstPantryUseCase(recipes, pantryPort, TimeProvider { now }),
+            observePantry = ObservePantryUseCase(pantryPort),
         ).also { it.start(UserId.of("user-1").orFail(), languageTags) }
     }
 }
@@ -436,29 +470,6 @@ private class StubProfilePort(private val profile: UserProfile) : UserProfileRep
     override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> = AppResult.Success(Unit)
-}
-
-private class StubPantryPort : PantryRepositoryContract {
-    override fun observePantry(userId: UserId): Flow<List<PantryItem>> = flowOf(emptyList())
-
-    override fun pantryErrors(userId: UserId): Flow<AppError> = emptyFlow()
-
-    override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> = AppResult.Success(emptyList())
-
-    override suspend fun upsert(
-        userId: UserId,
-        item: PantryItem,
-    ): AppResult<Unit> = AppResult.Success(Unit)
-
-    override suspend fun remove(
-        userId: UserId,
-        id: PantryItemId,
-    ): AppResult<Unit> = AppResult.Success(Unit)
-
-    override suspend fun upsertAll(
-        userId: UserId,
-        items: List<PantryItem>,
-    ): AppResult<Unit> = AppResult.Success(Unit)
 }
 
 private fun dish(
