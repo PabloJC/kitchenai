@@ -19,6 +19,10 @@ private const val MIN_ALPHA = 0.4f
 private const val MAX_ALPHA = 1f
 private const val PULSE_MILLIS = 800
 
+/** Width fractions for a [SkeletonBar] standing in for a title or a summary line. */
+const val SKELETON_TITLE_WIDTH = 0.7f
+const val SKELETON_SUMMARY_WIDTH = 0.85f
+
 /**
  * A pulsing bar standing in for a line of text that has not loaded yet. The pulse is what tells
  * it apart from [RecipeImagePlaceholder]: that block is honest about staying empty, this one is

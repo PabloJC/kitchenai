@@ -33,6 +33,8 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
+import com.kitchenai.ui.designsystem.component.SKELETON_SUMMARY_WIDTH
+import com.kitchenai.ui.designsystem.component.SKELETON_TITLE_WIDTH
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SkeletonBar
 import com.kitchenai.ui.designsystem.component.Tag
@@ -56,8 +58,6 @@ import org.koin.compose.viewmodel.koinViewModel
 
 private const val QUICK_MINUTES = 30
 private const val SKELETON_CARDS = 3
-private const val SKELETON_TITLE_WIDTH = 0.7f
-private const val SKELETON_SUMMARY_WIDTH = 0.85f
 
 @Composable
 fun SuggestionsScreen(

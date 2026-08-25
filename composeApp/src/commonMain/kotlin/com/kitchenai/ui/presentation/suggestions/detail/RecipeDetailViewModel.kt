@@ -122,7 +122,14 @@ class RecipeDetailViewModel(
         viewModelScope.launch {
             watchedIds.flatMapLatest(::termsOf).collect { terms ->
                 vocabulary.value = terms
-                recipe.value?.let { held -> render(held, currentMatch.value) }
+                // Suppressed while a match is in flight: matched() sets recipe.value before its
+                // own match resolves, and this collector reacts to that same recipe.value — an
+                // opportunistic render here would pair the new recipe with an unrelated match.
+                // Once the load settles, matched() has already rendered a consistent pair, and
+                // this goes back to its real job: late-arriving labels for what is already shown.
+                if (loading.value?.isActive != true) {
+                    recipe.value?.let { held -> render(held, currentMatch.value) }
+                }
             }
         }
     }
