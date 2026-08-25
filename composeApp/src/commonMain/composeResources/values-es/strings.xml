@@ -48,13 +48,14 @@
     <string name="shopping_undo">Deshacer</string>
     <string name="detail_title">Receta</string>
     <string name="nav_back">Atrás</string>
-    <string name="detail_have">En tu despensa</string>
-    <string name="detail_missing">Tienes que comprar</string>
+    <string name="detail_ingredients">Ingredientes</string>
+    <string name="detail_have">En despensa</string>
+    <string name="detail_missing">Hay que comprar</string>
     <string name="detail_unverifiable">Compruébalo tú</string>
     <string name="detail_unverifiable_body">Tu despensa no puede decir ni que sí ni que no de estos</string>
     <string name="detail_steps">Pasos</string>
     <string name="detail_servings">Raciones</string>
-    <string name="detail_add_missing">Añadir lo que falta a la lista</string>
+    <string name="detail_add_missing">Añadir lo que falta</string>
     <string name="detail_cook">Cocinar esto</string>
     <string name="detail_save">Guardar</string>
     <string name="detail_saved">Guardado</string>
@@ -71,8 +72,8 @@
     <string name="suggestions_nothing_body">Añade algunas cosas a tu despensa y desliza hacia abajo para volver a intentarlo</string>
     <string name="suggestions_working">Leyendo tu despensa y pensando platos. Esto tarda un momento.</string>
     <string name="suggestions_generated">Generado</string>
+    <string name="suggestions_saved_title">Recetas guardadas</string>
     <string name="suggestions_missing">Faltan: %1$s</string>
-    <string name="suggestions_open">Abrir</string>
     <string name="profile_name">Nombre</string>
     <string name="profile_servings">Raciones</string>
     <string name="profile_constraints">Restricciones</string>

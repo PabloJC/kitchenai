@@ -28,6 +28,7 @@ import com.kitchenai.ui.presentation.suggestions.list.SuggestionsScreen
 fun KitchenAiNavHost(
     navController: NavHostController,
     userId: UserId,
+    detailTopBar: DetailTopBarState,
     placeholder: @Composable (UserId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -46,7 +47,7 @@ fun KitchenAiNavHost(
             // a malformed one must not become an identifier the domain trusts.
             val raw = entry.toRoute<Route.RecipeDetail>().recipeId
             when (val id = RecipeId.of(raw)) {
-                is AppResult.Success -> RecipeDetailScreen(userId, id.data)
+                is AppResult.Success -> RecipeDetailScreen(userId, id.data, detailTopBar)
                 is AppResult.Failure -> placeholder(userId)
             }
         }

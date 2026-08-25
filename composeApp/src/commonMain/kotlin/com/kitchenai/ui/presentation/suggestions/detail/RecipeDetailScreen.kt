@@ -1,23 +1,45 @@
 package com.kitchenai.ui.presentation.suggestions.detail
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,12 +47,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.LoadingState
-import com.kitchenai.ui.designsystem.component.SectionHeader
+import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
+import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.designsystem.theme.PillShape
+import com.kitchenai.ui.navigation.DetailTopBarState
+import com.kitchenai.ui.navigation.TopBarAction
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
@@ -43,6 +72,7 @@ import com.kitchenai.ui.resources.detail_cook_body
 import com.kitchenai.ui.resources.detail_cook_confirm
 import com.kitchenai.ui.resources.detail_cook_title
 import com.kitchenai.ui.resources.detail_have
+import com.kitchenai.ui.resources.detail_ingredients
 import com.kitchenai.ui.resources.detail_missing
 import com.kitchenai.ui.resources.detail_optional_suffix
 import com.kitchenai.ui.resources.detail_save
@@ -62,6 +92,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun RecipeDetailScreen(
     userId: UserId,
     recipeId: RecipeId,
+    detailTopBar: DetailTopBarState,
     modifier: Modifier = Modifier,
     viewModel: RecipeDetailViewModel = koinViewModel(),
 ) {
@@ -77,6 +108,7 @@ fun RecipeDetailScreen(
         viewModel.start(userId, recipeId, platformLanguageTags(), defaultListName)
     }
     LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.announce(event) } }
+    PublishTopBar(state, viewModel, detailTopBar)
 
     if (confirmingCook) {
         CookDialog(
@@ -94,28 +126,61 @@ fun RecipeDetailScreen(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
+        // Pinned rather than the scroll's last row, so both actions are reachable without
+        // scrolling past the steps.
+        bottomBar = { if (!state.isLoading) Actions(state, viewModel) { confirmingCook = true } },
     ) { padding ->
         if (state.isLoading) {
             LoadingState(Modifier.padding(padding))
             return@Scaffold
         }
         Column(
-            modifier = Modifier.padding(padding).padding(Dimens.large).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(Dimens.medium),
+            modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(Dimens.large),
         ) {
             Header(state, viewModel)
-            state.error?.let { message -> Text(message.resolve(), color = MaterialTheme.colorScheme.error) }
-            Lines(stringResource(Res.string.detail_have), state.held)
-            Lines(stringResource(Res.string.detail_missing), state.missing)
-            // Its own section with its own sentence: this is not "missing", and a reader who
-            // took it for missing would go shopping for something they may already own.
-            if (state.unverifiable.isNotEmpty()) {
-                SectionHeader(title = stringResource(Res.string.detail_unverifiable))
-                Text(stringResource(Res.string.detail_unverifiable_body), style = MaterialTheme.typography.bodySmall)
-                state.unverifiable.forEach { line -> LineRow(line) }
+            state.error?.let { message ->
+                Text(
+                    message.resolve(),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = Dimens.large),
+                )
             }
-            Steps(state.steps)
-            Actions(state, viewModel) { confirmingCook = true }
+            IngredientsCard(state)
+            if (state.unverifiable.isNotEmpty()) UnverifiableCard(state.unverifiable)
+            StepsCard(state.steps)
+        }
+    }
+}
+
+/**
+ * AppShell owns the one top bar every screen shares; this is this screen's turn to say what
+ * belongs in it, and to hand it back once this screen is no longer the one showing.
+ */
+@Composable
+private fun PublishTopBar(
+    state: RecipeDetailUiState,
+    viewModel: RecipeDetailViewModel,
+    detailTopBar: DetailTopBarState,
+) {
+    val savedTint = MaterialTheme.colorScheme.primary
+    val favoriteLabel = stringResource(if (state.isSaved) Res.string.detail_saved else Res.string.detail_save)
+    DisposableEffect(state.title, state.isSaved, state.isWorking) {
+        detailTopBar.title = state.title.ifBlank { null }
+        detailTopBar.action =
+            TopBarAction(
+                icon = if (state.isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                contentDescription = favoriteLabel,
+                enabled = !state.isWorking && !state.isSaved,
+                tint = if (state.isSaved) savedTint else null,
+                onClick = viewModel::save,
+            )
+        onDispose {}
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            detailTopBar.title = null
+            detailTopBar.action = null
         }
     }
 }
@@ -125,59 +190,193 @@ private fun Header(
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
 ) {
-    Text(state.title, style = MaterialTheme.typography.headlineSmall)
-    state.summary?.let { summary -> Text(summary, style = MaterialTheme.typography.bodyMedium) }
-    state.totalMinutes?.let { minutes -> Text("$minutes min", style = MaterialTheme.typography.labelSmall) }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.small),
-        verticalAlignment = Alignment.CenterVertically,
+    // Edge to edge, unlike everything below it: the slot a photograph will one day fill sits
+    // flush with the top of the scroll rather than margined like body content.
+    RecipeImagePlaceholder()
+    Column(
+        modifier = Modifier.padding(horizontal = Dimens.large),
+        verticalArrangement = Arrangement.spacedBy(Dimens.small),
     ) {
-        Text(stringResource(Res.string.detail_servings), style = MaterialTheme.typography.labelSmall)
-        OutlinedButton(
-            onClick = { viewModel.setServings(state.servings - 1) },
-            enabled = state.servings > 1 && !state.isWorking,
-        ) { Text("-") }
-        Text(state.servings.toString(), style = MaterialTheme.typography.titleMedium)
-        OutlinedButton(
-            onClick = { viewModel.setServings(state.servings + 1) },
-            enabled = !state.isWorking,
-        ) { Text("+") }
+        Text(state.title, style = MaterialTheme.typography.headlineSmall)
+        state.summary?.let { summary -> Text(summary, style = MaterialTheme.typography.bodyMedium) }
+        state.totalMinutes?.let { minutes -> Text("$minutes min", style = MaterialTheme.typography.labelSmall) }
+        if (state.tags.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Dimens.extraSmall)) {
+                state.tags.forEach { tag ->
+                    Tag(
+                        label = tag,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                }
+            }
+        }
+        ServingsStepper(state, viewModel)
+    }
+}
+
+/** One rounded group rather than two loose buttons either side of the count. */
+@Composable
+private fun ServingsStepper(
+    state: RecipeDetailUiState,
+    viewModel: RecipeDetailViewModel,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = PillShape,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Dimens.small, vertical = Dimens.extraSmall),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.small),
+        ) {
+            Text(stringResource(Res.string.detail_servings), style = MaterialTheme.typography.labelSmall)
+            StepperButton("-", enabled = state.servings > 1 && !state.isWorking) {
+                viewModel.setServings(state.servings - 1)
+            }
+            Text(state.servings.toString(), style = MaterialTheme.typography.titleMedium)
+            StepperButton("+", enabled = !state.isWorking) { viewModel.setServings(state.servings + 1) }
+        }
     }
 }
 
 @Composable
-private fun Lines(
-    title: String,
-    lines: List<IngredientLineUi>,
+private fun StepperButton(
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
 ) {
-    if (lines.isEmpty()) return
-    SectionHeader(title = title)
-    lines.forEach { line -> LineRow(line) }
+    // The full 48dp touch target, even though the design's own circle reads smaller: below that
+    // size the tap is unreliable on a phone held in one hand, and this is the button someone
+    // taps repeatedly while their hands are full of food.
+    Box(
+        modifier =
+            Modifier
+                .size(Dimens.touchTarget)
+                .clip(CircleShape)
+                .let { if (enabled) it.clickable(onClick = onClick) else it },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.titleMedium,
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
+        )
+    }
 }
 
 @Composable
-private fun LineRow(line: IngredientLineUi) {
+private fun IngredientsCard(state: RecipeDetailUiState) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
+        Column(
+            modifier = Modifier.padding(Dimens.large),
+            verticalArrangement = Arrangement.spacedBy(Dimens.small),
+        ) {
+            Text(stringResource(Res.string.detail_ingredients), style = MaterialTheme.typography.titleMedium)
+            // One list, not two: a section header per bucket read like a shopping list. The
+            // status now travels with each row instead, as a chip.
+            state.held.forEach { line -> StatusRow(line, held = true) }
+            state.missing.forEach { line -> StatusRow(line, held = false) }
+        }
+    }
+}
+
+@Composable
+private fun StatusRow(
+    line: IngredientLineUi,
+    held: Boolean,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(line.name + if (line.optional) stringResource(Res.string.detail_optional_suffix) else "")
-        // Absent rather than zero: a line with no amount is "to taste", and inventing one for
-        // it would be a number the recipe never gave.
-        line.quantity?.let { amount -> Text(amount, style = MaterialTheme.typography.bodyMedium) }
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.extraSmall)) {
+            line.quantity?.let { amount ->
+                Text(amount, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            }
+            Text(line.name + if (line.optional) stringResource(Res.string.detail_optional_suffix) else "")
+        }
+        val colors = MaterialTheme.colorScheme
+        Tag(
+            label = stringResource(if (held) Res.string.detail_have else Res.string.detail_missing),
+            containerColor = if (held) colors.secondaryContainer else colors.errorContainer,
+            contentColor = if (held) colors.onSecondaryContainer else colors.onErrorContainer,
+        )
     }
 }
 
 @Composable
-private fun Steps(steps: List<String>) {
-    if (steps.isEmpty()) return
-    SectionHeader(title = stringResource(Res.string.detail_steps))
-    steps.forEachIndexed { index, step ->
-        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.small)) {
-            Text("${index + 1}.", style = MaterialTheme.typography.titleMedium)
-            Text(step, style = MaterialTheme.typography.bodyLarge)
+private fun UnverifiableCard(lines: List<IngredientLineUi>) {
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
+        Column(
+            modifier = Modifier.padding(Dimens.large),
+            verticalArrangement = Arrangement.spacedBy(Dimens.small),
+        ) {
+            // Its own section with its own sentence: this is not "missing", and a reader who
+            // took it for missing would go shopping for something they may already own.
+            Text(stringResource(Res.string.detail_unverifiable), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(Res.string.detail_unverifiable_body), style = MaterialTheme.typography.bodySmall)
+            lines.forEach { line ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(line.name + if (line.optional) stringResource(Res.string.detail_optional_suffix) else "")
+                    line.quantity?.let { amount -> Text(amount, style = MaterialTheme.typography.bodyMedium) }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun StepsCard(steps: List<String>) {
+    if (steps.isEmpty()) return
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
+        Column(
+            modifier = Modifier.padding(Dimens.large),
+            verticalArrangement = Arrangement.spacedBy(Dimens.medium),
+        ) {
+            Text(stringResource(Res.string.detail_steps), style = MaterialTheme.typography.titleMedium)
+            val ruleColor = MaterialTheme.colorScheme.outlineVariant
+            Column(
+                // One rule running the length of the list, not a segment per row: drawn behind
+                // the circles once this column's own height is known, rather than guessed at
+                // row by row against text of unknown length.
+                modifier =
+                    Modifier.drawBehind {
+                        if (steps.size < 2) return@drawBehind
+                        val x = Dimens.huge.toPx() / 2
+                        val inset = Dimens.huge.toPx() / 2
+                        drawLine(
+                            color = ruleColor,
+                            start = Offset(x, inset),
+                            end = Offset(x, size.height - inset),
+                            strokeWidth = DividerDefaults.Thickness.toPx(),
+                        )
+                    },
+                verticalArrangement = Arrangement.spacedBy(Dimens.medium),
+            ) {
+                steps.forEachIndexed { index, step -> StepRow(index + 1, step, isFirst = index == 0) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepRow(
+    number: Int,
+    step: String,
+    isFirst: Boolean,
+) {
+    val colors = MaterialTheme.colorScheme
+    val fill = if (isFirst) colors.primaryContainer else colors.surfaceContainerHighest
+    val onFill = if (isFirst) colors.onPrimaryContainer else colors.onSurfaceVariant
+    var circle = Modifier.size(Dimens.huge).clip(CircleShape).background(fill)
+    if (!isFirst) circle = circle.border(DividerDefaults.Thickness, colors.outlineVariant, CircleShape)
+    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.medium)) {
+        Box(modifier = circle, contentAlignment = Alignment.Center) {
+            Text(number.toString(), style = MaterialTheme.typography.titleMedium, color = onFill)
+        }
+        Text(step, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = Dimens.small))
     }
 }
 
@@ -187,18 +386,39 @@ private fun Actions(
     viewModel: RecipeDetailViewModel,
     onCook: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.small),
-    ) {
-        OutlinedButton(onClick = viewModel::save, enabled = !state.isWorking && !state.isSaved) {
-            Text(if (state.isSaved) stringResource(Res.string.detail_saved) else stringResource(Res.string.detail_save))
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(Dimens.large),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.small),
+        ) {
+            OutlinedButton(
+                onClick = viewModel::addMissingToList,
+                enabled = !state.isWorking && state.missing.isNotEmpty(),
+                modifier = Modifier.weight(1f).height(Dimens.touchTarget),
+            ) {
+                Icon(
+                    Icons.Outlined.ShoppingCart,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(Dimens.small))
+                Text(stringResource(Res.string.detail_add_missing))
+            }
+            Button(
+                onClick = onCook,
+                enabled = state.canCook,
+                modifier = Modifier.weight(1f).height(Dimens.touchTarget),
+            ) {
+                Icon(
+                    Icons.Outlined.LocalFireDepartment,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(Dimens.small))
+                Text(stringResource(Res.string.detail_cook))
+            }
         }
-        OutlinedButton(
-            onClick = viewModel::addMissingToList,
-            enabled = !state.isWorking && state.missing.isNotEmpty(),
-        ) { Text(stringResource(Res.string.detail_add_missing)) }
-        Button(onClick = onCook, enabled = state.canCook) { Text(stringResource(Res.string.detail_cook)) }
     }
 }
 

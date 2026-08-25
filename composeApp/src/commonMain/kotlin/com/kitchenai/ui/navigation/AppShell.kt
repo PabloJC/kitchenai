@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -35,6 +36,7 @@ import org.jetbrains.compose.resources.stringResource
 fun AppShell(
     navController: NavHostController,
     destinations: List<ShellDestination>,
+    detailTopBar: DetailTopBarState,
     modifier: Modifier = Modifier,
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -45,7 +47,12 @@ fun AppShell(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(tab?.label ?: Res.string.detail_title)) },
+                title = {
+                    // A tab keeps its own label; a screen with no tab — recipe detail, today —
+                    // gets to say what its title is instead of settling for a generic one.
+                    val title = if (tab == null) detailTopBar.title else null
+                    Text(title ?: stringResource(tab?.label ?: Res.string.detail_title))
+                },
                 navigationIcon = {
                     // Only the routes absent from destinations need a way out: every tab is
                     // reached by tapping the bar below, never by going back into it.
@@ -55,6 +62,19 @@ fun AppShell(
                                 Icons.AutoMirrored.Outlined.ArrowBack,
                                 contentDescription = stringResource(Res.string.nav_back),
                             )
+                        }
+                    }
+                },
+                actions = {
+                    if (tab == null) {
+                        detailTopBar.action?.let { action ->
+                            IconButton(onClick = action.onClick, enabled = action.enabled) {
+                                Icon(
+                                    action.icon,
+                                    contentDescription = action.contentDescription,
+                                    tint = action.tint ?: LocalContentColor.current,
+                                )
+                            }
                         }
                     }
                 },
