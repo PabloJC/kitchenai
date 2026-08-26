@@ -29,17 +29,15 @@ class ProfileUiMapperTest {
         val state = uiState(draft = null, catalogue = CatalogueState(), saving = false, failure = null)
 
         assertEquals(true, state.isLoading)
-        assertEquals("", state.displayName)
     }
 
     @Test
-    fun `a loaded draft renders the profile's own fields`() {
-        val profile = profile().copy(displayName = "Ada")
-        val state = uiState(draft = ProfileDraft(profile), catalogue = CatalogueState(), saving = true, failure = null)
+    fun `a loaded draft is not loading and carries the saving flag`() {
+        val state =
+            uiState(draft = ProfileDraft(profile()), catalogue = CatalogueState(), saving = true, failure = null)
 
         assertEquals(false, state.isLoading)
         assertEquals(true, state.isSaving)
-        assertEquals("Ada", state.displayName)
     }
 
     @Test

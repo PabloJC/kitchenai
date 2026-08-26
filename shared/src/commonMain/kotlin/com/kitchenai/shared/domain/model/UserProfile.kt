@@ -22,6 +22,9 @@ data class UserProfile(
         /**
          * Empty everywhere and one serving: every other default would be a cultural guess,
          * and the language tags come from the device rather than from a chosen list.
+         *
+         * The profile screen has no control to change [HouseholdContext.servings] (#135): every
+         * suggestion request carries this seeded value, not a stated household size.
          */
         fun newFor(
             userId: UserId,

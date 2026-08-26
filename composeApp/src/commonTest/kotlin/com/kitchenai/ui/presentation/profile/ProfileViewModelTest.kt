@@ -150,28 +150,12 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `a validation failure is reported against the field the use case named`() =
+    fun `toggling writes nothing and one press writes once`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
 
-            viewModel.setServings(0)
-            viewModel.save()
-            advanceUntilIdle()
-
-            assertEquals(SERVINGS_FIELD, viewModel.state.value.error?.field)
-            assertEquals(UiText.Raw("must be at least 1"), viewModel.state.value.errorFor(SERVINGS_FIELD))
-            assertNull(viewModel.state.value.generalError)
-            assertEquals(0, profiles.saveCount)
-        }
-
-    @Test
-    fun `typing writes nothing and one press writes once`() =
-        runTest(dispatcher) {
-            val viewModel = ready("tx-1" to 1)
-
-            viewModel.setDisplayName("a")
-            viewModel.setDisplayName("ab")
-            viewModel.setServings(3)
+            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
+            viewModel.cycleStrength(termRef("tx-1", "tm-1"))
             advanceUntilIdle()
             assertEquals(0, profiles.saveCount)
 
@@ -179,8 +163,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             assertEquals(1, profiles.saveCount)
-            assertEquals("ab", profiles.saved?.displayName)
-            assertEquals(3, profiles.saved?.household?.servings)
+            assertEquals(ConstraintStrength.AVOID, profiles.saved?.constraints?.single()?.strength)
         }
 
     @Test
@@ -222,19 +205,6 @@ class ProfileViewModelTest {
 
             assertTrue(viewModel.state.value.isLoading)
             assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error?.message)
-        }
-
-    @Test
-    fun `the transparency row counts what the profile actually carries`() =
-        runTest(dispatcher) {
-            val viewModel = ready("tx-1" to 2)
-
-            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
-            viewModel.toggleConstraint(termRef("tx-1", "tm-2"))
-            advanceUntilIdle()
-
-            assertEquals(2, viewModel.state.value.constraintCount)
-            assertEquals(listOf("xx"), viewModel.state.value.languageTags)
         }
 
     /** Started and fed: the catalogue published, the profile delivered and every listener running. */

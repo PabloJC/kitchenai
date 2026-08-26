@@ -74,12 +74,7 @@
     <string name="suggestions_generated">Generado</string>
     <string name="suggestions_saved_title">Recetas guardadas</string>
     <string name="suggestions_missing">Faltan: %1$s</string>
-    <string name="profile_name">Nombre</string>
-    <string name="profile_servings">Raciones</string>
-    <string name="profile_constraints">Restricciones</string>
-    <string name="profile_languages">Idiomas</string>
-    <string name="profile_pantry_contents">Contenido de la despensa</string>
-    <string name="profile_sent_title">Se envía con cada sugerencia</string>
+    <string name="profile_sent_summary">Cada sugerencia envía tus restricciones dietéticas, tu despensa y el idioma de la app.</string>
     <string name="profile_save">Guardar</string>
     <string name="profile_saving">Guardando</string>
     <string name="profile_no_preferences">No hay preferencias que mostrar</string>
@@ -95,5 +90,4 @@
     <string name="placeholder_title">Aquí todavía no hay nada</string>
     <string name="placeholder_body">Esta pantalla está de camino</string>
     <string name="session_retry">Inténtalo otra vez</string>
-    <string name="profile_included">incluido</string>
 </resources>
