@@ -34,15 +34,24 @@ class AddPantryItemUseCase(
         quantity: Quantity,
         location: TermRef?,
         expiresAt: Instant?,
-    ): AppResult<PantryItem> =
-        if (quantity.amount <= 0.0) {
-            AppResult.Failure(AppError.Validation("amount", "must be greater than zero"))
-        } else {
-            when (val held = pantry.getPantry(userId)) {
-                is AppResult.Failure -> held
-                is AppResult.Success -> write(userId, held.data, ingredient, freeText, quantity, location, expiresAt)
-            }
+    ): AppResult<PantryItem> {
+        // Checked here rather than left to PantryItem.create(): the merge branch below never
+        // calls create() (it copies an existing, already-valid holding), so a caller passing
+        // both would otherwise have its freeText silently dropped instead of rejected.
+        val text = freeText?.takeIf { it.isNotBlank() }
+        return when {
+            (ingredient == null) == (text == null) ->
+                AppResult.Failure(
+                    AppError.Validation("ingredient", "exactly one of ingredient or freeText must be set"),
+                )
+            quantity.amount <= 0.0 -> AppResult.Failure(AppError.Validation("amount", "must be greater than zero"))
+            else ->
+                when (val held = pantry.getPantry(userId)) {
+                    is AppResult.Failure -> held
+                    is AppResult.Success -> write(userId, held.data, ingredient, text, quantity, location, expiresAt)
+                }
         }
+    }
 
     private suspend fun write(
         userId: UserId,

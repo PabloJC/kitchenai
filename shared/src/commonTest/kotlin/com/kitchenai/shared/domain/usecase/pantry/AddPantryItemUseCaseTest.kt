@@ -114,4 +114,17 @@ class AddPantryItemUseCaseTest {
             assertTrue(result.error is AppError.Validation)
             assertEquals(0, port.upsertCalls)
         }
+
+    @Test
+    fun `rejects both an ingredient and free text even when a mergeable holding already exists`() =
+        runTest {
+            val held = pantryItem("item-1", "ing-1", Quantity(200.0, unitA))
+            val port = FakePantryRepositoryContract(listOf(held))
+
+            val result = useCase(port)(user, ingredientId("ing-1"), "the good bread", Quantity(50.0, unitA), null, null)
+
+            assertTrue(result is AppResult.Failure)
+            assertTrue(result.error is AppError.Validation)
+            assertEquals(0, port.upsertCalls)
+        }
 }
