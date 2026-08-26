@@ -27,9 +27,10 @@ internal fun PantryItemUi.applied(
 ): PantryItem =
     PantryItem(
         id = id,
-        // From the draft, not from the row: the sheet lets the ingredient be changed, and
-        // keeping the old one silently discarded that edit.
+        // From the draft, not from the row: the sheet lets the source be changed, and keeping
+        // the old one would silently discard that edit.
         ingredient = draft.ingredient,
+        freeText = draft.freeText,
         quantity = Quantity(draft.amount, draft.unit),
         location = draft.location,
         expiresAt = draft.expiresAt,
@@ -44,7 +45,9 @@ internal fun PantryItem.toUi(
     return PantryItemUi(
         id = id,
         ingredient = ingredient,
-        name = resolver.label(ingredient) ?: ingredient.value,
+        freeText = freeText,
+        // A free-text holding names itself; only a catalogue one needs the resolver at all.
+        name = freeText ?: ingredient?.let { known -> resolver.label(known) ?: known.value }.orEmpty(),
         quantityLabel = formatQuantity(quantity.amount, unitLabel),
         amount = quantity.amount,
         unit = quantity.unit,

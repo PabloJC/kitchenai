@@ -64,13 +64,17 @@ service cloud.firestore {
     // in one place that the client cannot edit.
     // ---------------------------------------------------------------- //
 
+    // Exactly one of ingredientId / freeText, the same invariant the domain factory enforces.
+    // Rules are the only place it holds for a client that bypasses the app.
     function isValidPantryItem(data) {
       return data.keys().hasOnly([
-               'ingredientId', 'amount', 'unitTaxonomy', 'unitTerm',
+               'ingredientId', 'freeText', 'amount', 'unitTaxonomy', 'unitTerm',
                'locationTaxonomy', 'locationTerm', 'expiresAtMillis', 'updatedAtMillis'
              ])
-             && data.keys().hasAll(['ingredientId', 'amount', 'updatedAtMillis'])
-             && isId(data.ingredientId)
+             && data.keys().hasAll(['amount', 'updatedAtMillis'])
+             && (data.get('ingredientId', null) == null) != (data.get('freeText', null) == null)
+             && isOptionalId(data.get('ingredientId', null))
+             && isOptionalText(data.get('freeText', null), 200)
              && isAmount(data.amount)
              && isOptionalId(data.get('unitTaxonomy', null))
              && isOptionalId(data.get('unitTerm', null))

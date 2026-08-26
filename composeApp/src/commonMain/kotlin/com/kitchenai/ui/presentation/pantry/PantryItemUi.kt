@@ -11,11 +11,13 @@ import kotlin.time.Instant
  * the list draws, and a label the catalogue does not carry falls back to its own identifier.
  *
  * The identifiers travel alongside the words because the editor sends them straight back to the
- * use cases; the words never do.
+ * use cases; the words never do. Exactly one of [ingredient] and [freeText] is set — a holding
+ * the catalogue has never heard of, shown in italics, the way the shopping row marks its own.
  */
 data class PantryItemUi(
     val id: PantryItemId,
-    val ingredient: IngredientId,
+    val ingredient: IngredientId?,
+    val freeText: String?,
     val name: String,
     val quantityLabel: String,
     val amount: Double,

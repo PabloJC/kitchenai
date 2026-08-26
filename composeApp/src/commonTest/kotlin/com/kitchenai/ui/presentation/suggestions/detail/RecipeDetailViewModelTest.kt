@@ -399,6 +399,7 @@ class RecipeDetailViewModelTest {
         PantryItem(
             id = PantryItemId.of("item-1").orFail(),
             ingredient = IngredientId.of("rice").orFail(),
+            freeText = null,
             quantity = Quantity(amount, gram),
             location = null,
             expiresAt = null,

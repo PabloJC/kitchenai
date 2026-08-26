@@ -384,6 +384,7 @@ class SuggestionsViewModelTest {
         PantryItem(
             id = PantryItemId.of("item-1").orFail(),
             ingredient = IngredientId.of("rice").orFail(),
+            freeText = null,
             quantity = Quantity(1.0),
             location = null,
             expiresAt = null,

@@ -42,6 +42,7 @@ class FreshnessTest {
         PantryItem(
             id = (PantryItemId.of("item-1") as AppResult.Success).data,
             ingredient = (IngredientId.of("ing-1") as AppResult.Success).data,
+            freeText = null,
             quantity = Quantity(1.0),
             location = null,
             expiresAt = expiresAt,

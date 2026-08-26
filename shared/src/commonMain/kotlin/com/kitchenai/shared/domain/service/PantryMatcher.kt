@@ -24,7 +24,13 @@ object PantryMatcher {
         pantry: List<PantryItem>,
         now: Instant,
     ): PantryMatch {
-        val held = pantry.filterNot { it.hasExpiredAt(now) }.groupBy { it.ingredient }
+        // A free-text holding has no catalogue id to compare a recipe line against, so it is
+        // dropped here rather than left to land under a key nothing ever looks up.
+        val held: Map<IngredientId, List<PantryItem>> =
+            pantry
+                .filterNot { it.hasExpiredAt(now) }
+                .mapNotNull { item -> item.ingredient?.let { id -> id to item } }
+                .groupBy(keySelector = { (id, _) -> id }, valueTransform = { (_, item) -> item })
         val covered = mutableListOf<CoveredIngredient>()
         val missing = mutableListOf<MissingIngredient>()
         val unverifiable = mutableListOf<RecipeIngredient>()

@@ -1,6 +1,7 @@
 package com.kitchenai.shared.domain.service
 
 import com.kitchenai.shared.domain.model.Quantity
+import com.kitchenai.shared.domain.usecase.pantry.freeTextPantryItem
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.pantry.pantryItemId
 import com.kitchenai.shared.domain.usecase.pantry.termRef
@@ -26,6 +27,17 @@ class PantryMatcherTest {
         assertEquals(listOf(line), match.unverifiable)
         assertTrue(match.covered.isEmpty())
         assertTrue(match.missing.isEmpty())
+    }
+
+    @Test
+    fun `a free-text holding covers no recipe line even one asking for the same words`() {
+        val line = recipeIngredient("ing-1", quantity = Quantity(1.0, unitA))
+        val pantry = listOf(freeTextPantryItem("item-1", "ing-1", Quantity(1.0, unitA)))
+
+        val match = PantryMatcher.match(recipe(ingredients = listOf(line)), pantry, now)
+
+        assertTrue(match.covered.isEmpty())
+        assertEquals(Quantity(1.0, unitA), match.missing.single().shortfall)
     }
 
     @Test

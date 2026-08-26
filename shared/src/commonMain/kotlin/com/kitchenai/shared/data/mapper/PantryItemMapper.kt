@@ -13,7 +13,8 @@ import kotlin.time.Instant
 
 fun PantryItem.toDto(): PantryItemDto =
     PantryItemDto(
-        ingredientId = ingredient.value,
+        ingredientId = ingredient?.value,
+        freeText = freeText,
         amount = quantity.amount,
         unitTaxonomy = quantity.unit?.taxonomy?.value,
         unitTerm = quantity.unit?.term?.value,
@@ -23,18 +24,23 @@ fun PantryItem.toDto(): PantryItemDto =
         updatedAtMillis = updatedAt.toEpochMilliseconds(),
     )
 
-/** The document id is the identifier: a pantry document never repeats it in its payload. */
+/**
+ * Decoding goes through [PantryItem.create], so a document holding both an ingredient and free
+ * text — or neither — fails here instead of entering the domain. The document id is the
+ * identifier: a pantry document never repeats it in its payload.
+ */
 fun PantryItemDto.toDomain(documentId: String): AppResult<PantryItem> =
     PantryItemId.of(documentId).flatMap { id ->
-        IngredientId.of(ingredientId).flatMap { ingredient ->
-            references().map { (unit, location) ->
-                PantryItem(
+        ingredientId.optional(IngredientId::of).flatMap { ingredient ->
+            references().flatMap { (unit, location) ->
+                PantryItem.create(
                     id = id,
-                    ingredient = ingredient,
                     quantity = Quantity(amount, unit),
+                    updatedAt = Instant.fromEpochMilliseconds(updatedAtMillis),
+                    ingredient = ingredient,
+                    freeText = freeText,
                     location = location,
                     expiresAt = expiresAtMillis?.let(Instant::fromEpochMilliseconds),
-                    updatedAt = Instant.fromEpochMilliseconds(updatedAtMillis),
                 )
             }
         }
@@ -45,3 +51,6 @@ private fun PantryItemDto.references(): AppResult<Pair<TermRef?, TermRef?>> =
     termRefOrNull(unitTaxonomy, unitTerm, "unit").flatMap { unit ->
         termRefOrNull(locationTaxonomy, locationTerm, "location").map { location -> unit to location }
     }
+
+private inline fun <T> String?.optional(of: (String) -> AppResult<T>): AppResult<T?> =
+    if (this == null) AppResult.Success(null) else of(this)

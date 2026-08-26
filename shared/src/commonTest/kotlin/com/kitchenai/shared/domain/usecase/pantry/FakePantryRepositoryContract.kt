@@ -93,4 +93,12 @@ internal fun pantryItem(
     quantity: Quantity,
     expiresAt: Instant? = null,
     updatedAt: Instant = Instant.fromEpochSeconds(0),
-): PantryItem = PantryItem(pantryItemId(id), ingredientId(ingredient), quantity, null, expiresAt, updatedAt)
+): PantryItem = PantryItem(pantryItemId(id), ingredientId(ingredient), null, quantity, null, expiresAt, updatedAt)
+
+internal fun freeTextPantryItem(
+    id: String,
+    freeText: String,
+    quantity: Quantity,
+    expiresAt: Instant? = null,
+    updatedAt: Instant = Instant.fromEpochSeconds(0),
+): PantryItem = PantryItem(pantryItemId(id), null, freeText, quantity, null, expiresAt, updatedAt)

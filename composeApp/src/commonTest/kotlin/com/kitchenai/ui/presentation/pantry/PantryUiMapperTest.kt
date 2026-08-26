@@ -63,12 +63,45 @@ class PantryUiMapperTest {
         val original = pantryItem(quantity = Quantity(100.0, unitRef))
         val edited = IngredientId.of("flour").value()
         val draft =
-            PantryItemDraft(ingredient = edited, amount = 300.0, unit = unitRef, location = null, expiresAt = null)
+            PantryItemDraft(
+                ingredient = edited,
+                freeText = null,
+                amount = 300.0,
+                unit = unitRef,
+                location = null,
+                expiresAt = null,
+            )
 
         val applied = original.toUi(LabelResolver(), now).applied(draft, now)
 
         assertEquals(edited, applied.ingredient)
         assertEquals(300.0, applied.quantity.amount)
+    }
+
+    @Test
+    fun `a holding with no catalogue match names itself rather than asking the resolver`() {
+        val item = pantryItem(quantity = Quantity(1.0, null), freeText = "the good bread")
+
+        assertEquals("the good bread", item.toUi(LabelResolver(), now).name)
+    }
+
+    @Test
+    fun `an edited draft can turn a catalogue row into a free-text one`() {
+        val original = pantryItem(quantity = Quantity(1.0, unitRef))
+        val draft =
+            PantryItemDraft(
+                ingredient = null,
+                freeText = "the good bread",
+                amount = 1.0,
+                unit = unitRef,
+                location = null,
+                expiresAt = null,
+            )
+
+        val applied = original.toUi(LabelResolver(), now).applied(draft, now)
+
+        assertEquals(null, applied.ingredient)
+        assertEquals("the good bread", applied.freeText)
     }
 
     @Test
@@ -133,10 +166,12 @@ class PantryUiMapperTest {
     private fun pantryItem(
         quantity: Quantity,
         location: TermRef? = null,
+        freeText: String? = null,
     ): PantryItem =
         PantryItem(
             id = PantryItemId.of("item-1").value(),
-            ingredient = ingredientId,
+            ingredient = if (freeText == null) ingredientId else null,
+            freeText = freeText,
             quantity = quantity,
             location = location,
             expiresAt = null,

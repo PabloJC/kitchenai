@@ -48,6 +48,7 @@ beforeEach(async () => {
 
 const pantryItem = (overrides = {}) => ({
   ingredientId: 'ingredient-1',
+  freeText: null,
   amount: 2,
   unitTaxonomy: 'taxonomy-units',
   unitTerm: 'term-1',
@@ -187,8 +188,8 @@ describe('pantry item shape', () => {
   const write = (data) => setDoc(doc(alice, `users/${ALICE}/pantry/item-1`), data);
 
   it('rejects a missing required field', async () => {
-    const { ingredientId, ...withoutIngredient } = pantryItem();
-    await assertFails(write(withoutIngredient));
+    const { amount, ...withoutAmount } = pantryItem();
+    await assertFails(write(withoutAmount));
 
     const { updatedAtMillis, ...withoutTimestamp } = pantryItem();
     await assertFails(write(withoutTimestamp));
@@ -203,6 +204,17 @@ describe('pantry item shape', () => {
     await assertFails(write(pantryItem({ amount: 0 })));
     await assertFails(write(pantryItem({ updatedAtMillis: 'now' })));
     await assertFails(write(pantryItem({ ingredientId: '' })));
+  });
+
+  it('rejects a holding that is neither an ingredient nor free text, and one that is both', async () => {
+    const { ingredientId, ...withoutIngredient } = pantryItem();
+    await assertFails(write(withoutIngredient));
+    await assertFails(write(pantryItem({ freeText: 'anything' })));
+  });
+
+  it('rejects an over-long free-text holding', async () => {
+    await assertSucceeds(write(pantryItem({ ingredientId: null, freeText: 'a'.repeat(200) })));
+    await assertFails(write(pantryItem({ ingredientId: null, freeText: 'a'.repeat(201) })));
   });
 });
 
