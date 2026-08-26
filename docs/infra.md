@@ -148,6 +148,26 @@ The class is **not** called `AppAttestProviderFactory` because the SDK already e
 exact Swift name. A local declaration shadows an imported one with no error, so that name
 would make deleting the file change the provider silently.
 
+### Register the app before the token means anything
+
+A debug token is a credential to **exchange**, and the exchange happens against this app's
+own row in App Check — a provider chosen and the app added on *App Check → Apps* in the
+Firebase console, one row per platform. Skip that step and every exchange fails with:
+
+```
+[FirebaseAppCheck][I-FAA004002] Failed to exchange debug token.
+```
+
+That line names one cause — an unregistered token — and on a fresh setup it is usually not
+the cause. The console's own *Manage debug tokens* screen is reachable, and lets you add a
+token, whether or not the app itself has a row yet: following its advice can look like it
+worked while the actual precondition — the app being registered at all — is still missing.
+Rule the app out first: is there a row for this platform's app on *App Check → Apps*?
+
+This is **per platform**. Android can be registered and working while iOS has never been
+touched, or the reverse — the two rows are independent, and a working Android build says
+nothing about whether iOS is registered.
+
 ### Getting a debug token
 
 Attestation needs real hardware and a real install. The emulator, the simulator and CI have
@@ -165,6 +185,12 @@ Register it in *Firebase console → App Check → the app → ⋮ → Manage de
 identifies **a device, not a person**: it is not worth a GitHub secret, but it does not belong
 in the repository either — anyone holding it can talk to the backend from anywhere. Tokens are
 revoked from that same screen; give each one a name that says whose machine it is.
+
+Prefer pinning the value over letting the SDK generate one: pass it as `-FIRDebugToken <uuid>`
+in the scheme's launch arguments. A generated token changes every time the app's container is
+wiped, so the registered value silently goes stale and the exchange starts failing again with
+the same `I-FAA004002` line — pinning is what keeps a registered token matching the one the
+app actually presents.
 
 CI does not need one today: it builds but does not run anything against Firebase. The day it
 does, the token goes in as a secret and gets injected into the debug build.
