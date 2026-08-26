@@ -68,11 +68,6 @@ class ProfileViewModel(
         watchCatalogue()
     }
 
-    fun setDisplayName(name: String) = edit { profile -> profile.copy(displayName = name.ifBlank { null }) }
-
-    fun setServings(servings: Int) =
-        edit { profile -> profile.copy(household = profile.household.copy(servings = servings)) }
-
     /** Which strength a first tap binds at is domain policy; this only asks for it. */
     fun toggleConstraint(term: TermRef) =
         edit { profile -> toggleDietaryConstraint(profile, term, ConstraintStrength.SOFTEST) }

@@ -17,10 +17,6 @@ internal fun uiState(
 ): ProfileUiState {
     val profile = draft?.profile
     return ProfileUiState(
-        displayName = profile?.displayName.orEmpty(),
-        servings = profile?.household?.servings ?: 1,
-        constraintCount = profile?.constraints?.size ?: 0,
-        languageTags = profile?.languageTags.orEmpty(),
         sections = sections(catalogue, profile),
         isCatalogueLoaded = catalogue.answered,
         hasCatalogueFailed = catalogue.failed,

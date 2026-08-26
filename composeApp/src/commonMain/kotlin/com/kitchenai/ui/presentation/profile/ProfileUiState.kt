@@ -5,9 +5,7 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.UiText
 
-/** The field names `SaveUserProfileUseCase` reports; the screen anchors its messages to them. */
-const val SERVINGS_FIELD = "household.servings"
-
+/** The field name `SaveUserProfileUseCase` reports; the screen anchors its messages to it. */
 const val CONSTRAINTS_FIELD = "constraints"
 
 /**
@@ -15,10 +13,6 @@ const val CONSTRAINTS_FIELD = "constraints"
  * nothing apart from it, which is why they share a file.
  */
 data class ProfileUiState(
-    val displayName: String = "",
-    val servings: Int = 1,
-    val constraintCount: Int = 0,
-    val languageTags: List<String> = emptyList(),
     val sections: List<ConstraintSectionUi> = emptyList(),
     // False while the catalogue is still on its way: an empty vocabulary and one that has not
     // arrived look identical on screen otherwise, and only one of them is worth a message.
@@ -67,4 +61,4 @@ data class TermChipUi(
 }
 
 /** The inputs that render their own message; anything else falls through to the general one. */
-private val BOUND_FIELDS = setOf(SERVINGS_FIELD, CONSTRAINTS_FIELD)
+private val BOUND_FIELDS = setOf(CONSTRAINTS_FIELD)

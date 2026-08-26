@@ -76,12 +76,7 @@
     <string name="suggestions_generated">Generated</string>
     <string name="suggestions_saved_title">Saved recipes</string>
     <string name="suggestions_missing">Missing: %1$s</string>
-    <string name="profile_name">Name</string>
-    <string name="profile_servings">Servings</string>
-    <string name="profile_constraints">Constraints</string>
-    <string name="profile_languages">Languages</string>
-    <string name="profile_pantry_contents">Pantry contents</string>
-    <string name="profile_sent_title">Sent with every suggestion</string>
+    <string name="profile_sent_summary">Every suggestion sends your dietary constraints, your pantry, and the app\'s language.</string>
     <string name="profile_save">Save</string>
     <string name="profile_saving">Saving</string>
     <string name="profile_no_preferences">No preferences to show</string>
@@ -97,5 +92,4 @@
     <string name="placeholder_title">Nothing here yet</string>
     <string name="placeholder_body">This screen is on its way</string>
     <string name="session_retry">Try again</string>
-    <string name="profile_included">included</string>
 </resources>
