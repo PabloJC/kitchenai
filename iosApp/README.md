@@ -18,6 +18,15 @@ If the build fails with `Unable to resolve module dependency: 'FirebaseCore'`, t
 products are not linked to the target even though the package shows up in the navigator.
 Check *General → Frameworks, Libraries, and Embedded Content*.
 
+## Running against the live backend
+
+If every suggestion fails with *"This app could not prove who it is, so suggestions are
+unavailable"*, or the console logs `[FirebaseAppCheck][I-FAA004002] Failed to exchange debug
+token`, the iOS app itself is not registered in App Check yet — a debug token exchanges
+against that registration, and it is per platform: a working Android build says nothing about
+iOS. See [`docs/infra.md`](../docs/infra.md#register-the-app-before-the-token-means-anything)
+for the registration step and how to pin the token so it survives a container wipe.
+
 ## About the frameworks
 
 Xcode links a single framework, `ComposeApp`, which also exports `:shared`
