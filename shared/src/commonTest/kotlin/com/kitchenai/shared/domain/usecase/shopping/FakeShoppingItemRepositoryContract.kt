@@ -67,6 +67,12 @@ class FakeShoppingItemRepositoryContract(
         itemId: ShoppingItemId,
     ): AppResult<Unit> = write { replace(listId) { current -> current.filterNot { it.id == itemId } } }
 
+    override suspend fun removeItems(
+        userId: UserId,
+        listId: ShoppingListId,
+        ids: List<ShoppingItemId>,
+    ): AppResult<Unit> = write { replace(listId) { current -> current.filterNot { it.id in ids } } }
+
     override suspend fun removeCheckedItems(
         userId: UserId,
         listId: ShoppingListId,

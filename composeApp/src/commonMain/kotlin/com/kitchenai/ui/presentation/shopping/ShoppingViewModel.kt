@@ -177,6 +177,16 @@ class ShoppingViewModel(
         }
     }
 
+    fun moveCheckedToPantry() {
+        edit { user, list ->
+            val result = writes.moveCheckedToPantry(user, list)
+            if (result is AppResult.Success) {
+                _events.send(ShoppingEvent.MovedToPantry(result.data.moved, result.data.skipped))
+            }
+            result
+        }
+    }
+
     /** Typing anywhere drops the pick: the word on screen would otherwise stop matching the identifier. */
     fun onDraftChange(text: String) {
         draft.value = ShoppingDraftUi(text = text, suggestions = suggest(text))
@@ -334,6 +344,8 @@ sealed interface ShoppingEvent {
     ) : ShoppingEvent
 
     data class CheckedCleared(val count: Int) : ShoppingEvent
+
+    data class MovedToPantry(val moved: Int, val skipped: Int) : ShoppingEvent
 }
 
 private const val SUGGESTION_LIMIT = 6

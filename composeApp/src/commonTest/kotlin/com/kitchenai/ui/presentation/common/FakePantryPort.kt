@@ -56,4 +56,9 @@ class FakePantryPort(
         state.value = state.value.filterNot { it.id in replaced } + items
         return AppResult.Success(Unit)
     }
+
+    override suspend fun upsertAllConfirmed(
+        userId: UserId,
+        items: List<PantryItem>,
+    ): AppResult<Unit> = upsertAll(userId, items)
 }

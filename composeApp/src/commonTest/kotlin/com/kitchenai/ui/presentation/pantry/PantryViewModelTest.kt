@@ -423,6 +423,11 @@ private class FakePantryPort : PantryRepositoryContract {
         upserted += items
         return upsertResult
     }
+
+    override suspend fun upsertAllConfirmed(
+        userId: UserId,
+        items: List<PantryItem>,
+    ): AppResult<Unit> = upsertAll(userId, items)
 }
 
 /** One stream of terms, served per taxonomy: a vocabulary must not answer for another one. */

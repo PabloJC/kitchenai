@@ -57,9 +57,11 @@ import com.kitchenai.ui.resources.shopping_empty_title
 import com.kitchenai.ui.resources.shopping_failed_body
 import com.kitchenai.ui.resources.shopping_failed_title
 import com.kitchenai.ui.resources.shopping_in_cart
+import com.kitchenai.ui.resources.shopping_move_to_pantry
 import com.kitchenai.ui.resources.shopping_removed_suffix
 import com.kitchenai.ui.resources.shopping_to_buy
 import com.kitchenai.ui.resources.shopping_undo
+import com.kitchenai.ui.resources.snack_moved_to_pantry
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -119,6 +121,7 @@ fun ShoppingScreen(
                         onCheck = viewModel::setChecked,
                         onRemove = viewModel::remove,
                         onClearChecked = { confirmingClear = true },
+                        onMoveToPantry = viewModel::moveCheckedToPantry,
                         modifier = Modifier.weight(1f),
                     )
             }
@@ -149,6 +152,7 @@ private fun ShoppingItems(
     onCheck: (ShoppingItemId, Boolean) -> Unit,
     onRemove: (ShoppingItemId) -> Unit,
     onClearChecked: () -> Unit,
+    onMoveToPantry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
@@ -166,9 +170,12 @@ private fun ShoppingItems(
                 SectionHeader(
                     title = stringResource(Res.string.shopping_in_cart),
                     trailing = {
-                        TextButton(
-                            onClick = onClearChecked,
-                        ) { Text(stringResource(Res.string.shopping_clear)) }
+                        Row {
+                            TextButton(onClick = onMoveToPantry) {
+                                Text(stringResource(Res.string.shopping_move_to_pantry))
+                            }
+                            TextButton(onClick = onClearChecked) { Text(stringResource(Res.string.shopping_clear)) }
+                        }
                     },
                 )
             }
@@ -263,6 +270,9 @@ private suspend fun SnackbarHostState.announce(
 
         is ShoppingEvent.CheckedCleared ->
             showSnackbar("${event.count} ${getString(Res.string.shopping_cleared_suffix)}")
+
+        is ShoppingEvent.MovedToPantry ->
+            showSnackbar(getString(Res.string.snack_moved_to_pantry, event.moved, event.skipped))
     }
 }
 

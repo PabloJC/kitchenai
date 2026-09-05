@@ -60,6 +60,7 @@ class FakeShoppingItemPort : ShoppingItemRepositoryContract {
     val upserts = mutableListOf<List<ShoppingItem>>()
     var upsertResult: AppResult<Unit> = AppResult.Success(Unit)
     var removed: ShoppingItemId? = null
+    val removedBatch = mutableListOf<ShoppingItemId>()
     var clears = 0
 
     suspend fun emit(items: List<ShoppingItem>) {
@@ -97,6 +98,15 @@ class FakeShoppingItemPort : ShoppingItemRepositoryContract {
         itemId: ShoppingItemId,
     ): AppResult<Unit> {
         removed = itemId
+        return AppResult.Success(Unit)
+    }
+
+    override suspend fun removeItems(
+        userId: UserId,
+        listId: ShoppingListId,
+        ids: List<ShoppingItemId>,
+    ): AppResult<Unit> {
+        removedBatch += ids
         return AppResult.Success(Unit)
     }
 
