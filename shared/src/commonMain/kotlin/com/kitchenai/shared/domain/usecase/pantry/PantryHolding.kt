@@ -1,5 +1,6 @@
 package com.kitchenai.shared.domain.usecase.pantry
 
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.map
@@ -30,6 +31,13 @@ internal fun draftPantryHolding(
     ids: IdGenerator,
     now: Instant,
 ): AppResult<PantryItem> {
+    // Enforced here rather than left to each caller: AddPantryItemUseCase used to check this
+    // itself before this logic was shared, and a caller that forgot would silently let a
+    // zero or negative amount through the merge path, which builds a PantryItem directly and
+    // never touches PantryItem.create's own checks either.
+    if (quantity.amount <= 0.0) {
+        return AppResult.Failure(AppError.Validation("amount", "must be greater than zero"))
+    }
     val mergeInto =
         ingredient?.let { known -> held.firstOrNull { it.ingredient == known && it.quantity.canCombineWith(quantity) } }
     return mergeInto?.let { existing ->

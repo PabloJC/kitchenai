@@ -20,6 +20,21 @@ class MoveCheckedItemsToPantryUseCaseTest {
     ) = MoveCheckedItemsToPantryUseCase(items, pantry, sequentialIds(), time)
 
     @Test
+    fun `the pantry write goes through the confirmed path rather than the optimistic one`() =
+        runTest {
+            val items = FakeShoppingItemRepositoryContract()
+            items.seed(list, shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true))
+            val pantry = FakePantryRepositoryContract()
+
+            useCase(items, pantry)(userId(), list)
+
+            // Not upsertAll: an optimistic write always "succeeds" before the server has
+            // answered, which would let removeItems run on a pantry write that never landed.
+            assertEquals(1, pantry.upsertAllConfirmedCalls)
+            assertEquals(0, pantry.upsertAllCalls)
+        }
+
+    @Test
     fun `a checked catalogue line with a quantity moves into the pantry and leaves the list`() =
         runTest {
             val items = FakeShoppingItemRepositoryContract()
@@ -67,6 +82,20 @@ class MoveCheckedItemsToPantryUseCaseTest {
             assertEquals(1, result.data.skipped)
             assertTrue(pantry.items.isEmpty())
             assertEquals(listOf("milk"), items.itemsOf(list).map { it.id.value })
+        }
+
+    @Test
+    fun `a checked line with a zero amount fails rather than creating an empty holding`() =
+        runTest {
+            val items = FakeShoppingItemRepositoryContract()
+            items.seed(list, shoppingItem("rice", quantity = Quantity(0.0, unit)).copy(checked = true))
+            val pantry = FakePantryRepositoryContract()
+
+            val result = useCase(items, pantry)(userId(), list)
+
+            assertTrue(result is AppResult.Failure)
+            assertTrue(pantry.items.isEmpty())
+            assertEquals(listOf("rice"), items.itemsOf(list).map { it.id.value })
         }
 
     @Test

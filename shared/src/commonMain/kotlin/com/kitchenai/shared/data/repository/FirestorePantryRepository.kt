@@ -67,14 +67,23 @@ class FirestorePantryRepository(
     override suspend fun upsertAll(
         userId: UserId,
         items: List<PantryItem>,
-    ): AppResult<Unit> =
-        writes.optimistically(errors.of(userId)) {
-            val batch = firestore.batch()
-            items.forEach { item ->
-                batch.set(paths.pantryItem(userId, item.id), item.toDto(), merge = true) { encodeDefaults = true }
-            }
-            batch.commit()
+    ): AppResult<Unit> = writes.optimistically(errors.of(userId)) { commitAll(userId, items) }
+
+    override suspend fun upsertAllConfirmed(
+        userId: UserId,
+        items: List<PantryItem>,
+    ): AppResult<Unit> = firestoreCall(dispatchers) { commitAll(userId, items) }
+
+    private suspend fun commitAll(
+        userId: UserId,
+        items: List<PantryItem>,
+    ) {
+        val batch = firestore.batch()
+        items.forEach { item ->
+            batch.set(paths.pantryItem(userId, item.id), item.toDto(), merge = true) { encodeDefaults = true }
         }
+        batch.commit()
+    }
 
     private fun QuerySnapshot.toPantryItems(): List<PantryItem> = documents.map { it.toPantryItem() }.decodedOrDropped()
 

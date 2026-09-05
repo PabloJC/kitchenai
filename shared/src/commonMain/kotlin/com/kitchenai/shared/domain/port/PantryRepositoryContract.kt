@@ -35,4 +35,14 @@ interface PantryRepositoryContract {
         userId: UserId,
         items: List<PantryItem>,
     ): AppResult<Unit>
+
+    /**
+     * Like [upsertAll], but waits for the server to acknowledge the write instead of returning
+     * immediately — for the rare caller whose next step must not run until this one has
+     * genuinely landed, not merely been accepted into the local cache.
+     */
+    suspend fun upsertAllConfirmed(
+        userId: UserId,
+        items: List<PantryItem>,
+    ): AppResult<Unit>
 }

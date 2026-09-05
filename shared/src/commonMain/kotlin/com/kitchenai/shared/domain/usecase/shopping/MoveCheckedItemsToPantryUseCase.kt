@@ -24,11 +24,15 @@ import com.kitchenai.shared.domain.usecase.pantry.draftPantryHolding
  * quantity is a normal shopping line and not a normal pantry row.
  *
  * Every touched holding is folded against one pantry snapshot before anything is written, then
- * committed with a single [PantryRepositoryContract.upsertAll] — the same shape
- * [com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase] uses for
- * `CookRecipeUseCase`. Writing one line at a time would leave an earlier line already merged
- * into the pantry if a later one failed, and since a failed move leaves every line checked, the
- * natural retry would merge those same lines again.
+ * committed with a single [PantryRepositoryContract.upsertAllConfirmed] rather than
+ * [PantryRepositoryContract.upsertAll]: the ordinary optimistic writes this app uses everywhere
+ * else return before the server has answered, so a plain `upsertAll` here would always "succeed"
+ * and the list lines would be removed regardless of whether the pantry write actually landed —
+ * losing the item outright rather than merely under-applying it. Waiting for the real answer is
+ * what lets [invoke] refuse to call [ShoppingItemRepositoryContract.removeItems] on a pantry
+ * write that never happened. The removal itself stays optimistic, like every other list edit in
+ * this app: if it alone fails to reach the server, the line reappears once the listener catches
+ * up, which is a stale row, not a lost one.
  */
 class MoveCheckedItemsToPantryUseCase(
     private val shoppingItems: ShoppingItemRepositoryContract,
@@ -52,7 +56,7 @@ class MoveCheckedItemsToPantryUseCase(
             is AppResult.Failure -> touched
             is AppResult.Success ->
                 pantry
-                    .upsertAll(userId, touched.data)
+                    .upsertAllConfirmed(userId, touched.data)
                     .flatMap {
                         shoppingItems.removeItems(userId, listId, withQuantity.map { (item, _) -> item.id })
                     }.map { MovedToPantrySummary(withQuantity.size, skipped) }

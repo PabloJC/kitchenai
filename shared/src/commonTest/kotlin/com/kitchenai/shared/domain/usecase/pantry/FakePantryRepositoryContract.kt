@@ -32,6 +32,8 @@ class FakePantryRepositoryContract(
         private set
     var upsertAllCalls = 0
         private set
+    var upsertAllConfirmedCalls = 0
+        private set
     val removed = mutableListOf<PantryItemId>()
     val items: List<PantryItem> get() = state.value
 
@@ -65,6 +67,15 @@ class FakePantryRepositoryContract(
         items: List<PantryItem>,
     ): AppResult<Unit> {
         upsertAllCalls++
+        val ids = items.map { it.id }.toSet()
+        return write { held -> held.filterNot { it.id in ids } + items }
+    }
+
+    override suspend fun upsertAllConfirmed(
+        userId: UserId,
+        items: List<PantryItem>,
+    ): AppResult<Unit> {
+        upsertAllConfirmedCalls++
         val ids = items.map { it.id }.toSet()
         return write { held -> held.filterNot { it.id in ids } + items }
     }
