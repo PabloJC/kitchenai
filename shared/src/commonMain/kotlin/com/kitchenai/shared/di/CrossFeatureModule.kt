@@ -11,5 +11,5 @@ val crossFeatureModule: Module =
     module {
         factory { AddMissingIngredientsToShoppingListUseCase(get(), get(), get(), get(), get()) }
         factory { CookRecipeUseCase(get(), get(), get(), get()) }
-        factory { MoveCheckedItemsToPantryUseCase(get(), get()) }
+        factory { MoveCheckedItemsToPantryUseCase(get(), get(), get(), get()) }
     }

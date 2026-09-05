@@ -18,7 +18,6 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.usecase.pantry.AddPantryItemUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
@@ -319,7 +318,9 @@ class ShoppingViewModelTest {
                         moveCheckedToPantry =
                             MoveCheckedItemsToPantryUseCase(
                                 items,
-                                AddPantryItemUseCase(pantry, IdGenerator { "moved-${++generated}" }, time),
+                                pantry,
+                                IdGenerator { "moved-${++generated}" },
+                                time,
                             ),
                     ),
             )

@@ -3,7 +3,6 @@ package com.kitchenai.shared.domain.usecase.shopping
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Quantity
-import com.kitchenai.shared.domain.usecase.pantry.AddPantryItemUseCase
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -18,7 +17,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
     private fun useCase(
         items: FakeShoppingItemRepositoryContract,
         pantry: FakePantryRepositoryContract = FakePantryRepositoryContract(),
-    ) = MoveCheckedItemsToPantryUseCase(items, AddPantryItemUseCase(pantry, sequentialIds(), time))
+    ) = MoveCheckedItemsToPantryUseCase(items, pantry, sequentialIds(), time)
 
     @Test
     fun `a checked catalogue line with a quantity moves into the pantry and leaves the list`() =
@@ -87,7 +86,50 @@ class MoveCheckedItemsToPantryUseCaseTest {
         }
 
     @Test
-    fun `nothing is removed from the list when the pantry write fails`() =
+    fun `two checked lines for the same ingredient in the same unit merge with each other`() =
+        runTest {
+            val items = FakeShoppingItemRepositoryContract()
+            items.seed(
+                list,
+                shoppingItem("rice-1", "rice", quantity = Quantity(100.0, unit)).copy(checked = true),
+                shoppingItem("rice-2", "rice", quantity = Quantity(150.0, unit)).copy(checked = true),
+            )
+            val pantry = FakePantryRepositoryContract()
+
+            val result = useCase(items, pantry)(userId(), list)
+
+            assertTrue(result is AppResult.Success)
+            assertEquals(2, result.data.moved)
+            val holding = pantry.items.single()
+            assertEquals(Quantity(250.0, unit), holding.quantity)
+        }
+
+    @Test
+    fun `nothing is written to the pantry or removed from the list when a later line fails`() =
+        runTest {
+            val items = FakeShoppingItemRepositoryContract()
+            items.seed(
+                list,
+                // Would succeed on its own — the point is that it must not be written just
+                // because it was processed before the line that fails.
+                shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true),
+                // Both an ingredient and free text: rejected by draftPantryHolding by way of
+                // PantryItem.create's own invariant.
+                shoppingItem("broken", quantity = Quantity(1.0))
+                    .copy(checked = true, freeText = "not allowed alongside an ingredient"),
+            )
+            val pantry = FakePantryRepositoryContract()
+
+            val result = useCase(items, pantry)(userId(), list)
+
+            assertTrue(result is AppResult.Failure)
+            // The earlier, individually-valid line must not have been committed on its own.
+            assertTrue(pantry.items.isEmpty())
+            assertEquals(listOf("rice", "broken"), items.itemsOf(list).map { it.id.value })
+        }
+
+    @Test
+    fun `a pantry write failure leaves the list exactly as it was`() =
         runTest {
             val items = FakeShoppingItemRepositoryContract()
             items.seed(list, shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true))

@@ -2,11 +2,9 @@ package com.kitchenai.shared.domain.usecase.pantry
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItem
-import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
@@ -62,27 +60,7 @@ class AddPantryItemUseCase(
         location: TermRef?,
         expiresAt: Instant?,
     ): AppResult<PantryItem> {
-        val now = time.now()
-        // A free-text holding never merges: two different spellings of "the good bread" are not
-        // provably the same thing, and folding them into one row risks discarding a real one.
-        val mergeInto =
-            ingredient?.let { known ->
-                held.firstOrNull { it.ingredient == known && it.quantity.canCombineWith(quantity) }
-            }
-        val built =
-            mergeInto?.let { existing ->
-                (existing.quantity + quantity).map { total ->
-                    existing.copy(
-                        quantity = total,
-                        location = location ?: existing.location,
-                        // A merged pile is only as good as its soonest expiry.
-                        expiresAt = listOfNotNull(existing.expiresAt, expiresAt).minOrNull(),
-                        updatedAt = now,
-                    )
-                }
-            } ?: PantryItemId.of(ids.newId()).flatMap { id ->
-                PantryItem.create(id, quantity, now, ingredient, freeText, location, expiresAt)
-            }
+        val built = draftPantryHolding(held, ingredient, freeText, quantity, location, expiresAt, ids, time.now())
         return when (built) {
             is AppResult.Failure -> built
             is AppResult.Success -> pantry.upsert(userId, built.data).map { built.data }
