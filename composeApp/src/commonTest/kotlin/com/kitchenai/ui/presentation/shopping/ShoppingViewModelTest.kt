@@ -18,16 +18,19 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.usecase.pantry.AddPantryItemUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.MoveCheckedItemsToPantryUseCase
 import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemCheckedUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
@@ -56,6 +59,7 @@ class ShoppingViewModelTest {
     private val lists = FakeShoppingListPort()
     private val items = FakeShoppingItemPort()
     private val catalogue = FakeIngredientPort()
+    private val pantry = FakePantryPort()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -109,6 +113,29 @@ class ShoppingViewModelTest {
 
                 assertEquals(ShoppingEvent.CheckedCleared(2), awaitItem())
                 assertEquals(1, items.clears)
+            }
+        }
+
+    @Test
+    fun `moving checked lines announces how many moved and how many stayed`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(
+                listOf(
+                    line("item-1", checked = true, quantity = Quantity(200.0, gram)),
+                    // No quantity: a normal shopping line, not a normal pantry row.
+                    line("item-2", checked = true),
+                ),
+            )
+            advanceUntilIdle()
+
+            viewModel.events.test {
+                viewModel.moveCheckedToPantry()
+                advanceUntilIdle()
+
+                assertEquals(ShoppingEvent.MovedToPantry(moved = 1, skipped = 1), awaitItem())
+                assertEquals(listOf(itemId("item-1")), items.removedBatch)
+                assertEquals(listOf(ingredientId), pantry.held.map { it.ingredient })
             }
         }
 
@@ -289,6 +316,11 @@ class ShoppingViewModelTest {
                         setChecked = SetShoppingItemCheckedUseCase(items, time),
                         remove = RemoveShoppingItemUseCase(items),
                         clearChecked = ClearCheckedItemsUseCase(items),
+                        moveCheckedToPantry =
+                            MoveCheckedItemsToPantryUseCase(
+                                items,
+                                AddPantryItemUseCase(pantry, IdGenerator { "moved-${++generated}" }, time),
+                            ),
                     ),
             )
         viewModel.start(userId, listOf("en"), "list")

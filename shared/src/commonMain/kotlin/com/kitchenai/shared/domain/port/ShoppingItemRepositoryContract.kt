@@ -48,6 +48,13 @@ interface ShoppingItemRepositoryContract {
         itemId: ShoppingItemId,
     ): AppResult<Unit>
 
+    /** A named batch rather than repeated [removeItem] calls: moving five lines is one round trip. */
+    suspend fun removeItems(
+        userId: UserId,
+        listId: ShoppingListId,
+        ids: List<ShoppingItemId>,
+    ): AppResult<Unit>
+
     suspend fun removeCheckedItems(
         userId: UserId,
         listId: ShoppingListId,

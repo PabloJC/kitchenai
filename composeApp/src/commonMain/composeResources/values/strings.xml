@@ -12,6 +12,7 @@
     <string name="error_unauthorized_list">This account is not allowed to read this list</string>
     <string name="error_unauthorized_action">This account is not allowed to do that</string>
     <string name="snack_added_to_list">%1$d added, %2$d not needed</string>
+    <string name="snack_moved_to_pantry">%1$d moved to the pantry, %2$d left on the list</string>
     <string name="snack_cooked">Taken out of your pantry</string>
     <string name="snack_saved">Saved</string>
 
@@ -38,6 +39,7 @@
     <string name="shopping_to_buy">To buy</string>
     <string name="shopping_in_cart">In the cart</string>
     <string name="shopping_clear">Clear</string>
+    <string name="shopping_move_to_pantry">Move to pantry</string>
     <string name="shopping_cancel">Cancel</string>
     <string name="shopping_clear_title">Clear what is in the cart?</string>
     <string name="shopping_clear_body">The ticked lines are removed from the list on every device.</string>

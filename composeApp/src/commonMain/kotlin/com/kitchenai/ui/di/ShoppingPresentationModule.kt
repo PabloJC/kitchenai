@@ -11,6 +11,6 @@ import org.koin.dsl.module
 val shoppingPresentationModule: Module =
     module {
         factory { ShoppingReadsDelegate(get(), get(), get(), get()) }
-        factory { ShoppingWritesDelegate(get(), get(), get(), get()) }
+        factory { ShoppingWritesDelegate(get(), get(), get(), get(), get()) }
         viewModel { ShoppingViewModel(get(), get(), get()) }
     }

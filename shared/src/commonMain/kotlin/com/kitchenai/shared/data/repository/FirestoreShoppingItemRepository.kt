@@ -87,6 +87,15 @@ class FirestoreShoppingItemRepository(
             paths.shoppingListItem(userId, listId, itemId).delete()
         }
 
+    override suspend fun removeItems(
+        userId: UserId,
+        listId: ShoppingListId,
+        ids: List<ShoppingItemId>,
+    ): AppResult<Unit> =
+        writes.optimistically(errors.of(userId to listId)) {
+            deleteAll(ids.map { id -> paths.shoppingListItem(userId, listId, id) })
+        }
+
     /**
      * Reads which lines are ticked, then deletes them without waiting for the server. The read
      * is served from the cache while offline, which is where a ticked line already is.

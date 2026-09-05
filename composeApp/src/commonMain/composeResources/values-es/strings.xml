@@ -10,6 +10,7 @@
     <string name="error_unauthorized_list">Esta cuenta no tiene permiso para leer esta lista</string>
     <string name="error_unauthorized_action">Esta cuenta no tiene permiso para hacer eso</string>
     <string name="snack_added_to_list">%1$d añadidos, %2$d que no hacen falta</string>
+    <string name="snack_moved_to_pantry">%1$d movidos a la despensa, %2$d se quedan en la lista</string>
     <string name="snack_cooked">Descontado de tu despensa</string>
     <string name="snack_saved">Guardado</string>
 
@@ -36,6 +37,7 @@
     <string name="shopping_to_buy">Por comprar</string>
     <string name="shopping_in_cart">En el carro</string>
     <string name="shopping_clear">Vaciar</string>
+    <string name="shopping_move_to_pantry">Mover a la despensa</string>
     <string name="shopping_cancel">Cancelar</string>
     <string name="shopping_clear_title">¿Vaciar lo que hay en el carro?</string>
     <string name="shopping_clear_body">Las líneas marcadas se eliminan de la lista en todos los dispositivos.</string>
