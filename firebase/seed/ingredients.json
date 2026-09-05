@@ -23,8 +23,20 @@
     "defaultUnitTerm": "gram",
     "tags": { "food-groups": ["grain"], "allergens": ["gluten"] }
   },
+  "gluten-free-bread": {
+    "labels": { "en": "Gluten-free bread", "es": "Pan sin gluten" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["grain"] }
+  },
   "rice": {
     "labels": { "en": "Rice", "es": "Arroz" },
+    "defaultUnitTaxonomy": "units",
+    "defaultUnitTerm": "gram",
+    "tags": { "food-groups": ["grain"] }
+  },
+  "brown-rice": {
+    "labels": { "en": "Brown rice", "es": "Arroz integral" },
     "defaultUnitTaxonomy": "units",
     "defaultUnitTerm": "gram",
     "tags": { "food-groups": ["grain"] }
