@@ -105,7 +105,7 @@ class PantryViewModel(
             val quantity = Quantity(draft.amount, draft.unit)
             val result =
                 if (editing == null) {
-                    writes.add(userId, draft.ingredient, quantity, draft.location, draft.expiresAt)
+                    writes.add(userId, draft.ingredient, draft.freeText, quantity, draft.location, draft.expiresAt)
                 } else {
                     writes.update(userId, editing.applied(draft, writes.time.now()))
                 }

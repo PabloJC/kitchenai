@@ -48,8 +48,9 @@ object AgentContextBuilder {
             .map { it to it.freshnessAt(now, options.expiringSoonWindow) }
             .filterNot { (_, freshness) -> freshness == Freshness.Expired }
             .sortedBy { (item, _) -> item.expiresAt ?: Instant.DISTANT_FUTURE }
+            // A free-text holding has no catalogue id for the agent to reason about, so it is
+            // dropped here — before the cap, so it never displaces a holding the agent could use.
+            .mapNotNull { (item, freshness) -> item.ingredient?.let { id -> Triple(id, item.quantity, freshness) } }
             .take(options.maxPantryEntries)
-            .map { (item, freshness) ->
-                PantryEntry(item.ingredient, item.quantity, freshness is Freshness.ExpiringSoon)
-            }
+            .map { (id, quantity, freshness) -> PantryEntry(id, quantity, freshness is Freshness.ExpiringSoon) }
 }

@@ -27,7 +27,7 @@ class AddPantryItemUseCaseTest {
             val held = pantryItem("item-1", "ing-1", Quantity(200.0, unitA), expiresAt = later)
             val port = FakePantryRepositoryContract(listOf(held))
 
-            val result = useCase(port)(user, ingredientId("ing-1"), Quantity(50.0, unitA), null, sooner)
+            val result = useCase(port)(user, ingredientId("ing-1"), null, Quantity(50.0, unitA), null, sooner)
 
             assertTrue(result is AppResult.Success)
             assertEquals(1, port.items.size)
@@ -41,7 +41,7 @@ class AddPantryItemUseCaseTest {
         runTest {
             val port = FakePantryRepositoryContract(listOf(pantryItem("item-1", "ing-1", Quantity(200.0, unitA))))
 
-            useCase(port)(user, ingredientId("ing-1"), Quantity(1.0, unitB), null, null)
+            useCase(port)(user, ingredientId("ing-1"), null, Quantity(1.0, unitB), null, null)
 
             assertEquals(2, port.items.size)
         }
@@ -49,7 +49,8 @@ class AddPantryItemUseCaseTest {
     @Test
     fun `a new holding takes the generated id and the current time`() =
         runTest {
-            val result = useCase(FakePantryRepositoryContract())(user, ingredientId("ing-1"), Quantity(3.0), null, null)
+            val result =
+                useCase(FakePantryRepositoryContract())(user, ingredientId("ing-1"), null, Quantity(3.0), null, null)
 
             assertTrue(result is AppResult.Success)
             assertEquals(pantryItemId("generated-1"), result.data.id)
@@ -61,7 +62,7 @@ class AddPantryItemUseCaseTest {
         runTest {
             val port = FakePantryRepositoryContract()
 
-            val result = useCase(port)(user, ingredientId("ing-1"), Quantity(0.0, unitA), null, null)
+            val result = useCase(port)(user, ingredientId("ing-1"), null, Quantity(0.0, unitA), null, null)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Validation)
@@ -73,9 +74,57 @@ class AddPantryItemUseCaseTest {
         runTest {
             val port = FakePantryRepositoryContract(writeError = AppError.Network())
 
-            val result = useCase(port)(user, ingredientId("ing-1"), Quantity(3.0), null, null)
+            val result = useCase(port)(user, ingredientId("ing-1"), null, Quantity(3.0), null, null)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Network)
+        }
+
+    @Test
+    fun `a free-text holding is added even though the catalogue has never heard of it`() =
+        runTest {
+            val port = FakePantryRepositoryContract()
+
+            val result = useCase(port)(user, null, "the good bread", Quantity(1.0), null, null)
+
+            assertTrue(result is AppResult.Success)
+            assertEquals("the good bread", result.data.freeText)
+            assertEquals(null, result.data.ingredient)
+        }
+
+    @Test
+    fun `a free-text holding never merges with an existing one`() =
+        runTest {
+            val existing = freeTextPantryItem("item-1", "the good bread", Quantity(1.0))
+            val port = FakePantryRepositoryContract(listOf(existing))
+
+            useCase(port)(user, null, "the good bread", Quantity(1.0), null, null)
+
+            assertEquals(2, port.items.size)
+        }
+
+    @Test
+    fun `rejects both an ingredient and free text on the same holding`() =
+        runTest {
+            val port = FakePantryRepositoryContract()
+
+            val result = useCase(port)(user, ingredientId("ing-1"), "the good bread", Quantity(1.0), null, null)
+
+            assertTrue(result is AppResult.Failure)
+            assertTrue(result.error is AppError.Validation)
+            assertEquals(0, port.upsertCalls)
+        }
+
+    @Test
+    fun `rejects both an ingredient and free text even when a mergeable holding already exists`() =
+        runTest {
+            val held = pantryItem("item-1", "ing-1", Quantity(200.0, unitA))
+            val port = FakePantryRepositoryContract(listOf(held))
+
+            val result = useCase(port)(user, ingredientId("ing-1"), "the good bread", Quantity(50.0, unitA), null, null)
+
+            assertTrue(result is AppResult.Failure)
+            assertTrue(result.error is AppError.Validation)
+            assertEquals(0, port.upsertCalls)
         }
 }

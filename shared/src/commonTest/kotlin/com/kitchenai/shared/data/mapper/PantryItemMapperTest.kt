@@ -22,6 +22,7 @@ class PantryItemMapperTest {
             PantryItem(
                 id = pantryItemId("item-1"),
                 ingredient = ingredientId("ingredient-1"),
+                freeText = null,
                 quantity = Quantity(2.5, termRef("term-1")),
                 location = termRef("term-2"),
                 expiresAt = Instant.fromEpochMilliseconds(1_700_000_000_000),
@@ -34,11 +35,31 @@ class PantryItemMapperTest {
     }
 
     @Test
+    fun `a free-text holding round trips through the document shape`() {
+        val item =
+            PantryItem(
+                id = pantryItemId("item-1"),
+                ingredient = null,
+                freeText = "the good bread",
+                quantity = Quantity(1.0),
+                location = null,
+                expiresAt = null,
+                updatedAt = Instant.fromEpochMilliseconds(0),
+            )
+
+        val restored = item.toDto().toDomain(item.id.value)
+
+        assertEquals(null, item.toDto().ingredientId)
+        assertEquals(AppResult.Success(item), restored)
+    }
+
+    @Test
     fun `carries an absent expiry and an absent location through as null`() {
         val item =
             PantryItem(
                 id = pantryItemId("item-1"),
                 ingredient = ingredientId("ingredient-1"),
+                freeText = null,
                 quantity = Quantity(1.0),
                 location = null,
                 expiresAt = null,
@@ -85,17 +106,28 @@ class PantryItemMapperTest {
         assertTrue(mapped is AppResult.Failure)
         assertEquals(AppError.Validation("IngredientId", "must not be blank"), mapped.error)
     }
+
+    @Test
+    fun `rejects a document that names neither an ingredient nor free text or that names both`() {
+        val neither = document(ingredientId = null).toDomain("item-1")
+        assertTrue(neither is AppResult.Failure)
+
+        val both = document(ingredientId = "ingredient-1", freeText = "the good bread").toDomain("item-1")
+        assertTrue(both is AppResult.Failure)
+    }
 }
 
 // Fixtures. Every identifier here is opaque on purpose: naming a unit, a location or an
 // ingredient in a fixture is the same mistake as naming it in code.
 internal fun document(
-    ingredientId: String = "ingredient-1",
+    ingredientId: String? = "ingredient-1",
+    freeText: String? = null,
     unitTaxonomy: String? = null,
     locationTerm: String? = null,
 ): PantryItemDto =
     PantryItemDto(
         ingredientId = ingredientId,
+        freeText = freeText,
         amount = 1.0,
         unitTaxonomy = unitTaxonomy,
         locationTerm = locationTerm,

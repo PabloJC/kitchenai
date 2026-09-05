@@ -173,12 +173,25 @@ class PantryViewModelTest {
         runTest(dispatcher) {
             val viewModel = loadedViewModel()
 
-            viewModel.save(PantryItemDraft(ingredientId, 1.0, unitRef, null, null))
+            viewModel.save(PantryItemDraft(ingredientId, null, 1.0, unitRef, null, null))
             advanceUntilIdle()
 
             val written = pantry.upserted.single()
             assertEquals(ingredientId, written.ingredient)
             assertEquals(1.0, written.quantity.amount)
+        }
+
+    @Test
+    fun `a free-text item is written even though the catalogue has never heard of it`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+
+            viewModel.save(PantryItemDraft(null, "the good bread", 1.0, null, null, null))
+            advanceUntilIdle()
+
+            val written = pantry.upserted.single()
+            assertNull(written.ingredient)
+            assertEquals("the good bread", written.freeText)
         }
 
     @Test
@@ -188,7 +201,7 @@ class PantryViewModelTest {
             val row = viewModel.state.value.items.single()
 
             viewModel.openEditor(row)
-            viewModel.save(PantryItemDraft(row.ingredient, 5.0, row.unit, null, null))
+            viewModel.save(PantryItemDraft(row.ingredient, null, 5.0, row.unit, null, null))
             advanceUntilIdle()
 
             val written = pantry.upserted.single()
@@ -205,7 +218,7 @@ class PantryViewModelTest {
             val other = IngredientId.of("ingredient-2").value()
 
             viewModel.openEditor(row)
-            viewModel.save(PantryItemDraft(other, 1.0, row.unit, null, null))
+            viewModel.save(PantryItemDraft(other, null, 1.0, row.unit, null, null))
             advanceUntilIdle()
 
             val written = pantry.upserted.single()
@@ -284,7 +297,7 @@ class PantryViewModelTest {
             pantry.upsertResult = AppResult.Failure(AppError.Unauthorized())
 
             viewModel.events.test {
-                viewModel.save(PantryItemDraft(ingredientId, 1.0, unitRef, null, null))
+                viewModel.save(PantryItemDraft(ingredientId, null, 1.0, unitRef, null, null))
                 advanceUntilIdle()
                 assertEquals(PantryEvent.SaveFailed(UNAUTHORIZED_MESSAGE), awaitItem())
             }
@@ -361,6 +374,7 @@ private val item =
     PantryItem(
         id = itemId,
         ingredient = ingredientId,
+        freeText = null,
         quantity = Quantity(2.0, unitRef),
         location = locationRef,
         expiresAt = null,

@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.Freshness
 import com.kitchenai.shared.domain.model.PantryItem
@@ -143,7 +144,11 @@ private fun PantryRow(
 ) {
     SwipeToDismissRow(onDismiss = { onRemove(item) }) {
         ListItem(
-            headlineContent = { Text(item.name) },
+            headlineContent = {
+                // Set apart from a catalogue row, which is the row that merges and that the
+                // pantry matcher can reason about; this one is neither.
+                Text(item.name, fontStyle = if (item.ingredient != null) FontStyle.Normal else FontStyle.Italic)
+            },
             supportingContent = { Text(item.quantityLabel) },
             trailingContent = { item.locationLabel?.let { label -> Text(label) } },
             modifier = Modifier.clickable { onEdit(item) },
