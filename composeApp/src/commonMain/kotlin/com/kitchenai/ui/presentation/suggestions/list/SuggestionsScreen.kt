@@ -137,11 +137,14 @@ private fun Results(
                 // and a blank screen for that long reads as a hang rather than as work.
                 state.isGenerating -> item { Skeleton() }
                 // Generated and found nothing is not the same as never asked, and neither is an error.
+                // Fills the viewport to centre in only when nothing follows it: with saved
+                // recipes below, that space is theirs, not a message that already said its piece.
                 state.hasGenerated && state.error == null ->
                     item {
                         EmptyState(
                             title = stringResource(Res.string.suggestions_nothing_title),
                             body = stringResource(Res.string.suggestions_nothing_body),
+                            modifier = if (state.savedRecipes.isEmpty()) Modifier.fillParentMaxSize() else Modifier,
                         )
                     }
                 !state.hasGenerated ->
@@ -149,6 +152,7 @@ private fun Results(
                         EmptyState(
                             title = stringResource(Res.string.suggestions_empty_title),
                             body = stringResource(Res.string.suggestions_empty_body),
+                            modifier = if (state.savedRecipes.isEmpty()) Modifier.fillParentMaxSize() else Modifier,
                         )
                     }
                 else -> Unit

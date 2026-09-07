@@ -2,9 +2,10 @@ package com.kitchenai.ui.presentation.profile
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -61,37 +62,44 @@ private fun ProfileContent(
     viewModel: ProfileViewModel,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = Dimens.large),
-        verticalArrangement = Arrangement.spacedBy(Dimens.medium),
-    ) {
-        item { TransparencyLine() }
+    // A Column with a weighted middle, not one LazyColumn top to bottom: TransparencyLine and
+    // SaveRow stay fixed so the empty state has a bounded height to centre inside — matching
+    // ShoppingScreen's own header/content/footer split — and Save never needs a scroll to reach.
+    Column(modifier = modifier.fillMaxSize()) {
+        Spacer(Modifier.height(Dimens.large))
+        TransparencyLine()
+        Spacer(Modifier.height(Dimens.medium))
 
         if (state.isCatalogueLoaded && state.sections.isEmpty()) {
-            item {
-                EmptyState(
-                    title = stringResource(Res.string.profile_no_preferences),
-                    body =
-                        if (state.hasCatalogueFailed) {
-                            stringResource(Res.string.profile_vocabulary_failed)
-                        } else {
-                            stringResource(Res.string.profile_no_vocabulary)
-                        },
-                )
-            }
+            EmptyState(
+                title = stringResource(Res.string.profile_no_preferences),
+                body =
+                    if (state.hasCatalogueFailed) {
+                        stringResource(Res.string.profile_vocabulary_failed)
+                    } else {
+                        stringResource(Res.string.profile_no_vocabulary)
+                    },
+                modifier = Modifier.weight(1f),
+            )
         } else {
-            item { state.errorFor(CONSTRAINTS_FIELD)?.let { message -> FieldMessage(message) } }
-            items(state.sections, key = { section -> section.taxonomy.value }) { section ->
-                ConstraintSection(
-                    section = section,
-                    onToggle = viewModel::toggleConstraint,
-                    onCycleStrength = viewModel::cycleStrength,
-                )
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(Dimens.medium),
+            ) {
+                item { state.errorFor(CONSTRAINTS_FIELD)?.let { message -> FieldMessage(message) } }
+                items(state.sections, key = { section -> section.taxonomy.value }) { section ->
+                    ConstraintSection(
+                        section = section,
+                        onToggle = viewModel::toggleConstraint,
+                        onCycleStrength = viewModel::cycleStrength,
+                    )
+                }
             }
         }
 
-        item { SaveRow(isSaving = state.isSaving, message = state.generalError, onSave = viewModel::save) }
+        Spacer(Modifier.height(Dimens.medium))
+        SaveRow(isSaving = state.isSaving, message = state.generalError, onSave = viewModel::save)
+        Spacer(Modifier.height(Dimens.large))
     }
 }
 

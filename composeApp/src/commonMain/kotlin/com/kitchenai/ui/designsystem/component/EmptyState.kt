@@ -22,11 +22,8 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
-    // Centred rather than merely spaced: a caller that hands this the whole screen's height
-    // (the ordinary case — a pantry, a list, a catalogue with nothing in it) means the message
-    // to land in the middle of it, the way LoadingState does a moment earlier in the same slot.
-    // Sizing stays the caller's own modifier: forcing fillMaxSize here would break the callers
-    // that place this inside a LazyColumn item, where the incoming height is unbounded.
+    // Centred to match LoadingState, the same slot a moment earlier; sizing is left to the
+    // caller, since forcing it here would break a caller with unbounded height (a lazy item).
     Column(
         modifier = modifier.fillMaxWidth().padding(Dimens.large),
         horizontalAlignment = Alignment.CenterHorizontally,
