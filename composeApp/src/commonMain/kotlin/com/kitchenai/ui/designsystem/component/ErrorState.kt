@@ -26,10 +26,13 @@ fun ErrorState(
     retryLabel: String? = null,
     onRetry: (() -> Unit)? = null,
 ) {
+    // Centred rather than merely spaced: a caller that hands this the whole screen's height
+    // means the message to land in the middle of it, the way LoadingState does a moment earlier
+    // in the same slot. Sizing stays the caller's own modifier — see EmptyState for why.
     Column(
         modifier = modifier.fillMaxWidth().padding(Dimens.large),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Dimens.medium),
+        verticalArrangement = Arrangement.spacedBy(Dimens.medium, Alignment.CenterVertically),
     ) {
         Text(
             text = message,
