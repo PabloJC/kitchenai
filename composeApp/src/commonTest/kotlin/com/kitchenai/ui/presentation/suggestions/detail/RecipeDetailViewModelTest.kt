@@ -21,6 +21,7 @@ import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.recipe.CookRecipeUseCase
@@ -395,12 +396,74 @@ class RecipeDetailViewModelTest {
             assertTrue(viewModel.state.value.held.isEmpty())
         }
 
+    @Test
+    fun `a free-text holding that plausibly names an unverifiable line is offered as a candidate`() =
+        runTest(dispatcher) {
+            val salt = freeTextHolding("item-2", "salt")
+            val held = listOf(holding(200.0), salt)
+            val viewModel = started(pantry = held, pantryPort = FakePantryPort(held))
+            advanceUntilIdle()
+
+            val line = viewModel.state.value.unverifiable.single()
+            assertEquals(listOf("salt"), line.candidates.map { it.label })
+            assertFalse(line.candidates.single().confirmed)
+        }
+
+    @Test
+    fun `confirming a candidate only flips its own chip and matches the pantry unchanged`() =
+        runTest(dispatcher) {
+            val salt = freeTextHolding("item-2", "salt")
+            val pantryPort = FakePantryPort(listOf(salt))
+            val viewModel = started(pantry = listOf(salt), pantryPort = pantryPort)
+            advanceUntilIdle()
+            val candidateId = viewModel.state.value.unverifiable.single().candidates.single().id
+
+            viewModel.confirmCandidate(candidateId)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.unverifiable.single().candidates.single().confirmed)
+            // Still unverifiable, never quietly promoted to held: PantryMatcher's own answer for
+            // this line is untouched by a confirmation (#163).
+            assertTrue(viewModel.state.value.held.none { it.name == "a pinch of salt" })
+            // And nothing was written: confirming is purely local, never a pantry write.
+            assertEquals(listOf(salt), pantryPort.held)
+
+            viewModel.confirmCandidate(candidateId)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.unverifiable.single().candidates.single().confirmed)
+        }
+
+    @Test
+    fun `an unrelated free-text holding is never offered as a candidate`() =
+        runTest(dispatcher) {
+            val oil = freeTextHolding("item-2", "olive oil")
+            val viewModel = started(pantry = listOf(oil), pantryPort = FakePantryPort(listOf(oil)))
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.unverifiable.single().candidates.isEmpty())
+        }
+
     private fun holding(amount: Double): PantryItem =
         PantryItem(
             id = PantryItemId.of("item-1").orFail(),
             ingredient = IngredientId.of("rice").orFail(),
             freeText = null,
             quantity = Quantity(amount, gram),
+            location = null,
+            expiresAt = null,
+            updatedAt = now,
+        )
+
+    private fun freeTextHolding(
+        id: String,
+        freeText: String,
+    ): PantryItem =
+        PantryItem(
+            id = PantryItemId.of(id).orFail(),
+            ingredient = null,
+            freeText = freeText,
+            quantity = Quantity(1.0),
             location = null,
             expiresAt = null,
             updatedAt = now,
@@ -426,6 +489,7 @@ class RecipeDetailViewModelTest {
                 ingredients = ObserveIngredientsUseCase(catalogue),
                 taxonomies = ObserveTaxonomiesUseCase(taxonomies),
                 taxonomy = ObserveTaxonomyUseCase(taxonomies),
+                pantry = ObservePantryUseCase(pantryPort),
             )
         val writes =
             RecipeDetailWritesDelegate(

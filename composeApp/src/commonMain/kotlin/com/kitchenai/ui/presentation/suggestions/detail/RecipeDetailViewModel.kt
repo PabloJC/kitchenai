@@ -6,6 +6,8 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.PantryItem
+import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
@@ -14,6 +16,7 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.service.PantryCandidateMatcher
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
@@ -68,6 +71,12 @@ class RecipeDetailViewModel(
     private val vocabularies = MutableStateFlow<List<Taxonomy>>(emptyList())
     private val recipe = MutableStateFlow<Recipe?>(null)
     private val currentMatch = MutableStateFlow<PantryMatch?>(null)
+
+    // For candidate matching only — PantryMatcher already read the pantry to build the match
+    // above, and dropped the snapshot along the way. Never persisted: a candidate a person
+    // confirms is a fact about this viewing, not a write to the pantry or the catalogue (#163).
+    private val pantry = MutableStateFlow<List<PantryItem>>(emptyList())
+    private val confirmedCandidates = MutableStateFlow<Set<PantryItemId>>(emptySet())
     private val loading = MutableStateFlow<Job?>(null)
     private var user: UserId? = null
     private var id: RecipeId? = null
@@ -96,8 +105,20 @@ class RecipeDetailViewModel(
                 recipe.value?.let { held -> render(held, currentMatch.value) }
             }
         }
+        viewModelScope.launch {
+            reads.pantry(userId).collect { loaded ->
+                pantry.value = loaded
+                recipe.value?.let { held -> render(held, currentMatch.value) }
+            }
+        }
         watchVocabulary()
         load(recipeId, servings = null)
+    }
+
+    /** Purely local: nothing is written to the pantry or the catalogue by confirming one. */
+    fun confirmCandidate(id: PantryItemId) {
+        confirmedCandidates.update { current -> if (id in current) current - id else current + id }
+        recipe.value?.let { held -> render(held, currentMatch.value) }
     }
 
     /**
@@ -265,6 +286,7 @@ class RecipeDetailViewModel(
                 taxonomies = vocabularies.value,
                 languageTags = languageTags,
             )
+        val candidates = PantryCandidateMatcher.candidatesFor(match?.unverifiable.orEmpty(), pantry.value)
         internalState.update { current ->
             current.copy(
                 title = found.title,
@@ -273,7 +295,10 @@ class RecipeDetailViewModel(
                 servings = servings,
                 held = match?.covered.orEmpty().map { it.ingredient.toUi(resolver) },
                 missing = match?.missing.orEmpty().map { it.ingredient.toUi(resolver) },
-                unverifiable = match?.unverifiable.orEmpty().map { it.toUi(resolver) },
+                unverifiable =
+                    match?.unverifiable.orEmpty().map { line ->
+                        line.toUi(resolver, candidates[line].orEmpty(), confirmedCandidates.value)
+                    },
                 steps = found.steps,
                 tags = found.tags.map(resolver::wordFor),
                 isLoading = false,

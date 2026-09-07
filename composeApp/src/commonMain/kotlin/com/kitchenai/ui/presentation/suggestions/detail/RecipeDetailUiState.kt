@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.suggestions.detail
 
+import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.ui.presentation.common.UiText
 
 /**
@@ -36,4 +37,14 @@ data class IngredientLineUi(
     val name: String,
     val quantity: String?,
     val optional: Boolean,
+    // Only ever populated for an unverifiable line: a candidate answers "is this what you
+    // meant", which a held or missing line has already answered by being in its own bucket.
+    val candidates: List<CandidateUi> = emptyList(),
+)
+
+/** A free-text pantry holding offered against this line, and whether the person confirmed it. */
+data class CandidateUi(
+    val id: PantryItemId,
+    val label: String,
+    val confirmed: Boolean,
 )
