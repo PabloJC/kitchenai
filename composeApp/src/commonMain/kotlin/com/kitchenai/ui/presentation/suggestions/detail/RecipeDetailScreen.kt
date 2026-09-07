@@ -51,11 +51,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
 import com.kitchenai.ui.designsystem.component.Tag
+import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.designsystem.theme.PillShape
 import com.kitchenai.ui.navigation.DetailTopBarState
@@ -67,6 +69,7 @@ import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_add_missing
 import com.kitchenai.ui.resources.detail_cancel
+import com.kitchenai.ui.resources.detail_candidate_prompt
 import com.kitchenai.ui.resources.detail_cook
 import com.kitchenai.ui.resources.detail_cook_body
 import com.kitchenai.ui.resources.detail_cook_confirm
@@ -147,7 +150,9 @@ fun RecipeDetailScreen(
                 )
             }
             IngredientsCard(state)
-            if (state.unverifiable.isNotEmpty()) UnverifiableCard(state.unverifiable)
+            if (state.unverifiable.isNotEmpty()) {
+                UnverifiableCard(state.unverifiable, viewModel::confirmCandidate)
+            }
             StepsCard(state.steps)
         }
     }
@@ -307,7 +312,10 @@ private fun StatusRow(
 }
 
 @Composable
-private fun UnverifiableCard(lines: List<IngredientLineUi>) {
+private fun UnverifiableCard(
+    lines: List<IngredientLineUi>,
+    onConfirmCandidate: (PantryItemId) -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
         Column(
             modifier = Modifier.padding(Dimens.large),
@@ -318,10 +326,36 @@ private fun UnverifiableCard(lines: List<IngredientLineUi>) {
             Text(stringResource(Res.string.detail_unverifiable), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(Res.string.detail_unverifiable_body), style = MaterialTheme.typography.bodySmall)
             lines.forEach { line ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(line.name + if (line.optional) stringResource(Res.string.detail_optional_suffix) else "")
-                    line.quantity?.let { amount -> Text(amount, style = MaterialTheme.typography.bodyMedium) }
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.extraSmall)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(line.name + if (line.optional) stringResource(Res.string.detail_optional_suffix) else "")
+                        line.quantity?.let { amount -> Text(amount, style = MaterialTheme.typography.bodyMedium) }
+                    }
+                    if (line.candidates.isNotEmpty()) CandidateRow(line.candidates, onConfirmCandidate)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * A candidate offered, never assumed: tapping one only toggles this chip. PantryMatcher's own
+ * verdict for the line above does not change either way (#163).
+ */
+@Composable
+private fun CandidateRow(
+    candidates: List<CandidateUi>,
+    onConfirm: (PantryItemId) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.extraSmall)) {
+        Text(stringResource(Res.string.detail_candidate_prompt), style = MaterialTheme.typography.labelSmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Dimens.extraSmall)) {
+            candidates.forEach { candidate ->
+                TermChip(
+                    label = candidate.label,
+                    selected = candidate.confirmed,
+                    onToggle = { onConfirm(candidate.id) },
+                )
             }
         }
     }

@@ -57,6 +57,7 @@
     <string name="detail_missing">Need to buy</string>
     <string name="detail_unverifiable">Check manually</string>
     <string name="detail_unverifiable_body">Your pantry cannot say either way about these</string>
+    <string name="detail_candidate_prompt">In your pantry as</string>
     <string name="detail_steps">Steps</string>
     <string name="detail_servings">Servings</string>
     <string name="detail_add_missing">Add missing</string>

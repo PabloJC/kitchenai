@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.suggestions.detail
 
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
@@ -20,4 +21,9 @@ class RecipeDetailReadsDelegate(
     /** Units are terms, not ingredients: without these a quantity renders as a bare number. */
     val taxonomies: ObserveTaxonomiesUseCase,
     val taxonomy: ObserveTaxonomyUseCase,
+    /**
+     * [match] folds the pantry into a verdict and keeps the snapshot itself; a candidate for an
+     * unverifiable line needs the holdings themselves, not what they already failed to verify.
+     */
+    val pantry: ObservePantryUseCase,
 )
