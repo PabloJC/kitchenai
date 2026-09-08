@@ -77,7 +77,7 @@ class AgentContextBuilderTest {
 
     @Test
     fun `profile references travel to the context unchanged`() {
-        val constraint = DietaryConstraint(termRef("term-2"), ConstraintStrength.EXCLUDE)
+        val constraint = DietaryConstraint(termRef("term-2"), ConstraintStrength.AVOID)
         val stored = profile(constraints = listOf(constraint), servings = 4)
 
         val context = AgentContextBuilder.build(stored, emptyList(), options, languageTags, now)

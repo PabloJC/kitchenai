@@ -78,13 +78,12 @@ export interface ReadableRequest {
   useOnlyPantry: boolean;
   pantry: { name: string; amount: number; unit: string | null; expiringSoon: boolean }[];
   excluded: string[];
-  avoided: string[];
   preferred: string[];
 }
 
 export function toReadable(request: SuggestRequest, catalogue: Catalogue): ReadableRequest {
-  const named = (list: Constraint[], strength: Constraint['strength']) =>
-    list.filter((it) => it.strength === strength).map((it) => catalogue.term(it)).filter(isText);
+  const named = (list: Constraint[], ...strengths: Constraint['strength'][]) =>
+    list.filter((it) => strengths.includes(it.strength)).map((it) => catalogue.term(it)).filter(isText);
 
   return {
     servings: request.servings,
@@ -92,11 +91,12 @@ export function toReadable(request: SuggestRequest, catalogue: Catalogue): Reada
     maxMinutes: request.options.maxMinutes,
     useOnlyPantry: request.options.useOnlyPantry,
     pantry: request.pantry.map((entry) => holding(entry, catalogue)).filter((it) => it !== null),
+    // 'EXCLUDE' is the legacy name for what the client now sends as 'AVOID' (#180) — both land
+    // here, the absolute bucket, never in the softer one below.
     excluded: [
-      ...named(request.constraints, 'EXCLUDE'),
+      ...named(request.constraints, 'AVOID', 'EXCLUDE'),
       ...request.avoidedIngredients.map((id) => catalogue.ingredient(id)).filter(isText),
     ],
-    avoided: named(request.constraints, 'AVOID'),
     preferred: [...named(request.constraints, 'PREFER'), ...request.preferences.map((it) => catalogue.term(it)).filter(isText)],
   };
 }

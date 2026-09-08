@@ -30,7 +30,7 @@ or a number.** There is no field in which a sentence can leave the device.
   "languageTags": ["en", "es"],
   "servings": 2,
   "options": { "maxResults": 5, "maxMinutes": null, "useOnlyPantry": true },
-  "constraints": [ { "taxonomy": "<id>", "term": "<id>", "strength": "EXCLUDE" } ],
+  "constraints": [ { "taxonomy": "<id>", "term": "<id>", "strength": "AVOID" } ],
   "preferences": [ { "taxonomy": "<id>", "term": "<id>" } ],
   "avoidedIngredients": ["<ingredientId>"],
   "pantry": [
@@ -42,9 +42,11 @@ or a number.** There is no field in which a sentence can leave the device.
 
 `requestId` is the client's, so a retry is recognisable server-side as the same question.
 
-`strength` is one of `PREFER`, `AVOID`, `EXCLUDE` — how hard a constraint binds is app logic,
-not vocabulary, which is why it is an enum while the term it applies to is not. `EXCLUDE` is the
-one the function must treat as absolute: the others are taste, and that one can be an allergy.
+`strength` is one of `PREFER`, `AVOID` — how hard a constraint binds is app logic, not
+vocabulary, which is why it is an enum while the term it applies to is not. `AVOID` is the one
+the function must treat as absolute: `PREFER` is taste, `AVOID` can be an allergy. A request may
+still carry a legacy `EXCLUDE` from a client that has not updated (#180) — treat it exactly as
+`AVOID`, never softer.
 
 `expiringSoon` is the reason the whole feature exists; the function is expected to weight it.
 

@@ -90,7 +90,12 @@ test('drops a holding the catalogue cannot name instead of sending it an id', ()
 test('separates a hard exclusion from a preference', () => {
   const readable = toReadable(parseRequest(wellFormed), catalogue);
   assert.deepEqual(readable.excluded, ['frutos secos']);
-  assert.deepEqual(readable.avoided, []);
+});
+
+test('treats AVOID the same as the legacy EXCLUDE name (#180)', () => {
+  const avoiding = { ...wellFormed, constraints: [{ taxonomy: 'allergens', term: 'nuts', strength: 'AVOID' }] };
+  const readable = toReadable(parseRequest(avoiding), catalogue);
+  assert.deepEqual(readable.excluded, ['frutos secos']);
 });
 
 test('keeps a pointer only when the catalogue agrees it exists', () => {

@@ -116,7 +116,7 @@ class CallableFunctionRecipeAgentTest {
         AgentContext(
             languageTags = listOf("en"),
             servings = 2,
-            constraints = listOf(DietaryConstraint(term("taxonomy-1", "term-1"), ConstraintStrength.EXCLUDE)),
+            constraints = listOf(DietaryConstraint(term("taxonomy-1", "term-1"), ConstraintStrength.AVOID)),
             preferences = listOf(term("taxonomy-2", "term-2")),
             avoidedIngredients = listOf(id("ingredient-9")),
             pantry = listOf(PantryEntry(id("ingredient-1"), Quantity(2.0, term("taxonomy-3", "term-3")), true)),

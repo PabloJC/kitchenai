@@ -74,10 +74,20 @@ private fun DietaryConstraintDto.toDomain(): AppResult<DietaryConstraint> {
 /**
  * An unreadable strength fails the document. Falling back to a weaker one would turn a hard
  * exclusion into a preference, which is a safety bug and not a parsing detail.
+ *
+ * `"EXCLUDE"` is a name no live [ConstraintStrength] carries any more (#180 collapsed it into
+ * [ConstraintStrength.AVOID]), but it is what every constraint hard-filtered before that change
+ * was written as, and still is on any document this client has not resaved. Reading it as
+ * anything other than [ConstraintStrength.AVOID] would silently soften an exclusion that was
+ * never meant to weaken on its own.
  */
 private fun String?.toStrength(): AppResult<ConstraintStrength> =
-    ConstraintStrength.entries.firstOrNull { it.name == this }?.let { AppResult.Success(it) }
-        ?: AppResult.Failure(AppError.Validation("constraints.strength", "is not a known strength"))
+    when (this) {
+        "EXCLUDE" -> AppResult.Success(ConstraintStrength.AVOID)
+        else ->
+            ConstraintStrength.entries.firstOrNull { it.name == this }?.let { AppResult.Success(it) }
+                ?: AppResult.Failure(AppError.Validation("constraints.strength", "is not a known strength"))
+    }
 
 /** The three reference lists, decoded together so [toDomain] stays one chain rather than six. */
 private class References(

@@ -21,6 +21,11 @@ export interface TermRef {
   term: string;
 }
 
+/**
+ * `'EXCLUDE'` is a legacy value: the client no longer sends it (#180 collapsed it into `'AVOID'`
+ * on that side), but an app install that has not updated yet still can. Accepted here rather
+ * than rejected, and `catalogue.ts` treats it the same as `'AVOID'` — never softer.
+ */
 export interface Constraint extends TermRef {
   strength: 'PREFER' | 'AVOID' | 'EXCLUDE';
 }

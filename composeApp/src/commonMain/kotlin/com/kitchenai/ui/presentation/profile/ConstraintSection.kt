@@ -23,7 +23,6 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.strength_avoid
-import com.kitchenai.ui.resources.strength_exclude
 import com.kitchenai.ui.resources.strength_prefer
 import org.jetbrains.compose.resources.stringResource
 
@@ -119,13 +118,14 @@ private fun ConstraintStrength.label(): String =
     when (this) {
         ConstraintStrength.PREFER -> stringResource(Res.string.strength_prefer)
         ConstraintStrength.AVOID -> stringResource(Res.string.strength_avoid)
-        ConstraintStrength.EXCLUDE -> stringResource(Res.string.strength_exclude)
     }
 
 @Composable
 private fun ConstraintStrength.color(): Color =
     when (this) {
-        ConstraintStrength.PREFER -> MaterialTheme.colorScheme.primary
-        ConstraintStrength.AVOID -> MaterialTheme.colorScheme.tertiary
-        ConstraintStrength.EXCLUDE -> MaterialTheme.colorScheme.error
+        // Green and red, not a shade of the same chip: AVOID hard-filters a recipe out
+        // entirely now (#180), and reading like a lighter version of PREFER would be a safety
+        // problem on the screen that says "Prefer" and "Avoid" tell the model apart.
+        ConstraintStrength.PREFER -> MaterialTheme.colorScheme.tertiary
+        ConstraintStrength.AVOID -> MaterialTheme.colorScheme.error
     }

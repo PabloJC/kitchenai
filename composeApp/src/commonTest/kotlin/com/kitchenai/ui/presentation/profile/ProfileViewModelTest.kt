@@ -114,7 +114,7 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `cycling walks a selected term through every strength and back`() =
+    fun `cycling toggles a selected term between the two strengths`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
             val term = termRef("tx-1", "tm-1")
@@ -128,8 +128,6 @@ class ProfileViewModelTest {
             assertEquals(ConstraintStrength.PREFER, strength())
             viewModel.cycleStrength(term)
             assertEquals(ConstraintStrength.AVOID, strength())
-            viewModel.cycleStrength(term)
-            assertEquals(ConstraintStrength.EXCLUDE, strength())
             viewModel.cycleStrength(term)
             assertEquals(ConstraintStrength.PREFER, strength())
         }
