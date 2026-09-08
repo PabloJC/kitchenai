@@ -2,13 +2,16 @@ package com.kitchenai.ui.presentation.profile
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.kitchenai.shared.domain.model.ConstraintStrength
@@ -87,12 +90,21 @@ private fun StrengthMarker(
     strength: ConstraintStrength,
     onCycle: () -> Unit,
 ) {
-    Text(
-        text = strength.label(),
-        style = MaterialTheme.typography.labelMedium,
-        color = strength.color(),
-        modifier = Modifier.clickable(onClick = onCycle).padding(horizontal = Dimens.extraSmall),
-    )
+    // A 48x48dp tap target around a word that reads much smaller: this cycles which allergen
+    // gets excluded, and a mistap that lands on the chip instead turns the exclusion off.
+    Box(
+        modifier =
+            Modifier
+                .defaultMinSize(minWidth = Dimens.touchTarget, minHeight = Dimens.touchTarget)
+                .clickable(onClick = onCycle),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = strength.label(),
+            style = MaterialTheme.typography.labelMedium,
+            color = strength.color(),
+        )
+    }
 }
 
 // A strength is app logic rather than catalogue vocabulary, so its wording is ours to write —
