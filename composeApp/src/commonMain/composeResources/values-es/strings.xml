@@ -77,6 +77,9 @@
     <string name="suggestions_generated">Generado</string>
     <string name="suggestions_saved_title">Recetas guardadas</string>
     <string name="suggestions_missing">Faltan: %1$s</string>
+    <string name="suggestions_minutes">%1$d min</string>
+    <string name="suggestions_coverage_count">%1$d de %2$d ingredientes</string>
+    <string name="suggestions_check_manually">Revisar a mano: %1$s</string>
     <string name="profile_sent_summary">Cada sugerencia envía tus restricciones dietéticas, tu despensa y el idioma de la app.</string>
     <string name="profile_save">Guardar</string>
     <string name="profile_saving">Guardando</string>

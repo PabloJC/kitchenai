@@ -44,9 +44,12 @@ import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.suggestions_check_manually
+import com.kitchenai.ui.resources.suggestions_coverage_count
 import com.kitchenai.ui.resources.suggestions_empty_body
 import com.kitchenai.ui.resources.suggestions_empty_title
 import com.kitchenai.ui.resources.suggestions_generated
+import com.kitchenai.ui.resources.suggestions_minutes
 import com.kitchenai.ui.resources.suggestions_missing
 import com.kitchenai.ui.resources.suggestions_nothing_body
 import com.kitchenai.ui.resources.suggestions_nothing_title
@@ -254,7 +257,7 @@ private fun SuggestionCard(
                 // fact this card has, given the same visual weight the prototype's badge gives it.
                 suggestion.totalMinutes?.let { minutes ->
                     Tag(
-                        label = "$minutes min",
+                        label = stringResource(Res.string.suggestions_minutes, minutes),
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -269,7 +272,7 @@ private fun SuggestionCard(
 private fun SuggestionCoverage(suggestion: SuggestionUi) {
     CoverageBar(fraction = suggestion.coverage) {
         Text(
-            "${suggestion.heldCount} of ${suggestion.totalCount} ingredients",
+            stringResource(Res.string.suggestions_coverage_count, suggestion.heldCount, suggestion.totalCount),
             style = MaterialTheme.typography.labelSmall,
         )
     }
@@ -283,7 +286,7 @@ private fun SuggestionCoverage(suggestion: SuggestionUi) {
     // something it does not.
     if (suggestion.unverifiable.isNotEmpty()) {
         Text(
-            "Check manually: ${suggestion.unverifiable.joinToString()}",
+            stringResource(Res.string.suggestions_check_manually, suggestion.unverifiable.joinToString()),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

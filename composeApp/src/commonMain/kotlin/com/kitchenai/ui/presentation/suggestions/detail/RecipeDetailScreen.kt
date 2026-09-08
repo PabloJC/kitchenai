@@ -88,6 +88,7 @@ import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.snack_added_to_list
 import com.kitchenai.ui.resources.snack_cooked
 import com.kitchenai.ui.resources.snack_saved
+import com.kitchenai.ui.resources.suggestions_minutes
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -204,7 +205,9 @@ private fun Header(
     ) {
         Text(state.title, style = MaterialTheme.typography.headlineSmall)
         state.summary?.let { summary -> Text(summary, style = MaterialTheme.typography.bodyMedium) }
-        state.totalMinutes?.let { minutes -> Text("$minutes min", style = MaterialTheme.typography.labelSmall) }
+        state.totalMinutes?.let { minutes ->
+            Text(stringResource(Res.string.suggestions_minutes, minutes), style = MaterialTheme.typography.labelSmall)
+        }
         if (state.tags.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Dimens.extraSmall)) {
                 state.tags.forEach { tag ->
