@@ -79,6 +79,9 @@
     <string name="suggestions_generated">Generated</string>
     <string name="suggestions_saved_title">Saved recipes</string>
     <string name="suggestions_missing">Missing: %1$s</string>
+    <string name="suggestions_minutes">%1$d min</string>
+    <string name="suggestions_coverage_count">%1$d of %2$d ingredients</string>
+    <string name="suggestions_check_manually">Check manually: %1$s</string>
     <string name="profile_sent_summary">Every suggestion sends your dietary constraints, your pantry, and the app\'s language.</string>
     <string name="profile_save">Save</string>
     <string name="profile_saving">Saving</string>
