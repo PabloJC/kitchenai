@@ -98,7 +98,12 @@ private fun ProfileContent(
         }
 
         Spacer(Modifier.height(Dimens.medium))
-        SaveRow(isSaving = state.isSaving, message = state.generalError, onSave = viewModel::save)
+        SaveRow(
+            isSaving = state.isSaving,
+            hasUnsavedChanges = state.hasUnsavedChanges,
+            message = state.generalError,
+            onSave = viewModel::save,
+        )
         Spacer(Modifier.height(Dimens.large))
     }
 }
@@ -121,6 +126,7 @@ private fun TransparencyLine() {
 @Composable
 private fun SaveRow(
     isSaving: Boolean,
+    hasUnsavedChanges: Boolean,
     message: UiText?,
     onSave: () -> Unit,
 ) {
@@ -129,7 +135,13 @@ private fun SaveRow(
         verticalArrangement = Arrangement.spacedBy(Dimens.small),
     ) {
         message?.let { text -> FieldMessage(text) }
-        Button(onClick = onSave, enabled = !isSaving, modifier = Modifier.fillMaxWidth()) {
+        // Disabled rather than always tappable: with nothing changed, a tap was a silent no-op
+        // write — this both signals "nothing pending" and stops that write from firing.
+        Button(
+            onClick = onSave,
+            enabled = !isSaving && hasUnsavedChanges,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Text(if (isSaving) stringResource(Res.string.profile_saving) else stringResource(Res.string.profile_save))
         }
     }

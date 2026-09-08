@@ -165,6 +165,21 @@ class ProfileViewModelTest {
         }
 
     @Test
+    fun `hasUnsavedChanges tracks an edit and clears once it is written`() =
+        runTest(dispatcher) {
+            val viewModel = ready("tx-1" to 1)
+            assertFalse(viewModel.state.value.hasUnsavedChanges)
+
+            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
+            advanceUntilIdle()
+            assertTrue(viewModel.state.value.hasUnsavedChanges)
+
+            viewModel.save()
+            advanceUntilIdle()
+            assertFalse(viewModel.state.value.hasUnsavedChanges)
+        }
+
+    @Test
     fun `a second press while the first is in flight writes once`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)

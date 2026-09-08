@@ -21,6 +21,9 @@ data class ProfileUiState(
     val hasCatalogueFailed: Boolean = false,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
+    // Surfaces ProfileDraft.edited: without it, the screen looks identical whether the last
+    // toggle was written or is still only sitting in memory.
+    val hasUnsavedChanges: Boolean = false,
     val error: ProfileError? = null,
 ) {
     /** A message belongs to an input only when the use case named that input. */
