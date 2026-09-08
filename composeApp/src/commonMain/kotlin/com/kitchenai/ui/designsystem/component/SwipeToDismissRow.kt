@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -13,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import com.kitchenai.ui.designsystem.theme.Dimens
@@ -42,6 +46,8 @@ fun SwipeToDismissRow(
         modifier = modifier,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
+            // Trailing-aligned rather than centred: the swipe is fixed end-to-start, so this is
+            // the edge the reveal grows from, and where a thumb mid-swipe is already looking.
             Box(
                 modifier =
                     Modifier
@@ -49,7 +55,14 @@ fun SwipeToDismissRow(
                         .clip(RoundedCornerShape(Dimens.corner))
                         .background(MaterialTheme.colorScheme.errorContainer)
                         .padding(horizontal = Dimens.large),
-            )
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
         },
         content = { content() },
     )
