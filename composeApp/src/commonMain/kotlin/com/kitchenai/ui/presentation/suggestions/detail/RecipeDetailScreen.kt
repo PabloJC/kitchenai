@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -422,14 +422,18 @@ private fun Actions(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         HorizontalDivider()
+        // heightIn rather than a fixed height: a label that needs two lines (Spanish's
+        // "Añadir lo que falta" at half the row's width) grows the button instead of clipping,
+        // and CenterVertically keeps it lined up with a neighbour that stayed one line.
         Row(
             modifier = Modifier.fillMaxWidth().padding(Dimens.large),
             horizontalArrangement = Arrangement.spacedBy(Dimens.small),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedButton(
                 onClick = viewModel::addMissingToList,
                 enabled = !state.isWorking && state.missing.isNotEmpty(),
-                modifier = Modifier.weight(1f).height(Dimens.touchTarget),
+                modifier = Modifier.weight(1f).heightIn(min = Dimens.touchTarget),
             ) {
                 Icon(
                     Icons.Outlined.ShoppingCart,
@@ -442,7 +446,7 @@ private fun Actions(
             Button(
                 onClick = onCook,
                 enabled = state.canCook,
-                modifier = Modifier.weight(1f).height(Dimens.touchTarget),
+                modifier = Modifier.weight(1f).heightIn(min = Dimens.touchTarget),
             ) {
                 Icon(
                     Icons.Outlined.LocalFireDepartment,
