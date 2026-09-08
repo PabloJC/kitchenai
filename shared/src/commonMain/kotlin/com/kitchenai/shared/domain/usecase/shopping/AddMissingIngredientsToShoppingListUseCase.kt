@@ -3,6 +3,7 @@ package com.kitchenai.shared.domain.usecase.shopping
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.AddedToListSummary
+import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Quantity
@@ -15,11 +16,13 @@ import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
 import com.kitchenai.shared.domain.port.IdGenerator
+import com.kitchenai.shared.domain.port.IngredientRepositoryContract
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
+import kotlin.math.ceil
 
 /**
  * Puts everything a recipe needs and the pantry does not cover onto a shopping list.
@@ -31,6 +34,7 @@ class AddMissingIngredientsToShoppingListUseCase(
     private val recipes: RecipeRepositoryContract,
     private val pantry: PantryRepositoryContract,
     private val shoppingItems: ShoppingItemRepositoryContract,
+    private val ingredients: IngredientRepositoryContract,
     private val ids: IdGenerator,
     private val time: TimeProvider,
 ) {
@@ -91,7 +95,7 @@ class AddMissingIngredientsToShoppingListUseCase(
      * user has it, and a line missing from the list is worse than a redundant one. Optional
      * ones are left out — nobody shops for a garnish they did not ask for.
      */
-    private fun PantryMatch.wanted(recipeId: RecipeId): List<ShoppingLine> {
+    private suspend fun PantryMatch.wanted(recipeId: RecipeId): List<ShoppingLine> {
         val short =
             missing.filterNot { it.ingredient.optional }
                 // The shortfall is what is left to buy; without one the whole amount is.
@@ -102,10 +106,31 @@ class AddMissingIngredientsToShoppingListUseCase(
 
     // Free text stays free text and a catalogue id stays an id: the client never writes prose,
     // so an unverifiable catalogue line cannot be turned into words here.
-    private fun RecipeIngredient.asLine(
+    private suspend fun RecipeIngredient.asLine(
         wantedQuantity: Quantity?,
         recipeId: RecipeId,
-    ): ShoppingLine = ShoppingLine(ingredient, freeText, wantedQuantity, recipeId)
+    ): ShoppingLine {
+        val rounded = wantedQuantity?.let { roundedToBuyable(ingredient, it) }
+        return ShoppingLine(ingredient, freeText, rounded, recipeId)
+    }
+
+    /**
+     * A whole-item ingredient (an onion, a bulb of garlic) is never bought as a fraction; a
+     * catalogue miss is not this use case's problem to fail on, so it just leaves the amount as
+     * asked.
+     */
+    private suspend fun roundedToBuyable(
+        ingredientId: IngredientId?,
+        quantity: Quantity,
+    ): Quantity {
+        val id = ingredientId ?: return quantity
+        val catalogued = ingredients.getIngredient(id)
+        return if (catalogued is AppResult.Success && catalogued.data.purchasedWhole) {
+            quantity.copy(amount = ceil(quantity.amount))
+        } else {
+            quantity
+        }
+    }
 
     /** One write, so the drafts are folded against each other before any of them leaves. */
     private fun draft(

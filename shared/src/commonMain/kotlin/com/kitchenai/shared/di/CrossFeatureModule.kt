@@ -9,7 +9,7 @@ import org.koin.dsl.module
 /** The use cases that span two features, and so belong to neither feature module. */
 val crossFeatureModule: Module =
     module {
-        factory { AddMissingIngredientsToShoppingListUseCase(get(), get(), get(), get(), get()) }
+        factory { AddMissingIngredientsToShoppingListUseCase(get(), get(), get(), get(), get(), get()) }
         factory { CookRecipeUseCase(get(), get(), get(), get()) }
         factory { MoveCheckedItemsToPantryUseCase(get(), get(), get(), get()) }
     }

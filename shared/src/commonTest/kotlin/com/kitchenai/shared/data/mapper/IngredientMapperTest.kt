@@ -40,6 +40,15 @@ class IngredientMapperTest {
     }
 
     @Test
+    fun `maps a document sold as whole items onto a purchasedWhole ingredient`() {
+        val mapped = IngredientDto(labels = mapOf("en" to "label-1"), purchasedWhole = true).toDomain("ingredient-1")
+
+        val expected =
+            Ingredient(ingredientId("ingredient-1"), mapOf("en" to "label-1"), null, emptyList(), purchasedWhole = true)
+        assertEquals(AppResult.Success(expected), mapped)
+    }
+
+    @Test
     fun `rejects a default unit that names a taxonomy without its term`() {
         val mapped = IngredientDto(defaultUnitTaxonomy = "taxonomy-1").toDomain("ingredient-1")
 

@@ -1,6 +1,7 @@
 package com.kitchenai.shared.domain.usecase.shopping
 
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
@@ -39,6 +40,18 @@ fun listId(raw: String = "list"): ShoppingListId = (ShoppingListId.of(raw) as Ap
 fun itemId(raw: String): ShoppingItemId = (ShoppingItemId.of(raw) as AppResult.Success).data
 
 fun ingredientId(raw: String): IngredientId = (IngredientId.of(raw) as AppResult.Success).data
+
+fun ingredient(
+    id: String,
+    purchasedWhole: Boolean = false,
+): Ingredient =
+    Ingredient(
+        ingredientId(id),
+        labels = emptyMap(),
+        defaultUnit = null,
+        tags = emptyList(),
+        purchasedWhole = purchasedWhole,
+    )
 
 /** Units are opaque taxonomy terms; nothing in the domain or in a fixture may name one. */
 fun termRef(
