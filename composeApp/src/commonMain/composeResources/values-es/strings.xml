@@ -88,7 +88,6 @@
     <string name="profile_vocabulary_failed">No se ha podido cargar el vocabulario, así que todavía no hay nada que elegir.</string>
     <string name="strength_prefer">Prefiero</string>
     <string name="strength_avoid">Evitar</string>
-    <string name="strength_exclude">Excluir</string>
     <string name="tab_pantry">Despensa</string>
     <string name="tab_shopping">Compra</string>
     <string name="tab_ideas">Ideas</string>

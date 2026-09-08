@@ -29,7 +29,7 @@ class UserProfileMapperTest {
             displayName = "Name",
             languageTags = listOf("xx", "yy-ZZ"),
             household = HouseholdContext(servings = 2, weeklyBudget = 40.0, defaultCookingMinutes = 25),
-            constraints = listOf(DietaryConstraint(ref("t-1", "a"), ConstraintStrength.EXCLUDE)),
+            constraints = listOf(DietaryConstraint(ref("t-1", "a"), ConstraintStrength.AVOID)),
             // Interleaved on purpose: grouping by taxonomy would reorder these and the round-trip
             // test would not notice if both came from the same one.
             preferences = listOf(ref("t-2", "b"), ref("t-3", "a"), ref("t-2", "c")),
@@ -85,6 +85,15 @@ class UserProfileMapperTest {
 
         assertTrue(result is AppResult.Failure)
         assertEquals(AppError.Validation("constraints.strength", "is not a known strength"), result.error)
+    }
+
+    @Test
+    fun `a document written before the strength collapse still hard-filters on its legacy EXCLUDE strength`() {
+        val dto = profile.toDto().copy(constraints = listOf(DietaryConstraintDto("t-1", "a", "EXCLUDE")))
+
+        val decoded = dto.toDomain(documentId)
+
+        assertEquals(ConstraintStrength.AVOID, (decoded as AppResult.Success).data.constraints.single().strength)
     }
 
     @Test

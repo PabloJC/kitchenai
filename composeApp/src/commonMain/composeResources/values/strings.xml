@@ -90,7 +90,6 @@
     <string name="profile_vocabulary_failed">The vocabulary could not be loaded, so there is nothing to choose from yet.</string>
     <string name="strength_prefer">Prefer</string>
     <string name="strength_avoid">Avoid</string>
-    <string name="strength_exclude">Exclude</string>
     <string name="tab_pantry">Pantry</string>
     <string name="tab_shopping">Shopping</string>
     <string name="tab_ideas">Ideas</string>

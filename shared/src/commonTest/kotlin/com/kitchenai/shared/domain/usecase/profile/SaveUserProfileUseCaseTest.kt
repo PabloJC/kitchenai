@@ -46,7 +46,7 @@ class SaveUserProfileUseCaseTest {
     @Test
     fun `a valid profile is written with a fresh updatedAt`() =
         runTest {
-            val result = save(profile.copy(constraints = listOf(exclude(known))))
+            val result = save(profile.copy(constraints = listOf(avoid(known))))
 
             assertEquals(AppResult.Success(Unit), result)
             assertEquals(savedAt, profiles.saved?.updatedAt)
@@ -64,7 +64,7 @@ class SaveUserProfileUseCaseTest {
     @Test
     fun `the same constraint term twice is rejected`() =
         runTest {
-            val result = save(profile.copy(constraints = listOf(exclude(known), exclude(known))))
+            val result = save(profile.copy(constraints = listOf(avoid(known), avoid(known))))
 
             assertEquals("constraints", (result.errorOrNull() as AppError.Validation).field)
             assertNull(profiles.saved)
@@ -73,7 +73,7 @@ class SaveUserProfileUseCaseTest {
     @Test
     fun `a constraint pointing at an unknown taxonomy is rejected`() =
         runTest {
-            val result = save(profile.copy(constraints = listOf(exclude(unknown))))
+            val result = save(profile.copy(constraints = listOf(avoid(unknown))))
 
             assertEquals("constraints", (result.errorOrNull() as AppError.Validation).field)
             assertNull(profiles.saved)
@@ -100,7 +100,7 @@ class SaveUserProfileUseCaseTest {
             assertNull(profiles.saved)
         }
 
-    private fun exclude(term: TermRef) = DietaryConstraint(term, ConstraintStrength.EXCLUDE)
+    private fun avoid(term: TermRef) = DietaryConstraint(term, ConstraintStrength.AVOID)
 
     private fun AppResult<Unit>.errorOrNull(): AppError? = (this as? AppResult.Failure)?.error
 }

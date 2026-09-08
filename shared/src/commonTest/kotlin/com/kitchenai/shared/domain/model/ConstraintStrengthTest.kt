@@ -5,15 +5,14 @@ import kotlin.test.assertEquals
 
 class ConstraintStrengthTest {
     @Test
-    fun `the cycle softens back round rather than ending on an exclusion`() {
+    fun `the cycle is a two-way toggle rather than a one-way tightening`() {
         assertEquals(ConstraintStrength.AVOID, ConstraintStrength.PREFER.next())
-        assertEquals(ConstraintStrength.EXCLUDE, ConstraintStrength.AVOID.next())
-        assertEquals(ConstraintStrength.PREFER, ConstraintStrength.EXCLUDE.next())
+        assertEquals(ConstraintStrength.PREFER, ConstraintStrength.AVOID.next())
     }
 
     @Test
     fun `every strength is reachable by repeating the choice`() {
-        val walked = generateSequence(ConstraintStrength.SOFTEST) { it.next() }.take(3).toSet()
+        val walked = generateSequence(ConstraintStrength.SOFTEST) { it.next() }.take(2).toSet()
 
         assertEquals(ConstraintStrength.entries.toSet(), walked)
     }

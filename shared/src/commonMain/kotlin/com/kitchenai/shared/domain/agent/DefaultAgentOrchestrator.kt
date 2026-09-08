@@ -70,7 +70,7 @@ class DefaultAgentOrchestrator(
         options: SuggestionOptions,
         now: Instant,
     ): List<RecipeSuggestion> {
-        val excluded = profile.constraints.filter { it.strength == ConstraintStrength.EXCLUDE }.map { it.term }.toSet()
+        val excluded = profile.constraints.filter { it.strength == ConstraintStrength.AVOID }.map { it.term }.toSet()
         return answer.suggestions
             .filterNot { it.violates(excluded) }
             .take(options.maxResults)

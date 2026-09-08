@@ -76,24 +76,24 @@ class DefaultAgentOrchestratorTest {
         }
 
     @Test
-    fun `a suggestion tagged with an excluded term is dropped and an avoided one is not`() =
+    fun `a suggestion tagged with an avoided term is dropped and a preferred one is not`() =
         runTest {
-            val excluded = termRef("term-2")
-            val avoided = termRef("term-3")
+            val avoided = termRef("term-2")
+            val preferred = termRef("term-3")
             val stored =
                 profile(
                     constraints =
                         listOf(
-                            DietaryConstraint(excluded, ConstraintStrength.EXCLUDE),
                             DietaryConstraint(avoided, ConstraintStrength.AVOID),
+                            DietaryConstraint(preferred, ConstraintStrength.PREFER),
                         ),
                 )
             val answer =
                 agentAnswer(
                     "agent-1",
                     listOf(
-                        recipe(id = "recipe-1").copy(tags = listOf(excluded)),
-                        recipe(id = "recipe-2").copy(tags = listOf(avoided)),
+                        recipe(id = "recipe-1").copy(tags = listOf(avoided)),
+                        recipe(id = "recipe-2").copy(tags = listOf(preferred)),
                     ),
                 )
 

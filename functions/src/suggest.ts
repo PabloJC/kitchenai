@@ -87,7 +87,6 @@ function instructions(request: ReadableRequest, vocabulary: Vocabulary): string 
     request.excluded.length
       ? `MUST NOT appear, in any amount, in any dish, including as a trace: ${request.excluded.join(', ')}. These are allergies or hard exclusions. If a dish would need one, suggest a different dish.`
       : null,
-    request.avoided.length ? `They would rather avoid: ${request.avoided.join(', ')}.` : null,
     request.preferred.length ? `They enjoy: ${request.preferred.join(', ')}.` : null,
     '',
     'Ingredient lines: set ingredientId to one of the catalogue ids below when the ingredient is one of them, and leave freeText empty. Otherwise leave ingredientId empty and put the name in freeText.',

@@ -25,14 +25,14 @@ class ToggleDietaryConstraintUseCaseTest {
 
     @Test
     fun `an absent term is added with the strength asked for`() {
-        val result = toggle(profile, first, ConstraintStrength.EXCLUDE)
+        val result = toggle(profile, first, ConstraintStrength.AVOID)
 
-        assertEquals(listOf(DietaryConstraint(first, ConstraintStrength.EXCLUDE)), result.constraints)
+        assertEquals(listOf(DietaryConstraint(first, ConstraintStrength.AVOID)), result.constraints)
     }
 
     @Test
     fun `a present term is removed whatever strength is asked for`() {
-        val withFirst = toggle(profile, first, ConstraintStrength.EXCLUDE)
+        val withFirst = toggle(profile, first, ConstraintStrength.AVOID)
 
         val result = toggle(withFirst, first, ConstraintStrength.PREFER)
 
@@ -50,7 +50,7 @@ class ToggleDietaryConstraintUseCaseTest {
     fun `the other constraints keep the strength they had`() {
         val start = toggle(profile, second, ConstraintStrength.PREFER)
 
-        val result = toggle(toggle(start, first, ConstraintStrength.EXCLUDE), first, ConstraintStrength.EXCLUDE)
+        val result = toggle(toggle(start, first, ConstraintStrength.AVOID), first, ConstraintStrength.AVOID)
 
         assertEquals(listOf(DietaryConstraint(second, ConstraintStrength.PREFER)), result.constraints)
     }
