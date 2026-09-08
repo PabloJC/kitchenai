@@ -22,6 +22,7 @@ internal fun uiState(
         hasCatalogueFailed = catalogue.failed,
         isLoading = draft == null,
         isSaving = saving,
+        hasUnsavedChanges = draft?.edited == true,
         error = failure,
     )
 }
