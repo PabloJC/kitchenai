@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -92,9 +93,13 @@ private fun StrengthMarker(
 ) {
     // A 48x48dp tap target around a word that reads much smaller: this cycles which allergen
     // gets excluded, and a mistap that lands on the chip instead turns the exclusion off.
+    // fillMaxHeight first: the chip's own Row gives this slot the full (now taller) row height,
+    // and without claiming it explicitly the word renders pinned to the top of that height
+    // rather than centred in it.
     Box(
         modifier =
             Modifier
+                .fillMaxHeight()
                 .defaultMinSize(minWidth = Dimens.touchTarget, minHeight = Dimens.touchTarget)
                 .clickable(onClick = onCycle),
         contentAlignment = Alignment.Center,
