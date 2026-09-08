@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -142,6 +143,7 @@ private fun Results(
                         EmptyState(
                             title = stringResource(Res.string.suggestions_nothing_title),
                             body = stringResource(Res.string.suggestions_nothing_body),
+                            modifier = emptyResultModifier(state),
                         )
                     }
                 !state.hasGenerated ->
@@ -149,6 +151,7 @@ private fun Results(
                         EmptyState(
                             title = stringResource(Res.string.suggestions_empty_title),
                             body = stringResource(Res.string.suggestions_empty_body),
+                            modifier = emptyResultModifier(state),
                         )
                     }
                 else -> Unit
@@ -166,6 +169,15 @@ private fun Results(
         }
     }
 }
+
+/**
+ * Fills the viewport to centre in only when nothing follows it: with saved recipes below, that
+ * space is theirs, not a message that already said its piece. A function rather than a `val`
+ * hoisted above the `when` — [LazyItemScope.fillParentMaxSize] needs the item's own scope, which
+ * only exists inside `item { }`.
+ */
+private fun LazyItemScope.emptyResultModifier(state: SuggestionsUiState): Modifier =
+    if (state.savedRecipes.isEmpty()) Modifier.fillParentMaxSize() else Modifier
 
 @Composable
 private fun Skeleton() {

@@ -26,10 +26,12 @@ fun ErrorState(
     retryLabel: String? = null,
     onRetry: (() -> Unit)? = null,
 ) {
+    // Centred to match LoadingState, the same slot a moment earlier; sizing is left to the
+    // caller — see EmptyState for why.
     Column(
         modifier = modifier.fillMaxWidth().padding(Dimens.large),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Dimens.medium),
+        verticalArrangement = Arrangement.spacedBy(Dimens.medium, Alignment.CenterVertically),
     ) {
         Text(
             text = message,

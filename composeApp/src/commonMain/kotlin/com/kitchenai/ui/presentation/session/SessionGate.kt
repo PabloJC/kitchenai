@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.session
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
@@ -36,7 +37,9 @@ fun SessionGate(
     // These two are the only screens drawn before the shell exists, so nothing else is padding
     // them: the Scaffold that pads everything else lives inside `content`. Applied here rather
     // than inside the components, which are used under that Scaffold and would double up.
-    val safe = modifier.windowInsetsPadding(WindowInsets.safeDrawing)
+    // fillMaxSize is needed here, not left to the caller: App.kt hands this no modifier of its
+    // own, and ErrorState's centring only works within a height its modifier actually bounds.
+    val safe = modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
 
     when (val resolved = state) {
         SessionUiState.Loading -> LoadingState(safe)

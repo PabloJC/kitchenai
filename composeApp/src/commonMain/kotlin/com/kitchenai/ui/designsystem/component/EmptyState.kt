@@ -22,10 +22,12 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
+    // Centred to match LoadingState, the same slot a moment earlier; sizing is left to the
+    // caller, since forcing it here would break a caller with unbounded height (a lazy item).
     Column(
         modifier = modifier.fillMaxWidth().padding(Dimens.large),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Dimens.small),
+        verticalArrangement = Arrangement.spacedBy(Dimens.small, Alignment.CenterVertically),
     ) {
         Text(
             text = title,
