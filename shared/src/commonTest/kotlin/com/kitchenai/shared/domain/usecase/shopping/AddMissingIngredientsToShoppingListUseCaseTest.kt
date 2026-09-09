@@ -116,7 +116,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
         runTest {
             val halfAnOnion = recipeIngredient("onion", quantity = Quantity(0.5, unit))
             val dish = dishOf(halfAnOnion)
-            val catalogue = listOf(ingredient("onion", purchasedWhole = true))
+            val catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit))
 
             useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
 
@@ -133,7 +133,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             useCase(
                 dish,
                 held,
-                catalogue = listOf(ingredient("onion", purchasedWhole = true)),
+                catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit)),
             )(user, list, dish.id, servings = 2)
 
             assertEquals(Quantity(1.0, unit), items.itemsOf(list).single().quantity)
@@ -144,11 +144,25 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
         runTest {
             val halfAnOnion = recipeIngredient("onion", quantity = Quantity(0.5, unit))
             val dish = dishOf(halfAnOnion)
-            val catalogue = listOf(ingredient("onion", purchasedWhole = false))
+            val catalogue = listOf(ingredient("onion", purchasedWhole = false, defaultUnit = unit))
 
             useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
 
             assertEquals(Quantity(0.5, unit), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `a whole-item ingredient asked for by weight is not rounded as if it were a count`() =
+        runTest {
+            val weighed = termRef("taxonomy-1", "term-b")
+            val onionByWeight = recipeIngredient("onion", quantity = Quantity(1.5, weighed))
+            val dish = dishOf(onionByWeight)
+            // purchasedWhole applies to a count of onions; a kilogram of onion is a different unit.
+            val catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit))
+
+            useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(1.5, weighed), items.itemsOf(list).single().quantity)
         }
 
     @Test

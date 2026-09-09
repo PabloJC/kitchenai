@@ -44,11 +44,12 @@ fun ingredientId(raw: String): IngredientId = (IngredientId.of(raw) as AppResult
 fun ingredient(
     id: String,
     purchasedWhole: Boolean = false,
+    defaultUnit: TermRef? = null,
 ): Ingredient =
     Ingredient(
         ingredientId(id),
         labels = emptyMap(),
-        defaultUnit = null,
+        defaultUnit = defaultUnit,
         tags = emptyList(),
         purchasedWhole = purchasedWhole,
     )

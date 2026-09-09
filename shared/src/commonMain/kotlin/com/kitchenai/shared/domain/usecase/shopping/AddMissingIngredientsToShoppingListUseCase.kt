@@ -3,6 +3,7 @@ package com.kitchenai.shared.domain.usecase.shopping
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.AddedToListSummary
+import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryMatch
@@ -22,6 +23,9 @@ import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlin.math.ceil
 
 /**
@@ -96,41 +100,54 @@ class AddMissingIngredientsToShoppingListUseCase(
      * ones are left out — nobody shops for a garnish they did not ask for.
      */
     private suspend fun PantryMatch.wanted(recipeId: RecipeId): List<ShoppingLine> {
+        val missingWanted = missing.filterNot { it.ingredient.optional }
+        val uncheckedWanted = unverifiable.filterNot { it.optional }
+        val catalogue =
+            catalogueOf(
+                missingWanted.mapNotNull { it.ingredient.ingredient } + uncheckedWanted.mapNotNull { it.ingredient },
+            )
+        // The shortfall is what is left to buy; without one the whole amount is.
         val short =
-            missing.filterNot { it.ingredient.optional }
-                // The shortfall is what is left to buy; without one the whole amount is.
-                .map { it.ingredient.asLine(it.shortfall ?: it.ingredient.quantity, recipeId) }
-        val unchecked = unverifiable.filterNot { it.optional }.map { it.asLine(it.quantity, recipeId) }
+            missingWanted.map { it.ingredient.asLine(it.shortfall ?: it.ingredient.quantity, recipeId, catalogue) }
+        val unchecked = uncheckedWanted.map { it.asLine(it.quantity, recipeId, catalogue) }
         return short + unchecked
     }
 
+    /** One read per distinct catalogue id, in parallel: a recipe's ingredients are independent lookups. */
+    private suspend fun catalogueOf(ids: List<IngredientId>): Map<IngredientId, Ingredient> =
+        coroutineScope {
+            ids.distinct()
+                .map { id -> async { ingredients.getIngredient(id) } }
+                .awaitAll()
+                .mapNotNull { (it as? AppResult.Success)?.data }
+                .associateBy { it.id }
+        }
+
     // Free text stays free text and a catalogue id stays an id: the client never writes prose,
     // so an unverifiable catalogue line cannot be turned into words here.
-    private suspend fun RecipeIngredient.asLine(
+    private fun RecipeIngredient.asLine(
         wantedQuantity: Quantity?,
         recipeId: RecipeId,
+        catalogue: Map<IngredientId, Ingredient>,
     ): ShoppingLine {
-        val rounded = wantedQuantity?.let { roundedToBuyable(ingredient, it) }
+        val rounded = wantedQuantity?.let { roundedToBuyable(ingredient?.let(catalogue::get), it) }
         return ShoppingLine(ingredient, freeText, rounded, recipeId)
     }
 
     /**
-     * A whole-item ingredient (an onion, a bulb of garlic) is never bought as a fraction; a
-     * catalogue miss is not this use case's problem to fail on, so it just leaves the amount as
-     * asked.
+     * A whole-item ingredient is only rounded when the wanted amount is a count of it: a recipe
+     * asking for it by weight or volume (`1.5 kg`) carries a different unit, and converting
+     * between units is what #178 explicitly leaves undone.
      */
-    private suspend fun roundedToBuyable(
-        ingredientId: IngredientId?,
+    private fun roundedToBuyable(
+        catalogued: Ingredient?,
         quantity: Quantity,
-    ): Quantity {
-        val id = ingredientId ?: return quantity
-        val catalogued = ingredients.getIngredient(id)
-        return if (catalogued is AppResult.Success && catalogued.data.purchasedWhole) {
+    ): Quantity =
+        if (catalogued != null && catalogued.purchasedWhole && quantity.unit == catalogued.defaultUnit) {
             quantity.copy(amount = ceil(quantity.amount))
         } else {
             quantity
         }
-    }
 
     /** One write, so the drafts are folded against each other before any of them leaves. */
     private fun draft(
