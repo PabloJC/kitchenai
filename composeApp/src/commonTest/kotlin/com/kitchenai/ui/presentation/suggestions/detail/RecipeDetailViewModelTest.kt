@@ -500,6 +500,7 @@ class RecipeDetailViewModelTest {
                         recipePort,
                         pantryPort,
                         items,
+                        catalogue,
                         sequentialIds(),
                         time,
                     ),

@@ -15,4 +15,5 @@ data class IngredientDto(
     val defaultUnitTaxonomy: String? = null,
     val defaultUnitTerm: String? = null,
     val tags: Map<String, List<String>> = emptyMap(),
+    val purchasedWhole: Boolean = false,
 )

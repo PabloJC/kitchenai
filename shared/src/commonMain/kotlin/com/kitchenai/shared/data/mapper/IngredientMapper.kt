@@ -15,7 +15,7 @@ import com.kitchenai.shared.domain.model.TermRef
 fun IngredientDto.toDomain(documentId: String): AppResult<Ingredient> =
     IngredientId.of(documentId).flatMap { id ->
         termRefOrNull(defaultUnitTaxonomy, defaultUnitTerm, "defaultUnit").flatMap { unit ->
-            tags.toTermRefs().map { refs -> Ingredient(id, labels, unit, refs) }
+            tags.toTermRefs().map { refs -> Ingredient(id, labels, unit, refs, purchasedWhole) }
         }
     }
 

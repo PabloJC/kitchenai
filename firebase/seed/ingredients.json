@@ -3,6 +3,7 @@
     "labels": { "en": "Egg", "es": "Huevo" },
     "defaultUnitTaxonomy": "units",
     "defaultUnitTerm": "piece",
+    "purchasedWhole": true,
     "tags": { "food-groups": ["pantry-staple"], "allergens": ["egg"] }
   },
   "milk": {
@@ -51,18 +52,21 @@
     "labels": { "en": "Tomato", "es": "Tomate" },
     "defaultUnitTaxonomy": "units",
     "defaultUnitTerm": "piece",
+    "purchasedWhole": true,
     "tags": { "food-groups": ["vegetable"] }
   },
   "onion": {
     "labels": { "en": "Onion", "es": "Cebolla" },
     "defaultUnitTaxonomy": "units",
     "defaultUnitTerm": "piece",
+    "purchasedWhole": true,
     "tags": { "food-groups": ["vegetable"] }
   },
   "garlic": {
     "labels": { "en": "Garlic", "es": "Ajo" },
     "defaultUnitTaxonomy": "units",
     "defaultUnitTerm": "piece",
+    "purchasedWhole": true,
     "tags": { "food-groups": ["vegetable"] }
   },
   "potato": {

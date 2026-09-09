@@ -3,6 +3,7 @@ package com.kitchenai.shared.domain.usecase.shopping
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.AddedToListSummary
+import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Recipe
@@ -111,6 +112,73 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
         }
 
     @Test
+    fun `a whole-item ingredient's wanted amount is rounded up to a buyable quantity`() =
+        runTest {
+            val halfAnOnion = recipeIngredient("onion", quantity = Quantity(0.5, unit))
+            val dish = dishOf(halfAnOnion)
+            val catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit))
+
+            useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(1.0, unit), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `a whole-item ingredient's shortfall is rounded up too`() =
+        runTest {
+            val onion = recipeIngredient("onion", quantity = Quantity(1.0, unit))
+            val dish = dishOf(onion)
+            val held = listOf(pantryItem("item-1", "onion", Quantity(0.3, unit)))
+
+            useCase(
+                dish,
+                held,
+                catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit)),
+            )(user, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(1.0, unit), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `an ingredient the catalogue does not mark as whole-item is unaffected`() =
+        runTest {
+            val halfAnOnion = recipeIngredient("onion", quantity = Quantity(0.5, unit))
+            val dish = dishOf(halfAnOnion)
+            val catalogue = listOf(ingredient("onion", purchasedWhole = false, defaultUnit = unit))
+
+            useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(0.5, unit), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `a whole-item ingredient asked for by weight is not rounded as if it were a count`() =
+        runTest {
+            val weighed = termRef("taxonomy-1", "term-b")
+            val onionByWeight = recipeIngredient("onion", quantity = Quantity(1.5, weighed))
+            val dish = dishOf(onionByWeight)
+            // purchasedWhole applies to a count of onions; a kilogram of onion is a different unit.
+            val catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit))
+
+            useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(1.5, weighed), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `an ingredient the catalogue lookup cannot find is left unrounded rather than failing the add`() =
+        runTest {
+            val halfAnOnion = recipeIngredient("onion", quantity = Quantity(0.5, unit))
+            val dish = dishOf(halfAnOnion)
+            // No entry for "onion" at all: the fake answers not-found, same as a real miss.
+
+            val result = useCase(dish)(user, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(0.5, unit), items.itemsOf(list).single().quantity)
+            assertTrue(result is AppResult.Success)
+        }
+
+    @Test
     fun `a failing recipe read is reported and nothing is written`() =
         runTest {
             val useCase =
@@ -118,6 +186,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
                     FakeRecipeRepositoryContract(readError = AppError.Unauthorized()),
                     FakePantryRepositoryContract(),
                     items,
+                    FakeIngredientRepositoryContract(),
                     sequentialIds(),
                     fixedTime(2_000),
                 )
@@ -136,6 +205,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
                     FakeRecipeRepositoryContract(),
                     FakePantryRepositoryContract(),
                     items,
+                    FakeIngredientRepositoryContract(),
                     sequentialIds(),
                     fixedTime(2_000),
                 )
@@ -152,11 +222,13 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
     private fun useCase(
         dish: Recipe,
         held: List<PantryItem> = emptyList(),
+        catalogue: List<Ingredient> = emptyList(),
     ): AddMissingIngredientsToShoppingListUseCase =
         AddMissingIngredientsToShoppingListUseCase(
             FakeRecipeRepositoryContract(catalogue = listOf(dish)),
             FakePantryRepositoryContract(held),
             items,
+            FakeIngredientRepositoryContract(catalogue),
             sequentialIds(),
             fixedTime(2_000),
         )

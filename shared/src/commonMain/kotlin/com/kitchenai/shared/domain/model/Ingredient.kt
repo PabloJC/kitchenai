@@ -11,4 +11,6 @@ data class Ingredient(
     val labels: Map<String, String>,
     val defaultUnit: TermRef?,
     val tags: List<TermRef>,
+    /** True when this is sold as whole items (an onion, a bulb of garlic): never a fraction. */
+    val purchasedWhole: Boolean = false,
 )
