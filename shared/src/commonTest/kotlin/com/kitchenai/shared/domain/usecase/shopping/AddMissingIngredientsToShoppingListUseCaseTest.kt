@@ -166,6 +166,19 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
         }
 
     @Test
+    fun `an ingredient the catalogue lookup cannot find is left unrounded rather than failing the add`() =
+        runTest {
+            val halfAnOnion = recipeIngredient("onion", quantity = Quantity(0.5, unit))
+            val dish = dishOf(halfAnOnion)
+            // No entry for "onion" at all: the fake answers not-found, same as a real miss.
+
+            val result = useCase(dish)(user, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(0.5, unit), items.itemsOf(list).single().quantity)
+            assertTrue(result is AppResult.Success)
+        }
+
+    @Test
     fun `a failing recipe read is reported and nothing is written`() =
         runTest {
             val useCase =
