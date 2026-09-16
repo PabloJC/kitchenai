@@ -3,6 +3,7 @@ package com.kitchenai.shared.data.remote.firebase
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.DispatcherProvider
+import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import dev.gitlive.firebase.auth.FirebaseAuth
@@ -47,10 +48,16 @@ class FirebaseSessionAdapter(
         }
     }
 
+    // Stub pending the Google credential exchange (#187): the contract lands with domain first
+    // so it does not block on the platform-side token retrieval.
+    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> =
+        AppResult.Failure(AppError.Unknown(NOT_YET_IMPLEMENTED))
+
     override suspend fun signOut(): AppResult<Unit> = firestoreCall(dispatchers) { auth.signOut() }
 
     private companion object {
         // Asserting non-null here would trade a handled failure for a crash.
         val MISSING_USER = IllegalStateException("Anonymous sign-in returned no user")
+        val NOT_YET_IMPLEMENTED = IllegalStateException("Google sign-in is not implemented yet (#187)")
     }
 }
