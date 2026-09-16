@@ -3,6 +3,7 @@ package com.kitchenai.ui.presentation.session
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.UserId
@@ -234,6 +235,8 @@ private class FakeSessionPort : SessionRepositoryContract {
         signInCount++
         return signIn
     }
+
+    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> = signIn
 
     override suspend fun signOut(): AppResult<Unit> = AppResult.Success(Unit)
 }

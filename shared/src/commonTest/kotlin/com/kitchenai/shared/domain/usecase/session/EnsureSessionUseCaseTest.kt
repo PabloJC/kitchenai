@@ -3,6 +3,7 @@ package com.kitchenai.shared.domain.usecase.session
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.getOrElse
+import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.SessionRepositoryContract
@@ -77,6 +78,7 @@ internal class FakeSessionPort(
     private val state = MutableStateFlow(initial)
 
     var signInResult: AppResult<Session.SignedIn> = AppResult.Success(anonymousUser)
+    var signInWithGoogleResult: AppResult<Session.SignedIn> = AppResult.Success(anonymousUser)
     var signOutResult: AppResult<Unit> = AppResult.Success(Unit)
     var signInCalls: Int = 0
         private set
@@ -86,6 +88,12 @@ internal class FakeSessionPort(
     override suspend fun signInAnonymously(): AppResult<Session.SignedIn> {
         signInCalls++
         val result = signInResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
+
+    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> {
+        val result = signInWithGoogleResult
         if (result is AppResult.Success) state.value = result.data
         return result
     }
