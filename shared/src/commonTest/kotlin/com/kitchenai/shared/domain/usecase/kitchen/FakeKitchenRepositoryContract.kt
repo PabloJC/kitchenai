@@ -120,5 +120,5 @@ internal fun kitchen(
     ownerId: UserId = user,
     memberIds: Set<UserId> = setOf(ownerId),
     joinCode: String = "code-1",
-    memberDisplayNames: Map<UserId, String> = emptyMap(),
+    memberDisplayNames: Map<String, String> = emptyMap(),
 ): Kitchen = Kitchen(kitchenId(id), ownerId, memberIds, kitchenJoinCode(joinCode), memberDisplayNames)
