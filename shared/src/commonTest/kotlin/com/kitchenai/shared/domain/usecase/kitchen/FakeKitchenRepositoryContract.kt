@@ -109,6 +109,7 @@ class FakeKitchenRepositoryContract(
 // Fixtures. Every identifier here is opaque on purpose, same reasoning as the pantry fixtures.
 internal val user: UserId = (UserId.of("user-1") as AppResult.Success).data
 internal val otherUser: UserId = (UserId.of("user-2") as AppResult.Success).data
+internal val stranger: UserId = (UserId.of("user-3") as AppResult.Success).data
 
 internal fun kitchenId(raw: String): KitchenId = (KitchenId.of(raw) as AppResult.Success).data
 

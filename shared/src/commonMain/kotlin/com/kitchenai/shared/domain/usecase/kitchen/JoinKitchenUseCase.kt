@@ -10,31 +10,21 @@ import com.kitchenai.shared.domain.port.KitchenRepositoryContract
 /**
  * Leaves the caller's current kitchen, if any, before joining another: a user belongs to
  * exactly one at a time, and joining never merges data (#186 accepted the same trade-off for
- * the Google sign-in switch). Rejected under the same owner rule as `LeaveKitchenUseCase`.
- * [AppError.NotFound] from [KitchenRepositoryContract.getMyKitchen] means "nothing to leave",
- * not a failure; any other error stops the join.
+ * the Google sign-in switch). Delegates to [LeaveKitchenUseCase] rather than re-checking the
+ * owner rule itself, so that rule lives in exactly one place. [AppError.NotFound] out of it
+ * means "nothing to leave", not a failure; any other error stops the join.
  */
 class JoinKitchenUseCase(
     private val kitchens: KitchenRepositoryContract,
+    private val leave: LeaveKitchenUseCase,
 ) {
     suspend operator fun invoke(
         userId: UserId,
         displayName: String?,
         joinCode: KitchenJoinCode,
     ): AppResult<Kitchen> {
-        when (val current = kitchens.getMyKitchen(userId)) {
-            is AppResult.Success -> {
-                val kitchen = current.data
-                if (kitchen.ownerId == userId && kitchen.memberIds.size > 1) {
-                    return AppResult.Failure(
-                        AppError.Validation("kitchen", "owner cannot leave a kitchen with other members"),
-                    )
-                }
-                val left = kitchens.leaveKitchen(userId, kitchen.id)
-                if (left is AppResult.Failure) return left
-            }
-            is AppResult.Failure -> if (current.error !is AppError.NotFound) return current
-        }
+        val left = leave(userId)
+        if (left is AppResult.Failure && left.error !is AppError.NotFound) return left
         return kitchens.joinKitchen(userId, displayName, joinCode)
     }
 }

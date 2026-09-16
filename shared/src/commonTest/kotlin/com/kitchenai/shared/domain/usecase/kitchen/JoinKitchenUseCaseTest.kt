@@ -14,7 +14,11 @@ class JoinKitchenUseCaseTest {
             val target = kitchen(id = "kitchen-2", ownerId = otherUser, memberIds = setOf(otherUser, user))
             val port = FakeKitchenRepositoryContract(initial = null).apply { joinResult = AppResult.Success(target) }
 
-            val result = JoinKitchenUseCase(port)(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
+            val result =
+                JoinKitchenUseCase(
+                    port,
+                    LeaveKitchenUseCase(port),
+                )(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
 
             assertEquals(AppResult.Success(target), result)
             assertTrue(port.leftKitchens.isEmpty())
@@ -28,7 +32,11 @@ class JoinKitchenUseCaseTest {
             val target = kitchen(id = "kitchen-2", ownerId = otherUser, memberIds = setOf(otherUser, user))
             val port = FakeKitchenRepositoryContract(initial = current).apply { joinResult = AppResult.Success(target) }
 
-            val result = JoinKitchenUseCase(port)(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
+            val result =
+                JoinKitchenUseCase(
+                    port,
+                    LeaveKitchenUseCase(port),
+                )(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
 
             assertEquals(AppResult.Success(target), result)
             assertEquals(listOf(current.id), port.leftKitchens)
@@ -41,7 +49,11 @@ class JoinKitchenUseCaseTest {
             val owned = kitchen(ownerId = user, memberIds = setOf(user, otherUser))
             val port = FakeKitchenRepositoryContract(initial = owned)
 
-            val result = JoinKitchenUseCase(port)(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
+            val result =
+                JoinKitchenUseCase(
+                    port,
+                    LeaveKitchenUseCase(port),
+                )(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Validation)
@@ -56,7 +68,11 @@ class JoinKitchenUseCaseTest {
             val error = AppError.Network()
             val port = FakeKitchenRepositoryContract(initial = current).apply { leaveResult = AppResult.Failure(error) }
 
-            val result = JoinKitchenUseCase(port)(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
+            val result =
+                JoinKitchenUseCase(
+                    port,
+                    LeaveKitchenUseCase(port),
+                )(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
 
             assertEquals(AppResult.Failure(error), result)
             assertEquals(0, port.joinCalls)
@@ -68,7 +84,11 @@ class JoinKitchenUseCaseTest {
             val error = AppError.Network()
             val port = FakeKitchenRepositoryContract(readError = error)
 
-            val result = JoinKitchenUseCase(port)(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
+            val result =
+                JoinKitchenUseCase(
+                    port,
+                    LeaveKitchenUseCase(port),
+                )(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
 
             assertEquals(AppResult.Failure(error), result)
             assertEquals(0, port.joinCalls)

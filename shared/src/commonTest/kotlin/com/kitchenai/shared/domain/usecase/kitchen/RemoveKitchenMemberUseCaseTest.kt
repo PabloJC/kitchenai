@@ -55,4 +55,30 @@ class RemoveKitchenMemberUseCaseTest {
             assertEquals(AppResult.Failure(error), result)
             assertTrue(port.removedMembers.isEmpty())
         }
+
+    @Test
+    fun `rejects the owner removing themself - that is what LeaveKitchenUseCase is for`() =
+        runTest {
+            val shared = kitchen(ownerId = user, memberIds = setOf(user, otherUser))
+            val port = FakeKitchenRepositoryContract(initial = shared)
+
+            val result = RemoveKitchenMemberUseCase(port)(requesterId = user, memberId = user)
+
+            assertTrue(result is AppResult.Failure)
+            assertTrue(result.error is AppError.Validation)
+            assertTrue(port.removedMembers.isEmpty())
+        }
+
+    @Test
+    fun `rejects a memberId that never belonged to this kitchen`() =
+        runTest {
+            val shared = kitchen(ownerId = user, memberIds = setOf(user, otherUser))
+            val port = FakeKitchenRepositoryContract(initial = shared)
+
+            val result = RemoveKitchenMemberUseCase(port)(requesterId = user, memberId = stranger)
+
+            assertTrue(result is AppResult.Failure)
+            assertTrue(result.error is AppError.NotFound)
+            assertTrue(port.removedMembers.isEmpty())
+        }
 }
