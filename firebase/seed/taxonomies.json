@@ -70,5 +70,35 @@
       "grain": { "labels": { "en": "Grain", "es": "Cereal" }, "order": 6 },
       "pantry-staple": { "labels": { "en": "Store cupboard", "es": "Básico de despensa" }, "order": 7 }
     }
+  },
+  "dish-types": {
+    "labels": { "en": "Dish type", "es": "Tipo de plato" },
+    "defaultLanguageTag": "en",
+    "terms": {
+      "pasta": { "labels": { "en": "Pasta", "es": "Pasta" }, "order": 1 },
+      "soup": { "labels": { "en": "Soup", "es": "Sopa" }, "order": 2 },
+      "salad": { "labels": { "en": "Salad", "es": "Ensalada" }, "order": 3 },
+      "stew": { "labels": { "en": "Stew", "es": "Guiso" }, "order": 4 },
+      "curry": { "labels": { "en": "Curry", "es": "Curry" }, "order": 5 },
+      "stir-fry": { "labels": { "en": "Stir-fry", "es": "Salteado" }, "order": 6 },
+      "roast": { "labels": { "en": "Roast", "es": "Asado al horno" }, "order": 7 },
+      "grilled": { "labels": { "en": "Grilled", "es": "A la parrilla" }, "order": 8 },
+      "sandwich": { "labels": { "en": "Sandwich", "es": "Bocadillo" }, "order": 9 },
+      "pizza": { "labels": { "en": "Pizza", "es": "Pizza" }, "order": 10 },
+      "rice-dish": { "labels": { "en": "Rice dish", "es": "Arroz" }, "order": 11 },
+      "noodles": { "labels": { "en": "Noodles", "es": "Fideos" }, "order": 12 },
+      "dessert": { "labels": { "en": "Dessert", "es": "Postre" }, "order": 13 },
+      "baked-goods": { "labels": { "en": "Baked goods", "es": "Repostería" }, "order": 14 },
+      "breakfast": { "labels": { "en": "Breakfast", "es": "Desayuno" }, "order": 15 },
+      "seafood": { "labels": { "en": "Seafood", "es": "Marisco" }, "order": 16 },
+      "tacos-wraps": { "labels": { "en": "Tacos & wraps", "es": "Tacos y wraps" }, "order": 17 },
+      "casserole": { "labels": { "en": "Casserole", "es": "Cazuela al horno" }, "order": 18 },
+      "bowl": { "labels": { "en": "Bowl", "es": "Bowl" }, "order": 19 },
+      "bbq": { "labels": { "en": "BBQ", "es": "Barbacoa" }, "order": 20 },
+      "eggs": { "labels": { "en": "Eggs & omelette", "es": "Huevos y tortilla" }, "order": 21 },
+      "dumplings": { "labels": { "en": "Dumplings", "es": "Empanadillas" }, "order": 22 },
+      "flatbread": { "labels": { "en": "Flatbread", "es": "Pan plano" }, "order": 23 },
+      "smoothie": { "labels": { "en": "Smoothie", "es": "Batido" }, "order": 24 }
+    }
   }
 }

@@ -45,8 +45,20 @@ const responseSchema = {
               required: ['amount', 'optional', 'unitTerm'],
             },
           },
+          tags: {
+            type: Type.ARRAY,
+            description: 'Exactly one of these must have taxonomy "dish-types", term one of the dish types listed below.',
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                taxonomy: { type: Type.STRING },
+                term: { type: Type.STRING },
+              },
+              required: ['taxonomy', 'term'],
+            },
+          },
         },
-        required: ['title', 'summary', 'servings', 'totalMinutes', 'steps', 'ingredients'],
+        required: ['title', 'summary', 'servings', 'totalMinutes', 'steps', 'ingredients', 'tags'],
       },
     },
   },
@@ -57,6 +69,7 @@ export interface Vocabulary {
   ingredients: { id: string; name: string }[];
   units: { id: string; name: string }[];
   unitTaxonomy: string | null;
+  dishTypes: { id: string; name: string }[];
 }
 
 /**
@@ -94,6 +107,10 @@ function instructions(request: ReadableRequest, vocabulary: Vocabulary): string 
     `Catalogue ingredients: ${vocabulary.ingredients.map((it) => `${it.id}=${it.name}`).join(', ') || 'none'}`,
     `Units: ${vocabulary.units.map((it) => `${it.id}=${it.name}`).join(', ') || 'none'}`,
     '',
+    'Tag every dish with exactly one dish type — the shape of the dish, not its ingredients or diet.',
+    `Dish types: ${vocabulary.dishTypes.map((it) => `${it.id}=${it.name}`).join(', ') || 'none'}`,
+    'Add it to tags as { "taxonomy": "dish-types", "term": "<the id you picked>" }.',
+    '',
     'Write the dishes in the language the kitchen list above is written in.',
     'Steps are plain sentences. Do not number them, do not add headings, and do not write anything outside the fields.',
   ];
@@ -113,6 +130,7 @@ export interface ModelSuggestion {
     unitTerm?: string;
     optional?: boolean;
   }[];
+  tags?: { taxonomy?: string; term?: string }[];
 }
 
 export async function askModel(
@@ -162,13 +180,19 @@ export function toWire(
     if (knownUnits.has(trimmed)) return trimmed;
     return byLabel.get(trimmed.toLowerCase()) ?? null;
   };
+  // Only the dish-types half is checked against the catalogue: it is the only taxonomy the
+  // model is asked to tag with today. A term it invented is worse than no tag at all, since #196
+  // will use this one to pick a photo.
+  const knownDishTypes = new Set(vocabulary.dishTypes.map((it) => it.id));
   return suggestions.slice(0, maxResults).map((suggestion) => ({
     title: suggestion.title ?? null,
     summary: suggestion.summary ?? null,
     servings: suggestion.servings ?? null,
     totalMinutes: suggestion.totalMinutes ?? null,
     steps: (suggestion.steps ?? []).filter((step) => typeof step === 'string'),
-    tags: [],
+    tags: (suggestion.tags ?? [])
+      .filter((tag): tag is { taxonomy: string; term: string } => Boolean(tag.taxonomy) && Boolean(tag.term))
+      .filter((tag) => tag.taxonomy !== 'dish-types' || knownDishTypes.has(tag.term)),
     ingredients: (suggestion.ingredients ?? [])
       .map((line) => {
         const claimed = typeof line.ingredientId === 'string' && line.ingredientId.length > 0;

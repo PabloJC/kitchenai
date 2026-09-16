@@ -97,13 +97,15 @@ export const suggestRecipes = onCall(
 );
 
 /**
- * What the model is allowed to point at. Ingredients and units only: the app resolves those
- * against the pantry, and a tag it cannot resolve buys nothing.
+ * What the model is allowed to point at. Ingredients and units to build the dish from, plus the
+ * fixed `dish-types` taxonomy it must tag every suggestion with — #196 turns that tag into a
+ * bundled photo, so a term it cannot resolve buys nothing either way.
  */
 async function loadVocabulary(languageTags: string[]): Promise<Vocabulary> {
-  const [ingredientDocs, taxonomyDocs] = await Promise.all([
+  const [ingredientDocs, taxonomyDocs, dishTypeDocs] = await Promise.all([
     db.collection('ingredients').get(),
     db.collection('taxonomies').where('purpose', '==', 'UNITS').get(),
+    db.collection('taxonomies').doc('dish-types').collection('terms').get(),
   ]);
 
   const ingredients = ingredientDocs.docs.map((doc) => ({
@@ -111,13 +113,19 @@ async function loadVocabulary(languageTags: string[]): Promise<Vocabulary> {
     name: resolve(doc.data(), languageTags) ?? doc.id,
   }));
 
+  const dishTypes = dishTypeDocs.docs.map((doc) => ({
+    id: doc.id,
+    name: resolve(doc.data(), languageTags) ?? doc.id,
+  }));
+
   const unitsTaxonomy = taxonomyDocs.docs[0];
-  if (!unitsTaxonomy) return { ingredients, units: [], unitTaxonomy: null };
+  if (!unitsTaxonomy) return { ingredients, units: [], unitTaxonomy: null, dishTypes };
 
   const terms = await unitsTaxonomy.ref.collection('terms').get();
   return {
     ingredients,
     units: terms.docs.map((doc) => ({ id: doc.id, name: resolve(doc.data(), languageTags) ?? doc.id })),
     unitTaxonomy: unitsTaxonomy.id,
+    dishTypes,
   };
 }

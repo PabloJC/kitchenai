@@ -69,6 +69,7 @@ const vocabulary = {
   ingredients: [{ id: 'tomato', name: 'Tomate' }],
   units: [{ id: 'piece', name: 'ud' }, { id: 'gram', name: 'g' }],
   unitTaxonomy: 'units',
+  dishTypes: [{ id: 'soup', name: 'Sopa' }],
 };
 
 const catalogue = {
@@ -148,4 +149,34 @@ test('accepts a unit given as its label, not only as its id', () => {
 test('still drops a unit that is neither an id nor a label', () => {
   const wire = toWire([{ title: 'Dish', ingredients: [{ freeText: 'rice', amount: 1, unitTerm: 'furlong' }] }], catalogue, vocabulary, 5);
   assert.equal(wire[0]?.ingredients[0]?.unitTerm, null);
+});
+
+test('keeps a dish-types tag the catalogue recognises', () => {
+  const wire = toWire(
+    [{ title: 'Dish', ingredients: [], tags: [{ taxonomy: 'dish-types', term: 'soup' }] }],
+    catalogue,
+    vocabulary,
+    5,
+  );
+  assert.deepEqual(wire[0]?.tags, [{ taxonomy: 'dish-types', term: 'soup' }]);
+});
+
+test('drops a dish-types tag the model invented', () => {
+  const wire = toWire(
+    [{ title: 'Dish', ingredients: [], tags: [{ taxonomy: 'dish-types', term: 'invented-by-the-model' }] }],
+    catalogue,
+    vocabulary,
+    5,
+  );
+  assert.deepEqual(wire[0]?.tags, []);
+});
+
+test('drops a tag missing either half', () => {
+  const wire = toWire(
+    [{ title: 'Dish', ingredients: [], tags: [{ taxonomy: 'dish-types' }, { term: 'soup' }] }],
+    catalogue,
+    vocabulary,
+    5,
+  );
+  assert.deepEqual(wire[0]?.tags, []);
 });
