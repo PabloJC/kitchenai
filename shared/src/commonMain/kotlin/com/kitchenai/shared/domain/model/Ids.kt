@@ -71,6 +71,21 @@ value class TermId private constructor(val value: String) {
     }
 }
 
+@JvmInline
+value class KitchenId private constructor(val value: String) {
+    companion object {
+        fun of(raw: String): AppResult<KitchenId> = nonBlank("KitchenId", raw).map { KitchenId(it) }
+    }
+}
+
+/** The code a `Kitchen` is joined by. Not a secret: it identifies a group to join, not a user. */
+@JvmInline
+value class KitchenJoinCode private constructor(val value: String) {
+    companion object {
+        fun of(raw: String): AppResult<KitchenJoinCode> = nonBlank("KitchenJoinCode", raw).map { KitchenJoinCode(it) }
+    }
+}
+
 /** The single rule every identifier shares. Values are stored verbatim: no trimming, no casing. */
 private fun nonBlank(
     field: String,

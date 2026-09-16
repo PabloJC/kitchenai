@@ -20,7 +20,7 @@ These are decided here so that 22 issues do not each re-decide them.
 | **The model proposes, the domain verifies.** `PantryMatcher` computes coverage over every suggestion; a `covered`/`missing` claim in a model response is never displayed. | #39, #45, #52 |
 | **No provider API key in the binary.** The app calls a callable Cloud Function protected by the App Check work already in `main`. | #51 |
 | **Everything user-owned lives under `users/{uid}`.** That is what keeps the Firestore rules a two-line owner check. | #38, #33 |
-| **"Synchronised" means across one user's devices**, not shared with other people. Household sharing needs a top-level collection and a membership model — post-MVP. | #37, #43 |
+| **"Synchronised" means across one user's devices**, not shared with other people. Household sharing needs a top-level collection and a membership model — post-MVP. **Superseded by #190**: a `Kitchen` membership model shipped into the MVP by product decision; see #191–#194 for the follow-up work moving pantry/list/recipes onto it. | #37, #43 |
 | **No unit conversion in the MVP.** Mismatched units are `unverifiable`, never silently converted. | #31, #39 |
 | **Observers stream data, not results.** Every `observeX` returns a bare `Flow<T>`; a listener that fails ends its stream and publishes on the port's `streamErrors(): Flow<AppError>`. Read-modify-write goes through a one-shot `getX(): AppResult<…>`, never the first emission of a listener. Decided in #68 after wave 2 shipped both shapes. | #39, #41, #42, #43, #44, #47 |
 
@@ -244,7 +244,10 @@ concurrent PRs is the practical ceiling for one reviewer, human or agent, which 
 Not oversights — scope decisions, each with a reason:
 
 - **Household / multi-user sharing.** Needs a top-level collection and a membership model;
-  it changes the rules and the sync story, not just a query.
+  it changes the rules and the sync story, not just a query. **Superseded by #190**, which
+  brought a `Kitchen` membership model into the MVP by product decision; #191–#194 move the
+  pantry, shopping list and saved recipes onto it. Left here so this section still explains
+  why the MVP originally shipped without sharing.
 - **The Cloud Function itself.** Backend work outside this repository's Kotlin modules. #51
   states the contract it assumes and fails loudly if the response does not match.
 - **Unit conversion**, **barcode and photo input**, **meal planning**, **streaming agent
