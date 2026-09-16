@@ -82,6 +82,11 @@ know, so the client mints one.
 `modelId` is what stamps the suggestion's provenance. It is taken from the response, never from
 what the client expected — a suggestion has to be able to say which model wrote it.
 
+Every suggestion's `tags` should include exactly one term from the `dish-types` taxonomy — the
+dish's shape (`soup`, `pizza`, `salad`...), not its diet or cuisine — alongside whatever
+`diets`/`cuisines` tags apply. It is the same array, same `{taxonomy, term}` shape as any other
+tag; a suggestion missing it is not invalid, just one #196's photo fallback has to handle.
+
 ---
 
 ## What the client does with a response
