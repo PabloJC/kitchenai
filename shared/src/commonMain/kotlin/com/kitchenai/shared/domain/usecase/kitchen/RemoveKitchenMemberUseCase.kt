@@ -2,9 +2,9 @@ package com.kitchenai.shared.domain.usecase.kitchen
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.getOrElse
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.KitchenRepositoryContract
-import kotlinx.coroutines.flow.firstOrNull
 
 /**
  * Removes a member from the requester's kitchen. Checked here, not only in the Firestore rules
@@ -17,9 +17,7 @@ class RemoveKitchenMemberUseCase(
         requesterId: UserId,
         memberId: UserId,
     ): AppResult<Unit> {
-        val kitchen =
-            kitchens.observeMyKitchen(requesterId).firstOrNull()
-                ?: return AppResult.Failure(AppError.NotFound("kitchen"))
+        val kitchen = kitchens.getMyKitchen(requesterId).getOrElse { return AppResult.Failure(it) }
         if (kitchen.ownerId != requesterId) return AppResult.Failure(AppError.Unauthorized())
         return kitchens.removeMember(kitchen.id, requesterId, memberId)
     }

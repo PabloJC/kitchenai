@@ -2,9 +2,9 @@ package com.kitchenai.shared.domain.usecase.kitchen
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.getOrElse
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.KitchenRepositoryContract
-import kotlinx.coroutines.flow.firstOrNull
 
 /**
  * Leaves the caller's current kitchen. The owner of one with other members is rejected here:
@@ -15,9 +15,7 @@ class LeaveKitchenUseCase(
     private val kitchens: KitchenRepositoryContract,
 ) {
     suspend operator fun invoke(userId: UserId): AppResult<Unit> {
-        val current =
-            kitchens.observeMyKitchen(userId).firstOrNull()
-                ?: return AppResult.Failure(AppError.NotFound("kitchen"))
+        val current = kitchens.getMyKitchen(userId).getOrElse { return AppResult.Failure(it) }
         if (current.ownerId == userId && current.memberIds.size > 1) {
             return AppResult.Failure(AppError.Validation("kitchen", "owner cannot leave a kitchen with other members"))
         }

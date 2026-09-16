@@ -55,4 +55,16 @@ class LeaveKitchenUseCaseTest {
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.NotFound)
         }
+
+    @Test
+    fun `a read failure is propagated and is never mistaken for no kitchen to leave`() =
+        runTest {
+            val error = AppError.Network()
+            val port = FakeKitchenRepositoryContract(readError = error)
+
+            val result = LeaveKitchenUseCase(port)(user)
+
+            assertEquals(AppResult.Failure(error), result)
+            assertTrue(port.leftKitchens.isEmpty())
+        }
 }

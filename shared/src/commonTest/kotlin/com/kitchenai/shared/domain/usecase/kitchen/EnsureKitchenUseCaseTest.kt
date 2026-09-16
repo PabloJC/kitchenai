@@ -55,4 +55,16 @@ class EnsureKitchenUseCaseTest {
 
             assertEquals(AppResult.Failure(error), result)
         }
+
+    @Test
+    fun `a read failure is propagated and is never mistaken for no kitchen yet`() =
+        runTest {
+            val error = AppError.Network()
+            val port = FakeKitchenRepositoryContract(readError = error)
+
+            val result = EnsureKitchenUseCase(port)(user, displayName = "Ada")
+
+            assertEquals(AppResult.Failure(error), result)
+            assertEquals(0, port.createCalls)
+        }
 }

@@ -43,4 +43,16 @@ class RemoveKitchenMemberUseCaseTest {
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.NotFound)
         }
+
+    @Test
+    fun `a read failure is propagated and is never mistaken for no kitchen`() =
+        runTest {
+            val error = AppError.Network()
+            val port = FakeKitchenRepositoryContract(readError = error)
+
+            val result = RemoveKitchenMemberUseCase(port)(requesterId = user, memberId = otherUser)
+
+            assertEquals(AppResult.Failure(error), result)
+            assertTrue(port.removedMembers.isEmpty())
+        }
 }

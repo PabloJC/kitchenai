@@ -15,6 +15,14 @@ interface KitchenRepositoryContract {
     /** Failures of the listener above, which stops emitting rather than throwing. */
     fun kitchenErrors(userId: UserId): Flow<AppError>
 
+    /**
+     * One-shot read for the write use cases: taking the first emission of [observeMyKitchen]
+     * would hang forever once that listener has failed, and cannot tell "no kitchen yet" apart
+     * from "the read failed" (decision #68, `docs/mvp-backlog.md`). No kitchen document for this
+     * uid fails as [AppError.NotFound], not as an empty success.
+     */
+    suspend fun getMyKitchen(userId: UserId): AppResult<Kitchen>
+
     suspend fun createKitchen(
         ownerId: UserId,
         displayName: String?,

@@ -61,4 +61,16 @@ class JoinKitchenUseCaseTest {
             assertEquals(AppResult.Failure(error), result)
             assertEquals(0, port.joinCalls)
         }
+
+    @Test
+    fun `a read failure is propagated and is never mistaken for no current kitchen`() =
+        runTest {
+            val error = AppError.Network()
+            val port = FakeKitchenRepositoryContract(readError = error)
+
+            val result = JoinKitchenUseCase(port)(user, displayName = "Ada", joinCode = kitchenJoinCode("code-2"))
+
+            assertEquals(AppResult.Failure(error), result)
+            assertEquals(0, port.joinCalls)
+        }
 }

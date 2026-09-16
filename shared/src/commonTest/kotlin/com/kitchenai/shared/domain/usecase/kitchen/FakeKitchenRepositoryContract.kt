@@ -14,9 +14,10 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOf
 
 /**
- * In-memory [KitchenRepositoryContract]. `observeMyKitchen` ends its stream empty when there is
- * no kitchen yet, the same shape `firstOrNull` reads "no kitchen document for this uid" from in
- * the use cases under test; write results are configured per test, like `FakeSessionPort`.
+ * In-memory [KitchenRepositoryContract]. `getMyKitchen` is what the use cases under test read
+ * "no kitchen yet" from ([AppError.NotFound]), kept distinct from [readError] ("the read
+ * failed") — the two collapsed into the same `null` before decision #68 was applied here. Write
+ * results are configured per test, like `FakeSessionPort`.
  */
 class FakeKitchenRepositoryContract(
     initial: Kitchen? = null,
@@ -44,6 +45,11 @@ class FakeKitchenRepositoryContract(
         if (readError != null || state.value == null) emptyFlow() else state.filterNotNull()
 
     override fun kitchenErrors(userId: UserId): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
+
+    override suspend fun getMyKitchen(userId: UserId): AppResult<Kitchen> =
+        readError?.let { AppResult.Failure(it) }
+            ?: state.value?.let { AppResult.Success(it) }
+            ?: AppResult.Failure(AppError.NotFound("kitchen"))
 
     override suspend fun createKitchen(
         ownerId: UserId,

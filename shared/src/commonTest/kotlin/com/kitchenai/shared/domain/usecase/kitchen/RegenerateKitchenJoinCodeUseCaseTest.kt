@@ -47,4 +47,16 @@ class RegenerateKitchenJoinCodeUseCaseTest {
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.NotFound)
         }
+
+    @Test
+    fun `a read failure is propagated and is never mistaken for no kitchen`() =
+        runTest {
+            val error = AppError.Network()
+            val port = FakeKitchenRepositoryContract(readError = error)
+
+            val result = RegenerateKitchenJoinCodeUseCase(port)(user)
+
+            assertEquals(AppResult.Failure(error), result)
+            assertEquals(0, port.regenerateCalls)
+        }
 }
