@@ -2,8 +2,8 @@ package com.kitchenai.shared.domain.usecase.shopping
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.ShoppingList
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,15 +24,16 @@ class FakeShoppingListRepositoryContract(
 
     // A failing listener stops emitting and reports on its error stream, which is what the
     // real adapter does with a Firestore snapshot error.
-    override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = if (failure == null) lists else emptyFlow()
+    override fun observeLists(kitchenId: KitchenId): Flow<List<ShoppingList>> =
+        if (failure == null) lists else emptyFlow()
 
-    override fun listErrors(userId: UserId): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
+    override fun listErrors(kitchenId: KitchenId): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
 
-    override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> =
+    override suspend fun getLists(kitchenId: KitchenId): AppResult<List<ShoppingList>> =
         failure?.let { AppResult.Failure(it) } ?: AppResult.Success(lists.value)
 
     override suspend fun upsertList(
-        userId: UserId,
+        kitchenId: KitchenId,
         list: ShoppingList,
     ): AppResult<Unit> =
         failure?.let { AppResult.Failure(it) } ?: AppResult.Success(Unit).also {

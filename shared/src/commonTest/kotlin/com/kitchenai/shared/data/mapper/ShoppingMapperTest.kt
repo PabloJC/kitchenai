@@ -7,17 +7,17 @@ import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.usecase.shopping.instant
+import com.kitchenai.shared.domain.usecase.shopping.kitchenId
 import com.kitchenai.shared.domain.usecase.shopping.listId
 import com.kitchenai.shared.domain.usecase.shopping.shoppingItem
 import com.kitchenai.shared.domain.usecase.shopping.termRef
-import com.kitchenai.shared.domain.usecase.shopping.userId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ShoppingMapperTest {
     @Test
     fun `a list round trips through the document shape`() {
-        val list = ShoppingList(listId("list-1"), userId("user-1"), mapOf("en" to "label-1"), instant(1_000))
+        val list = ShoppingList(listId("list-1"), kitchenId("kitchen-1"), mapOf("en" to "label-1"), instant(1_000))
 
         val restored = list.toDto().toDomain(list.id.value)
 
@@ -84,11 +84,11 @@ class ShoppingMapperTest {
 
     @Test
     fun `rejects a list document whose owner is blank`() {
-        val list = ShoppingList(listId("list-1"), userId("user-1"), emptyMap(), instant(1_000))
+        val list = ShoppingList(listId("list-1"), kitchenId("kitchen-1"), emptyMap(), instant(1_000))
 
         val mapped = list.toDto().copy(ownerId = "").toDomain("list-1")
 
-        assertEquals(AppResult.Failure(AppError.Validation("UserId", "must not be blank")), mapped)
+        assertEquals(AppResult.Failure(AppError.Validation("KitchenId", "must not be blank")), mapped)
     }
 
     private companion object {

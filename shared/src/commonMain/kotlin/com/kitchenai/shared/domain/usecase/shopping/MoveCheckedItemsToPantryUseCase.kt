@@ -3,13 +3,13 @@ package com.kitchenai.shared.domain.usecase.shopping
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.map
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.MovedToPantrySummary
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingListId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
@@ -41,24 +41,24 @@ class MoveCheckedItemsToPantryUseCase(
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<MovedToPantrySummary> {
-        val current = shoppingItems.getItems(userId, listId)
+        val current = shoppingItems.getItems(kitchenId, listId)
         if (current is AppResult.Failure) return current
         val checked = (current as AppResult.Success).data.filter { it.checked }
         val withQuantity = checked.mapNotNull { item -> item.quantity?.let { quantity -> item to quantity } }
         val skipped = checked.size - withQuantity.size
         if (withQuantity.isEmpty()) return AppResult.Success(MovedToPantrySummary(0, skipped))
-        val held = pantry.getPantry(userId)
+        val held = pantry.getPantry(kitchenId)
         if (held is AppResult.Failure) return held
         return when (val touched = plan((held as AppResult.Success).data, withQuantity)) {
             is AppResult.Failure -> touched
             is AppResult.Success ->
                 pantry
-                    .upsertAllConfirmed(userId, touched.data)
+                    .upsertAllConfirmed(kitchenId, touched.data)
                     .flatMap {
-                        shoppingItems.removeItems(userId, listId, withQuantity.map { (item, _) -> item.id })
+                        shoppingItems.removeItems(kitchenId, listId, withQuantity.map { (item, _) -> item.id })
                     }.map { MovedToPantrySummary(withQuantity.size, skipped) }
         }
     }

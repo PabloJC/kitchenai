@@ -2,10 +2,10 @@ package com.kitchenai.shared.domain.usecase.shopping
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,22 +36,22 @@ class FakeShoppingItemRepositoryContract(
     // A failing listener stops emitting and reports on its keyed error stream, which is what
     // the real adapter does with a Firestore snapshot error.
     override fun observeItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): Flow<List<ShoppingItem>> = if (broken(listId)) emptyFlow() else items.map { it[listId.value].orEmpty() }
 
     override fun itemErrors(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): Flow<AppError> = if (broken(listId)) flowOf(failure!!) else emptyFlow()
 
     override suspend fun getItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<List<ShoppingItem>> = read(items.value[listId.value].orEmpty())
 
     override suspend fun upsertItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         items: List<ShoppingItem>,
     ): AppResult<Unit> =
@@ -62,19 +62,19 @@ class FakeShoppingItemRepositoryContract(
         }
 
     override suspend fun removeItem(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         itemId: ShoppingItemId,
     ): AppResult<Unit> = write { replace(listId) { current -> current.filterNot { it.id == itemId } } }
 
     override suspend fun removeItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         ids: List<ShoppingItemId>,
     ): AppResult<Unit> = write { replace(listId) { current -> current.filterNot { it.id in ids } } }
 
     override suspend fun removeCheckedItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<Unit> = write { replace(listId) { current -> current.filterNot { it.checked } } }
 

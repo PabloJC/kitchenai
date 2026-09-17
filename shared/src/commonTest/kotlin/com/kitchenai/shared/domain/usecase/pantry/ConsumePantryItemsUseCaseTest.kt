@@ -29,7 +29,7 @@ class ConsumePantryItemsUseCaseTest {
         runTest {
             val result =
                 useCase(
-                    user,
+                    kitchen,
                     listOf(pantryItemId("item-1") to Quantity(50.0, unitA), pantryItemId("item-2") to Quantity(1.0)),
                 )
 
@@ -42,7 +42,7 @@ class ConsumePantryItemsUseCaseTest {
     @Test
     fun `removes a holding consumed down to exactly zero`() =
         runTest {
-            val result = useCase(user, listOf(pantryItemId("item-2") to Quantity(4.0)))
+            val result = useCase(kitchen, listOf(pantryItemId("item-2") to Quantity(4.0)))
 
             assertTrue(result is AppResult.Success)
             assertEquals(listOf(pantryItemId("item-2")), port.removed)
@@ -52,7 +52,7 @@ class ConsumePantryItemsUseCaseTest {
     @Test
     fun `over-consumption fails as a validation error and writes nothing`() =
         runTest {
-            val result = useCase(user, listOf(pantryItemId("item-1") to Quantity(500.0, unitA)))
+            val result = useCase(kitchen, listOf(pantryItemId("item-1") to Quantity(500.0, unitA)))
 
             assertTrue(result is AppResult.Failure)
             assertEquals("amount", (result.error as AppError.Validation).field)
@@ -63,7 +63,7 @@ class ConsumePantryItemsUseCaseTest {
     @Test
     fun `a negative consumption fails instead of adding to the holding`() =
         runTest {
-            val result = useCase(user, listOf(pantryItemId("item-1") to Quantity(-50.0, unitA)))
+            val result = useCase(kitchen, listOf(pantryItemId("item-1") to Quantity(-50.0, unitA)))
 
             assertTrue(result is AppResult.Failure)
             assertEquals("amount", (result.error as AppError.Validation).field)
@@ -74,7 +74,7 @@ class ConsumePantryItemsUseCaseTest {
     @Test
     fun `a consumption in another unit fails instead of being converted`() =
         runTest {
-            val result = useCase(user, listOf(pantryItemId("item-1") to Quantity(1.0, unitB)))
+            val result = useCase(kitchen, listOf(pantryItemId("item-1") to Quantity(1.0, unitB)))
 
             assertTrue(result is AppResult.Failure)
             assertEquals("unit", (result.error as AppError.Validation).field)
@@ -84,7 +84,7 @@ class ConsumePantryItemsUseCaseTest {
     @Test
     fun `a consumption of something not held fails as NotFound`() =
         runTest {
-            val result = useCase(user, listOf(pantryItemId("item-9") to Quantity(1.0)))
+            val result = useCase(kitchen, listOf(pantryItemId("item-9") to Quantity(1.0)))
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.NotFound)

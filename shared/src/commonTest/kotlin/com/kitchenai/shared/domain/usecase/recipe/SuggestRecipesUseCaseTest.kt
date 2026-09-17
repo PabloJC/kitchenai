@@ -33,7 +33,7 @@ class SuggestRecipesUseCaseTest {
             val useCase =
                 SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), FakePantryRepositoryContract(held), orchestrator)
 
-            val result = useCase(user, listOf("en"), SuggestionOptions(useOnlyPantry = true))
+            val result = useCase(user, kitchen, listOf("en"), SuggestionOptions(useOnlyPantry = true))
 
             assertTrue(result is AppResult.Success)
             assertEquals(stored, orchestrator.profile)
@@ -49,7 +49,7 @@ class SuggestRecipesUseCaseTest {
             val useCase =
                 SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), FakePantryRepositoryContract(held), orchestrator)
 
-            useCase(user, listOf("es"))
+            useCase(user, kitchen, listOf("es"))
 
             assertEquals(listOf("xx"), stored.languageTags)
             assertEquals(listOf("es"), orchestrator.languageTags)
@@ -61,7 +61,7 @@ class SuggestRecipesUseCaseTest {
             val pantry = FakePantryRepositoryContract(readError = AppError.Network())
             val useCase = SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), pantry, RecordingOrchestrator())
 
-            assertTrue(useCase(user, listOf("en")) is AppResult.Failure)
+            assertTrue(useCase(user, kitchen, listOf("en")) is AppResult.Failure)
         }
 
     @Test
@@ -74,7 +74,7 @@ class SuggestRecipesUseCaseTest {
                     RecordingOrchestrator(),
                 )
 
-            val result = useCase(user, listOf("en"))
+            val result = useCase(user, kitchen, listOf("en"))
 
             assertEquals(AppError.NotFound("profile"), (result as AppResult.Failure).error)
         }

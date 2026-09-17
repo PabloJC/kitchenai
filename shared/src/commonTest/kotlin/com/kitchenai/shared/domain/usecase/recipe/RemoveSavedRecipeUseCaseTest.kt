@@ -14,7 +14,7 @@ class RemoveSavedRecipeUseCaseTest {
         runTest {
             val port = FakeRecipeRepositoryContract(listOf(stored))
 
-            RemoveSavedRecipeUseCase(port)(user, stored.id)
+            RemoveSavedRecipeUseCase(port)(kitchen, stored.id)
 
             assertTrue(port.recipes.isEmpty())
         }
@@ -24,7 +24,7 @@ class RemoveSavedRecipeUseCaseTest {
         runTest {
             val port = FakeRecipeRepositoryContract()
 
-            assertTrue(RemoveSavedRecipeUseCase(port)(user, stored.id) is AppResult.Success)
+            assertTrue(RemoveSavedRecipeUseCase(port)(kitchen, stored.id) is AppResult.Success)
         }
 
     @Test
@@ -32,6 +32,6 @@ class RemoveSavedRecipeUseCaseTest {
         runTest {
             val port = FakeRecipeRepositoryContract(listOf(stored), writeError = AppError.Network())
 
-            assertTrue(RemoveSavedRecipeUseCase(port)(user, stored.id) is AppResult.Failure)
+            assertTrue(RemoveSavedRecipeUseCase(port)(kitchen, stored.id) is AppResult.Failure)
         }
 }

@@ -3,8 +3,8 @@ package com.kitchenai.shared.domain.usecase.recipe
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.map
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.RecipeSuggestion
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
@@ -22,9 +22,9 @@ class GetStoredSuggestionsUseCase(
     private val pantry: PantryRepositoryContract,
     private val time: TimeProvider,
 ) {
-    suspend operator fun invoke(userId: UserId): AppResult<List<RecipeSuggestion>> =
+    suspend operator fun invoke(kitchenId: KitchenId): AppResult<List<RecipeSuggestion>> =
         recipes.getAll().flatMap { stored ->
-            pantry.getPantry(userId).map { held ->
+            pantry.getPantry(kitchenId).map { held ->
                 val now = time.now()
                 stored.map { recipe -> RecipeSuggestion(recipe, PantryMatcher.match(recipe, held, now), recipe.source) }
             }

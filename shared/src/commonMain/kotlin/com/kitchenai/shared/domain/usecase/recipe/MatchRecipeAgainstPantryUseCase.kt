@@ -3,10 +3,10 @@ package com.kitchenai.shared.domain.usecase.recipe
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.map
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
@@ -29,7 +29,7 @@ class MatchRecipeAgainstPantryUseCase(
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
         servings: Int? = null,
     ): AppResult<PantryMatch> =
@@ -39,7 +39,7 @@ class MatchRecipeAgainstPantryUseCase(
             // caller's error, and answering it with a match would hide that.
             is AppResult.Success ->
                 recipe.data.at(servings).flatMap { scaled ->
-                    pantry.getPantry(userId).map { held -> PantryMatcher.match(scaled, held, time.now()) }
+                    pantry.getPantry(kitchenId).map { held -> PantryMatcher.match(scaled, held, time.now()) }
                 }
         }
 
@@ -48,12 +48,12 @@ class MatchRecipeAgainstPantryUseCase(
      * asked about, so re-reading it by id would fail for the only kind this app suggests.
      */
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipe: Recipe,
         servings: Int? = null,
     ): AppResult<PantryMatch> =
         recipe.at(servings).flatMap { scaled ->
-            pantry.getPantry(userId).map { held -> PantryMatcher.match(scaled, held, time.now()) }
+            pantry.getPantry(kitchenId).map { held -> PantryMatcher.match(scaled, held, time.now()) }
         }
 
     private fun Recipe.at(servings: Int?): AppResult<Recipe> =

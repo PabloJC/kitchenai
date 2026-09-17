@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 
 class AddShoppingItemUseCaseTest {
     private val list = listId()
-    private val user = userId()
+    private val kitchen = kitchenId()
     private val grams = termRef("unit", "gram")
     private val millilitres = termRef("unit", "millilitre")
     private val port = FakeShoppingItemRepositoryContract()
@@ -20,7 +20,7 @@ class AddShoppingItemUseCaseTest {
         runTest {
             port.seed(list, shoppingItem("flour", quantity = Quantity(200.0, grams)))
 
-            val result = useCase(user, list, ingredient = ingredientId("flour"), quantity = Quantity(300.0, grams))
+            val result = useCase(kitchen, list, ingredient = ingredientId("flour"), quantity = Quantity(300.0, grams))
 
             assertTrue(result is AppResult.Success)
             assertEquals(listOf(Quantity(500.0, grams)), port.itemsOf(list).map { it.quantity })
@@ -31,7 +31,7 @@ class AddShoppingItemUseCaseTest {
         runTest {
             port.seed(list, shoppingItem("flour", quantity = Quantity(200.0, grams)))
 
-            useCase(user, list, ingredient = ingredientId("flour"), quantity = Quantity(300.0, millilitres))
+            useCase(kitchen, list, ingredient = ingredientId("flour"), quantity = Quantity(300.0, millilitres))
 
             assertEquals(2, port.itemsOf(list).size)
         }
@@ -39,8 +39,8 @@ class AddShoppingItemUseCaseTest {
     @Test
     fun `a free-text line never merges with an identical one`() =
         runTest {
-            useCase(user, list, freeText = "the good bread")
-            useCase(user, list, freeText = "the good bread")
+            useCase(kitchen, list, freeText = "the good bread")
+            useCase(kitchen, list, freeText = "the good bread")
 
             assertEquals(2, port.itemsOf(list).size)
         }
@@ -50,7 +50,7 @@ class AddShoppingItemUseCaseTest {
         runTest {
             port.seed(list, shoppingItem("flour", quantity = Quantity(200.0, grams)).copy(checked = true))
 
-            useCase(user, list, ingredient = ingredientId("flour"), quantity = Quantity(300.0, grams))
+            useCase(kitchen, list, ingredient = ingredientId("flour"), quantity = Quantity(300.0, grams))
 
             assertEquals(2, port.itemsOf(list).size)
         }
@@ -58,7 +58,7 @@ class AddShoppingItemUseCaseTest {
     @Test
     fun `a line with neither an ingredient nor free text is not stored`() =
         runTest {
-            val result = useCase(user, list)
+            val result = useCase(kitchen, list)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(port.itemsOf(list).isEmpty())

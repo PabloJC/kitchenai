@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class EnsureDefaultShoppingListUseCaseTest {
-    private val user = userId()
+    private val kitchen = kitchenId()
     private val labels = mapOf("en" to "My list")
     private val port = FakeShoppingListRepositoryContract()
     private val useCase = EnsureDefaultShoppingListUseCase(port, sequentialIds(), fixedTime(1_000))
@@ -16,8 +16,8 @@ class EnsureDefaultShoppingListUseCaseTest {
     @Test
     fun `two calls create exactly one list`() =
         runTest {
-            val first = useCase(user, labels)
-            val second = useCase(user, labels)
+            val first = useCase(kitchen, labels)
+            val second = useCase(kitchen, labels)
 
             assertEquals(1, port.upsertListCalls)
             assertTrue(first is AppResult.Success)
@@ -28,10 +28,10 @@ class EnsureDefaultShoppingListUseCaseTest {
     @Test
     fun `the label comes from the caller and is stored as given`() =
         runTest {
-            useCase(user, labels)
+            useCase(kitchen, labels)
 
-            val stored = port.observeLists(user).first()
+            val stored = port.observeLists(kitchen).first()
             assertEquals(listOf(labels), stored.map { it.labels })
-            assertEquals(listOf(user), stored.map { it.ownerId })
+            assertEquals(listOf(kitchen), stored.map { it.kitchenId })
         }
 }

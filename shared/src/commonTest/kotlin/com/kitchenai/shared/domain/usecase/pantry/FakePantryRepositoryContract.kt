@@ -3,13 +3,13 @@ package com.kitchenai.shared.domain.usecase.pantry
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,15 +39,16 @@ class FakePantryRepositoryContract(
 
     // A failing listener stops emitting and reports on its keyed error stream, which is what
     // the real adapter does with a Firestore snapshot error.
-    override fun observePantry(userId: UserId): Flow<List<PantryItem>> = if (readError == null) state else emptyFlow()
+    override fun observePantry(kitchenId: KitchenId): Flow<List<PantryItem>> =
+        if (readError == null) state else emptyFlow()
 
-    override fun pantryErrors(userId: UserId): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
+    override fun pantryErrors(kitchenId: KitchenId): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
 
-    override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> =
+    override suspend fun getPantry(kitchenId: KitchenId): AppResult<List<PantryItem>> =
         readError?.let { AppResult.Failure(it) } ?: AppResult.Success(state.value)
 
     override suspend fun upsert(
-        userId: UserId,
+        kitchenId: KitchenId,
         item: PantryItem,
     ): AppResult<Unit> {
         upsertCalls++
@@ -55,7 +56,7 @@ class FakePantryRepositoryContract(
     }
 
     override suspend fun remove(
-        userId: UserId,
+        kitchenId: KitchenId,
         id: PantryItemId,
     ): AppResult<Unit> {
         removed += id
@@ -63,7 +64,7 @@ class FakePantryRepositoryContract(
     }
 
     override suspend fun upsertAll(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
     ): AppResult<Unit> {
         upsertAllCalls++
@@ -72,7 +73,7 @@ class FakePantryRepositoryContract(
     }
 
     override suspend fun upsertAllConfirmed(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
     ): AppResult<Unit> {
         upsertAllConfirmedCalls++
@@ -86,7 +87,7 @@ class FakePantryRepositoryContract(
 
 // Fixtures. Every identifier here is opaque on purpose: naming a unit, a location or an
 // ingredient in a fixture is the same mistake as naming it in code.
-internal val user: UserId = (UserId.of("user-1") as AppResult.Success).data
+internal val kitchen: KitchenId = (KitchenId.of("kitchen-1") as AppResult.Success).data
 
 internal fun pantryItemId(raw: String): PantryItemId = (PantryItemId.of(raw) as AppResult.Success).data
 

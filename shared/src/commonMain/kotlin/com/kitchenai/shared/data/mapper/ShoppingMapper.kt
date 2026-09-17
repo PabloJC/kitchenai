@@ -7,18 +7,18 @@ import com.kitchenai.shared.core.map
 import com.kitchenai.shared.data.remote.dto.ShoppingItemDto
 import com.kitchenai.shared.data.remote.dto.ShoppingListDto
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.ShoppingListId
-import com.kitchenai.shared.domain.model.UserId
 import kotlin.time.Instant
 
 fun ShoppingList.toDto(): ShoppingListDto =
     ShoppingListDto(
-        ownerId = ownerId.value,
+        ownerId = kitchenId.value,
         labels = labels,
         updatedAtMillis = updatedAt.toEpochMilliseconds(),
     )
@@ -26,7 +26,7 @@ fun ShoppingList.toDto(): ShoppingListDto =
 /** The document id is the identifier: the payload never repeats it. */
 fun ShoppingListDto.toDomain(documentId: String): AppResult<ShoppingList> =
     ShoppingListId.of(documentId).flatMap { id ->
-        UserId.of(ownerId).map { owner ->
+        KitchenId.of(ownerId).map { owner ->
             ShoppingList(id, owner, labels, Instant.fromEpochMilliseconds(updatedAtMillis))
         }
     }
