@@ -25,8 +25,9 @@ val presentationModule: Module =
  */
 fun initKoinUi(
     functionsRegion: String,
+    googleWebClientId: String = "",
     appDeclaration: KoinAppDeclaration = {},
 ) = initKoin(functionsRegion) {
     appDeclaration()
-    modules(presentationModule)
+    modules(presentationModule, platformModule(googleWebClientId))
 }

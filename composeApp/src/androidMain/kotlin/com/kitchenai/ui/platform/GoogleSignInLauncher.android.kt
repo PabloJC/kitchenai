@@ -15,23 +15,22 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingExcept
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.GoogleIdToken
-
-/**
- * The OAuth Web Client ID from Firebase's Google sign-in provider (Firebase console ->
- * Authentication -> Sign-in method -> Google -> Web SDK configuration, generated once Google is
- * turned on there). Swapping in the real value is the only step left before this can reach a
- * live Google Cloud project — no other line in this file changes.
- */
-private const val GOOGLE_WEB_CLIENT_ID = "TODO-GOOGLE-WEB-CLIENT-ID"
+import com.kitchenai.ui.di.GOOGLE_WEB_CLIENT_ID
+import org.koin.compose.koinInject
 
 @Composable
 actual fun rememberGoogleSignInLauncher(): GoogleSignInLauncher {
     val context = LocalContext.current
-    return remember(context) { CredentialManagerGoogleSignInLauncher(context) }
+    // Bound from BuildConfig.GOOGLE_WEB_CLIENT_ID (gradle.properties -> androidApp -> Koin),
+    // not a constant here: an OAuth client id is environment configuration, the same reasoning
+    // FUNCTIONS_REGION already follows (#201 review).
+    val webClientId = koinInject<String>(qualifier = GOOGLE_WEB_CLIENT_ID)
+    return remember(context, webClientId) { CredentialManagerGoogleSignInLauncher(context, webClientId) }
 }
 
 private class CredentialManagerGoogleSignInLauncher(
     private val context: Context,
+    private val webClientId: String,
 ) : GoogleSignInLauncher {
     private val credentialManager = CredentialManager.create(context)
 
@@ -44,7 +43,7 @@ private class CredentialManagerGoogleSignInLauncher(
                         // a first sign-in has no "authorized accounts" to filter to.
                         .setFilterByAuthorizedAccounts(false)
                         .setAutoSelectEnabled(false)
-                        .setServerClientId(GOOGLE_WEB_CLIENT_ID)
+                        .setServerClientId(webClientId)
                         .build(),
                 )
                 .build()
