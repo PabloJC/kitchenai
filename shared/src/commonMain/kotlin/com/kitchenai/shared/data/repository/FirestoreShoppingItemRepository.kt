@@ -10,10 +10,10 @@ import com.kitchenai.shared.data.remote.firebase.FirestorePaths
 import com.kitchenai.shared.data.remote.firebase.firestoreCall
 import com.kitchenai.shared.data.remote.firebase.reportingErrorsTo
 import com.kitchenai.shared.data.remote.firebase.toAppError
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentReference
 import dev.gitlive.firebase.firestore.DocumentSnapshot
@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.map
  * [ShoppingItemRepositoryContract] over `users/{uid}/shoppingLists/{listId}/items`. Everything is keyed by the
  * list, streams and error sinks alike: a screen watching one list downloads and hears about that
  * list only.
+ *
+ * Still keyed by the uid the path was built for, via [KitchenId.asUserId] — #192 repoints
+ * [FirestorePaths] itself at `kitchens/{kitchenId}/...`, at which point this bridging disappears.
  */
 class FirestoreShoppingItemRepository(
     private val paths: FirestorePaths,
@@ -39,35 +42,36 @@ class FirestoreShoppingItemRepository(
     // the writes queued after it.
     private val writes = CoroutineScope(SupervisorJob() + dispatchers.io)
 
-    private val errors = KeyedErrorSinks<Pair<UserId, ShoppingListId>>()
+    private val errors = KeyedErrorSinks<Pair<KitchenId, ShoppingListId>>()
 
     override fun observeItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): Flow<List<ShoppingItem>> =
         paths
-            .shoppingListItems(userId, listId)
+            .shoppingListItems(kitchenId.asUserId(), listId)
             .snapshots
             .map { snapshot -> snapshot.toItems() }
-            .reportingErrorsTo(errors.of(userId to listId))
+            .reportingErrorsTo(errors.of(kitchenId to listId))
 
     override fun itemErrors(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
-    ): Flow<AppError> = errors.of(userId to listId).asSharedFlow()
+    ): Flow<AppError> = errors.of(kitchenId to listId).asSharedFlow()
 
     override suspend fun getItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<List<ShoppingItem>> =
-        firestoreCall(dispatchers) { paths.shoppingListItems(userId, listId).get().toItems() }
+        firestoreCall(dispatchers) { paths.shoppingListItems(kitchenId.asUserId(), listId).get().toItems() }
 
     override suspend fun upsertItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         items: List<ShoppingItem>,
     ): AppResult<Unit> =
-        writes.optimistically(errors.of(userId to listId)) {
+        writes.optimistically(errors.of(kitchenId to listId)) {
+            val userId = kitchenId.asUserId()
             items.chunkedForBatch().forEach { chunk ->
                 val batch = firestore.batch()
                 chunk.forEach { item ->
@@ -79,20 +83,21 @@ class FirestoreShoppingItemRepository(
         }
 
     override suspend fun removeItem(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         itemId: ShoppingItemId,
     ): AppResult<Unit> =
-        writes.optimistically(errors.of(userId to listId)) {
-            paths.shoppingListItem(userId, listId, itemId).delete()
+        writes.optimistically(errors.of(kitchenId to listId)) {
+            paths.shoppingListItem(kitchenId.asUserId(), listId, itemId).delete()
         }
 
     override suspend fun removeItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         ids: List<ShoppingItemId>,
     ): AppResult<Unit> =
-        writes.optimistically(errors.of(userId to listId)) {
+        writes.optimistically(errors.of(kitchenId to listId)) {
+            val userId = kitchenId.asUserId()
             deleteAll(ids.map { id -> paths.shoppingListItem(userId, listId, id) })
         }
 
@@ -101,22 +106,22 @@ class FirestoreShoppingItemRepository(
      * is served from the cache while offline, which is where a ticked line already is.
      */
     override suspend fun removeCheckedItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<Unit> {
-        val ticked = firestoreCall(dispatchers) { checkedDocuments(userId, listId) }
+        val ticked = firestoreCall(dispatchers) { checkedDocuments(kitchenId, listId) }
         return when (ticked) {
             is AppResult.Failure -> ticked
-            is AppResult.Success -> writes.optimistically(errors.of(userId to listId)) { deleteAll(ticked.data) }
+            is AppResult.Success -> writes.optimistically(errors.of(kitchenId to listId)) { deleteAll(ticked.data) }
         }
     }
 
     private suspend fun checkedDocuments(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): List<DocumentReference> =
         paths
-            .shoppingListItems(userId, listId)
+            .shoppingListItems(kitchenId.asUserId(), listId)
             .where { CHECKED equalTo true }
             .get()
             .documents

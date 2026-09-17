@@ -27,7 +27,7 @@ class ObservePantryUseCaseTest {
                     ),
                 )
 
-            ObservePantryUseCase(port)(user).test {
+            ObservePantryUseCase(port)(kitchen).test {
                 assertEquals(
                     listOf("item-4", "item-3", "item-2", "item-1").map(::pantryItemId),
                     awaitItem().map { it.id },
@@ -41,8 +41,8 @@ class ObservePantryUseCaseTest {
         runTest {
             val useCase = ObservePantryUseCase(FakePantryRepositoryContract(readError = AppError.Unauthorized()))
 
-            useCase(user).test { awaitComplete() }
-            useCase.errors(user).test {
+            useCase(kitchen).test { awaitComplete() }
+            useCase.errors(kitchen).test {
                 assertTrue(awaitItem() is AppError.Unauthorized)
                 awaitComplete()
             }

@@ -20,7 +20,7 @@ class UpdatePantryItemUseCaseTest {
     @Test
     fun `writes the item and restamps it`() =
         runTest {
-            val result = useCase(user, held.copy(quantity = Quantity(120.0, unitA)))
+            val result = useCase(kitchen, held.copy(quantity = Quantity(120.0, unitA)))
 
             assertTrue(result is AppResult.Success)
             assertEquals(Quantity(120.0, unitA), port.items.single().quantity)
@@ -30,7 +30,7 @@ class UpdatePantryItemUseCaseTest {
     @Test
     fun `rejects an amount of zero because a removal has to be explicit`() =
         runTest {
-            val result = useCase(user, held.copy(quantity = Quantity(0.0, unitA)))
+            val result = useCase(kitchen, held.copy(quantity = Quantity(0.0, unitA)))
 
             assertTrue(result is AppResult.Failure)
             assertEquals("amount", (result.error as AppError.Validation).field)
@@ -40,7 +40,7 @@ class UpdatePantryItemUseCaseTest {
     @Test
     fun `rejects a negative amount`() =
         runTest {
-            val result = useCase(user, held.copy(quantity = Quantity(-1.0, unitA)))
+            val result = useCase(kitchen, held.copy(quantity = Quantity(-1.0, unitA)))
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Validation)
@@ -51,7 +51,7 @@ class UpdatePantryItemUseCaseTest {
         runTest {
             val failing = FakePantryRepositoryContract(listOf(held), writeError = AppError.Network())
 
-            val result = UpdatePantryItemUseCase(failing, TimeProvider { now })(user, held)
+            val result = UpdatePantryItemUseCase(failing, TimeProvider { now })(kitchen, held)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Network)

@@ -14,6 +14,6 @@ val profileModule: Module =
         factory { ObserveUserProfileUseCase(get()) }
         factory { ObserveTaxonomyUseCase(get()) }
         factory { ObserveTaxonomiesUseCase(get()) }
-        factory { SaveUserProfileUseCase(get(), get(), get()) }
+        factory { SaveUserProfileUseCase(get(), get(), get(), get()) }
         factory { ToggleDietaryConstraintUseCase() }
     }

@@ -11,11 +11,11 @@ class SaveRecipeUseCaseTest {
     private val stored = recipe(ingredients = listOf(recipeIngredient("ing-1")))
 
     @Test
-    fun `keeps the recipe under the user`() =
+    fun `keeps the recipe under the kitchen`() =
         runTest {
             val port = FakeRecipeRepositoryContract()
 
-            val result = SaveRecipeUseCase(port)(user, stored)
+            val result = SaveRecipeUseCase(port)(kitchen, stored)
 
             assertTrue(result is AppResult.Success)
             assertEquals(listOf(stored), port.recipes)
@@ -27,8 +27,8 @@ class SaveRecipeUseCaseTest {
             val port = FakeRecipeRepositoryContract()
             val useCase = SaveRecipeUseCase(port)
 
-            useCase(user, stored)
-            useCase(user, stored)
+            useCase(kitchen, stored)
+            useCase(kitchen, stored)
 
             assertEquals(1, port.recipes.size)
         }
@@ -38,7 +38,7 @@ class SaveRecipeUseCaseTest {
         runTest {
             val port = FakeRecipeRepositoryContract()
 
-            val result = SaveRecipeUseCase(port)(user, recipe())
+            val result = SaveRecipeUseCase(port)(kitchen, recipe())
 
             assertTrue(result is AppResult.Failure)
             assertTrue(port.recipes.isEmpty())
@@ -49,6 +49,6 @@ class SaveRecipeUseCaseTest {
         runTest {
             val port = FakeRecipeRepositoryContract(writeError = AppError.Network())
 
-            assertTrue(SaveRecipeUseCase(port)(user, stored) is AppResult.Failure)
+            assertTrue(SaveRecipeUseCase(port)(kitchen, stored) is AppResult.Failure)
         }
 }

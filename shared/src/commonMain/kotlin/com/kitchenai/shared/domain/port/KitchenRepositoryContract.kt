@@ -49,4 +49,11 @@ interface KitchenRepositoryContract {
         kitchenId: KitchenId,
         requesterId: UserId,
     ): AppResult<Kitchen>
+
+    /** Refreshes the caller's own entry in [Kitchen.memberDisplayNames]; never another member's. */
+    suspend fun updateMyDisplayName(
+        userId: UserId,
+        kitchenId: KitchenId,
+        displayName: String,
+    ): AppResult<Unit>
 }

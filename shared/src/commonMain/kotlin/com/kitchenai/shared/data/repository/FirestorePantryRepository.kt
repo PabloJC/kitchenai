@@ -10,9 +10,9 @@ import com.kitchenai.shared.data.remote.firebase.FirestorePaths
 import com.kitchenai.shared.data.remote.firebase.firestoreCall
 import com.kitchenai.shared.data.remote.firebase.reportingErrorsTo
 import com.kitchenai.shared.data.remote.firebase.toAppError
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FirebaseFirestore
@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.map
  * [PantryRepositoryContract] over `users/{uid}/pantry`: a snapshot listener to read, optimistic writes to
  * change. GitLive's `set` and `delete` only resolve once the server acknowledges them, so
  * awaiting one would leave the user watching a spinner for a write the cache already applied.
+ *
+ * Still keyed by the uid the path was built for, via [KitchenId.asUserId] — #192 repoints
+ * [FirestorePaths] itself at `kitchens/{kitchenId}/...`, at which point this bridging disappears.
  */
 class FirestorePantryRepository(
     private val paths: FirestorePaths,
@@ -37,50 +40,52 @@ class FirestorePantryRepository(
     // the writes queued after it.
     private val writes = CoroutineScope(SupervisorJob() + dispatchers.io)
 
-    private val errors = KeyedErrorSinks<UserId>()
+    private val errors = KeyedErrorSinks<KitchenId>()
 
-    override fun observePantry(userId: UserId): Flow<List<PantryItem>> =
+    override fun observePantry(kitchenId: KitchenId): Flow<List<PantryItem>> =
         paths
-            .pantry(userId)
+            .pantry(kitchenId.asUserId())
             .snapshots
             .map { snapshot -> snapshot.toPantryItems() }
-            .reportingErrorsTo(errors.of(userId))
+            .reportingErrorsTo(errors.of(kitchenId))
 
-    override fun pantryErrors(userId: UserId): Flow<AppError> = errors.of(userId).asSharedFlow()
+    override fun pantryErrors(kitchenId: KitchenId): Flow<AppError> = errors.of(kitchenId).asSharedFlow()
 
-    override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> =
-        firestoreCall(dispatchers) { paths.pantry(userId).get().toPantryItems() }
+    override suspend fun getPantry(kitchenId: KitchenId): AppResult<List<PantryItem>> =
+        firestoreCall(dispatchers) { paths.pantry(kitchenId.asUserId()).get().toPantryItems() }
 
     override suspend fun upsert(
-        userId: UserId,
+        kitchenId: KitchenId,
         item: PantryItem,
     ): AppResult<Unit> =
-        writes.optimistically(errors.of(userId)) {
-            paths.pantryItem(userId, item.id).set(item.toDto(), merge = true) { encodeDefaults = true }
+        writes.optimistically(errors.of(kitchenId)) {
+            paths.pantryItem(kitchenId.asUserId(), item.id).set(item.toDto(), merge = true) { encodeDefaults = true }
         }
 
     override suspend fun remove(
-        userId: UserId,
+        kitchenId: KitchenId,
         id: PantryItemId,
-    ): AppResult<Unit> = writes.optimistically(errors.of(userId)) { paths.pantryItem(userId, id).delete() }
+    ): AppResult<Unit> =
+        writes.optimistically(errors.of(kitchenId)) { paths.pantryItem(kitchenId.asUserId(), id).delete() }
 
     override suspend fun upsertAll(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
-    ): AppResult<Unit> = writes.optimistically(errors.of(userId)) { commitAll(userId, items) }
+    ): AppResult<Unit> = writes.optimistically(errors.of(kitchenId)) { commitAll(kitchenId, items) }
 
     override suspend fun upsertAllConfirmed(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
-    ): AppResult<Unit> = firestoreCall(dispatchers) { commitAll(userId, items) }
+    ): AppResult<Unit> = firestoreCall(dispatchers) { commitAll(kitchenId, items) }
 
     private suspend fun commitAll(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
     ) {
+        val uid = kitchenId.asUserId()
         val batch = firestore.batch()
         items.forEach { item ->
-            batch.set(paths.pantryItem(userId, item.id), item.toDto(), merge = true) { encodeDefaults = true }
+            batch.set(paths.pantryItem(uid, item.id), item.toDto(), merge = true) { encodeDefaults = true }
         }
         batch.commit()
     }

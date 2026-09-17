@@ -4,6 +4,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.agent.AgentOrchestrator
 import com.kitchenai.shared.domain.agent.SuggestionOptions
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
@@ -11,7 +12,11 @@ import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import kotlinx.coroutines.flow.firstOrNull
 
 /**
- * Asks for suggestions built from what is stored about this user right now.
+ * Asks for suggestions built from what is stored about this user and this kitchen right now.
+ *
+ * [userId] and [kitchenId] are not interchangeable: the profile (dietary preferences, household)
+ * stays personal per #190/#191, while the pantry it is matched against is the kitchen's shared
+ * one.
  *
  * The profile is read with `firstOrNull`: a listener that has failed ends its stream, and
  * `first` on an ended stream would throw across a layer boundary instead of failing.
@@ -27,13 +32,14 @@ class SuggestRecipesUseCase(
 ) {
     suspend operator fun invoke(
         userId: UserId,
+        kitchenId: KitchenId,
         languageTags: List<String>,
         options: SuggestionOptions = SuggestionOptions(),
     ): AppResult<List<RecipeSuggestion>> {
         val profile =
             profiles.observeProfile(userId).firstOrNull()
                 ?: return AppResult.Failure(AppError.NotFound("profile"))
-        return when (val held = pantry.getPantry(userId)) {
+        return when (val held = pantry.getPantry(kitchenId)) {
             is AppResult.Failure -> held
             is AppResult.Success -> orchestrator.suggest(profile, held.data, options, languageTags)
         }

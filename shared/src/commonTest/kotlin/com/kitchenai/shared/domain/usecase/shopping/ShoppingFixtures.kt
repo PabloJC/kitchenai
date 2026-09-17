@@ -3,6 +3,7 @@ package com.kitchenai.shared.domain.usecase.shopping
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
@@ -10,7 +11,6 @@ import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
 import kotlin.time.Instant
@@ -33,7 +33,7 @@ fun shoppingItem(
         ) as AppResult.Success
     ).data
 
-fun userId(raw: String = "user"): UserId = (UserId.of(raw) as AppResult.Success).data
+fun kitchenId(raw: String = "kitchen"): KitchenId = (KitchenId.of(raw) as AppResult.Success).data
 
 fun listId(raw: String = "list"): ShoppingListId = (ShoppingListId.of(raw) as AppResult.Success).data
 

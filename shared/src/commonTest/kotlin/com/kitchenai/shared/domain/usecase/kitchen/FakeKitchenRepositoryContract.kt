@@ -30,6 +30,7 @@ class FakeKitchenRepositoryContract(
     var leaveResult: AppResult<Unit> = AppResult.Success(Unit)
     var removeMemberResult: AppResult<Unit> = AppResult.Success(Unit)
     var regenerateResult: AppResult<Kitchen> = AppResult.Failure(AppError.Unknown())
+    var updateMyDisplayNameResult: AppResult<Unit> = AppResult.Success(Unit)
 
     var createCalls: Int = 0
         private set
@@ -39,6 +40,7 @@ class FakeKitchenRepositoryContract(
         private set
     val leftKitchens = mutableListOf<KitchenId>()
     val removedMembers = mutableListOf<Pair<KitchenId, UserId>>()
+    val updatedDisplayNames = mutableListOf<Triple<UserId, KitchenId, String>>()
     val current: Kitchen? get() = state.value
 
     override fun observeMyKitchen(userId: UserId): Flow<Kitchen> =
@@ -98,6 +100,15 @@ class FakeKitchenRepositoryContract(
         val result = regenerateResult
         if (result is AppResult.Success) state.value = result.data
         return result
+    }
+
+    override suspend fun updateMyDisplayName(
+        userId: UserId,
+        kitchenId: KitchenId,
+        displayName: String,
+    ): AppResult<Unit> {
+        updatedDisplayNames += Triple(userId, kitchenId, displayName)
+        return updateMyDisplayNameResult
     }
 
     /** Pushes a new value to an already-active collector, for reactivity tests. */

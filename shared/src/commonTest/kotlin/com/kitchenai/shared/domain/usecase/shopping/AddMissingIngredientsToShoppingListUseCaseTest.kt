@@ -21,7 +21,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AddMissingIngredientsToShoppingListUseCaseTest {
-    private val user = userId()
+    private val kitchen = kitchenId()
     private val list = listId()
     private val unit = termRef("taxonomy-1", "term-a")
     private val items = FakeShoppingItemRepositoryContract()
@@ -32,7 +32,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
         runTest {
             val dish = dishOf(twoHundredOfIngredientOne)
 
-            val result = useCase(dish)(user, list, dish.id, servings = 2)
+            val result = useCase(dish)(kitchen, list, dish.id, servings = 2)
 
             val stored = items.itemsOf(list).single()
             assertEquals(ingredientId("ing-1"), stored.ingredient)
@@ -47,7 +47,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             val optional = recipeIngredient("ing-2", quantity = Quantity(1.0, unit), optional = true)
             val dish = dishOf(twoHundredOfIngredientOne, optional)
 
-            val result = useCase(dish)(user, list, dish.id, servings = 2)
+            val result = useCase(dish)(kitchen, list, dish.id, servings = 2)
 
             assertEquals(listOf(ingredientId("ing-1")), items.itemsOf(list).map { it.ingredient })
             assertEquals(AddedToListSummary(added = 1, skipped = 1), result.unwrap())
@@ -58,7 +58,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
         runTest {
             val dish = dishOf(recipeIngredient(freeText = "line-1"))
 
-            useCase(dish)(user, list, dish.id, servings = 2)
+            useCase(dish)(kitchen, list, dish.id, servings = 2)
 
             val stored = items.itemsOf(list).single()
             assertNull(stored.ingredient)
@@ -71,7 +71,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             val second = recipeIngredient("ing-2", quantity = Quantity(1.0, unit))
             val dish = dishOf(twoHundredOfIngredientOne, second, recipeIngredient(freeText = "line-1"))
 
-            useCase(dish)(user, list, dish.id, servings = 2)
+            useCase(dish)(kitchen, list, dish.id, servings = 2)
 
             assertEquals(1, items.upsertCalls)
             assertEquals(3, items.itemsOf(list).size)
@@ -83,7 +83,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             val dish = dishOf(twoHundredOfIngredientOne)
             val held = listOf(pantryItem("item-1", "ing-1", Quantity(500.0, unit)))
 
-            val result = useCase(dish, held)(user, list, dish.id, servings = 2)
+            val result = useCase(dish, held)(kitchen, list, dish.id, servings = 2)
 
             assertEquals(AddedToListSummary(added = 0, skipped = 1), result.unwrap())
             assertEquals(0, items.upsertCalls)
@@ -95,7 +95,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             val dish = dishOf(twoHundredOfIngredientOne)
             val held = listOf(pantryItem("item-1", "ing-1", Quantity(100.0, unit)))
 
-            useCase(dish, held)(user, list, dish.id, servings = 4)
+            useCase(dish, held)(kitchen, list, dish.id, servings = 4)
 
             assertEquals(Quantity(300.0, unit), items.itemsOf(list).single().quantity)
         }
@@ -106,7 +106,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             items.seed(list, shoppingItem("item-1", ingredient = "ing-1", quantity = Quantity(100.0, unit)))
             val dish = dishOf(twoHundredOfIngredientOne)
 
-            useCase(dish)(user, list, dish.id, servings = 2)
+            useCase(dish)(kitchen, list, dish.id, servings = 2)
 
             assertEquals(listOf(Quantity(300.0, unit)), items.itemsOf(list).map { it.quantity })
         }
@@ -118,7 +118,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             val dish = dishOf(halfAnOnion)
             val catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit))
 
-            useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
+            useCase(dish, catalogue = catalogue)(kitchen, list, dish.id, servings = 2)
 
             assertEquals(Quantity(1.0, unit), items.itemsOf(list).single().quantity)
         }
@@ -134,7 +134,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
                 dish,
                 held,
                 catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit)),
-            )(user, list, dish.id, servings = 2)
+            )(kitchen, list, dish.id, servings = 2)
 
             assertEquals(Quantity(1.0, unit), items.itemsOf(list).single().quantity)
         }
@@ -146,7 +146,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             val dish = dishOf(halfAnOnion)
             val catalogue = listOf(ingredient("onion", purchasedWhole = false, defaultUnit = unit))
 
-            useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
+            useCase(dish, catalogue = catalogue)(kitchen, list, dish.id, servings = 2)
 
             assertEquals(Quantity(0.5, unit), items.itemsOf(list).single().quantity)
         }
@@ -160,7 +160,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             // purchasedWhole applies to a count of onions; a kilogram of onion is a different unit.
             val catalogue = listOf(ingredient("onion", purchasedWhole = true, defaultUnit = unit))
 
-            useCase(dish, catalogue = catalogue)(user, list, dish.id, servings = 2)
+            useCase(dish, catalogue = catalogue)(kitchen, list, dish.id, servings = 2)
 
             assertEquals(Quantity(1.5, weighed), items.itemsOf(list).single().quantity)
         }
@@ -172,7 +172,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             val dish = dishOf(halfAnOnion)
             // No entry for "onion" at all: the fake answers not-found, same as a real miss.
 
-            val result = useCase(dish)(user, list, dish.id, servings = 2)
+            val result = useCase(dish)(kitchen, list, dish.id, servings = 2)
 
             assertEquals(Quantity(0.5, unit), items.itemsOf(list).single().quantity)
             assertTrue(result is AppResult.Success)
@@ -191,7 +191,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
                     fixedTime(2_000),
                 )
 
-            assertTrue(useCase(user, list, recipeId("recipe-1"), servings = 2) is AppResult.Failure)
+            assertTrue(useCase(kitchen, list, recipeId("recipe-1"), servings = 2) is AppResult.Failure)
             assertEquals(0, items.upsertCalls)
         }
 
@@ -210,9 +210,12 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
                     fixedTime(2_000),
                 )
 
-            assertTrue(useCase(user, list, dish.id, servings = 2) is AppResult.Failure)
+            assertTrue(useCase(kitchen, list, dish.id, servings = 2) is AppResult.Failure)
 
-            assertEquals(AddedToListSummary(added = 1, skipped = 0), useCase(user, list, dish, servings = 2).unwrap())
+            assertEquals(
+                AddedToListSummary(added = 1, skipped = 0),
+                useCase(kitchen, list, dish, servings = 2).unwrap(),
+            )
             assertEquals(ingredientId("ing-1"), items.itemsOf(list).single().ingredient)
         }
 

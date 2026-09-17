@@ -16,7 +16,7 @@ class RemovePantryItemUseCaseTest {
         runTest {
             val port = FakePantryRepositoryContract(held)
 
-            val result = RemovePantryItemUseCase(port)(user, pantryItemId("item-1"))
+            val result = RemovePantryItemUseCase(port)(kitchen, pantryItemId("item-1"))
 
             assertTrue(result is AppResult.Success)
             assertEquals(emptyList(), port.items)
@@ -27,7 +27,7 @@ class RemovePantryItemUseCaseTest {
         runTest {
             val port = FakePantryRepositoryContract(held, writeError = AppError.Network())
 
-            val result = RemovePantryItemUseCase(port)(user, pantryItemId("item-1"))
+            val result = RemovePantryItemUseCase(port)(kitchen, pantryItemId("item-1"))
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Network)

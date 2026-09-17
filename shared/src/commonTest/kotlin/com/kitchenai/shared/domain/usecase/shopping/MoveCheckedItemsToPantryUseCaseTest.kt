@@ -26,7 +26,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             items.seed(list, shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true))
             val pantry = FakePantryRepositoryContract()
 
-            useCase(items, pantry)(userId(), list)
+            useCase(items, pantry)(kitchenId(), list)
 
             // Not upsertAll: an optimistic write always "succeeds" before the server has
             // answered, which would let removeItems run on a pantry write that never landed.
@@ -41,7 +41,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             items.seed(list, shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true))
             val pantry = FakePantryRepositoryContract()
 
-            val result = useCase(items, pantry)(userId(), list)
+            val result = useCase(items, pantry)(kitchenId(), list)
 
             assertTrue(result is AppResult.Success)
             assertEquals(1, result.data.moved)
@@ -61,7 +61,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             )
             val pantry = FakePantryRepositoryContract()
 
-            val result = useCase(items, pantry)(userId(), list)
+            val result = useCase(items, pantry)(kitchenId(), list)
 
             assertTrue(result is AppResult.Success)
             assertEquals(1, result.data.moved)
@@ -75,7 +75,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             items.seed(list, shoppingItem("milk", quantity = null).copy(checked = true))
             val pantry = FakePantryRepositoryContract()
 
-            val result = useCase(items, pantry)(userId(), list)
+            val result = useCase(items, pantry)(kitchenId(), list)
 
             assertTrue(result is AppResult.Success)
             assertEquals(0, result.data.moved)
@@ -91,7 +91,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             items.seed(list, shoppingItem("rice", quantity = Quantity(0.0, unit)).copy(checked = true))
             val pantry = FakePantryRepositoryContract()
 
-            val result = useCase(items, pantry)(userId(), list)
+            val result = useCase(items, pantry)(kitchenId(), list)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(pantry.items.isEmpty())
@@ -105,7 +105,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             items.seed(list, shoppingItem("rice", quantity = Quantity(200.0, unit)))
             val pantry = FakePantryRepositoryContract()
 
-            val result = useCase(items, pantry)(userId(), list)
+            val result = useCase(items, pantry)(kitchenId(), list)
 
             assertTrue(result is AppResult.Success)
             assertEquals(0, result.data.moved)
@@ -125,7 +125,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             )
             val pantry = FakePantryRepositoryContract()
 
-            val result = useCase(items, pantry)(userId(), list)
+            val result = useCase(items, pantry)(kitchenId(), list)
 
             assertTrue(result is AppResult.Success)
             assertEquals(2, result.data.moved)
@@ -149,7 +149,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             )
             val pantry = FakePantryRepositoryContract()
 
-            val result = useCase(items, pantry)(userId(), list)
+            val result = useCase(items, pantry)(kitchenId(), list)
 
             assertTrue(result is AppResult.Failure)
             // The earlier, individually-valid line must not have been committed on its own.
@@ -164,7 +164,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
             items.seed(list, shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true))
             val pantry = FakePantryRepositoryContract(writeError = AppError.Network())
 
-            val result = useCase(items, pantry)(userId(), list)
+            val result = useCase(items, pantry)(kitchenId(), list)
 
             assertTrue(result is AppResult.Failure)
             assertEquals(listOf("rice"), items.itemsOf(list).map { it.id.value })
@@ -175,7 +175,7 @@ class MoveCheckedItemsToPantryUseCaseTest {
         runTest {
             val items = FakeShoppingItemRepositoryContract(AppError.Network())
 
-            val result = useCase(items)(userId(), list)
+            val result = useCase(items)(kitchenId(), list)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Network)

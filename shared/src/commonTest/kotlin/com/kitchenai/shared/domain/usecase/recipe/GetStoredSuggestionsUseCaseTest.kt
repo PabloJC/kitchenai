@@ -28,7 +28,7 @@ class GetStoredSuggestionsUseCaseTest {
                     TimeProvider { now },
                 )
 
-            val result = (useCase(user) as AppResult.Success).data
+            val result = (useCase(kitchen) as AppResult.Success).data
 
             assertEquals(1f, result.single().match.coverage)
             assertEquals(stored, result.single().recipe)
@@ -44,7 +44,7 @@ class GetStoredSuggestionsUseCaseTest {
                     TimeProvider { now },
                 )
 
-            assertEquals(AppResult.Success(emptyList()), useCase(user))
+            assertEquals(AppResult.Success(emptyList()), useCase(kitchen))
         }
 
     @Test
@@ -57,7 +57,7 @@ class GetStoredSuggestionsUseCaseTest {
                     TimeProvider { now },
                 )
 
-            assertTrue(useCase(user) is AppResult.Failure)
+            assertTrue(useCase(kitchen) is AppResult.Failure)
         }
 
     @Test
@@ -70,6 +70,6 @@ class GetStoredSuggestionsUseCaseTest {
                     TimeProvider { now },
                 )
 
-            assertTrue(useCase(user) is AppResult.Failure)
+            assertTrue(useCase(kitchen) is AppResult.Failure)
         }
 }

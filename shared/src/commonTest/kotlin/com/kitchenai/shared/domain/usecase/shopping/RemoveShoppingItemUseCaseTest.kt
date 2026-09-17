@@ -12,8 +12,8 @@ class RemoveShoppingItemUseCaseTest {
             val port = FakeShoppingItemRepositoryContract()
             port.seed(list, shoppingItem("milk"), shoppingItem("bread"))
 
-            RemoveShoppingItemUseCase(port)(userId(), list, itemId("milk"))
-            RemoveShoppingItemUseCase(port)(userId(), list, itemId("milk"))
+            RemoveShoppingItemUseCase(port)(kitchenId(), list, itemId("milk"))
+            RemoveShoppingItemUseCase(port)(kitchenId(), list, itemId("milk"))
 
             assertEquals(listOf("bread"), port.itemsOf(list).map { it.id.value })
         }

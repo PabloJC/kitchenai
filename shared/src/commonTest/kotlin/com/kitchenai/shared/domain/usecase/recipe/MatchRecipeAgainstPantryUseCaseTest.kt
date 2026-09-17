@@ -26,7 +26,7 @@ class MatchRecipeAgainstPantryUseCaseTest {
         runTest {
             val useCase = matcher(pantry = listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit))))
 
-            val result = useCase(user, stored.id)
+            val result = useCase(kitchen, stored.id)
 
             assertEquals(1f, result.unwrap().coverage)
             assertEquals(stored.id, result.unwrap().recipeId)
@@ -38,7 +38,7 @@ class MatchRecipeAgainstPantryUseCaseTest {
             val expired = pantryItem("item-1", "ing-1", Quantity(2.0, unit), expiresAt = Instant.fromEpochSeconds(1))
             val useCase = matcher(pantry = listOf(expired))
 
-            assertEquals(0f, useCase(user, stored.id).unwrap().coverage)
+            assertEquals(0f, useCase(kitchen, stored.id).unwrap().coverage)
         }
 
     @Test
@@ -51,7 +51,7 @@ class MatchRecipeAgainstPantryUseCaseTest {
                     TimeProvider { now },
                 )
 
-            assertTrue(useCase(user, stored.id) is AppResult.Failure)
+            assertTrue(useCase(kitchen, stored.id) is AppResult.Failure)
         }
 
     @Test
@@ -64,13 +64,13 @@ class MatchRecipeAgainstPantryUseCaseTest {
                     TimeProvider { now },
                 )
 
-            assertTrue(useCase(user, stored.id) is AppResult.Failure)
+            assertTrue(useCase(kitchen, stored.id) is AppResult.Failure)
         }
 
     @Test
     fun `an unknown recipe is not found`() =
         runTest {
-            val result = matcher(pantry = emptyList())(user, recipeId("recipe-2"))
+            val result = matcher(pantry = emptyList())(kitchen, recipeId("recipe-2"))
 
             assertTrue(result is AppResult.Failure)
         }
@@ -81,8 +81,8 @@ class MatchRecipeAgainstPantryUseCaseTest {
             // Exactly enough for the recipe as written, and so not enough for twice it.
             val useCase = matcher(pantry = listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit))))
 
-            assertEquals(1f, useCase(user, stored.id).unwrap().coverage)
-            assertEquals(0f, useCase(user, stored.id, servings = stored.servings * 2).unwrap().coverage)
+            assertEquals(1f, useCase(kitchen, stored.id).unwrap().coverage)
+            assertEquals(0f, useCase(kitchen, stored.id, servings = stored.servings * 2).unwrap().coverage)
         }
 
     @Test
@@ -93,7 +93,7 @@ class MatchRecipeAgainstPantryUseCaseTest {
             val useCase = MatchRecipeAgainstPantryUseCase(recipes, pantry, TimeProvider { now })
 
             // Network is what the pantry would answer; a validation failure proves it was never asked.
-            val error = (useCase(user, stored.id, servings = 0) as AppResult.Failure).error
+            val error = (useCase(kitchen, stored.id, servings = 0) as AppResult.Failure).error
 
             assertTrue(error is AppError.Validation)
         }
@@ -109,11 +109,11 @@ class MatchRecipeAgainstPantryUseCaseTest {
                     TimeProvider { now },
                 )
 
-            assertTrue(useCase(user, stored.id) is AppResult.Failure)
+            assertTrue(useCase(kitchen, stored.id) is AppResult.Failure)
 
-            assertEquals(1f, useCase(user, stored).unwrap().coverage)
+            assertEquals(1f, useCase(kitchen, stored).unwrap().coverage)
             // The override still applies to a recipe handed over, or the stepper could not move it.
-            assertEquals(0f, useCase(user, stored, servings = stored.servings * 2).unwrap().coverage)
+            assertEquals(0f, useCase(kitchen, stored, servings = stored.servings * 2).unwrap().coverage)
         }
 
     private fun matcher(pantry: List<PantryItem>): MatchRecipeAgainstPantryUseCase =

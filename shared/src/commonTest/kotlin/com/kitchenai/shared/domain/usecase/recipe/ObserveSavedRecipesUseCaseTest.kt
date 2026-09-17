@@ -9,11 +9,11 @@ import kotlin.test.assertTrue
 
 class ObserveSavedRecipesUseCaseTest {
     @Test
-    fun `emits the recipes the user has kept`() =
+    fun `emits the recipes the kitchen has kept`() =
         runTest {
             val saved = listOf(recipe("recipe-1"), recipe("recipe-2"))
 
-            ObserveSavedRecipesUseCase(FakeRecipeRepositoryContract(saved))(user).test {
+            ObserveSavedRecipesUseCase(FakeRecipeRepositoryContract(saved))(kitchen).test {
                 assertEquals(saved, awaitItem())
                 cancelAndIgnoreRemainingEvents()
             }
@@ -24,8 +24,8 @@ class ObserveSavedRecipesUseCaseTest {
         runTest {
             val useCase = ObserveSavedRecipesUseCase(FakeRecipeRepositoryContract(readError = AppError.Unauthorized()))
 
-            useCase(user).test { awaitComplete() }
-            useCase.errors(user).test {
+            useCase(kitchen).test { awaitComplete() }
+            useCase.errors(kitchen).test {
                 assertTrue(awaitItem() is AppError.Unauthorized)
                 awaitComplete()
             }
