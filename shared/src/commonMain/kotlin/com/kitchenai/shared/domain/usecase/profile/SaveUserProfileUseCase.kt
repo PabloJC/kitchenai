@@ -8,7 +8,6 @@ import com.kitchenai.shared.domain.port.KitchenRepositoryContract
 import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
-import kotlinx.coroutines.flow.firstOrNull
 
 /**
  * Validates the profile against the live catalogue and stamps [UserProfile.updatedAt] before
@@ -28,9 +27,12 @@ class SaveUserProfileUseCase(
 ) {
     suspend operator fun invoke(profile: UserProfile): AppResult<Unit> {
         validate(profile)?.let { return AppResult.Failure(it) }
-        // Read before writing: comparing against the profile about to be overwritten is the only
-        // way to tell "the name changed" from "the household size changed".
-        val previousDisplayName = profiles.observeProfile(profile.userId).firstOrNull()?.displayName
+        // One-shot read, not observeProfile().firstOrNull(): the listener never emits and never
+        // completes for a uid with no document yet, which is exactly the first-ever save this
+        // has to handle. Any failure here (including "no profile yet") is read as "unknown
+        // previous name" — the sync below is best-effort regardless, so this never blocks the
+        // save that matters.
+        val previousDisplayName = (profiles.getProfile(profile.userId) as? AppResult.Success)?.data?.displayName
         val saved = profiles.save(profile.copy(updatedAt = time.now()))
         if (saved is AppResult.Failure) return saved
         val displayName = profile.displayName

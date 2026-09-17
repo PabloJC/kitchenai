@@ -16,8 +16,10 @@ import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.kitchen.FakeKitchenRepositoryContract
 import com.kitchenai.shared.domain.usecase.kitchen.kitchen
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -51,6 +53,16 @@ class SaveUserProfileUseCaseTest {
 
             assertEquals(AppResult.Success(Unit), result)
             assertEquals(savedAt, profiles.saved?.updatedAt)
+        }
+
+    @Test
+    fun `the first-ever save has no previous profile to read and still completes`() =
+        runTest {
+            profiles.existing = null
+
+            val result = save(profile.copy(displayName = "New Name"))
+
+            assertEquals(AppResult.Success(Unit), result)
         }
 
     @Test
@@ -171,12 +183,21 @@ private class RecordingProfilePort : UserProfileRepositoryContract {
     var saved: UserProfile? = null
         private set
 
-    /** What the listener reports before [save] overwrites it, so a "changed name" test has a baseline. */
+    /** What [getProfile] reports before [save] overwrites it, so a "changed name" test has a baseline. */
     var existing: UserProfile? = null
 
-    override fun observeProfile(userId: UserId): Flow<UserProfile> = existing?.let { flowOf(it) } ?: emptyFlow()
+    /**
+     * Mirrors the real `FirestoreUserProfileRepository`: a listener that never emits and never
+     * completes when there is no profile document yet — exactly the shape that made
+     * `observeProfile(...).firstOrNull()` hang forever on the first-ever save. Never collected by
+     * a correct [SaveUserProfileUseCase], which must read through [getProfile] instead.
+     */
+    override fun observeProfile(userId: UserId): Flow<UserProfile> = flow { awaitCancellation() }
 
     override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()
+
+    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> =
+        existing?.let { AppResult.Success(it) } ?: AppResult.Failure(AppError.NotFound("profile"))
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
         saved = profile

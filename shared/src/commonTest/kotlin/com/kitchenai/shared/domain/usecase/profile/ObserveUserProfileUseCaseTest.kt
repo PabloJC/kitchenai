@@ -54,6 +54,11 @@ private class FakeProfilePort(
 
     override fun profileErrors(userId: UserId): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
 
+    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> =
+        AppResult.Failure(
+            AppError.NotFound("profile"),
+        )
+
     override suspend fun save(profile: UserProfile): AppResult<Unit> = AppResult.Success(Unit)
 }
 
