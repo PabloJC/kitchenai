@@ -34,8 +34,14 @@ class SaveUserProfileUseCase(
         val saved = profiles.save(profile.copy(updatedAt = time.now()))
         if (saved is AppResult.Failure) return saved
         val displayName = profile.displayName
-        if (displayName == null || displayName == previousDisplayName) return saved
-        return syncDisplayName(profile.userId, displayName)
+        // Best-effort: the profile write already committed, so a failure mirroring it into the
+        // kitchen — a different resource — must not be reported as the profile save failing.
+        // The mirror is self-healing on the next changed display name; a stale entry until then
+        // is the accepted trade-off, not silently losing an otherwise-successful save.
+        if (displayName != null && displayName != previousDisplayName) {
+            syncDisplayName(profile.userId, displayName)
+        }
+        return saved
     }
 
     /** No kitchen yet is not a failure: there is nothing to refresh until one exists. */

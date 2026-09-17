@@ -133,6 +133,18 @@ class SaveUserProfileUseCaseTest {
         }
 
     @Test
+    fun `a kitchen sync failure does not fail an already-committed profile save`() =
+        runTest {
+            profiles.existing = profile.copy(displayName = "Old Name")
+            kitchens.updateMyDisplayNameResult = AppResult.Failure(AppError.Network())
+
+            val result = save(profile.copy(displayName = "New Name"))
+
+            assertEquals(AppResult.Success(Unit), result)
+            assertEquals("New Name", profiles.saved?.displayName)
+        }
+
+    @Test
     fun `no kitchen yet is not a failure`() =
         runTest {
             val noKitchen = FakeKitchenRepositoryContract()
