@@ -56,6 +56,16 @@ kotlin {
             // The @Preview annotation only, not the tooling runtime: Compose Multiplatform
             // renders previews on Android alone, so they live in androidMain.
             implementation(libs.compose.ui.tooling.preview)
+
+            // Google Sign-In via Credential Manager: GoogleSignInLauncher.android.kt.
+            implementation(libs.androidx.credentials)
+            implementation(libs.androidx.credentials.play.services.auth)
+            implementation(libs.google.id)
+        }
+        iosMain.dependencies {
+            // Google Sign-In via Google's own iOS SDK, wrapped for Kotlin/Native rather than
+            // hand-cinteroped: see the `kmpauth` version comment in the catalog.
+            implementation(libs.kmpauth.google)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

@@ -12,6 +12,8 @@ androidTargetSdk    = "36"
 androidxActivity    = "1.13.0"
 androidxLifecycle   = "2.11.0-beta01"
 androidxNavigation  = "2.9.2"
+androidxCredentials = "1.6.0"
+googleId            = "1.2.1"
 
 # --- Libraries ---------------------------------------------------------------
 # KSP no longer versions in lockstep with Kotlin (see google/ksp releases): 2.3.11 is the first
@@ -26,6 +28,9 @@ koin                = "4.1.0"
 coroutines          = "1.10.2"
 kotlinxDatetime     = "0.7.1"
 kotlinxSerialization = "1.9.0"
+# iOS-only: no GitLive wrapper exists for Google Sign-In. Bundles Google's own iOS SDK via
+# Kotlin's Swift Package Manager interop, so :composeApp writes no cinterop of its own.
+kmpauth             = "3.0.6"
 
 # --- Test --------------------------------------------------------------------
 turbine             = "1.2.1"
@@ -83,6 +88,15 @@ androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navi
 # The @Preview annotation alone. The `compose.components.uiToolingPreview` accessor is
 # deprecated in Compose Multiplatform 1.11 in favour of the coordinates.
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+
+# Credential Manager: the Android side of Google Sign-In. `play-services-auth` is the backend
+# that actually talks to Google; `credentials` alone throws NoCredentialException on a real device.
+androidx-credentials                    = { module = "androidx.credentials:credentials",                    version.ref = "androidxCredentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidxCredentials" }
+google-id                               = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleId" }
+
+# iOS-only Google Sign-In (see the `kmpauth` version comment above).
+kmpauth-google = { module = "io.github.mirzemehdi:kmpauth-google", version.ref = "kmpauth" }
 
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 

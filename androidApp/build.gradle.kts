@@ -27,6 +27,11 @@ android {
                 ?.takeIf { it.isNotBlank() }
                 ?: error("kitchenai.functionsRegion is missing or blank. See gradle.properties.")
         buildConfigField("String", "FUNCTIONS_REGION", "\"$functionsRegion\"")
+
+        // Blank-tolerant, unlike functionsRegion above: nothing calls Google Sign-In yet (#188),
+        // so a missing value here must not fail every build the way a missing region does.
+        val googleWebClientId = providers.gradleProperty("kitchenai.googleWebClientId").orNull.orEmpty()
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildFeatures {

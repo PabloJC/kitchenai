@@ -6,5 +6,7 @@
 	<true/>
 	<key>FunctionsRegion</key>
 	<string>$(FUNCTIONS_REGION)</string>
+	<key>GIDClientID</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
 </dict>
 </plist>
