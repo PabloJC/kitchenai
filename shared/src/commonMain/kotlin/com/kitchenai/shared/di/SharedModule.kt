@@ -23,6 +23,7 @@ fun sharedModules(functionsRegion: String): List<Module> =
         databaseModule,
         firebaseModule,
         kitchenDataModule,
+        kitchenModule,
         pantryDataModule,
         pantryModule,
         profileDataModule,
