@@ -2,9 +2,9 @@ package com.kitchenai.ui.presentation.common
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,17 +23,18 @@ class FakePantryPort(
     var reads = 0
         private set
 
-    override fun observePantry(userId: UserId): Flow<List<PantryItem>> = if (readError == null) state else emptyFlow()
+    override fun observePantry(kitchenId: KitchenId): Flow<List<PantryItem>> =
+        if (readError == null) state else emptyFlow()
 
-    override fun pantryErrors(userId: UserId): Flow<AppError> = emptyFlow()
+    override fun pantryErrors(kitchenId: KitchenId): Flow<AppError> = emptyFlow()
 
-    override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> {
+    override suspend fun getPantry(kitchenId: KitchenId): AppResult<List<PantryItem>> {
         reads++
         return readError?.let { AppResult.Failure(it) } ?: AppResult.Success(state.value)
     }
 
     override suspend fun upsert(
-        userId: UserId,
+        kitchenId: KitchenId,
         item: PantryItem,
     ): AppResult<Unit> {
         state.value = state.value.filterNot { it.id == item.id } + item
@@ -41,7 +42,7 @@ class FakePantryPort(
     }
 
     override suspend fun remove(
-        userId: UserId,
+        kitchenId: KitchenId,
         id: PantryItemId,
     ): AppResult<Unit> {
         state.value = state.value.filterNot { it.id == id }
@@ -49,7 +50,7 @@ class FakePantryPort(
     }
 
     override suspend fun upsertAll(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
     ): AppResult<Unit> {
         val replaced = items.map { it.id }.toSet()
@@ -58,7 +59,7 @@ class FakePantryPort(
     }
 
     override suspend fun upsertAllConfirmed(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
-    ): AppResult<Unit> = upsertAll(userId, items)
+    ): AppResult<Unit> = upsertAll(kitchenId, items)
 }

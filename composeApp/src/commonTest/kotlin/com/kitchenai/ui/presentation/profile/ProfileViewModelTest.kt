@@ -19,6 +19,7 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
+import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
@@ -344,7 +345,12 @@ class ProfileViewModelTest {
             observeTaxonomies = ObserveTaxonomiesUseCase(catalogue),
             observeTaxonomy = ObserveTaxonomyUseCase(catalogue),
             saveUserProfile =
-                SaveUserProfileUseCase(profiles, catalogue, TimeProvider { Instant.fromEpochSeconds(500) }),
+                SaveUserProfileUseCase(
+                    profiles,
+                    catalogue,
+                    FakeKitchenPort(),
+                    TimeProvider { Instant.fromEpochSeconds(500) },
+                ),
             toggleDietaryConstraint = ToggleDietaryConstraintUseCase(),
         )
 
@@ -388,6 +394,11 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
     override fun observeProfile(userId: UserId): Flow<UserProfile> = profiles
 
     override fun profileErrors(userId: UserId): Flow<AppError> = errors
+
+    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> =
+        AppResult.Failure(
+            AppError.NotFound("profile"),
+        )
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
         saveCount++

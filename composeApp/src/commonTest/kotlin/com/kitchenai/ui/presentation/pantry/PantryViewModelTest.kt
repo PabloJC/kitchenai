@@ -5,6 +5,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
@@ -18,6 +19,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.AddPantryItemUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
@@ -26,6 +28,7 @@ import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItemUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
@@ -56,6 +59,7 @@ class PantryViewModelTest {
     private val pantry = FakePantryPort()
     private val catalogue = FakeIngredientPort()
     private val taxonomies = FakeTaxonomyPort()
+    private val kitchens = FakeKitchenPort()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -346,6 +350,7 @@ class PantryViewModelTest {
                     remove = RemovePantryItemUseCase(pantry),
                     time = time,
                 ),
+            observeKitchen = ObserveKitchenUseCase(kitchens),
         )
     }
 }
@@ -393,15 +398,15 @@ private class FakePantryPort : PantryRepositoryContract {
     val removed = mutableListOf<PantryItemId>()
     var upsertResult: AppResult<Unit> = AppResult.Success(Unit)
 
-    override fun observePantry(userId: UserId): Flow<List<PantryItem>> = items
+    override fun observePantry(kitchenId: KitchenId): Flow<List<PantryItem>> = items
 
-    override fun pantryErrors(userId: UserId): Flow<AppError> = errors
+    override fun pantryErrors(kitchenId: KitchenId): Flow<AppError> = errors
 
     // The read-modify-write use cases read this, never the listener above.
-    override suspend fun getPantry(userId: UserId): AppResult<List<PantryItem>> = AppResult.Success(emptyList())
+    override suspend fun getPantry(kitchenId: KitchenId): AppResult<List<PantryItem>> = AppResult.Success(emptyList())
 
     override suspend fun upsert(
-        userId: UserId,
+        kitchenId: KitchenId,
         item: PantryItem,
     ): AppResult<Unit> {
         upserted += item
@@ -409,7 +414,7 @@ private class FakePantryPort : PantryRepositoryContract {
     }
 
     override suspend fun remove(
-        userId: UserId,
+        kitchenId: KitchenId,
         id: PantryItemId,
     ): AppResult<Unit> {
         removed += id
@@ -417,7 +422,7 @@ private class FakePantryPort : PantryRepositoryContract {
     }
 
     override suspend fun upsertAll(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
     ): AppResult<Unit> {
         upserted += items
@@ -425,9 +430,9 @@ private class FakePantryPort : PantryRepositoryContract {
     }
 
     override suspend fun upsertAllConfirmed(
-        userId: UserId,
+        kitchenId: KitchenId,
         items: List<PantryItem>,
-    ): AppResult<Unit> = upsertAll(userId, items)
+    ): AppResult<Unit> = upsertAll(kitchenId, items)
 }
 
 /** One stream of terms, served per taxonomy: a vocabulary must not answer for another one. */

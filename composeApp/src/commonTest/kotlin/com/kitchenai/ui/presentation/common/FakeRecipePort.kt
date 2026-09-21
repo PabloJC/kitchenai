@@ -2,9 +2,9 @@ package com.kitchenai.ui.presentation.common
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,9 +25,10 @@ class FakeRecipePort(
 
     val saved: List<Recipe> get() = state.value
 
-    override fun observeSavedRecipes(userId: UserId): Flow<List<Recipe>> = if (readError == null) state else emptyFlow()
+    override fun observeSavedRecipes(kitchenId: KitchenId): Flow<List<Recipe>> =
+        if (readError == null) state else emptyFlow()
 
-    override fun savedRecipeErrors(userId: UserId): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
+    override fun savedRecipeErrors(kitchenId: KitchenId): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
 
     override suspend fun getRecipe(recipeId: RecipeId): AppResult<Recipe> {
         readError?.let { return AppResult.Failure(it) }
@@ -36,7 +37,7 @@ class FakeRecipePort(
     }
 
     override suspend fun saveRecipe(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipe: Recipe,
     ): AppResult<Unit> {
         state.value = state.value.filterNot { it.id == recipe.id } + recipe
@@ -44,7 +45,7 @@ class FakeRecipePort(
     }
 
     override suspend fun removeSavedRecipe(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
     ): AppResult<Unit> {
         state.value = state.value.filterNot { it.id == recipeId }
