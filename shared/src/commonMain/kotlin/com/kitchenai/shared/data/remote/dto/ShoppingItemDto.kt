@@ -3,7 +3,7 @@ package com.kitchenai.shared.data.remote.dto
 import kotlinx.serialization.Serializable
 
 /**
- * The `users/{uid}/shoppingLists/{listId}/items/{itemId}` document.
+ * The `kitchens/{kitchenId}/shoppingLists/{listId}/items/{itemId}` document.
  *
  * Flat rather than nested, like the pantry: a nested quantity buys nothing and costs a harder
  * index definition. Exactly one of [ingredientId] and [freeText] is set — the invariant the

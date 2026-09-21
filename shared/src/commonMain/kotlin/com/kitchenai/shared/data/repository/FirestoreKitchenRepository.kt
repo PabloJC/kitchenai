@@ -78,12 +78,13 @@ class FirestoreKitchenRepository(
                 joinCode = joinCode,
                 memberDisplayNames = displayName?.let { mapOf(ownerId.value to it) }.orEmpty(),
             )
+        // A transaction, not a batch: the invite's create rule reads the kitchen document by
+        // get(), and only a transaction guarantees that read sees this same write's kitchen.
         return firestoreCall(dispatchers) {
-            firestore
-                .batch()
-                .set(paths.kitchen(kitchenId), kitchen.toDto()) { encodeDefaults = true }
-                .set(paths.kitchenInvite(joinCode), KitchenInviteDto(kitchenId.value)) { encodeDefaults = true }
-                .commit()
+            firestore.runTransaction {
+                set(paths.kitchen(kitchenId), kitchen.toDto()) { encodeDefaults = true }
+                set(paths.kitchenInvite(joinCode), KitchenInviteDto(kitchenId.value)) { encodeDefaults = true }
+            }
         }.map { kitchen }
     }
 

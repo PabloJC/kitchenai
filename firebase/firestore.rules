@@ -15,6 +15,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // A kitchen id is client-generated (a UUID) and never listed to a non-member: knowing one
+    // already means it was reached through a join code or through already being a member.
+    function isKitchenMember(kitchenId) {
+      return isSignedIn()
+             && request.auth.uid in get(/databases/$(database)/documents/kitchens/$(kitchenId)).data.memberIds;
+    }
+
+    function isKitchenOwner(kitchenId) {
+      return isSignedIn()
+             && request.auth.uid == get(/databases/$(database)/documents/kitchens/$(kitchenId)).data.ownerId;
+    }
+
     // ---------------------------------------------------------------- //
     // Value guards
     //
@@ -56,6 +68,12 @@ service cloud.firestore {
       return value == null || isMillis(value);
     }
 
+    // The keys a membership write actually changed, own type on both sides so the empty-diff
+    // case (nothing about members touched) reads the same as any other.
+    function touchedDisplayNameKeys(before, after) {
+      return after.get('memberDisplayNames', {}).diff(before.get('memberDisplayNames', {})).affectedKeys();
+    }
+
     // ---------------------------------------------------------------- //
     // Document guards
     //
@@ -84,7 +102,8 @@ service cloud.firestore {
              && isMillis(data.updatedAtMillis);
     }
 
-    // `ownerId` is redundant under users/{uid} but is accepted if the DTO carries it.
+    // `ownerId` names which member created the list, not the kitchen; membership is the write
+    // gate below, so it is accepted but never checked against the caller here.
     // Label values cannot be length-capped: rules cannot iterate a map.
     function isValidShoppingList(data) {
       return data.keys().hasOnly(['labels', 'ownerId', 'updatedAtMillis'])
@@ -129,35 +148,155 @@ service cloud.firestore {
              && isOptionalMillis(data.get('savedAtMillis', null));
     }
 
+    // memberDisplayNames is unbounded on purpose: its size tracks memberIds, which isValidKitchen
+    // already caps, so a second cap here would only duplicate that one.
+    function isValidKitchen(data) {
+      return data.keys().hasOnly(['ownerId', 'memberIds', 'joinCode', 'memberDisplayNames'])
+             && data.keys().hasAll(['ownerId', 'memberIds', 'joinCode'])
+             && isId(data.ownerId)
+             && data.memberIds is list
+             && data.memberIds.size() >= 1
+             && data.memberIds.size() <= 20
+             && isId(data.joinCode)
+             && (!('memberDisplayNames' in data) || data.memberDisplayNames is map);
+    }
+
+    // `{ kitchenId }` only: this document exists purely to resolve a code, never to describe one.
+    function isValidKitchenInvite(data) {
+      return data.keys().hasOnly(['kitchenId']) && isId(data.kitchenId);
+    }
+
     // ---------------------------------------------------------------- //
-    // User-owned data
+    // Kitchen membership diffs
+    //
+    // One function per shape the repository ever writes to a kitchen document. `allow update`
+    // accepts none of these on its own — a write must match exactly one to go through.
+    // ---------------------------------------------------------------- //
+
+    function isSelfJoin(before, after) {
+      return isSignedIn()
+             && !(request.auth.uid in before.memberIds)
+             && after.memberIds == before.memberIds.concat([request.auth.uid])
+             && after.ownerId == before.ownerId
+             && after.joinCode == before.joinCode
+             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
+    }
+
+    function isSelfLeave(before, after) {
+      return isSignedIn()
+             && request.auth.uid in before.memberIds
+             && after.memberIds == before.memberIds.removeAll([request.auth.uid])
+             && after.ownerId == before.ownerId
+             && after.joinCode == before.joinCode
+             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
+    }
+
+    function isOwnerRemovingMember(before, after) {
+      let removed = before.memberIds.removeAll(after.memberIds);
+      return isSignedIn()
+             && before.ownerId == request.auth.uid
+             && after.ownerId == before.ownerId
+             && after.joinCode == before.joinCode
+             && before.memberIds.hasAll(after.memberIds)
+             && removed.size() > 0
+             && !(request.auth.uid in removed)
+             && touchedDisplayNameKeys(before, after).hasOnly(removed);
+    }
+
+    function isOwnerRegeneratingJoinCode(before, after) {
+      return isSignedIn()
+             && before.ownerId == request.auth.uid
+             && after.ownerId == before.ownerId
+             && after.memberIds == before.memberIds
+             && after.joinCode != before.joinCode
+             && touchedDisplayNameKeys(before, after).hasOnly([]);
+    }
+
+    function isSelfDisplayNameUpdate(before, after) {
+      return isSignedIn()
+             && request.auth.uid in before.memberIds
+             && after.memberIds == before.memberIds
+             && after.ownerId == before.ownerId
+             && after.joinCode == before.joinCode
+             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
+    }
+
+    // ---------------------------------------------------------------- //
+    // Kitchen-owned data
     //
     // Every subcollection is declared: a catch-all would let a client invent a
     // subcollection and store anything it liked inside its own document tree.
     // ---------------------------------------------------------------- //
 
-    match /users/{userId} {
-      allow read, write: if isOwner(userId);
+    match /kitchens/{kitchenId} {
+      // The id is the real gate (see isKitchenMember): letting any signed-in caller `get` one
+      // document by id, never `list`/query the collection, is what lets a join transaction read
+      // the kitchen an invite names before its own write makes the caller a member of it.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && request.auth.uid in resource.data.memberIds;
+
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.memberIds == [request.auth.uid]
+                    && isValidKitchen(request.resource.data);
+
+      // Exactly the shapes the repository ever writes: joining, leaving, the owner removing
+      // someone else, the owner rotating the join code, or a member renaming only themself.
+      // Anything else — including handing the kitchen to a new owner — is denied.
+      allow update: if isValidKitchen(request.resource.data)
+                    && (
+                         isSelfJoin(resource.data, request.resource.data)
+                         || isSelfLeave(resource.data, request.resource.data)
+                         || isOwnerRemovingMember(resource.data, request.resource.data)
+                         || isOwnerRegeneratingJoinCode(resource.data, request.resource.data)
+                         || isSelfDisplayNameUpdate(resource.data, request.resource.data)
+                       );
+
+      allow delete: if false;
 
       match /pantry/{itemId} {
-        allow read, delete: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidPantryItem(request.resource.data);
+        allow read, delete: if isKitchenMember(kitchenId);
+        allow create, update: if isKitchenMember(kitchenId) && isValidPantryItem(request.resource.data);
       }
 
       match /shoppingLists/{listId} {
-        allow read, delete: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidShoppingList(request.resource.data);
+        allow read, delete: if isKitchenMember(kitchenId);
+        allow create, update: if isKitchenMember(kitchenId) && isValidShoppingList(request.resource.data);
 
         match /items/{itemId} {
-          allow read, delete: if isOwner(userId);
-          allow create, update: if isOwner(userId) && isValidShoppingItem(request.resource.data);
+          allow read, delete: if isKitchenMember(kitchenId);
+          allow create, update: if isKitchenMember(kitchenId) && isValidShoppingItem(request.resource.data);
         }
       }
 
       match /savedRecipes/{recipeId} {
-        allow read, delete: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidSavedRecipe(request.resource.data);
+        allow read, delete: if isKitchenMember(kitchenId);
+        allow create, update: if isKitchenMember(kitchenId) && isValidSavedRecipe(request.resource.data);
       }
+    }
+
+    // No `list`: enumerating every code would let a client brute-force its way into a kitchen
+    // without ever being handed one.
+    match /kitchenInvites/{code} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn()
+                    && isValidKitchenInvite(request.resource.data)
+                    && isKitchenOwner(request.resource.data.kitchenId);
+      allow update: if isSignedIn()
+                    && isValidKitchenInvite(request.resource.data)
+                    && isKitchenOwner(resource.data.kitchenId)
+                    && isKitchenOwner(request.resource.data.kitchenId);
+      allow delete: if isSignedIn() && isKitchenOwner(resource.data.kitchenId);
+    }
+
+    // ---------------------------------------------------------------- //
+    // User-owned data: the profile only. Never opened to other members — memberDisplayNames on
+    // the kitchen document above is what lets a member list render without a cross-user read.
+    // ---------------------------------------------------------------- //
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
     }
 
     // ---------------------------------------------------------------- //

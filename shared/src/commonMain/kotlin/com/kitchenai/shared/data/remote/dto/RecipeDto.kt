@@ -3,8 +3,8 @@ package com.kitchenai.shared.data.remote.dto
 import kotlinx.serialization.Serializable
 
 /**
- * A `recipes/{recipeId}` catalogue document and a `users/{uid}/savedRecipes/{recipeId}` snapshot:
- * the same shape, because a saved recipe is a copy and never a reference.
+ * A `recipes/{recipeId}` catalogue document and a `kitchens/{kitchenId}/savedRecipes/{recipeId}`
+ * snapshot: the same shape, because a saved recipe is a copy and never a reference.
  *
  * Every field is optional at this level so a document written by an older client fails in the
  * mapper as a validation error rather than as a decoding exception. [savedAtMillis] is written

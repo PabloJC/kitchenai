@@ -3,11 +3,11 @@ package com.kitchenai.shared.data.remote.dto
 import kotlinx.serialization.Serializable
 
 /**
- * The `users/{uid}/shoppingLists/{listId}` document.
+ * The `kitchens/{kitchenId}/shoppingLists/{listId}` document.
  *
  * The key set is pinned by `isValidShoppingList` in `firebase/firestore.rules`: a field added
- * here and not there is denied at write time. [ownerId] is redundant under `users/{uid}` and is
- * kept because a list read outside its path still has to name its owner.
+ * here and not there is denied at write time. [ownerId] names which member created the list —
+ * no longer redundant now that the path only says which kitchen owns it, not which member does.
  */
 @Serializable
 data class ShoppingListDto(
