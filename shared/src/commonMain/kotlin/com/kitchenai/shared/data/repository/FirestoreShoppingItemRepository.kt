@@ -26,12 +26,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * [ShoppingItemRepositoryContract] over `users/{uid}/shoppingLists/{listId}/items`. Everything is keyed by the
- * list, streams and error sinks alike: a screen watching one list downloads and hears about that
- * list only.
- *
- * Still keyed by the uid the path was built for, via [KitchenId.asUserId] — #192 repoints
- * [FirestorePaths] itself at `kitchens/{kitchenId}/...`, at which point this bridging disappears.
+ * [ShoppingItemRepositoryContract] over `kitchens/{kitchenId}/shoppingLists/{listId}/items`.
+ * Everything is keyed by the list, streams and error sinks alike: a screen watching one list
+ * downloads and hears about that list only.
  */
 class FirestoreShoppingItemRepository(
     private val paths: FirestorePaths,
@@ -49,7 +46,7 @@ class FirestoreShoppingItemRepository(
         listId: ShoppingListId,
     ): Flow<List<ShoppingItem>> =
         paths
-            .shoppingListItems(kitchenId.asUserId(), listId)
+            .shoppingListItems(kitchenId, listId)
             .snapshots
             .map { snapshot -> snapshot.toItems() }
             .reportingErrorsTo(errors.of(kitchenId to listId))
@@ -63,7 +60,7 @@ class FirestoreShoppingItemRepository(
         kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<List<ShoppingItem>> =
-        firestoreCall(dispatchers) { paths.shoppingListItems(kitchenId.asUserId(), listId).get().toItems() }
+        firestoreCall(dispatchers) { paths.shoppingListItems(kitchenId, listId).get().toItems() }
 
     override suspend fun upsertItems(
         kitchenId: KitchenId,
@@ -71,11 +68,10 @@ class FirestoreShoppingItemRepository(
         items: List<ShoppingItem>,
     ): AppResult<Unit> =
         writes.optimistically(errors.of(kitchenId to listId)) {
-            val userId = kitchenId.asUserId()
             items.chunkedForBatch().forEach { chunk ->
                 val batch = firestore.batch()
                 chunk.forEach { item ->
-                    val document = paths.shoppingListItem(userId, listId, item.id)
+                    val document = paths.shoppingListItem(kitchenId, listId, item.id)
                     batch.set(document, item.toDto(), merge = true) { encodeDefaults = true }
                 }
                 batch.commit()
@@ -88,7 +84,7 @@ class FirestoreShoppingItemRepository(
         itemId: ShoppingItemId,
     ): AppResult<Unit> =
         writes.optimistically(errors.of(kitchenId to listId)) {
-            paths.shoppingListItem(kitchenId.asUserId(), listId, itemId).delete()
+            paths.shoppingListItem(kitchenId, listId, itemId).delete()
         }
 
     override suspend fun removeItems(
@@ -97,8 +93,7 @@ class FirestoreShoppingItemRepository(
         ids: List<ShoppingItemId>,
     ): AppResult<Unit> =
         writes.optimistically(errors.of(kitchenId to listId)) {
-            val userId = kitchenId.asUserId()
-            deleteAll(ids.map { id -> paths.shoppingListItem(userId, listId, id) })
+            deleteAll(ids.map { id -> paths.shoppingListItem(kitchenId, listId, id) })
         }
 
     /**
@@ -121,7 +116,7 @@ class FirestoreShoppingItemRepository(
         listId: ShoppingListId,
     ): List<DocumentReference> =
         paths
-            .shoppingListItems(kitchenId.asUserId(), listId)
+            .shoppingListItems(kitchenId, listId)
             .where { CHECKED equalTo true }
             .get()
             .documents

@@ -24,12 +24,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * [PantryRepositoryContract] over `users/{uid}/pantry`: a snapshot listener to read, optimistic writes to
- * change. GitLive's `set` and `delete` only resolve once the server acknowledges them, so
- * awaiting one would leave the user watching a spinner for a write the cache already applied.
- *
- * Still keyed by the uid the path was built for, via [KitchenId.asUserId] — #192 repoints
- * [FirestorePaths] itself at `kitchens/{kitchenId}/...`, at which point this bridging disappears.
+ * [PantryRepositoryContract] over `kitchens/{kitchenId}/pantry`: a snapshot listener to read,
+ * optimistic writes to change. GitLive's `set` and `delete` only resolve once the server
+ * acknowledges them, so awaiting one would leave the user watching a spinner for a write the
+ * cache already applied.
  */
 class FirestorePantryRepository(
     private val paths: FirestorePaths,
@@ -44,7 +42,7 @@ class FirestorePantryRepository(
 
     override fun observePantry(kitchenId: KitchenId): Flow<List<PantryItem>> =
         paths
-            .pantry(kitchenId.asUserId())
+            .pantry(kitchenId)
             .snapshots
             .map { snapshot -> snapshot.toPantryItems() }
             .reportingErrorsTo(errors.of(kitchenId))
@@ -52,21 +50,21 @@ class FirestorePantryRepository(
     override fun pantryErrors(kitchenId: KitchenId): Flow<AppError> = errors.of(kitchenId).asSharedFlow()
 
     override suspend fun getPantry(kitchenId: KitchenId): AppResult<List<PantryItem>> =
-        firestoreCall(dispatchers) { paths.pantry(kitchenId.asUserId()).get().toPantryItems() }
+        firestoreCall(dispatchers) { paths.pantry(kitchenId).get().toPantryItems() }
 
     override suspend fun upsert(
         kitchenId: KitchenId,
         item: PantryItem,
     ): AppResult<Unit> =
         writes.optimistically(errors.of(kitchenId)) {
-            paths.pantryItem(kitchenId.asUserId(), item.id).set(item.toDto(), merge = true) { encodeDefaults = true }
+            paths.pantryItem(kitchenId, item.id).set(item.toDto(), merge = true) { encodeDefaults = true }
         }
 
     override suspend fun remove(
         kitchenId: KitchenId,
         id: PantryItemId,
     ): AppResult<Unit> =
-        writes.optimistically(errors.of(kitchenId)) { paths.pantryItem(kitchenId.asUserId(), id).delete() }
+        writes.optimistically(errors.of(kitchenId)) { paths.pantryItem(kitchenId, id).delete() }
 
     override suspend fun upsertAll(
         kitchenId: KitchenId,
@@ -82,10 +80,9 @@ class FirestorePantryRepository(
         kitchenId: KitchenId,
         items: List<PantryItem>,
     ) {
-        val uid = kitchenId.asUserId()
         val batch = firestore.batch()
         items.forEach { item ->
-            batch.set(paths.pantryItem(uid, item.id), item.toDto(), merge = true) { encodeDefaults = true }
+            batch.set(paths.pantryItem(kitchenId, item.id), item.toDto(), merge = true) { encodeDefaults = true }
         }
         batch.commit()
     }

@@ -22,12 +22,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * [ShoppingListRepositoryContract] over `users/{uid}/shoppingLists`: a snapshot listener to read, an
- * optimistic merge write to change. The items of a list are a separate collection behind
- * [com.kitchenai.shared.data.repository.FirestoreShoppingItemRepository].
- *
- * Still keyed by the uid the path was built for, via [KitchenId.asUserId] — #192 repoints
- * [FirestorePaths] itself at `kitchens/{kitchenId}/...`, at which point this bridging disappears.
+ * [ShoppingListRepositoryContract] over `kitchens/{kitchenId}/shoppingLists`: a snapshot listener
+ * to read, an optimistic merge write to change. The items of a list are a separate collection
+ * behind [com.kitchenai.shared.data.repository.FirestoreShoppingItemRepository].
  */
 class FirestoreShoppingListRepository(
     private val paths: FirestorePaths,
@@ -41,7 +38,7 @@ class FirestoreShoppingListRepository(
 
     override fun observeLists(kitchenId: KitchenId): Flow<List<ShoppingList>> =
         paths
-            .shoppingLists(kitchenId.asUserId())
+            .shoppingLists(kitchenId)
             .snapshots
             .map { snapshot -> snapshot.toLists() }
             .reportingErrorsTo(errors.of(kitchenId))
@@ -49,7 +46,7 @@ class FirestoreShoppingListRepository(
     override fun listErrors(kitchenId: KitchenId): Flow<AppError> = errors.of(kitchenId).asSharedFlow()
 
     override suspend fun getLists(kitchenId: KitchenId): AppResult<List<ShoppingList>> =
-        firestoreCall(dispatchers) { paths.shoppingLists(kitchenId.asUserId()).get().toLists() }
+        firestoreCall(dispatchers) { paths.shoppingLists(kitchenId).get().toLists() }
 
     override suspend fun upsertList(
         kitchenId: KitchenId,
@@ -58,7 +55,7 @@ class FirestoreShoppingListRepository(
         // `updatedAtMillis` travels in the document the domain built, so ordering stays stable
         // without the repository owning a clock.
         writes.optimistically(errors.of(kitchenId)) {
-            paths.shoppingList(kitchenId.asUserId(), list.id).set(list.toDto(), merge = true) { encodeDefaults = true }
+            paths.shoppingList(kitchenId, list.id).set(list.toDto(), merge = true) { encodeDefaults = true }
         }
 
     // A document that will not map is dropped, never propagated as a failure for the whole list.
