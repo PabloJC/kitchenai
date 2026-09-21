@@ -11,3 +11,8 @@ MARKETING_VERSION=1.0
 // and kitchenai.functionsRegion in gradle.properties: the client and the deployment change
 // together, or the call reaches nothing and says only that something went wrong.
 FUNCTIONS_REGION=europe-southwest1
+
+// Google Sign-In's iOS OAuth client id (Firebase console -> Project settings -> your iOS app,
+// once Google is enabled as a sign-in provider — the same value GoogleService-Info.plist's
+// CLIENT_ID carries, which is why it isn't committed here). GIDClientID in Info.plist reads it.
+GOOGLE_IOS_CLIENT_ID=

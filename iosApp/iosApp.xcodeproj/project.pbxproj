@@ -12,6 +12,7 @@
 		79960DED302A106300AA04EE /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DEC302A106300AA04EE /* FirebaseFirestore */; };
 		79960DF1302A106300AA04EE /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DF0302A106300AA04EE /* FirebaseFunctions */; };
 		79960DEF302A106300AA04EE /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DEE302A106300AA04EE /* FirebaseAppCheck */; };
+		BC0BF01D483A04CEA266A691 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BC9E6EC2232340B1199B01C6 /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +55,7 @@
 				79960DED302A106300AA04EE /* FirebaseFirestore in Frameworks */,
 				79960DF1302A106300AA04EE /* FirebaseFunctions in Frameworks */,
 				79960DEF302A106300AA04EE /* FirebaseAppCheck in Frameworks */,
+				BC0BF01D483A04CEA266A691 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,6 +113,7 @@
 				79960DEA302A106300AA04EE /* FirebaseCore */,
 				79960DEC302A106300AA04EE /* FirebaseFirestore */,
 				79960DF0302A106300AA04EE /* FirebaseFunctions */,
+				BC9E6EC2232340B1199B01C6 /* GoogleSignIn */,
 			);
 			productName = iosApp;
 			productReference = 9AE0D2DF80F14F30E4FC571F /* KitchenAI.app */;
@@ -142,6 +145,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				79E55C9D302A0BCC0098A3DC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				9A2E2B04389E6D5704C0761C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0E6928A45C576A13035C22CA /* Products */;
@@ -407,6 +411,16 @@
 				minimumVersion = 12.17.0;
 			};
 		};
+		9A2E2B04389E6D5704C0761C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				// Matches the version KMPAuth's own iosMain cinterop (GoogleSignInLauncher.ios.kt)
+				// is built against — a different major here is an ABI mismatch, not just a bump.
+				minimumVersion = 9.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -434,6 +448,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 79E55C9D302A0BCC0098A3DC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAppCheck;
+		};
+		BC9E6EC2232340B1199B01C6 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9A2E2B04389E6D5704C0761C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
