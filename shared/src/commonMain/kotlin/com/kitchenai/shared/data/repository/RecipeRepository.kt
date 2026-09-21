@@ -17,6 +17,7 @@ import com.kitchenai.shared.data.remote.firebase.RecipeRemoteDataSource
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
+import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.KitchenRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
@@ -64,18 +65,24 @@ class RecipeRepository(
     /**
      * A saved copy in the caller's own kitchen is looked up before the catalogue, since a
      * generated recipe exists nowhere else. [getRecipe] takes no [KitchenId] (it also answers the
-     * shared catalogue), so the signed-in user's own kitchen is resolved here instead; no kitchen
-     * yet just means nothing to check before the catalogue.
+     * shared catalogue), so the signed-in user's own kitchen is resolved here instead — lazily,
+     * like every other read in this list, so resolving it costs nothing unless [firstFound]
+     * actually reaches it.
      */
-    private suspend fun recipeReads(recipeId: RecipeId): List<suspend () -> AppResult<RecipeDocument?>> =
+    private fun recipeReads(recipeId: RecipeId): List<suspend () -> AppResult<RecipeDocument?>> =
         buildList {
-            remoteDataSource.currentUserId()?.let { userId ->
-                val kitchen = kitchens.getMyKitchen(userId)
-                if (kitchen is AppResult.Success) {
-                    add { remoteDataSource.getSavedRecipe(kitchen.data.id, recipeId) }
-                }
-            }
+            remoteDataSource.currentUserId()?.let { userId -> add { savedRecipeRead(userId, recipeId) } }
             add { remoteDataSource.getCataloguedRecipe(recipeId) }
+        }
+
+    /** No kitchen yet means nothing to check before the catalogue; any other failure propagates. */
+    private suspend fun savedRecipeRead(
+        userId: UserId,
+        recipeId: RecipeId,
+    ): AppResult<RecipeDocument?> =
+        when (val kitchen = kitchens.getMyKitchen(userId)) {
+            is AppResult.Success -> remoteDataSource.getSavedRecipe(kitchen.data.id, recipeId)
+            is AppResult.Failure -> if (kitchen.error is AppError.NotFound) AppResult.Success(null) else kitchen
         }
 
     // --- The local generation cache, over RecipeLocalDataSource ---

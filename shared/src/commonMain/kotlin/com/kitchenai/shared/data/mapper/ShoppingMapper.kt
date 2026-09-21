@@ -18,17 +18,20 @@ import kotlin.time.Instant
 
 fun ShoppingList.toDto(): ShoppingListDto =
     ShoppingListDto(
-        ownerId = kitchenId.value,
         labels = labels,
         updatedAtMillis = updatedAt.toEpochMilliseconds(),
     )
 
-/** The document id is the identifier: the payload never repeats it. */
-fun ShoppingListDto.toDomain(documentId: String): AppResult<ShoppingList> =
-    ShoppingListId.of(documentId).flatMap { id ->
-        KitchenId.of(ownerId).map { owner ->
-            ShoppingList(id, owner, labels, Instant.fromEpochMilliseconds(updatedAtMillis))
-        }
+/**
+ * The document id is the list's own identifier; [kitchenId] comes from the caller, who already
+ * knows it (it built the path this document lives at) rather than from a redundant field.
+ */
+fun ShoppingListDto.toDomain(
+    documentId: String,
+    kitchenId: KitchenId,
+): AppResult<ShoppingList> =
+    ShoppingListId.of(documentId).map { id ->
+        ShoppingList(id, kitchenId, labels, Instant.fromEpochMilliseconds(updatedAtMillis))
     }
 
 fun ShoppingItem.toDto(): ShoppingItemDto =

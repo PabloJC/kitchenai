@@ -40,13 +40,13 @@ class FirestoreShoppingListRepository(
         paths
             .shoppingLists(kitchenId)
             .snapshots
-            .map { snapshot -> snapshot.toLists() }
+            .map { snapshot -> snapshot.toLists(kitchenId) }
             .reportingErrorsTo(errors.of(kitchenId))
 
     override fun listErrors(kitchenId: KitchenId): Flow<AppError> = errors.of(kitchenId).asSharedFlow()
 
     override suspend fun getLists(kitchenId: KitchenId): AppResult<List<ShoppingList>> =
-        firestoreCall(dispatchers) { paths.shoppingLists(kitchenId).get().toLists() }
+        firestoreCall(dispatchers) { paths.shoppingLists(kitchenId).get().toLists(kitchenId) }
 
     override suspend fun upsertList(
         kitchenId: KitchenId,
@@ -59,11 +59,12 @@ class FirestoreShoppingListRepository(
         }
 
     // A document that will not map is dropped, never propagated as a failure for the whole list.
-    private fun QuerySnapshot.toLists(): List<ShoppingList> = documents.map { it.toShoppingList() }.decodedOrDropped()
+    private fun QuerySnapshot.toLists(kitchenId: KitchenId): List<ShoppingList> =
+        documents.map { it.toShoppingList(kitchenId) }.decodedOrDropped()
 
-    private fun DocumentSnapshot.toShoppingList(): AppResult<ShoppingList> =
+    private fun DocumentSnapshot.toShoppingList(kitchenId: KitchenId): AppResult<ShoppingList> =
         runCatching { data(ShoppingListDto.serializer()) }.fold(
-            onSuccess = { dto -> dto.toDomain(id) },
+            onSuccess = { dto -> dto.toDomain(id, kitchenId) },
             onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
         )
 }

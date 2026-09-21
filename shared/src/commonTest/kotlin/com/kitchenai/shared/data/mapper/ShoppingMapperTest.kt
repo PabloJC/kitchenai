@@ -19,7 +19,7 @@ class ShoppingMapperTest {
     fun `a list round trips through the document shape`() {
         val list = ShoppingList(listId("list-1"), kitchenId("kitchen-1"), mapOf("en" to "label-1"), instant(1_000))
 
-        val restored = list.toDto().toDomain(list.id.value)
+        val restored = list.toDto().toDomain(list.id.value, list.kitchenId)
 
         assertEquals(AppResult.Success(list), restored)
     }
@@ -80,15 +80,6 @@ class ShoppingMapperTest {
         val mapped = shoppingItemDocument().toDomain(" ")
 
         assertEquals(AppResult.Failure(AppError.Validation("ShoppingItemId", "must not be blank")), mapped)
-    }
-
-    @Test
-    fun `rejects a list document whose owner is blank`() {
-        val list = ShoppingList(listId("list-1"), kitchenId("kitchen-1"), emptyMap(), instant(1_000))
-
-        val mapped = list.toDto().copy(ownerId = "").toDomain("list-1")
-
-        assertEquals(AppResult.Failure(AppError.Validation("KitchenId", "must not be blank")), mapped)
     }
 
     private companion object {

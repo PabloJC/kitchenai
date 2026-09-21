@@ -102,15 +102,13 @@ service cloud.firestore {
              && isMillis(data.updatedAtMillis);
     }
 
-    // `ownerId` names which member created the list, not the kitchen; membership is the write
-    // gate below, so it is accepted but never checked against the caller here.
-    // Label values cannot be length-capped: rules cannot iterate a map.
+    // No owner/kitchen id field: the path already says which kitchen owns it, and membership is
+    // the write gate below. Label values cannot be length-capped: rules cannot iterate a map.
     function isValidShoppingList(data) {
-      return data.keys().hasOnly(['labels', 'ownerId', 'updatedAtMillis'])
+      return data.keys().hasOnly(['labels', 'updatedAtMillis'])
              && data.keys().hasAll(['labels', 'updatedAtMillis'])
              && data.labels is map
              && data.labels.size() <= 16
-             && isOptionalId(data.get('ownerId', null))
              && isMillis(data.updatedAtMillis);
     }
 
