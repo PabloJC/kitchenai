@@ -192,9 +192,14 @@ service cloud.firestore {
              && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
     }
 
+    // Mirrors LeaveKitchenUseCase: the owner of a kitchen with other members cannot leave —
+    // nobody left could satisfy isKitchenOwner to remove members, rotate the join code, or
+    // manage invites, permanently stranding the kitchen. Enforced here too, not only in the
+    // use case, since a client writing directly to this document would otherwise bypass it.
     function isSelfLeave(before, after) {
       return isSignedIn()
              && request.auth.uid in before.memberIds
+             && !(before.ownerId == request.auth.uid && before.memberIds.size() > 1)
              && after.memberIds == before.memberIds.removeAll([request.auth.uid])
              && after.ownerId == before.ownerId
              && after.joinCode == before.joinCode

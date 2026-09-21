@@ -387,6 +387,11 @@ describe('kitchen document', () => {
     await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE, BOB] }));
   });
 
+  it('rejects the owner leaving a kitchen that still has other members', async () => {
+    // kitchen-1 is seeded with alice as owner and bob as a member.
+    await assertFails(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { memberIds: [BOB] }));
+  });
+
   it('lets the sole owner leave, producing an empty memberIds with no other path back', async () => {
     await seed(async (db) => {
       await setDoc(doc(db, `kitchens/${KITCHEN_1}`), kitchen({ memberIds: [ALICE] }));
