@@ -166,7 +166,15 @@ class FirestoreKitchenRepository(
     ): AppResult<Unit> {
         val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
         if (dto.ownerId != requesterId.value) return AppResult.Failure(AppError.Unauthorized())
-        set(paths.kitchen(kitchenId), dto.withoutMember(memberId)) { encodeDefaults = true }
+        // Blocklisted, not just dropped from memberIds: the kitchen id is not a secret to a
+        // former member, so the join code alone cannot stop them rejoining by writing directly
+        // to this document — isSelfJoin in firestore.rules checks removedMemberIds precisely
+        // because of that.
+        val updated =
+            dto.withoutMember(
+                memberId,
+            ).copy(removedMemberIds = (dto.removedMemberIds + memberId.value).distinct())
+        set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
         return AppResult.Success(Unit)
     }
 

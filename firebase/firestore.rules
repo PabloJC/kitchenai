@@ -150,15 +150,22 @@ service cloud.firestore {
 
     // memberDisplayNames is unbounded on purpose: its size tracks memberIds, which isValidKitchen
     // already caps, so a second cap here would only duplicate that one.
+    //
+    // memberIds may be empty: LeaveKitchenUseCase lets a solo owner leave, and there is no other
+    // path back to a valid document once that happens (allow delete is false) — an empty
+    // memberIds is the resulting, permanently unreachable state, not an error.
+    //
+    // removedMemberIds only ever grows (see isOwnerRemovingMember); its cap is looser than
+    // memberIds' own because it is a history, not a current-membership count.
     function isValidKitchen(data) {
-      return data.keys().hasOnly(['ownerId', 'memberIds', 'joinCode', 'memberDisplayNames'])
+      return data.keys().hasOnly(['ownerId', 'memberIds', 'joinCode', 'memberDisplayNames', 'removedMemberIds'])
              && data.keys().hasAll(['ownerId', 'memberIds', 'joinCode'])
              && isId(data.ownerId)
              && data.memberIds is list
-             && data.memberIds.size() >= 1
              && data.memberIds.size() <= 20
              && isId(data.joinCode)
-             && (!('memberDisplayNames' in data) || data.memberDisplayNames is map);
+             && (!('memberDisplayNames' in data) || data.memberDisplayNames is map)
+             && (!('removedMemberIds' in data) || (data.removedMemberIds is list && data.removedMemberIds.size() <= 50));
     }
 
     // `{ kitchenId }` only: this document exists purely to resolve a code, never to describe one.
@@ -173,12 +180,17 @@ service cloud.firestore {
     // accepts none of these on its own — a write must match exactly one to go through.
     // ---------------------------------------------------------------- //
 
+    // The kitchen id alone is not a secret to anyone who was ever a member, so the
+    // removedMemberIds check is what actually makes "remove member" revoke access — without it,
+    // a removed member could rejoin at will simply by knowing the id, join code or not.
     function isSelfJoin(before, after) {
       return isSignedIn()
              && !(request.auth.uid in before.memberIds)
+             && !(request.auth.uid in before.get('removedMemberIds', []))
              && after.memberIds == before.memberIds.concat([request.auth.uid])
              && after.ownerId == before.ownerId
              && after.joinCode == before.joinCode
+             && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
              && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
     }
 
@@ -188,9 +200,12 @@ service cloud.firestore {
              && after.memberIds == before.memberIds.removeAll([request.auth.uid])
              && after.ownerId == before.ownerId
              && after.joinCode == before.joinCode
+             && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
              && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
     }
 
+    // removedMemberIds must grow by exactly the uids this write drops from memberIds: anything
+    // else would let the owner's own removal write also tamper with someone else's revocation.
     function isOwnerRemovingMember(before, after) {
       let removed = before.memberIds.removeAll(after.memberIds);
       return isSignedIn()
@@ -200,6 +215,7 @@ service cloud.firestore {
              && before.memberIds.hasAll(after.memberIds)
              && removed.size() > 0
              && !(request.auth.uid in removed)
+             && after.get('removedMemberIds', []) == before.get('removedMemberIds', []).concat(removed)
              && touchedDisplayNameKeys(before, after).hasOnly(removed);
     }
 
@@ -209,6 +225,7 @@ service cloud.firestore {
              && after.ownerId == before.ownerId
              && after.memberIds == before.memberIds
              && after.joinCode != before.joinCode
+             && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
              && touchedDisplayNameKeys(before, after).hasOnly([]);
     }
 
@@ -218,6 +235,7 @@ service cloud.firestore {
              && after.memberIds == before.memberIds
              && after.ownerId == before.ownerId
              && after.joinCode == before.joinCode
+             && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
              && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
     }
 
@@ -238,6 +256,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
                     && request.resource.data.ownerId == request.auth.uid
                     && request.resource.data.memberIds == [request.auth.uid]
+                    && request.resource.data.get('removedMemberIds', []) == []
                     && isValidKitchen(request.resource.data);
 
       // Exactly the shapes the repository ever writes: joining, leaving, the owner removing

@@ -362,9 +362,47 @@ describe('kitchen document', () => {
     await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { memberIds: [BOB] }));
   });
 
-  it('lets only the owner remove another member', async () => {
-    await assertSucceeds(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE] }));
-    await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE] }));
+  it('lets only the owner remove another member, and blocklists the removed uid', async () => {
+    await assertSucceeds(
+      updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE], removedMemberIds: [BOB] }),
+    );
+    await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE], removedMemberIds: [BOB] }));
+  });
+
+  it('rejects a removal write missing the matching removedMemberIds entry', async () => {
+    await assertFails(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE] }));
+  });
+
+  it('rejects a removal write that also blocklists an unrelated uid', async () => {
+    await assertFails(
+      updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE], removedMemberIds: [BOB, 'someone-else'] }),
+    );
+  });
+
+  it('rejects a removed member rejoining even though they still know the kitchen id', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `kitchens/${KITCHEN_1}`), kitchen({ memberIds: [ALICE], removedMemberIds: [BOB] }));
+    });
+
+    await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE, BOB] }));
+  });
+
+  it('lets the sole owner leave, producing an empty memberIds with no other path back', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `kitchens/${KITCHEN_1}`), kitchen({ memberIds: [ALICE] }));
+    });
+
+    await assertSucceeds(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { memberIds: [] }));
+    await assertFails(deleteDoc(doc(alice, `kitchens/${KITCHEN_1}`)));
+  });
+
+  it('rejects a create that seeds a non-empty removedMemberIds', async () => {
+    await assertFails(
+      setDoc(
+        doc(alice, 'kitchens/new-kitchen'),
+        kitchen({ ownerId: ALICE, memberIds: [ALICE], joinCode: 'new-code', removedMemberIds: [BOB] }),
+      ),
+    );
   });
 
   it('lets only the owner regenerate the join code', async () => {
