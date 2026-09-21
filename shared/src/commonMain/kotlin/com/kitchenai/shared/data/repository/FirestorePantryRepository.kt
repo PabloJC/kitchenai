@@ -63,8 +63,7 @@ class FirestorePantryRepository(
     override suspend fun remove(
         kitchenId: KitchenId,
         id: PantryItemId,
-    ): AppResult<Unit> =
-        writes.optimistically(errors.of(kitchenId)) { paths.pantryItem(kitchenId, id).delete() }
+    ): AppResult<Unit> = writes.optimistically(errors.of(kitchenId)) { paths.pantryItem(kitchenId, id).delete() }
 
     override suspend fun upsertAll(
         kitchenId: KitchenId,

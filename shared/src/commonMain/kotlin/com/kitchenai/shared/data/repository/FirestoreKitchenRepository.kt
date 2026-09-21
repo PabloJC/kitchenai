@@ -92,13 +92,17 @@ class FirestoreKitchenRepository(
         displayName: String?,
         joinCode: KitchenJoinCode,
     ): AppResult<Kitchen> =
-        firestoreCall(dispatchers) { firestore.runTransaction { joinTransaction(userId, displayName, joinCode) } }.flatMap { it }
+        firestoreCall(dispatchers) {
+            firestore.runTransaction { joinTransaction(userId, displayName, joinCode) }
+        }.flatMap { it }
 
     override suspend fun leaveKitchen(
         userId: UserId,
         kitchenId: KitchenId,
     ): AppResult<Unit> =
-        firestoreCall(dispatchers) { firestore.runTransaction { removeFromKitchenTransaction(kitchenId, userId) } }.flatMap { it }
+        firestoreCall(dispatchers) {
+            firestore.runTransaction { removeFromKitchenTransaction(kitchenId, userId) }
+        }.flatMap { it }
 
     override suspend fun removeMember(
         kitchenId: KitchenId,
@@ -132,24 +136,16 @@ class FirestoreKitchenRepository(
         displayName: String?,
         joinCode: KitchenJoinCode,
     ): AppResult<Kitchen> {
-        val inviteSnapshot = get(paths.kitchenInvite(joinCode))
-        if (!inviteSnapshot.exists) return AppResult.Failure(AppError.NotFound(INVITE_RESOURCE))
-        val invite =
-            runCatching { inviteSnapshot.data(KitchenInviteDto.serializer()) }
-                .getOrElse { return AppResult.Failure(it.toAppError()) }
+        val invite = getInviteDto(joinCode).getOrElse { return AppResult.Failure(it) }
         val kitchenId = KitchenId.of(invite.kitchenId.orEmpty()).getOrElse { return AppResult.Failure(it) }
-        val kitchenRef = paths.kitchen(kitchenId)
-        val kitchenSnapshot = get(kitchenRef)
-        if (!kitchenSnapshot.exists) return AppResult.Failure(AppError.NotFound(KITCHEN_RESOURCE))
-        val dto =
-            runCatching { kitchenSnapshot.data(KitchenDto.serializer()) }
-                .getOrElse { return AppResult.Failure(it.toAppError()) }
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
+        val names = displayName?.let { dto.memberDisplayNames + (userId.value to it) } ?: dto.memberDisplayNames
         val updated =
             dto.copy(
                 memberIds = (dto.memberIds + userId.value).distinct(),
-                memberDisplayNames = displayName?.let { dto.memberDisplayNames + (userId.value to it) } ?: dto.memberDisplayNames,
+                memberDisplayNames = names,
             )
-        set(kitchenRef, updated) { encodeDefaults = true }
+        set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
         return updated.toDomain(kitchenId.value)
     }
 
@@ -157,11 +153,8 @@ class FirestoreKitchenRepository(
         kitchenId: KitchenId,
         userId: UserId,
     ): AppResult<Unit> {
-        val kitchenRef = paths.kitchen(kitchenId)
-        val snapshot = get(kitchenRef)
-        if (!snapshot.exists) return AppResult.Failure(AppError.NotFound(KITCHEN_RESOURCE))
-        val dto = runCatching { snapshot.data(KitchenDto.serializer()) }.getOrElse { return AppResult.Failure(it.toAppError()) }
-        set(kitchenRef, dto.withoutMember(userId)) { encodeDefaults = true }
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
+        set(paths.kitchen(kitchenId), dto.withoutMember(userId)) { encodeDefaults = true }
         return AppResult.Success(Unit)
     }
 
@@ -170,12 +163,9 @@ class FirestoreKitchenRepository(
         requesterId: UserId,
         memberId: UserId,
     ): AppResult<Unit> {
-        val kitchenRef = paths.kitchen(kitchenId)
-        val snapshot = get(kitchenRef)
-        if (!snapshot.exists) return AppResult.Failure(AppError.NotFound(KITCHEN_RESOURCE))
-        val dto = runCatching { snapshot.data(KitchenDto.serializer()) }.getOrElse { return AppResult.Failure(it.toAppError()) }
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
         if (dto.ownerId != requesterId.value) return AppResult.Failure(AppError.Unauthorized())
-        set(kitchenRef, dto.withoutMember(memberId)) { encodeDefaults = true }
+        set(paths.kitchen(kitchenId), dto.withoutMember(memberId)) { encodeDefaults = true }
         return AppResult.Success(Unit)
     }
 
@@ -184,17 +174,33 @@ class FirestoreKitchenRepository(
         kitchenId: KitchenId,
         requesterId: UserId,
     ): AppResult<Kitchen> {
-        val kitchenRef = paths.kitchen(kitchenId)
-        val snapshot = get(kitchenRef)
-        if (!snapshot.exists) return AppResult.Failure(AppError.NotFound(KITCHEN_RESOURCE))
-        val dto = runCatching { snapshot.data(KitchenDto.serializer()) }.getOrElse { return AppResult.Failure(it.toAppError()) }
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
         if (dto.ownerId != requesterId.value) return AppResult.Failure(AppError.Unauthorized())
         val newCode = KitchenJoinCode.of(ids.newId()).getOrElse { return AppResult.Failure(it) }
         val updated = dto.copy(joinCode = newCode.value)
-        set(kitchenRef, updated) { encodeDefaults = true }
+        set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
         dto.joinCode.asJoinCodeOrNull()?.let { oldCode -> delete(paths.kitchenInvite(oldCode)) }
         set(paths.kitchenInvite(newCode), KitchenInviteDto(kitchenId.value)) { encodeDefaults = true }
         return updated.toDomain(kitchenId.value)
+    }
+
+    /** Shared by every membership write: a missing document or an undecodable one fail the same way. */
+    private suspend fun Transaction.getKitchenDto(kitchenId: KitchenId): AppResult<KitchenDto> {
+        val snapshot = get(paths.kitchen(kitchenId))
+        if (!snapshot.exists) return AppResult.Failure(AppError.NotFound(KITCHEN_RESOURCE))
+        return runCatching { snapshot.data(KitchenDto.serializer()) }.fold(
+            onSuccess = { AppResult.Success(it) },
+            onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
+        )
+    }
+
+    private suspend fun Transaction.getInviteDto(joinCode: KitchenJoinCode): AppResult<KitchenInviteDto> {
+        val snapshot = get(paths.kitchenInvite(joinCode))
+        if (!snapshot.exists) return AppResult.Failure(AppError.NotFound(INVITE_RESOURCE))
+        return runCatching { snapshot.data(KitchenInviteDto.serializer()) }.fold(
+            onSuccess = { AppResult.Success(it) },
+            onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
+        )
     }
 
     private fun KitchenDto.withoutMember(memberId: UserId): KitchenDto =
@@ -204,7 +210,11 @@ class FirestoreKitchenRepository(
         )
 
     /** A code already stored is already valid; this only guards a document written by hand. */
-    private fun String?.asJoinCodeOrNull(): KitchenJoinCode? = this?.let { raw -> KitchenJoinCode.of(raw).getOrElse { null } }
+    private fun String?.asJoinCodeOrNull(): KitchenJoinCode? =
+        this?.let {
+                raw ->
+            KitchenJoinCode.of(raw).getOrElse { null }
+        }
 
     private fun QuerySnapshot.toKitchen(): AppResult<Kitchen> {
         val document = documents.firstOrNull() ?: return AppResult.Failure(AppError.NotFound(KITCHEN_RESOURCE))

@@ -30,10 +30,9 @@ class FirestorePaths(
     fun kitchen(kitchenId: KitchenId): DocumentReference = kitchens().document(kitchenId.value)
 
     // `{ kitchenId }` only: lets a non-member resolve a join code without reading the kitchen
-    // document it points at. No accessor collides with `kitchens()`'s own document ids.
-    fun kitchenInvites(): CollectionReference = firestore.collection(KITCHEN_INVITES)
-
-    fun kitchenInvite(code: KitchenJoinCode): DocumentReference = kitchenInvites().document(code.value)
+    // document it points at. No collection accessor: nothing but this document is ever addressed.
+    fun kitchenInvite(code: KitchenJoinCode): DocumentReference =
+        firestore.collection(KITCHEN_INVITES).document(code.value)
 
     fun pantry(kitchenId: KitchenId): CollectionReference = kitchen(kitchenId).collection(PANTRY)
 

@@ -45,7 +45,7 @@ class RecipeRemoteDataSource(
 
     private val errors = KeyedErrorSinks<KitchenId>()
 
-    /** The signed-in user, not a kitchen: [com.kitchenai.shared.data.repository.RecipeRepository] resolves the kitchen. */
+    /** The signed-in user, not a kitchen: the repository this feeds resolves that itself. */
     fun currentUserId(): UserId? = auth.currentUser?.uid?.let { uid -> (UserId.of(uid) as? AppResult.Success)?.data }
 
     fun observeSavedRecipes(kitchenId: KitchenId): Flow<List<RecipeDocument>> =
@@ -61,7 +61,10 @@ class RecipeRemoteDataSource(
     suspend fun getSavedRecipe(
         kitchenId: KitchenId,
         recipeId: RecipeId,
-    ): AppResult<RecipeDocument?> = firestoreCall(dispatchers) { paths.savedRecipe(kitchenId, recipeId).get() }.decoded()
+    ): AppResult<RecipeDocument?> =
+        firestoreCall(
+            dispatchers,
+        ) { paths.savedRecipe(kitchenId, recipeId).get() }.decoded()
 
     suspend fun getCataloguedRecipe(recipeId: RecipeId): AppResult<RecipeDocument?> =
         firestoreCall(dispatchers) { paths.recipe(recipeId).get() }.decoded()
