@@ -7,6 +7,7 @@ import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import dev.gitlive.firebase.auth.FirebaseAuth
+import dev.gitlive.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
@@ -48,16 +49,32 @@ class FirebaseSessionAdapter(
         }
     }
 
-    // Stub pending the Google credential exchange (#187): the contract lands with domain first
-    // so it does not block on the platform-side token retrieval.
-    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> =
-        AppResult.Failure(AppError.Unknown(NOT_YET_IMPLEMENTED))
+    /**
+     * A sign-in, not a link: on an already-anonymous session this swaps the current Firebase
+     * user for the Google one rather than merging into it. Deliberate (#186) — the anonymous
+     * session's data is left behind by product decision, so `currentUser.linkWithCredential`
+     * is not used here.
+     */
+    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> {
+        val signedIn =
+            firestoreCall(dispatchers) {
+                auth.signInWithCredential(GoogleAuthProvider.credential(idToken.value, null)).user
+            }
+
+        return when (signedIn) {
+            is AppResult.Failure -> signedIn
+            is AppResult.Success ->
+                when (val session = signedIn.data.toSession()) {
+                    is Session.SignedIn -> AppResult.Success(session)
+                    Session.SignedOut -> AppResult.Failure(AppError.Unknown(MISSING_USER))
+                }
+        }
+    }
 
     override suspend fun signOut(): AppResult<Unit> = firestoreCall(dispatchers) { auth.signOut() }
 
     private companion object {
         // Asserting non-null here would trade a handled failure for a crash.
-        val MISSING_USER = IllegalStateException("Anonymous sign-in returned no user")
-        val NOT_YET_IMPLEMENTED = IllegalStateException("Google sign-in is not implemented yet (#187)")
+        val MISSING_USER = IllegalStateException("Sign-in returned no user")
     }
 }
