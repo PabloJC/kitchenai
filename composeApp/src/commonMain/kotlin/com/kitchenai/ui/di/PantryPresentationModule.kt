@@ -12,5 +12,5 @@ val pantryPresentationModule: Module =
     module {
         factory { PantryReadsDelegate(get(), get(), get(), get()) }
         factory { PantryWritesDelegate(get(), get(), get(), get()) }
-        viewModel { PantryViewModel(get(), get()) }
+        viewModel { PantryViewModel(get(), get(), get()) }
     }

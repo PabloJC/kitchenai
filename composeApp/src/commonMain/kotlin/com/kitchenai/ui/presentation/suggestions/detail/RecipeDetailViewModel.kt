@@ -6,6 +6,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.PantryMatch
@@ -17,6 +18,7 @@ import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.service.PantryCandidateMatcher
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -50,6 +53,7 @@ import kotlinx.coroutines.launch
 class RecipeDetailViewModel(
     private val reads: RecipeDetailReadsDelegate,
     private val writes: RecipeDetailWritesDelegate,
+    private val observeKitchen: ObserveKitchenUseCase,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(RecipeDetailUiState())
     val state: StateFlow<RecipeDetailUiState> = internalState.asStateFlow()
@@ -78,11 +82,14 @@ class RecipeDetailViewModel(
     private val pantry = MutableStateFlow<List<PantryItem>>(emptyList())
     private val confirmedCandidates = MutableStateFlow<Set<PantryItemId>>(emptySet())
     private val loading = MutableStateFlow<Job?>(null)
-    private var user: UserId? = null
     private var id: RecipeId? = null
     private var listLabels: Map<String, String> = emptyMap()
     private var languageTags: List<String> = emptyList()
     private var started = false
+
+    // The kitchen a user belongs to can change while this screen is open (joining another one),
+    // so it is a listener like the pantry itself, not a value captured once at start().
+    private val kitchenId = MutableStateFlow<KitchenId?>(null)
 
     fun start(
         userId: UserId,
@@ -90,7 +97,6 @@ class RecipeDetailViewModel(
         languageTags: List<String>,
         defaultListName: String,
     ) {
-        user = userId
         id = recipeId
         this.languageTags = languageTags
         // Only used if this screen is the one that creates the list. It should not be — the
@@ -106,13 +112,33 @@ class RecipeDetailViewModel(
             }
         }
         viewModelScope.launch {
-            reads.pantry(userId).collect { loaded ->
+            kitchenId.filterNotNull().flatMapLatest(reads.pantry::invoke).collect { loaded ->
                 pantry.value = loaded
                 recipe.value?.let { held -> render(held, currentMatch.value) }
             }
         }
         watchVocabulary()
-        load(recipeId, servings = null)
+        watchKitchen(userId, recipeId)
+    }
+
+    /**
+     * The first kitchen loads the recipe and matches it; a later kitchen (joined mid-visit) only
+     * re-matches, since the recipe itself is not kitchen-owned and is already on screen.
+     */
+    private fun watchKitchen(
+        userId: UserId,
+        recipeId: RecipeId,
+    ) {
+        viewModelScope.launch {
+            observeKitchen(userId).collect { kitchen ->
+                val firstKitchen = kitchenId.value == null
+                kitchenId.value = kitchen.id
+                if (firstKitchen) load(kitchen.id, recipeId, servings = null) else refreshMatch(kitchen.id)
+            }
+        }
+        viewModelScope.launch {
+            observeKitchen.errors(userId).collect { error -> failed(error) }
+        }
     }
 
     /** Purely local: nothing is written to the pantry or the catalogue by confirming one. */
@@ -166,25 +192,27 @@ class RecipeDetailViewModel(
     fun setServings(servings: Int) {
         if (servings < 1) return
         internalState.update { it.copy(servings = servings) }
-        id?.let { recipeId -> load(recipeId, servings) }
+        val recipeId = id ?: return
+        val kitchen = kitchenId.value ?: return
+        load(kitchen, recipeId, servings)
     }
 
     fun save() =
-        act { userId ->
+        act { kitchen ->
             val held = recipe.value ?: return@act null
-            writes.save(userId, held).map { RecipeDetailEvent.Saved }
+            writes.save(kitchen, held).map { RecipeDetailEvent.Saved }
         }
 
     // Both writes hand over the recipe in hand rather than its id, for the same reason the read
     // and the match do: a generated dish is in no repository, so re-reading it would fail.
     fun addMissingToList() =
-        act { userId ->
+        act { kitchen ->
             val held = recipe.value ?: return@act null
-            when (val list = writes.defaultList(userId, listLabels)) {
+            when (val list = writes.defaultList(kitchen, listLabels)) {
                 is AppResult.Failure -> AppResult.Failure(list.error)
                 is AppResult.Success ->
                     writes
-                        .addMissing(userId, list.data, held, internalState.value.servings)
+                        .addMissing(kitchen, list.data, held, internalState.value.servings)
                         .map { summary -> RecipeDetailEvent.AddedToList(summary.added, summary.skipped) }
             }
         }
@@ -192,9 +220,9 @@ class RecipeDetailViewModel(
     fun cook() =
         // A cook refused for missing ingredients is not a failure to apologise for: it is the
         // answer, and the screen already lists which ones.
-        act(validation = { UiText.of(Res.string.error_missing_ingredients) }) { userId ->
+        act(validation = { UiText.of(Res.string.error_missing_ingredients) }) { kitchen ->
             val held = recipe.value ?: return@act null
-            writes.cook(userId, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
+            writes.cook(kitchen, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
         }
 
     /**
@@ -212,22 +240,22 @@ class RecipeDetailViewModel(
     }
 
     private fun load(
+        kitchenId: KitchenId,
         recipeId: RecipeId,
         servings: Int?,
     ) {
-        val userId = user ?: return
         matching {
             // The last generation first: a generated dish was never written anywhere else, so
             // the repository would answer NotFound for the only kind of recipe this screen is
             // reached with. A failed local read falls through to the repository, same as a miss.
             val stored = (reads.storedRecipe(recipeId) as? AppResult.Success)?.data
             if (stored != null) {
-                matched(userId, stored, servings)
+                matched(kitchenId, stored, servings)
                 return@matching
             }
             when (val found = reads.recipe(recipeId)) {
                 is AppResult.Failure -> failed(found.error)
-                is AppResult.Success -> matched(userId, found.data, servings)
+                is AppResult.Success -> matched(kitchenId, found.data, servings)
             }
         }
     }
@@ -243,11 +271,11 @@ class RecipeDetailViewModel(
      * Silent when the re-match fails. The pantry has already changed and cannot be put back, so
      * a stale bucket is a smaller lie than telling somebody their cook did not happen.
      */
-    private fun refreshMatch(userId: UserId) {
+    private fun refreshMatch(kitchenId: KitchenId) {
         val held = recipe.value ?: return
         matching {
             val servings = internalState.value.servings
-            val match = reads.match(userId, held, servings)
+            val match = reads.match(kitchenId, held, servings)
             if (match is AppResult.Success) {
                 currentMatch.value = match.data
                 render(held, match.data, servings)
@@ -256,14 +284,14 @@ class RecipeDetailViewModel(
     }
 
     private suspend fun matched(
-        userId: UserId,
+        kitchenId: KitchenId,
         found: Recipe,
         servings: Int?,
     ) {
         recipe.value = found
         // Matched against the recipe in hand, never re-read by id: a generated dish is not in
         // any repository, and asking for it again is the failure this screen just had.
-        when (val match = reads.match(userId, found, servings)) {
+        when (val match = reads.match(kitchenId, found, servings)) {
             is AppResult.Failure -> failed(match.error)
             is AppResult.Success -> {
                 currentMatch.value = match.data
@@ -315,13 +343,13 @@ class RecipeDetailViewModel(
         // Only the caller knows what its own validation failure means. Read here it would be a
         // guess: two of these actions can fail on the same field for opposite reasons.
         validation: ((AppError.Validation) -> UiText)? = null,
-        block: suspend (UserId) -> AppResult<RecipeDetailEvent>?,
+        block: suspend (KitchenId) -> AppResult<RecipeDetailEvent>?,
     ) {
-        val userId = user ?: return
+        val kitchen = kitchenId.value ?: return
         if (internalState.value.isWorking) return
         internalState.update { it.copy(isWorking = true) }
         viewModelScope.launch {
-            when (val outcome = block(userId)) {
+            when (val outcome = block(kitchen)) {
                 null -> Unit
                 is AppResult.Failure -> {
                     val message = outcome.error.describe(Res.string.error_unauthorized_action, validation)
@@ -331,7 +359,7 @@ class RecipeDetailViewModel(
                     if (outcome.data is RecipeDetailEvent.Saved) internalState.update { it.copy(isSaved = true) }
                     announce(outcome.data)
                     // Cooking changed the pantry, so the buckets beside it are now stale.
-                    if (outcome.data is RecipeDetailEvent.Cooked) refreshMatch(userId)
+                    if (outcome.data is RecipeDetailEvent.Cooked) refreshMatch(kitchen)
                 }
             }
             internalState.update { it.copy(isWorking = false) }

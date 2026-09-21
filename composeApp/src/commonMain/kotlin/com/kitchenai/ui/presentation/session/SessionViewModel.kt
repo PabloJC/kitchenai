@@ -8,6 +8,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.NoParams
+import com.kitchenai.shared.domain.usecase.kitchen.EnsureKitchenUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
@@ -29,6 +30,7 @@ import kotlinx.coroutines.sync.withLock
  */
 class SessionViewModel(
     private val ensureSession: EnsureSessionUseCase,
+    private val ensureKitchen: EnsureKitchenUseCase,
     private val ensureDefaultShoppingList: EnsureDefaultShoppingListUseCase,
     private val observeUserProfile: ObserveUserProfileUseCase,
     private val saveUserProfile: SaveUserProfileUseCase,
@@ -83,10 +85,17 @@ class SessionViewModel(
                     is AppResult.Failure -> return@launch fail(session.error)
                     is AppResult.Success -> session.data.userId
                 }
+            // No display name yet at this point — the profile that would carry one is created
+            // further down, and a kitchen without one can still be shown one later.
+            val kitchenId =
+                when (val kitchen = ensureKitchen(userId, displayName = null)) {
+                    is AppResult.Failure -> return@launch fail(kitchen.error)
+                    is AppResult.Success -> kitchen.data.id
+                }
             // The name is stored under the device's own tag: the app ships no translations of
             // its own, and a name under a tag nobody reads resolves to nothing.
             val labels = languageTags.take(1).associateWith { defaultListName }
-            val list = ensureDefaultShoppingList(userId, labels)
+            val list = ensureDefaultShoppingList(kitchenId, labels)
             if (list is AppResult.Failure) return@launch fail(list.error)
 
             _state.value = SessionUiState.Ready(userId)
