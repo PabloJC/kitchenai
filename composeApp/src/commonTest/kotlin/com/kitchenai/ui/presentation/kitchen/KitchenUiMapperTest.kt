@@ -8,6 +8,7 @@ import com.kitchenai.shared.domain.model.KitchenJoinCode
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_invalid_field
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.kitchen_invalid_code
 import com.kitchenai.ui.resources.kitchen_leave_disabled_owner
@@ -97,6 +98,24 @@ class KitchenUiMapperTest {
     @Test
     fun `a join failure that is not a missing resource keeps the generic wording`() {
         assertEquals(UiText.of(Res.string.error_unauthorized_action), AppError.Unauthorized().describeJoinError())
+    }
+
+    @Test
+    fun `joining while owning a kitchen with other members reuses the proactive leave-disabled wording`() {
+        // JoinKitchenUseCase leaves the caller's current kitchen first, so LeaveKitchenUseCase's own
+        // owner guard is what actually fails here — reachable, not just theoretical (review finding).
+        val error = AppError.Validation("kitchen", "owner cannot leave a kitchen with other members")
+
+        assertEquals(UiText.of(Res.string.kitchen_leave_disabled_owner), error.describeJoinError())
+        assertEquals(UiText.of(Res.string.kitchen_leave_disabled_owner), error.describeKitchenError())
+    }
+
+    @Test
+    fun `a validation error for an unrelated field keeps the generic invalid-field wording`() {
+        val error = AppError.Validation("joinCode", "must not be blank")
+        val expected = UiText.of(Res.string.error_invalid_field, "joinCode", "must not be blank")
+
+        assertEquals(expected, error.describeKitchenError())
     }
 
     private fun userId(raw: String): UserId = (UserId.of(raw) as AppResult.Success).data

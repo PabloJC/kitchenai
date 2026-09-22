@@ -6,6 +6,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_invalid_field
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.kitchen_invalid_code
 import com.kitchenai.ui.resources.kitchen_leave_disabled_owner
@@ -39,7 +40,22 @@ private fun Kitchen.memberUi(
         canRemove = ownerId == viewer && id != ownerId,
     )
 
-internal fun AppError.describeKitchenError(): UiText = describe(Res.string.error_unauthorized_action)
+/**
+ * [AppError.Validation("kitchen", ...)][AppError.Validation] only ever means one thing today —
+ * `LeaveKitchenUseCase`'s owner-with-other-members refusal, reached reactively here because
+ * `JoinKitchenUseCase` leaves the caller's current kitchen before joining another. Reusing
+ * [kitchen_leave_disabled_owner] keeps this in the same (translated) words as the proactive,
+ * listener-driven version of the same rule instead of the generic "Invalid kitchen: <reason>"
+ * template interpolating an untranslated English literal.
+ */
+internal fun AppError.describeKitchenError(): UiText =
+    describe(Res.string.error_unauthorized_action) { validation ->
+        if (validation.field == "kitchen") {
+            UiText.of(Res.string.kitchen_leave_disabled_owner)
+        } else {
+            UiText.of(Res.string.error_invalid_field, validation.field, validation.reason)
+        }
+    }
 
 /** A bad or already-consumed code fails as [AppError.NotFound]; every other error keeps its own wording. */
 internal fun AppError.describeJoinError(): UiText =
