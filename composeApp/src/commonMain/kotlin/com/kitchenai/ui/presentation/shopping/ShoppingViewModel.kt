@@ -60,7 +60,12 @@ class ShoppingViewModel(
     // The kitchen can change while this screen is open (joining another one), so it is a
     // listener, not a value captured once — every default-list bootstrap below re-runs for it.
     private val kitchenId = MutableStateFlow<KitchenId?>(null)
-    private val listId = MutableStateFlow<ShoppingListId?>(null)
+
+    // Set together, only once a list has actually resolved for that exact kitchen: kitchenId
+    // updates as soon as the kitchen listener emits, but the matching list id only arrives once
+    // ensureDefaultShoppingList resolves for it. Reading them as two independent flows in edit()
+    // let a kitchen change pair the new kitchen with the previous one's list id.
+    private val activeList = MutableStateFlow<Pair<KitchenId, ShoppingListId>?>(null)
 
     // Null until the first emission. An empty list and a list nobody has sent yet look the same
     // on screen otherwise, and one of them is still loading.
@@ -158,7 +163,7 @@ class ShoppingViewModel(
                         itemsAnswered.value = true
                     }
                     is AppResult.Success -> {
-                        listId.value = list.data
+                        activeList.value = kitchen to list.data
                         coroutineScope {
                             launch {
                                 reads.items(kitchen, list.data).collect { loaded ->
@@ -341,8 +346,7 @@ class ShoppingViewModel(
      * to, and a caller that has taken something from the user needs to know that.
      */
     private fun edit(block: suspend (KitchenId, ShoppingListId) -> AppResult<*>): Boolean {
-        val kitchen = kitchenId.value ?: return false
-        val list = listId.value ?: return false
+        val (kitchen, list) = activeList.value ?: return false
         viewModelScope.launch {
             // A write that lands clears the last one that did not: the banner belongs to the
             // most recent attempt, not to the first that ever failed.
