@@ -88,6 +88,9 @@
     <string name="profile_no_preferences">No preferences to show</string>
     <string name="profile_no_vocabulary">This catalogue has no vocabulary in it yet.</string>
     <string name="profile_vocabulary_failed">The vocabulary could not be loaded, so there is nothing to choose from yet.</string>
+    <string name="profile_sign_in_google">Sign in with Google</string>
+    <string name="profile_sign_out">Sign out</string>
+    <string name="profile_signed_in_fallback">Signed in</string>
     <string name="strength_prefer">Prefer</string>
     <string name="strength_avoid">Avoid</string>
     <string name="tab_pantry">Pantry</string>

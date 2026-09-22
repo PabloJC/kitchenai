@@ -15,13 +15,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.GoogleSignInLauncher
+import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.platform.rememberGoogleSignInLauncher
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
@@ -31,6 +39,7 @@ import com.kitchenai.ui.resources.profile_save
 import com.kitchenai.ui.resources.profile_saving
 import com.kitchenai.ui.resources.profile_sent_summary
 import com.kitchenai.ui.resources.profile_vocabulary_failed
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -46,7 +55,7 @@ fun ProfileScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(userId) { viewModel.start(userId) }
+    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags()) }
 
     val error = state.error
     when {
@@ -62,11 +71,32 @@ private fun ProfileContent(
     viewModel: ProfileViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val launcher = rememberGoogleSignInLauncher()
+    val scope = rememberCoroutineScope()
+
+    // isAuthenticating alone lags a whole async window behind: it only flips once
+    // viewModel.signInWithGoogle() is called, which is after launcher.launch()'s platform
+    // credential sheet has already returned. This closes that window so a second tap during
+    // it cannot stack a second concurrent credential sheet.
+    var signInLaunching by remember { mutableStateOf(false) }
+
     // A Column with a weighted middle, not one LazyColumn top to bottom: TransparencyLine and
     // SaveRow stay fixed so the empty state has a bounded height to centre inside — matching
     // ShoppingScreen's own header/content/footer split — and Save never needs a scroll to reach.
     Column(modifier = modifier.fillMaxSize()) {
         Spacer(Modifier.height(Dimens.large))
+        AccountSection(
+            signedInWithGoogle = state.signedInWithGoogle,
+            displayName = state.displayName,
+            isAuthenticating = state.isAuthenticating || signInLaunching,
+            onSignIn = {
+                if (signInLaunching) return@AccountSection
+                signInLaunching = true
+                scope.launch { performGoogleSignIn(launcher, viewModel) { signInLaunching = false } }
+            },
+            onSignOut = viewModel::signOut,
+        )
+        Spacer(Modifier.height(Dimens.medium))
         TransparencyLine()
         Spacer(Modifier.height(Dimens.medium))
 
@@ -105,6 +135,22 @@ private fun ProfileContent(
             onSave = viewModel::save,
         )
         Spacer(Modifier.height(Dimens.large))
+    }
+}
+
+/** [onFinished] always runs, cancelled or not, so a stuck sheet can never leave the button disabled forever. */
+private suspend fun performGoogleSignIn(
+    launcher: GoogleSignInLauncher,
+    viewModel: ProfileViewModel,
+    onFinished: () -> Unit,
+) {
+    try {
+        when (val result = launcher.launch()) {
+            is AppResult.Success -> viewModel.signInWithGoogle(result.data.token, result.data.displayName)
+            is AppResult.Failure -> viewModel.onGoogleSignInFailed(result.error)
+        }
+    } finally {
+        onFinished()
     }
 }
 

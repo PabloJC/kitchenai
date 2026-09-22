@@ -86,6 +86,9 @@
     <string name="profile_no_preferences">No hay preferencias que mostrar</string>
     <string name="profile_no_vocabulary">Este catálogo todavía no tiene vocabulario.</string>
     <string name="profile_vocabulary_failed">No se ha podido cargar el vocabulario, así que todavía no hay nada que elegir.</string>
+    <string name="profile_sign_in_google">Iniciar sesión con Google</string>
+    <string name="profile_sign_out">Cerrar sesión</string>
+    <string name="profile_signed_in_fallback">Sesión iniciada</string>
     <string name="strength_prefer">Prefiero</string>
     <string name="strength_avoid">Evitar</string>
     <string name="tab_pantry">Despensa</string>
