@@ -43,8 +43,8 @@ private const val DISH_TYPES_TAXONOMY = "dish-types"
 /**
  * `TermId.value` (#195's `dish-types` terms) to the bundled drawable standing in for it.
  *
- * Interim art: flat-colored vectors, not photographs — see `drawable/NOTICE.md`. A term #195
- * grows before this map catches up is a miss like any other, not a crash.
+ * Licensed photography, one per term — see `drawable/NOTICE.md` for source and attribution. A
+ * term #195 grows before this map catches up is a miss like any other, not a crash.
  */
 private val dishTypeImages: Map<String, DrawableResource> =
     mapOf(
