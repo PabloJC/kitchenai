@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.suggestions.detail
 
 import com.kitchenai.shared.domain.model.PantryItemId
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.UiText
 
 /**
@@ -20,6 +21,8 @@ data class RecipeDetailUiState(
     val unverifiable: List<IngredientLineUi> = emptyList(),
     val steps: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
+    /** Unresolved, unlike [tags]: `RecipeImage` reads it itself, the screen does not. */
+    val tagRefs: List<TermRef> = emptyList(),
     val isLoading: Boolean = true,
     val isWorking: Boolean = false,
     val isSaved: Boolean = false,
