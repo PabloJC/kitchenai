@@ -18,6 +18,7 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
@@ -29,6 +30,7 @@ import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemCheckedUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
@@ -59,6 +61,7 @@ class ShoppingViewModelTest {
     private val items = FakeShoppingItemPort()
     private val catalogue = FakeIngredientPort()
     private val pantry = FakePantryPort()
+    private val kitchens = FakeKitchenPort()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -302,6 +305,7 @@ class ShoppingViewModelTest {
         val viewModel =
             ShoppingViewModel(
                 ensureDefaultShoppingList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
+                observeKitchen = ObserveKitchenUseCase(kitchens),
                 reads =
                     ShoppingReadsDelegate(
                         items = ObserveShoppingItemsUseCase(items),

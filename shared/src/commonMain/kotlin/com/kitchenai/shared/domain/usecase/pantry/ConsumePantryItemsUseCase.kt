@@ -2,10 +2,10 @@ package com.kitchenai.shared.domain.usecase.pantry
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 
@@ -20,15 +20,15 @@ class ConsumePantryItemsUseCase(
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         consumptions: List<Pair<PantryItemId, Quantity>>,
     ): AppResult<Unit> =
-        when (val held = pantry.getPantry(userId)) {
+        when (val held = pantry.getPantry(kitchenId)) {
             is AppResult.Failure -> held
             is AppResult.Success ->
                 when (val applied = apply(held.data, consumptions)) {
                     is AppResult.Failure -> applied
-                    is AppResult.Success -> write(userId, applied.data)
+                    is AppResult.Success -> write(kitchenId, applied.data)
                 }
         }
 
@@ -66,17 +66,17 @@ class ConsumePantryItemsUseCase(
     }
 
     private suspend fun write(
-        userId: UserId,
+        kitchenId: KitchenId,
         touched: List<PantryItem>,
     ): AppResult<Unit> {
         val (depleted, survivors) = touched.partition { it.quantity.amount <= 0.0 }
         // Survivors leave in a single batched write; the port has no batched delete for the
         // rows that reached zero.
         var result: AppResult<Unit> =
-            if (survivors.isEmpty()) AppResult.Success(Unit) else pantry.upsertAll(userId, survivors)
+            if (survivors.isEmpty()) AppResult.Success(Unit) else pantry.upsertAll(kitchenId, survivors)
         for (item in depleted) {
             if (result is AppResult.Failure) return result
-            result = pantry.remove(userId, item.id)
+            result = pantry.remove(kitchenId, item.id)
         }
         return result
     }

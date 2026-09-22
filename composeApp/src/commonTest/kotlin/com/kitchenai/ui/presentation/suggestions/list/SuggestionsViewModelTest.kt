@@ -8,6 +8,7 @@ import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.HouseholdContext
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.MissingIngredient
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
@@ -22,6 +23,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
@@ -30,9 +32,12 @@ import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.defaultKitchenId
+import com.kitchenai.ui.presentation.common.kitchen
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_timeout
@@ -105,6 +110,32 @@ class SuggestionsViewModelTest {
         }
 
     @Test
+    fun `a kitchen change cancels an in-flight generation instead of leaving it stuck`() =
+        runTest(dispatcher) {
+            agent.gate = CompletableDeferred()
+
+            val viewModel = started()
+            dispatcher.scheduler.runCurrent()
+
+            // The first kitchen's generation is in flight, gated behind the model call.
+            assertTrue(viewModel.state.value.isGenerating)
+            assertEquals(1, agent.calls)
+
+            kitchens.emit(kitchen(id = KitchenId.of("kitchen-2").orFail()))
+            advanceUntilIdle()
+
+            // A second call for the new kitchen, not a silent no-op behind a guard the first,
+            // now-cancelled call left stuck at true.
+            assertEquals(2, agent.calls)
+            assertTrue(viewModel.state.value.isGenerating)
+
+            agent.gate?.complete(Unit)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.isGenerating)
+        }
+
+    @Test
     fun `a stored suggestion's ingredient names update once the catalogue answers`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort(stored = listOf(shortOfRice().recipe))
@@ -153,6 +184,9 @@ class SuggestionsViewModelTest {
         runTest(dispatcher) {
             agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
             val viewModel = started()
+            // Lets the kitchen listener resolve (and the launch's own auto-generate run and
+            // finish) before this test drives the button's own call to generate().
+            advanceUntilIdle()
 
             viewModel.generate()
             assertTrue(viewModel.state.value.isGenerating)
@@ -347,7 +381,7 @@ class SuggestionsViewModelTest {
     fun `a saved recipe is exposed separately from the generated suggestions and matched against the pantry`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort()
-            recipes.saveRecipe(UserId.of("user-1").orFail(), dish("recipe-1"))
+            recipes.saveRecipe(defaultKitchenId, dish("recipe-1"))
             agent.answer = AppResult.Success(listOf(suggestion("recipe-2")))
 
             val viewModel = started(recipes = recipes)
@@ -363,7 +397,7 @@ class SuggestionsViewModelTest {
     fun `a saved recipe's match refreshes when the pantry changes and not only when the saved list does`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort()
-            recipes.saveRecipe(UserId.of("user-1").orFail(), shortOfRice().recipe)
+            recipes.saveRecipe(defaultKitchenId, shortOfRice().recipe)
             val pantry = FakePantryPort()
             agent.answer = AppResult.Success(emptyList())
 
@@ -372,7 +406,7 @@ class SuggestionsViewModelTest {
 
             assertEquals(listOf("rice"), viewModel.state.value.savedRecipes.single().missing)
 
-            pantry.upsert(UserId.of("user-1").orFail(), riceHolding())
+            pantry.upsert(defaultKitchenId, riceHolding())
             advanceUntilIdle()
 
             // matchRecipe reads the pantry once per call rather than as a listener; this is
@@ -391,6 +425,8 @@ class SuggestionsViewModelTest {
             updatedAt = now,
         )
 
+    private val kitchens = FakeKitchenPort()
+
     private fun started(
         recipes: FakeRecipePort = FakeRecipePort(),
         languageTags: List<String> = listOf("en"),
@@ -404,6 +440,7 @@ class SuggestionsViewModelTest {
             observeSavedRecipes = ObserveSavedRecipesUseCase(recipes),
             matchRecipe = MatchRecipeAgainstPantryUseCase(recipes, pantryPort, TimeProvider { now }),
             observePantry = ObservePantryUseCase(pantryPort),
+            observeKitchen = ObserveKitchenUseCase(kitchens),
         ).also { it.start(UserId.of("user-1").orFail(), languageTags) }
     }
 }
@@ -469,6 +506,8 @@ private class StubProfilePort(private val profile: UserProfile) : UserProfileRep
     override fun observeProfile(userId: UserId): Flow<UserProfile> = flowOf(profile)
 
     override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()
+
+    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> = AppResult.Success(profile)
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> = AppResult.Success(Unit)
 }

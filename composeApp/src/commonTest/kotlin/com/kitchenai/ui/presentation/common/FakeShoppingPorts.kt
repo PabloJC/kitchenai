@@ -2,11 +2,11 @@ package com.kitchenai.ui.presentation.common
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.ShoppingListId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import kotlinx.coroutines.flow.Flow
@@ -28,19 +28,19 @@ class FakeShoppingListPort(
 ) : ShoppingListRepositoryContract {
     val created = mutableListOf<ShoppingList>()
 
-    override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = emptyFlow()
+    override fun observeLists(kitchenId: KitchenId): Flow<List<ShoppingList>> = emptyFlow()
 
-    override fun listErrors(userId: UserId): Flow<AppError> = emptyFlow()
+    override fun listErrors(kitchenId: KitchenId): Flow<AppError> = emptyFlow()
 
-    override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> =
+    override suspend fun getLists(kitchenId: KitchenId): AppResult<List<ShoppingList>> =
         if (!existing) {
             AppResult.Success(emptyList())
         } else {
-            AppResult.Success(listOf(ShoppingList(defaultListId, userId, emptyMap(), Instant.fromEpochSeconds(0))))
+            AppResult.Success(listOf(ShoppingList(defaultListId, kitchenId, emptyMap(), Instant.fromEpochSeconds(0))))
         }
 
     override suspend fun upsertList(
-        userId: UserId,
+        kitchenId: KitchenId,
         list: ShoppingList,
     ): AppResult<Unit> {
         created += list
@@ -69,22 +69,22 @@ class FakeShoppingItemPort : ShoppingItemRepositoryContract {
     }
 
     override fun observeItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): Flow<List<ShoppingItem>> = stream
 
     override fun itemErrors(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): Flow<AppError> = errors
 
     override suspend fun getItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<List<ShoppingItem>> = AppResult.Success(current)
 
     override suspend fun upsertItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         items: List<ShoppingItem>,
     ): AppResult<Unit> {
@@ -93,7 +93,7 @@ class FakeShoppingItemPort : ShoppingItemRepositoryContract {
     }
 
     override suspend fun removeItem(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         itemId: ShoppingItemId,
     ): AppResult<Unit> {
@@ -102,7 +102,7 @@ class FakeShoppingItemPort : ShoppingItemRepositoryContract {
     }
 
     override suspend fun removeItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         ids: List<ShoppingItemId>,
     ): AppResult<Unit> {
@@ -111,7 +111,7 @@ class FakeShoppingItemPort : ShoppingItemRepositoryContract {
     }
 
     override suspend fun removeCheckedItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<Unit> {
         clears++

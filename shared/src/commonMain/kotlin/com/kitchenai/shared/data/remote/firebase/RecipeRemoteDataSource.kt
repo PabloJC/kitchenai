@@ -8,6 +8,7 @@ import com.kitchenai.shared.data.repository.KeyedErrorSinks
 import com.kitchenai.shared.data.repository.decodedOrDropped
 import com.kitchenai.shared.data.repository.optimistically
 import com.kitchenai.shared.data.repository.withinDocumentLimit
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import dev.gitlive.firebase.auth.FirebaseAuth
@@ -22,7 +23,7 @@ import kotlinx.coroutines.flow.map
 
 /**
  * The remote half of the recipe data sources: the read-only `recipes` catalogue and
- * `users/{uid}/savedRecipes`, over Firestore. It knows nothing about
+ * `kitchens/{kitchenId}/savedRecipes`, over Firestore. It knows nothing about
  * [com.kitchenai.shared.domain.model.Recipe] — that mapping, and deciding in which order a saved
  * copy and the catalogue are read, is
  * [com.kitchenai.shared.data.repository.RecipeRepository]'s job. What it owns is everything
@@ -42,49 +43,53 @@ class RecipeRemoteDataSource(
     // the writes queued after it.
     private val writes = CoroutineScope(SupervisorJob() + dispatchers.io)
 
-    private val errors = KeyedErrorSinks<UserId>()
+    private val errors = KeyedErrorSinks<KitchenId>()
 
+    /** The signed-in user, not a kitchen: the repository this feeds resolves that itself. */
     fun currentUserId(): UserId? = auth.currentUser?.uid?.let { uid -> (UserId.of(uid) as? AppResult.Success)?.data }
 
-    fun observeSavedRecipes(userId: UserId): Flow<List<RecipeDocument>> =
+    fun observeSavedRecipes(kitchenId: KitchenId): Flow<List<RecipeDocument>> =
         paths
-            .savedRecipes(userId)
+            .savedRecipes(kitchenId)
             .orderBy(SAVED_AT, Direction.DESCENDING)
             .snapshots
             .map { snapshot -> snapshot.toRecipeDocuments() }
-            .reportingErrorsTo(errors.of(userId))
+            .reportingErrorsTo(errors.of(kitchenId))
 
-    fun savedRecipeErrors(userId: UserId): Flow<AppError> = errors.of(userId).asSharedFlow()
+    fun savedRecipeErrors(kitchenId: KitchenId): Flow<AppError> = errors.of(kitchenId).asSharedFlow()
 
     suspend fun getSavedRecipe(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
-    ): AppResult<RecipeDocument?> = firestoreCall(dispatchers) { paths.savedRecipe(userId, recipeId).get() }.decoded()
+    ): AppResult<RecipeDocument?> =
+        firestoreCall(
+            dispatchers,
+        ) { paths.savedRecipe(kitchenId, recipeId).get() }.decoded()
 
     suspend fun getCataloguedRecipe(recipeId: RecipeId): AppResult<RecipeDocument?> =
         firestoreCall(dispatchers) { paths.recipe(recipeId).get() }.decoded()
 
     suspend fun save(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
         dto: RecipeDto,
     ): AppResult<Unit> =
         when (val guarded = dto.withinDocumentLimit()) {
             is AppResult.Failure -> guarded
-            is AppResult.Success -> writes.optimistically(errors.of(userId)) { write(userId, recipeId, dto) }
+            is AppResult.Success -> writes.optimistically(errors.of(kitchenId)) { write(kitchenId, recipeId, dto) }
         }
 
     suspend fun remove(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
-    ): AppResult<Unit> = writes.optimistically(errors.of(userId)) { paths.savedRecipe(userId, recipeId).delete() }
+    ): AppResult<Unit> = writes.optimistically(errors.of(kitchenId)) { paths.savedRecipe(kitchenId, recipeId).delete() }
 
     // No merge: it would leave the steps of a previous version of this id next to the new ones.
     private suspend fun write(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
         dto: RecipeDto,
-    ) = paths.savedRecipe(userId, recipeId).set(dto, merge = false) { encodeDefaults = true }
+    ) = paths.savedRecipe(kitchenId, recipeId).set(dto, merge = false) { encodeDefaults = true }
 
     private fun AppResult<DocumentSnapshot>.decoded(): AppResult<RecipeDocument?> =
         when (this) {

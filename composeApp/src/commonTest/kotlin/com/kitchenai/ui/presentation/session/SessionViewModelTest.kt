@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.GoogleIdToken
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.ShoppingList
 import com.kitchenai.shared.domain.model.UserId
@@ -13,10 +14,12 @@ import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
+import com.kitchenai.shared.domain.usecase.kitchen.EnsureKitchenUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
+import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
@@ -45,6 +48,7 @@ import kotlin.time.Instant
 class SessionViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val sessions = FakeSessionPort()
+    private var kitchens = FakeKitchenPort()
     private val lists = FakeShoppingListPort()
     private val profiles = FakeUserProfilePort()
 
@@ -101,6 +105,20 @@ class SessionViewModelTest {
             advanceUntilIdle()
 
             assertEquals(SessionUiState.Failed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
+        }
+
+    /** The gate's own new call site (#194): a kitchen that fails to resolve must not reach Ready. */
+    @Test
+    fun `a failed kitchen ensure ends in Failed before the shopping list is ever touched`() =
+        runTest(dispatcher) {
+            kitchens = FakeKitchenPort(initial = null, readError = AppError.Network())
+            val viewModel = viewModel()
+
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Failed(UiText.of(Res.string.error_no_connection)), viewModel.state.value)
+            assertEquals(0, lists.upsertCount)
         }
 
     @Test
@@ -214,9 +232,10 @@ class SessionViewModelTest {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         return SessionViewModel(
             ensureSession = EnsureSessionUseCase(sessions),
+            ensureKitchen = EnsureKitchenUseCase(kitchens),
             ensureDefaultShoppingList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
             observeUserProfile = ObserveUserProfileUseCase(profiles),
-            saveUserProfile = SaveUserProfileUseCase(profiles, FakeTaxonomyPort(), time),
+            saveUserProfile = SaveUserProfileUseCase(profiles, FakeTaxonomyPort(), kitchens, time),
             time = time,
         )
     }
@@ -246,14 +265,14 @@ private class FakeShoppingListPort : ShoppingListRepositoryContract {
     var upsert: AppResult<Unit> = AppResult.Success(Unit)
     var upsertCount = 0
 
-    override fun observeLists(userId: UserId): Flow<List<ShoppingList>> = emptyFlow()
+    override fun observeLists(kitchenId: KitchenId): Flow<List<ShoppingList>> = emptyFlow()
 
-    override fun listErrors(userId: UserId): Flow<AppError> = emptyFlow()
+    override fun listErrors(kitchenId: KitchenId): Flow<AppError> = emptyFlow()
 
-    override suspend fun getLists(userId: UserId): AppResult<List<ShoppingList>> = AppResult.Success(emptyList())
+    override suspend fun getLists(kitchenId: KitchenId): AppResult<List<ShoppingList>> = AppResult.Success(emptyList())
 
     override suspend fun upsertList(
-        userId: UserId,
+        kitchenId: KitchenId,
         list: ShoppingList,
     ): AppResult<Unit> {
         upsertCount++
@@ -277,6 +296,11 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
     override fun observeProfile(userId: UserId): Flow<UserProfile> = profiles
 
     override fun profileErrors(userId: UserId): Flow<AppError> = errors
+
+    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> =
+        AppResult.Failure(
+            AppError.NotFound("profile"),
+        )
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
         counter.withLock { saves++ }

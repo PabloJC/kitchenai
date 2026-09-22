@@ -1,6 +1,8 @@
 package com.kitchenai.shared.data.remote.firebase
 
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
+import com.kitchenai.shared.domain.model.KitchenJoinCode
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.ShoppingItemId
@@ -23,37 +25,46 @@ class FirestorePaths(
     // reference to it could only ever produce a permission denial.
     fun user(uid: UserId): DocumentReference = firestore.collection(USERS).document(uid.value)
 
-    fun pantry(uid: UserId): CollectionReference = user(uid).collection(PANTRY)
+    fun kitchens(): CollectionReference = firestore.collection(KITCHENS)
+
+    fun kitchen(kitchenId: KitchenId): DocumentReference = kitchens().document(kitchenId.value)
+
+    // `{ kitchenId }` only: lets a non-member resolve a join code without reading the kitchen
+    // document it points at. No collection accessor: nothing but this document is ever addressed.
+    fun kitchenInvite(code: KitchenJoinCode): DocumentReference =
+        firestore.collection(KITCHEN_INVITES).document(code.value)
+
+    fun pantry(kitchenId: KitchenId): CollectionReference = kitchen(kitchenId).collection(PANTRY)
 
     fun pantryItem(
-        uid: UserId,
+        kitchenId: KitchenId,
         itemId: PantryItemId,
-    ): DocumentReference = pantry(uid).document(itemId.value)
+    ): DocumentReference = pantry(kitchenId).document(itemId.value)
 
-    fun shoppingLists(uid: UserId): CollectionReference = user(uid).collection(SHOPPING_LISTS)
+    fun shoppingLists(kitchenId: KitchenId): CollectionReference = kitchen(kitchenId).collection(SHOPPING_LISTS)
 
     fun shoppingList(
-        uid: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
-    ): DocumentReference = shoppingLists(uid).document(listId.value)
+    ): DocumentReference = shoppingLists(kitchenId).document(listId.value)
 
     fun shoppingListItems(
-        uid: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
-    ): CollectionReference = shoppingList(uid, listId).collection(ITEMS)
+    ): CollectionReference = shoppingList(kitchenId, listId).collection(ITEMS)
 
     fun shoppingListItem(
-        uid: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         itemId: ShoppingItemId,
-    ): DocumentReference = shoppingListItems(uid, listId).document(itemId.value)
+    ): DocumentReference = shoppingListItems(kitchenId, listId).document(itemId.value)
 
-    fun savedRecipes(uid: UserId): CollectionReference = user(uid).collection(SAVED_RECIPES)
+    fun savedRecipes(kitchenId: KitchenId): CollectionReference = kitchen(kitchenId).collection(SAVED_RECIPES)
 
     fun savedRecipe(
-        uid: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
-    ): DocumentReference = savedRecipes(uid).document(recipeId.value)
+    ): DocumentReference = savedRecipes(kitchenId).document(recipeId.value)
 
     fun taxonomies(): CollectionReference = firestore.collection(TAXONOMIES)
 
@@ -76,6 +87,8 @@ class FirestorePaths(
 
     private companion object {
         const val USERS = "users"
+        const val KITCHENS = "kitchens"
+        const val KITCHEN_INVITES = "kitchenInvites"
         const val PANTRY = "pantry"
         const val SHOPPING_LISTS = "shoppingLists"
         const val ITEMS = "items"

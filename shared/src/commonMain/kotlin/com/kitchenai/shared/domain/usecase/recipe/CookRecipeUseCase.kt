@@ -2,13 +2,13 @@ package com.kitchenai.shared.domain.usecase.recipe
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
@@ -31,13 +31,13 @@ class CookRecipeUseCase(
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
         servings: Int,
     ): AppResult<Unit> =
         when (val found = recipes.getRecipe(recipeId)) {
             is AppResult.Failure -> found
-            is AppResult.Success -> invoke(userId, found.data, servings)
+            is AppResult.Success -> invoke(kitchenId, found.data, servings)
         }
 
     /**
@@ -45,19 +45,19 @@ class CookRecipeUseCase(
      * asked about, so re-reading it by id would fail for the only kind this app suggests.
      */
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipe: Recipe,
         servings: Int,
     ): AppResult<Unit> {
         val scaled = recipe.scaledTo(servings)
         if (scaled is AppResult.Failure) return scaled
-        val held = pantry.getPantry(userId)
+        val held = pantry.getPantry(kitchenId)
         if (held is AppResult.Failure) return held
-        return cook(userId, (scaled as AppResult.Success).data, (held as AppResult.Success).data)
+        return cook(kitchenId, (scaled as AppResult.Success).data, (held as AppResult.Success).data)
     }
 
     private suspend fun cook(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipe: Recipe,
         held: List<PantryItem>,
     ): AppResult<Unit> {
@@ -67,7 +67,7 @@ class CookRecipeUseCase(
         if (missing > 0) {
             return AppResult.Failure(AppError.Validation("ingredients", "missing required ingredients: $missing"))
         }
-        return consume(userId, match.consumptions(held))
+        return consume(kitchenId, match.consumptions(held))
     }
 
     /**

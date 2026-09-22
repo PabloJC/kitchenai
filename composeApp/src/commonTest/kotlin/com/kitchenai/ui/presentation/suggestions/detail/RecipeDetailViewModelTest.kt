@@ -19,6 +19,7 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
@@ -32,6 +33,7 @@ import com.kitchenai.shared.domain.usecase.recipe.SaveRecipeUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
+import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
@@ -473,6 +475,7 @@ class RecipeDetailViewModelTest {
     private val catalogue = FakeIngredientPort()
     private val items = FakeShoppingItemPort()
     private var lists = FakeShoppingListPort()
+    private val kitchens = FakeKitchenPort()
 
     private fun started(
         pantry: List<PantryItem>,
@@ -506,7 +509,7 @@ class RecipeDetailViewModelTest {
                     ),
                 defaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
             )
-        return RecipeDetailViewModel(reads, writes)
+        return RecipeDetailViewModel(reads, writes, ObserveKitchenUseCase(kitchens))
             .also { it.start(user, recipeId, listOf("en"), "List") }
     }
 

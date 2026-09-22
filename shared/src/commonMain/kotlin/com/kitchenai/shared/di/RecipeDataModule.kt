@@ -14,5 +14,5 @@ import org.koin.dsl.module
 val recipeDataModule: Module =
     module {
         single { RecipeRemoteDataSource(get(), get(), get()) }
-        single<RecipeRepositoryContract> { RecipeRepository(get(), get(), get(), get()) }
+        single<RecipeRepositoryContract> { RecipeRepository(get(), get(), get(), get(), get()) }
     }

@@ -3,6 +3,7 @@ package com.kitchenai.shared.domain.usecase.recipe
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
@@ -17,7 +18,7 @@ import kotlinx.coroutines.flow.flowOf
 
 /**
  * In-memory [RecipeRepositoryContract]. [catalogue] holds recipes nobody saved, so that a test
- * can read one by id without first putting it in the user's library. [stored] seeds the local
+ * can read one by id without first putting it in the kitchen's library. [stored] seeds the local
  * generation cache, a separate list from [catalogue] and [saved].
  */
 class FakeRecipeRepositoryContract(
@@ -34,9 +35,10 @@ class FakeRecipeRepositoryContract(
 
     // A failing listener stops emitting and reports on its keyed error stream, which is what
     // the real adapter does with a Firestore snapshot error.
-    override fun observeSavedRecipes(userId: UserId): Flow<List<Recipe>> = if (readError == null) state else emptyFlow()
+    override fun observeSavedRecipes(kitchenId: KitchenId): Flow<List<Recipe>> =
+        if (readError == null) state else emptyFlow()
 
-    override fun savedRecipeErrors(userId: UserId): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
+    override fun savedRecipeErrors(kitchenId: KitchenId): Flow<AppError> = readError?.let { flowOf(it) } ?: emptyFlow()
 
     override suspend fun getRecipe(recipeId: RecipeId): AppResult<Recipe> {
         readError?.let { return AppResult.Failure(it) }
@@ -45,12 +47,12 @@ class FakeRecipeRepositoryContract(
     }
 
     override suspend fun saveRecipe(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipe: Recipe,
     ): AppResult<Unit> = write { saved -> saved.filterNot { it.id == recipe.id } + recipe }
 
     override suspend fun removeSavedRecipe(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
     ): AppResult<Unit> = write { saved -> saved.filterNot { it.id == recipeId } }
 
@@ -66,6 +68,10 @@ class FakeRecipeRepositoryContract(
 
 // Fixtures. Titles and free text are placeholders derived from an id: naming a dish, a cuisine
 // or an ingredient in a fixture is the same mistake as naming it in code.
+internal val kitchen: KitchenId = (KitchenId.of("kitchen-1") as AppResult.Success).data
+
+// The profile owner, kept separate from [kitchen]: #191 scopes saved recipes and the pantry to
+// the kitchen, but a profile — read by SuggestRecipesUseCase — is still read by user.
 internal val user: UserId = (UserId.of("user-1") as AppResult.Success).data
 
 internal fun recipeId(raw: String): RecipeId = (RecipeId.of(raw) as AppResult.Success).data

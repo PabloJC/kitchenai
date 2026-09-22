@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Taxonomy
@@ -12,6 +13,7 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.merge
@@ -45,6 +48,7 @@ import kotlinx.coroutines.launch
 class PantryViewModel(
     private val reads: PantryReadsDelegate,
     private val writes: PantryWritesDelegate,
+    private val observeKitchen: ObserveKitchenUseCase,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PantryUiState())
     val state: StateFlow<PantryUiState> = _state.asStateFlow()
@@ -67,8 +71,11 @@ class PantryViewModel(
     private val errors = MutableStateFlow<Map<Source, UiText>>(emptyMap())
 
     private var started = false
-    private var user: UserId? = null
     private var languageTags: List<String> = emptyList()
+
+    // The kitchen a user belongs to can change while this screen is open (joining another one),
+    // so it is a listener like the pantry itself, not a value captured once at start().
+    private val kitchenId = MutableStateFlow<KitchenId?>(null)
 
     /** Idempotent: a configuration change composes the screen again, not a second set of listeners. */
     fun start(
@@ -77,9 +84,9 @@ class PantryViewModel(
     ) {
         if (started) return
         started = true
-        user = userId
         this.languageTags = languageTags
-        watchPantry(userId)
+        watchKitchen(userId)
+        watchPantry()
         watchCatalogue()
         watchVocabulary()
         watchProjection()
@@ -98,28 +105,28 @@ class PantryViewModel(
      * the network, which is what makes the list move while offline.
      */
     fun save(draft: PantryItemDraft) {
-        val userId = user ?: return
+        val kitchen = kitchenId.value ?: return
         val editing = _state.value.editing
         closeEditor()
         viewModelScope.launch {
             val quantity = Quantity(draft.amount, draft.unit)
             val result =
                 if (editing == null) {
-                    writes.add(userId, draft.ingredient, draft.freeText, quantity, draft.location, draft.expiresAt)
+                    writes.add(kitchen, draft.ingredient, draft.freeText, quantity, draft.location, draft.expiresAt)
                 } else {
-                    writes.update(userId, editing.applied(draft, writes.time.now()))
+                    writes.update(kitchen, editing.applied(draft, writes.time.now()))
                 }
             result.reportFailure()
         }
     }
 
     fun remove(item: PantryItemUi) {
-        val userId = user ?: return
+        val kitchen = kitchenId.value ?: return
         viewModelScope.launch {
             // The row is captured before the write: undo restores it under its own id rather than
             // adding a second holding of the same ingredient.
             val original = held.value?.firstOrNull { candidate -> candidate.id == item.id } ?: return@launch
-            when (val result = writes.remove(userId, item.id)) {
+            when (val result = writes.remove(kitchen, item.id)) {
                 is AppResult.Failure -> result.reportFailure()
                 is AppResult.Success -> _events.send(PantryEvent.ItemRemoved(item.name, original))
             }
@@ -128,15 +135,28 @@ class PantryViewModel(
 
     /** Takes the row to restore rather than remembering one: two quick removals do not race. */
     fun undoRemove(item: PantryItem) {
-        val userId = user ?: return
+        val kitchen = kitchenId.value ?: return
         viewModelScope.launch {
-            writes.update(userId, item).reportFailure()
+            writes.update(kitchen, item).reportFailure()
         }
     }
 
-    private fun watchPantry(userId: UserId) {
+    private fun watchKitchen(userId: UserId) {
         viewModelScope.launch {
-            reads.pantry(userId).collect { items ->
+            observeKitchen(userId).collect { kitchen ->
+                kitchenId.value = kitchen.id
+                recovered(Source.KITCHEN)
+            }
+        }
+        viewModelScope.launch {
+            observeKitchen.errors(userId).collect { error -> fail(Source.KITCHEN, error) }
+        }
+    }
+
+    /** Restarted on every kitchen change via [flatMapLatest], rather than accumulating one listener per kitchen. */
+    private fun watchPantry() {
+        viewModelScope.launch {
+            kitchenId.filterNotNull().flatMapLatest(reads.pantry::invoke).collect { items ->
                 held.value = items
                 // Clearing belongs here rather than in render(): re-emitting an unchanged list
                 // leaves the combine silent, and a listener that recovered still recovered.
@@ -144,7 +164,10 @@ class PantryViewModel(
             }
         }
         viewModelScope.launch {
-            reads.pantry.errors(userId).collect { error -> fail(Source.PANTRY, error) }
+            kitchenId.filterNotNull().flatMapLatest(reads.pantry::errors).collect {
+                    error ->
+                fail(Source.PANTRY, error)
+            }
         }
     }
 
@@ -229,8 +252,10 @@ class PantryViewModel(
             current.copy(
                 items = items.orEmpty().map { item -> item.toUi(resolver, now) },
                 // Answered means emitted or failed. Only the pantry listener decides this: a
-                // broken catalogue leaves the rows loading, it does not replace them.
-                isLoading = items == null && Source.PANTRY !in projection.errors,
+                // broken catalogue leaves the rows loading, it does not replace them. A kitchen
+                // that never resolves also ends it — the pantry listener can never start without one.
+                isLoading =
+                    items == null && Source.PANTRY !in projection.errors && Source.KITCHEN !in projection.errors,
                 error = message,
                 ingredients = ingredients.map { ingredient -> ingredient.id to resolver.nameOf(ingredient) },
                 units = terms.optionsIn(taxonomies.of(TaxonomyPurpose.UNITS) + ingredients.unitTaxonomies(), resolver),
@@ -277,6 +302,7 @@ private data class Projection(
 
 /** The listeners this screen keeps open, each owning its own message. */
 private enum class Source {
+    KITCHEN,
     PANTRY,
     CATALOGUE,
     TERMS,

@@ -3,7 +3,7 @@ package com.kitchenai.shared.data.remote.dto
 import kotlinx.serialization.Serializable
 
 /**
- * The `users/{uid}/pantry/{itemId}` document.
+ * The `kitchens/{kitchenId}/pantry/{itemId}` document.
  *
  * Flat rather than nested: nested objects make partial updates and index definitions harder for
  * no gain here. Exactly one of [ingredientId] and [freeText] is set — the invariant the domain

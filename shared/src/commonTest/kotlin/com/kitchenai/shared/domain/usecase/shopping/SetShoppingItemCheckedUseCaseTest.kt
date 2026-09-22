@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 
 class SetShoppingItemCheckedUseCaseTest {
     private val list = listId()
-    private val user = userId()
+    private val kitchen = kitchenId()
     private val port = FakeShoppingItemRepositoryContract()
     private val useCase = SetShoppingItemCheckedUseCase(port, fixedTime(2_000))
 
@@ -18,8 +18,8 @@ class SetShoppingItemCheckedUseCaseTest {
         runTest {
             port.seed(list, shoppingItem("milk"))
 
-            useCase(user, list, itemId("milk"), checked = true)
-            useCase(user, list, itemId("milk"), checked = true)
+            useCase(kitchen, list, itemId("milk"), checked = true)
+            useCase(kitchen, list, itemId("milk"), checked = true)
 
             assertEquals(listOf(true), port.itemsOf(list).map { it.checked })
         }
@@ -29,8 +29,8 @@ class SetShoppingItemCheckedUseCaseTest {
         runTest {
             port.seed(list, shoppingItem("milk").copy(checked = true))
 
-            useCase(user, list, itemId("milk"), checked = true)
-            useCase(user, list, itemId("milk"), checked = false)
+            useCase(kitchen, list, itemId("milk"), checked = true)
+            useCase(kitchen, list, itemId("milk"), checked = false)
 
             assertEquals(listOf(false), port.itemsOf(list).map { it.checked })
         }
@@ -40,7 +40,7 @@ class SetShoppingItemCheckedUseCaseTest {
         runTest {
             port.seed(list, shoppingItem("milk"))
 
-            val result = useCase(user, list, itemId("bread"), checked = true)
+            val result = useCase(kitchen, list, itemId("bread"), checked = true)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.NotFound)

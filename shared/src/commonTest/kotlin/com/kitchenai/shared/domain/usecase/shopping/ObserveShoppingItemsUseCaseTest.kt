@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 
 class ObserveShoppingItemsUseCaseTest {
     private val list = listId()
-    private val user = userId()
+    private val kitchen = kitchenId()
 
     @Test
     fun `unchecked lines come first and each group is ordered by its last update`() =
@@ -23,7 +23,7 @@ class ObserveShoppingItemsUseCaseTest {
                 shoppingItem("added-early", seconds = 10),
             )
 
-            ObserveShoppingItemsUseCase(port)(user, list).test {
+            ObserveShoppingItemsUseCase(port)(kitchen, list).test {
                 assertEquals(
                     listOf("added-early", "added-late", "bought-early", "bought-late"),
                     awaitItem().map { it.id.value },
@@ -37,8 +37,8 @@ class ObserveShoppingItemsUseCaseTest {
         runTest {
             val useCase = ObserveShoppingItemsUseCase(FakeShoppingItemRepositoryContract(AppError.Network()))
 
-            useCase(user, list).test { awaitComplete() }
-            useCase.errors(user, list).test {
+            useCase(kitchen, list).test { awaitComplete() }
+            useCase.errors(kitchen, list).test {
                 assertTrue(awaitItem() is AppError.Network)
                 awaitComplete()
             }
@@ -49,6 +49,6 @@ class ObserveShoppingItemsUseCaseTest {
         runTest {
             val port = FakeShoppingItemRepositoryContract(AppError.Network(), failingList = listId("other"))
 
-            ObserveShoppingItemsUseCase(port).errors(user, list).test { awaitComplete() }
+            ObserveShoppingItemsUseCase(port).errors(kitchen, list).test { awaitComplete() }
         }
 }

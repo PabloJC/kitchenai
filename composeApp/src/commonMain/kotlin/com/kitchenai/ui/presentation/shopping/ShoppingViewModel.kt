@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
@@ -11,6 +12,7 @@ import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -43,6 +46,7 @@ import kotlinx.coroutines.launch
  */
 class ShoppingViewModel(
     private val ensureDefaultShoppingList: EnsureDefaultShoppingListUseCase,
+    private val observeKitchen: ObserveKitchenUseCase,
     private val reads: ShoppingReadsDelegate,
     private val writes: ShoppingWritesDelegate,
 ) : ViewModel() {
@@ -53,8 +57,15 @@ class ShoppingViewModel(
     private var started = false
 
     // Written by the bootstrap coroutine and read by every public method, so not plain fields.
-    private val userId = MutableStateFlow<UserId?>(null)
-    private val listId = MutableStateFlow<ShoppingListId?>(null)
+    // The kitchen can change while this screen is open (joining another one), so it is a
+    // listener, not a value captured once — every default-list bootstrap below re-runs for it.
+    private val kitchenId = MutableStateFlow<KitchenId?>(null)
+
+    // Set together, only once a list has actually resolved for that exact kitchen: kitchenId
+    // updates as soon as the kitchen listener emits, but the matching list id only arrives once
+    // ensureDefaultShoppingList resolves for it. Reading them as two independent flows in edit()
+    // let a kitchen change pair the new kitchen with the previous one's list id.
+    private val activeList = MutableStateFlow<Pair<KitchenId, ShoppingListId>?>(null)
 
     // Null until the first emission. An empty list and a list nobody has sent yet look the same
     // on screen otherwise, and one of them is still loading.
@@ -116,22 +127,59 @@ class ShoppingViewModel(
     ) {
         if (started) return
         started = true
-        this.userId.value = userId
         this.languageTags = languageTags
         rebuildResolver()
         listName.value = defaultListName
         watchCatalogue()
         watchUnits()
+        watchKitchen(userId)
+        watchDefaultList(defaultListName)
+    }
+
+    private fun watchKitchen(userId: UserId) {
         viewModelScope.launch {
-            val labels = languageTags.take(1).associateWith { defaultListName }
-            when (val list = ensureDefaultShoppingList(userId, labels)) {
-                is AppResult.Failure -> {
-                    itemsError.value = list.error.describe(Res.string.error_unauthorized_list)
-                    itemsAnswered.value = true
-                }
-                is AppResult.Success -> {
-                    listId.value = list.data
-                    watchItems(userId, list.data)
+            observeKitchen(userId).collect { kitchen -> kitchenId.value = kitchen.id }
+        }
+        viewModelScope.launch {
+            observeKitchen.errors(userId).collect { error ->
+                itemsError.value = error.describe(Res.string.error_unauthorized_list)
+                itemsAnswered.value = true
+            }
+        }
+    }
+
+    /**
+     * Re-runs the whole bootstrap — ensuring the default list, then its items — for every kitchen
+     * the user is in over the life of the screen. [collectLatest] cancels the previous kitchen's
+     * item listeners (started inside the same [coroutineScope]) before this runs for the new one.
+     */
+    private fun watchDefaultList(defaultListName: String) {
+        viewModelScope.launch {
+            kitchenId.filterNotNull().collectLatest { kitchen ->
+                val labels = languageTags.take(1).associateWith { defaultListName }
+                when (val list = ensureDefaultShoppingList(kitchen, labels)) {
+                    is AppResult.Failure -> {
+                        itemsError.value = list.error.describe(Res.string.error_unauthorized_list)
+                        itemsAnswered.value = true
+                    }
+                    is AppResult.Success -> {
+                        activeList.value = kitchen to list.data
+                        coroutineScope {
+                            launch {
+                                reads.items(kitchen, list.data).collect { loaded ->
+                                    items.value = loaded
+                                    itemsError.value = null
+                                    itemsAnswered.value = true
+                                }
+                            }
+                            launch {
+                                reads.items.errors(kitchen, list.data).collect { error ->
+                                    itemsError.value = error.describe(Res.string.error_unauthorized_list)
+                                    itemsAnswered.value = true
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -142,13 +190,13 @@ class ShoppingViewModel(
         itemId: ShoppingItemId,
         checked: Boolean,
     ) {
-        edit { user, list -> writes.setChecked(user, list, itemId, checked) }
+        edit { kitchen, list -> writes.setChecked(kitchen, list, itemId, checked) }
     }
 
     fun remove(itemId: ShoppingItemId) {
         val item = items.value?.firstOrNull { it.id == itemId } ?: return
-        edit { user, list ->
-            val result = writes.remove(user, list, itemId)
+        edit { kitchen, list ->
+            val result = writes.remove(kitchen, list, itemId)
             if (result is AppResult.Success) _events.send(ShoppingEvent.ItemRemoved(item.label(resolver.value), item))
             result
         }
@@ -156,9 +204,9 @@ class ShoppingViewModel(
 
     /** Adds the line back rather than resurrecting it: the removed document is gone on every device. */
     fun undoRemove(item: ShoppingItem) {
-        edit { user, list ->
+        edit { kitchen, list ->
             writes.add(
-                userId = user,
+                kitchenId = kitchen,
                 listId = list,
                 ingredient = item.ingredient,
                 freeText = item.freeText,
@@ -170,16 +218,16 @@ class ShoppingViewModel(
 
     fun clearChecked() {
         val count = state.value.checked.size
-        edit { user, list ->
-            val result = writes.clearChecked(user, list)
+        edit { kitchen, list ->
+            val result = writes.clearChecked(kitchen, list)
             if (result is AppResult.Success) _events.send(ShoppingEvent.CheckedCleared(count))
             result
         }
     }
 
     fun moveCheckedToPantry() {
-        edit { user, list ->
-            val result = writes.moveCheckedToPantry(user, list)
+        edit { kitchen, list ->
+            val result = writes.moveCheckedToPantry(kitchen, list)
             if (result is AppResult.Success) {
                 _events.send(ShoppingEvent.MovedToPantry(result.data.moved, result.data.skipped))
             }
@@ -202,9 +250,9 @@ class ShoppingViewModel(
         val picked = current.picked
         if (picked == null && text.isEmpty()) return
         val dispatched =
-            edit { user, list ->
+            edit { kitchen, list ->
                 writes.add(
-                    userId = user,
+                    kitchenId = kitchen,
                     listId = list,
                     ingredient = picked?.id,
                     freeText = if (picked == null) text else null,
@@ -213,29 +261,6 @@ class ShoppingViewModel(
         // Only once the write is on its way: clearing first loses the line the user typed while
         // the default list was still resolving.
         if (dispatched) draft.value = ShoppingDraftUi()
-    }
-
-    /**
-     * Both streams of the list, as the port's contract requires: the data one goes quiet when the
-     * listener fails, so an empty screen without this second collector would read as an empty list.
-     */
-    private fun watchItems(
-        userId: UserId,
-        listId: ShoppingListId,
-    ) {
-        viewModelScope.launch {
-            reads.items(userId, listId).collect { loaded ->
-                items.value = loaded
-                itemsError.value = null
-                itemsAnswered.value = true
-            }
-        }
-        viewModelScope.launch {
-            reads.items.errors(userId, listId).collect { error ->
-                itemsError.value = error.describe(Res.string.error_unauthorized_list)
-                itemsAnswered.value = true
-            }
-        }
     }
 
     /** Rebuilt from every source at once: a resolver missing one of them answers with an id. */
@@ -320,13 +345,12 @@ class ShoppingViewModel(
      * whether it dispatched at all: until the default list resolves there is nothing to write
      * to, and a caller that has taken something from the user needs to know that.
      */
-    private fun edit(block: suspend (UserId, ShoppingListId) -> AppResult<*>): Boolean {
-        val user = userId.value ?: return false
-        val list = listId.value ?: return false
+    private fun edit(block: suspend (KitchenId, ShoppingListId) -> AppResult<*>): Boolean {
+        val (kitchen, list) = activeList.value ?: return false
         viewModelScope.launch {
             // A write that lands clears the last one that did not: the banner belongs to the
             // most recent attempt, not to the first that ever failed.
-            when (val result = block(user, list)) {
+            when (val result = block(kitchen, list)) {
                 is AppResult.Failure -> writeFailure.value = result.error.describe(Res.string.error_unauthorized_list)
                 is AppResult.Success -> writeFailure.value = null
             }

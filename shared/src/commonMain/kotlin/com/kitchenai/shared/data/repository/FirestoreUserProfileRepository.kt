@@ -3,6 +3,7 @@ package com.kitchenai.shared.data.repository
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.DispatcherProvider
+import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.data.mapper.toDomain
 import com.kitchenai.shared.data.mapper.toDto
 import com.kitchenai.shared.data.remote.dto.UserProfileDto
@@ -40,6 +41,9 @@ class FirestoreUserProfileRepository(
     }
 
     override fun profileErrors(userId: UserId): Flow<AppError> = errors.of(userId).asSharedFlow()
+
+    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> =
+        firestoreCall(dispatchers) { paths.user(userId).get() }.flatMap { it.toProfile() }
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> =
         firestoreCall(dispatchers) {

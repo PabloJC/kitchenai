@@ -4,10 +4,10 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.TermRef
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
@@ -26,7 +26,7 @@ class AddPantryItemUseCase(
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         ingredient: IngredientId?,
         freeText: String?,
         quantity: Quantity,
@@ -44,15 +44,16 @@ class AddPantryItemUseCase(
                 )
             quantity.amount <= 0.0 -> AppResult.Failure(AppError.Validation("amount", "must be greater than zero"))
             else ->
-                when (val held = pantry.getPantry(userId)) {
+                when (val held = pantry.getPantry(kitchenId)) {
                     is AppResult.Failure -> held
-                    is AppResult.Success -> write(userId, held.data, ingredient, text, quantity, location, expiresAt)
+                    is AppResult.Success ->
+                        write(kitchenId, held.data, ingredient, text, quantity, location, expiresAt)
                 }
         }
     }
 
     private suspend fun write(
-        userId: UserId,
+        kitchenId: KitchenId,
         held: List<PantryItem>,
         ingredient: IngredientId?,
         freeText: String?,
@@ -63,7 +64,7 @@ class AddPantryItemUseCase(
         val built = draftPantryHolding(held, ingredient, freeText, quantity, location, expiresAt, ids, time.now())
         return when (built) {
             is AppResult.Failure -> built
-            is AppResult.Success -> pantry.upsert(userId, built.data).map { built.data }
+            is AppResult.Success -> pantry.upsert(kitchenId, built.data).map { built.data }
         }
     }
 }

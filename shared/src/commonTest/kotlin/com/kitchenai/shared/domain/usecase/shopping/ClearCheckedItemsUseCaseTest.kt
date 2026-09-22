@@ -16,7 +16,7 @@ class ClearCheckedItemsUseCaseTest {
             val port = FakeShoppingItemRepositoryContract()
             port.seed(list, shoppingItem("milk").copy(checked = true), shoppingItem("bread"))
 
-            ClearCheckedItemsUseCase(port)(userId(), list)
+            ClearCheckedItemsUseCase(port)(kitchenId(), list)
 
             assertEquals(listOf("bread"), port.itemsOf(list).map { it.id.value })
         }
@@ -25,7 +25,7 @@ class ClearCheckedItemsUseCaseTest {
     fun `the port failure travels back as it is`() =
         runTest {
             val useCase = ClearCheckedItemsUseCase(FakeShoppingItemRepositoryContract(AppError.Network()))
-            val result = useCase(userId(), list)
+            val result = useCase(kitchenId(), list)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Network)

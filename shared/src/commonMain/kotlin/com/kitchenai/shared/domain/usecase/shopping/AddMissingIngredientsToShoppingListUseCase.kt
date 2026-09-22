@@ -5,6 +5,7 @@ import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.AddedToListSummary
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Quantity
@@ -14,7 +15,6 @@ import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
-import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.scaledTo
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.IngredientRepositoryContract
@@ -43,14 +43,14 @@ class AddMissingIngredientsToShoppingListUseCase(
     private val time: TimeProvider,
 ) {
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         recipeId: RecipeId,
         servings: Int,
     ): AppResult<AddedToListSummary> =
         when (val found = recipes.getRecipe(recipeId)) {
             is AppResult.Failure -> found
-            is AppResult.Success -> invoke(userId, listId, found.data, servings)
+            is AppResult.Success -> invoke(kitchenId, listId, found.data, servings)
         }
 
     /**
@@ -58,19 +58,19 @@ class AddMissingIngredientsToShoppingListUseCase(
      * asked about, so re-reading it by id would fail for the only kind this app suggests.
      */
     suspend operator fun invoke(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         recipe: Recipe,
         servings: Int,
     ): AppResult<AddedToListSummary> {
         val scaled = recipe.scaledTo(servings)
         if (scaled is AppResult.Failure) return scaled
-        val held = pantry.getPantry(userId)
+        val held = pantry.getPantry(kitchenId)
         if (held is AppResult.Failure) return held
-        val current = shoppingItems.getItems(userId, listId)
+        val current = shoppingItems.getItems(kitchenId, listId)
         if (current is AppResult.Failure) return current
         return add(
-            userId,
+            kitchenId,
             listId,
             (scaled as AppResult.Success).data,
             (held as AppResult.Success).data,
@@ -79,7 +79,7 @@ class AddMissingIngredientsToShoppingListUseCase(
     }
 
     private suspend fun add(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         recipe: Recipe,
         held: List<PantryItem>,
@@ -90,7 +90,7 @@ class AddMissingIngredientsToShoppingListUseCase(
         if (wanted.isEmpty()) return AppResult.Success(summary)
         return when (val drafted = draft(current, wanted)) {
             is AppResult.Failure -> drafted
-            is AppResult.Success -> shoppingItems.upsertItems(userId, listId, drafted.data).map { summary }
+            is AppResult.Success -> shoppingItems.upsertItems(kitchenId, listId, drafted.data).map { summary }
         }
     }
 

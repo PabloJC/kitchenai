@@ -2,10 +2,10 @@ package com.kitchenai.shared.domain.port
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
-import com.kitchenai.shared.domain.model.UserId
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -16,13 +16,13 @@ import kotlinx.coroutines.flow.Flow
  */
 interface ShoppingItemRepositoryContract {
     fun observeItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): Flow<List<ShoppingItem>>
 
     /** Failures of the listener above, keyed like it: a broken list is not every list. */
     fun itemErrors(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): Flow<AppError>
 
@@ -31,32 +31,32 @@ interface ShoppingItemRepositoryContract {
      * listener would hang forever once that listener has failed.
      */
     suspend fun getItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<List<ShoppingItem>>
 
     /** One method, not two: a single-item write is a batch of one, and adds no capability. */
     suspend fun upsertItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         items: List<ShoppingItem>,
     ): AppResult<Unit>
 
     suspend fun removeItem(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         itemId: ShoppingItemId,
     ): AppResult<Unit>
 
     /** A named batch rather than repeated [removeItem] calls: moving five lines is one round trip. */
     suspend fun removeItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
         ids: List<ShoppingItemId>,
     ): AppResult<Unit>
 
     suspend fun removeCheckedItems(
-        userId: UserId,
+        kitchenId: KitchenId,
         listId: ShoppingListId,
     ): AppResult<Unit>
 }

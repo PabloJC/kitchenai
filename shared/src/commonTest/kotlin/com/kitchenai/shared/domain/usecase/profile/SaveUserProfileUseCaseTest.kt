@@ -14,14 +14,19 @@ import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
+import com.kitchenai.shared.domain.usecase.kitchen.FakeKitchenRepositoryContract
+import com.kitchenai.shared.domain.usecase.kitchen.kitchen
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class SaveUserProfileUseCaseTest {
@@ -29,17 +34,15 @@ class SaveUserProfileUseCaseTest {
     private val alsoKnown = termRef("t1", "b")
     private val unknown = termRef("t9", "a")
     private val savedAt = Instant.fromEpochSeconds(500)
+    private val userId = (UserId.of("u1") as AppResult.Success).data
     private val profiles = RecordingProfilePort()
-    private val profile =
-        UserProfile.newFor(
-            (UserId.of("u1") as AppResult.Success).data,
-            listOf("xx"),
-            Instant.fromEpochSeconds(1),
-        )
+    private val kitchens = FakeKitchenRepositoryContract(kitchen(id = "kitchen-1", ownerId = userId))
+    private val profile = UserProfile.newFor(userId, listOf("xx"), Instant.fromEpochSeconds(1))
     private val save =
         SaveUserProfileUseCase(
             profiles,
             FakeTaxonomyPort(AppResult.Success(listOf(Taxonomy(known.taxonomy, emptyMap())))),
+            kitchens,
             TimeProvider { savedAt },
         )
 
@@ -50,6 +53,16 @@ class SaveUserProfileUseCaseTest {
 
             assertEquals(AppResult.Success(Unit), result)
             assertEquals(savedAt, profiles.saved?.updatedAt)
+        }
+
+    @Test
+    fun `the first-ever save has no previous profile to read and still completes`() =
+        runTest {
+            profiles.existing = null
+
+            val result = save(profile.copy(displayName = "New Name"))
+
+            assertEquals(AppResult.Success(Unit), result)
         }
 
     @Test
@@ -94,10 +107,71 @@ class SaveUserProfileUseCaseTest {
             val error = AppError.Network()
             val failing = FakeTaxonomyPort(AppResult.Failure(error))
 
-            val result = SaveUserProfileUseCase(profiles, failing, TimeProvider { savedAt })(profile)
+            val result = SaveUserProfileUseCase(profiles, failing, kitchens, TimeProvider { savedAt })(profile)
 
             assertSame(error, result.errorOrNull())
             assertNull(profiles.saved)
+        }
+
+    @Test
+    fun `a changed display name refreshes the caller's entry in the kitchen`() =
+        runTest {
+            profiles.existing = profile.copy(displayName = "Old Name")
+
+            val result = save(profile.copy(displayName = "New Name"))
+
+            assertEquals(AppResult.Success(Unit), result)
+            assertEquals(listOf(Triple(userId, kitchens.current!!.id, "New Name")), kitchens.updatedDisplayNames)
+        }
+
+    @Test
+    fun `an unchanged display name does not touch the kitchen`() =
+        runTest {
+            profiles.existing = profile.copy(displayName = "Same Name")
+
+            save(profile.copy(displayName = "Same Name"))
+
+            assertTrue(kitchens.updatedDisplayNames.isEmpty())
+        }
+
+    @Test
+    fun `no display name at all does not touch the kitchen`() =
+        runTest {
+            profiles.existing = profile
+
+            save(profile.copy(displayName = null))
+
+            assertTrue(kitchens.updatedDisplayNames.isEmpty())
+        }
+
+    @Test
+    fun `a kitchen sync failure does not fail an already-committed profile save`() =
+        runTest {
+            profiles.existing = profile.copy(displayName = "Old Name")
+            kitchens.updateMyDisplayNameResult = AppResult.Failure(AppError.Network())
+
+            val result = save(profile.copy(displayName = "New Name"))
+
+            assertEquals(AppResult.Success(Unit), result)
+            assertEquals("New Name", profiles.saved?.displayName)
+        }
+
+    @Test
+    fun `no kitchen yet is not a failure`() =
+        runTest {
+            val noKitchen = FakeKitchenRepositoryContract()
+            val useCase =
+                SaveUserProfileUseCase(
+                    profiles,
+                    FakeTaxonomyPort(AppResult.Success(listOf(Taxonomy(known.taxonomy, emptyMap())))),
+                    noKitchen,
+                    TimeProvider { savedAt },
+                )
+
+            val result = useCase(profile.copy(displayName = "New Name"))
+
+            assertEquals(AppResult.Success(Unit), result)
+            assertTrue(noKitchen.updatedDisplayNames.isEmpty())
         }
 
     private fun avoid(term: TermRef) = DietaryConstraint(term, ConstraintStrength.AVOID)
@@ -109,9 +183,21 @@ private class RecordingProfilePort : UserProfileRepositoryContract {
     var saved: UserProfile? = null
         private set
 
-    override fun observeProfile(userId: UserId): Flow<UserProfile> = flowOf()
+    /** What [getProfile] reports before [save] overwrites it, so a "changed name" test has a baseline. */
+    var existing: UserProfile? = null
+
+    /**
+     * Mirrors the real `FirestoreUserProfileRepository`: a listener that never emits and never
+     * completes when there is no profile document yet — exactly the shape that made
+     * `observeProfile(...).firstOrNull()` hang forever on the first-ever save. Never collected by
+     * a correct [SaveUserProfileUseCase], which must read through [getProfile] instead.
+     */
+    override fun observeProfile(userId: UserId): Flow<UserProfile> = flow { awaitCancellation() }
 
     override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()
+
+    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> =
+        existing?.let { AppResult.Success(it) } ?: AppResult.Failure(AppError.NotFound("profile"))
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
         saved = profile

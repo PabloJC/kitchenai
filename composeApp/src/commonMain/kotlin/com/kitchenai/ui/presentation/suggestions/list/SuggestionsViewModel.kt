@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
@@ -19,12 +21,17 @@ import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_suggestions
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,6 +44,7 @@ import kotlinx.coroutines.launch
  * session, which is what [started] guards. A model call costs money and takes the better part
  * of a minute; the one thing that must never happen again is one firing per tab tap (#52, #133).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class SuggestionsViewModel(
     private val suggestRecipes: SuggestRecipesUseCase,
     private val getStoredSuggestions: GetStoredSuggestionsUseCase,
@@ -45,6 +53,7 @@ class SuggestionsViewModel(
     private val observeSavedRecipes: ObserveSavedRecipesUseCase,
     private val matchRecipe: MatchRecipeAgainstPantryUseCase,
     private val observePantry: ObservePantryUseCase,
+    private val observeKitchen: ObserveKitchenUseCase,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(SuggestionsUiState())
     val state: StateFlow<SuggestionsUiState> = internalState.asStateFlow()
@@ -63,6 +72,15 @@ class SuggestionsViewModel(
     private var user: UserId? = null
     private var languageTags: List<String> = emptyList()
     private var started = false
+
+    // The kitchen a user belongs to can change while this screen is open (joining another one),
+    // so it is a listener like the pantry itself, not a value captured once at start().
+    private val kitchenId = MutableStateFlow<KitchenId?>(null)
+
+    // generate()'s own launch runs on viewModelScope, not as a child of the collectLatest below,
+    // so a kitchen change does not cancel it for free the way collectLatest cancels its own
+    // block. Tracked here so the kitchen-change path can cancel it explicitly.
+    private val generation = MutableStateFlow<Job?>(null)
 
     /** Idempotent: a configuration change composes the screen again and must not double the listener or the launch. */
     fun start(
@@ -83,15 +101,32 @@ class SuggestionsViewModel(
             }
         }
         viewModelScope.launch {
+            observeKitchen(userId).collect { kitchen -> kitchenId.value = kitchen.id }
+        }
+        viewModelScope.launch {
+            observeKitchen.errors(userId).collect { error ->
+                internalState.update { it.copy(error = error.describe(Res.string.error_unauthorized_suggestions)) }
+            }
+        }
+        viewModelScope.launch {
             // matchRecipe reads the pantry itself, but only once per call — combine so a saved
             // recipe's coverage is recomputed on a pantry change too, not only when the saved
             // list itself does.
-            combine(observeSavedRecipes(userId), observePantry(userId)) { recipes, _ -> recipes }
-                .collect { recipes -> matchSaved(userId, recipes) }
+            kitchenId.filterNotNull().flatMapLatest { id ->
+                combine(observeSavedRecipes(id), observePantry(id)) { recipes, _ -> id to recipes }
+            }.collect { (id, recipes) -> matchSaved(id, recipes) }
         }
         viewModelScope.launch {
-            showStored(userId)
-            generate()
+            // A kitchen change re-runs both: a different kitchen's pantry needs a fresh
+            // generation. The previous kitchen's generation is cancelled explicitly first:
+            // collectLatest only cancels this block's own coroutine, not generate()'s independent
+            // viewModelScope launch, so a stale answer would otherwise land as the new kitchen's.
+            kitchenId.filterNotNull().collectLatest { id ->
+                generation.value?.cancel()
+                internalState.update { it.copy(isGenerating = false) }
+                showStored(id)
+                generate()
+            }
         }
     }
 
@@ -111,22 +146,32 @@ class SuggestionsViewModel(
      */
     fun generate() {
         val userId = user ?: return
+        val kitchen = kitchenId.value ?: return
         if (internalState.value.isGenerating) return
         internalState.update { it.copy(isGenerating = true, error = null) }
-        viewModelScope.launch {
-            when (val answered = suggestRecipes(userId, languageTags, internalState.value.options.toDomain())) {
-                is AppResult.Failure -> fail(answered.error)
-                is AppResult.Success -> generated(answered.data)
+        generation.value =
+            viewModelScope.launch {
+                when (
+                    val answered =
+                        suggestRecipes(
+                            userId,
+                            kitchen,
+                            languageTags,
+                            internalState.value.options.toDomain(),
+                        )
+                ) {
+                    is AppResult.Failure -> fail(answered.error)
+                    is AppResult.Success -> generated(answered.data)
+                }
             }
-        }
     }
 
     private fun editOptions(block: (SuggestionOptionsUi) -> SuggestionOptionsUi) =
         internalState.update { current -> current.copy(options = block(current.options)) }
 
     /** What survived the last launch, shown while this one has nothing of its own yet. */
-    private suspend fun showStored(userId: UserId) {
-        val stored = (getStoredSuggestions(userId) as? AppResult.Success)?.data
+    private suspend fun showStored(kitchenId: KitchenId) {
+        val stored = (getStoredSuggestions(kitchenId) as? AppResult.Success)?.data
         if (stored.isNullOrEmpty()) return
         render(stored)
     }
@@ -157,12 +202,12 @@ class SuggestionsViewModel(
      * what is otherwise a working list.
      */
     private suspend fun matchSaved(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipes: List<Recipe>,
     ) {
         currentSaved =
             recipes.mapNotNull { recipe ->
-                val match = matchRecipe(userId, recipe) as? AppResult.Success ?: return@mapNotNull null
+                val match = matchRecipe(kitchenId, recipe) as? AppResult.Success ?: return@mapNotNull null
                 RecipeSuggestion(recipe, match.data, recipe.source)
             }
         reresolve()

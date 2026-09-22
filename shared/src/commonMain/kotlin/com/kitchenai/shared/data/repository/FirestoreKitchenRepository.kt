@@ -1,0 +1,255 @@
+package com.kitchenai.shared.data.repository
+
+import com.kitchenai.shared.core.AppError
+import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.core.DispatcherProvider
+import com.kitchenai.shared.core.flatMap
+import com.kitchenai.shared.core.getOrElse
+import com.kitchenai.shared.core.map
+import com.kitchenai.shared.data.mapper.toDomain
+import com.kitchenai.shared.data.mapper.toDto
+import com.kitchenai.shared.data.remote.dto.KitchenDto
+import com.kitchenai.shared.data.remote.dto.KitchenInviteDto
+import com.kitchenai.shared.data.remote.firebase.FirestorePaths
+import com.kitchenai.shared.data.remote.firebase.firestoreCall
+import com.kitchenai.shared.data.remote.firebase.reportingErrorsTo
+import com.kitchenai.shared.data.remote.firebase.toAppError
+import com.kitchenai.shared.domain.model.Kitchen
+import com.kitchenai.shared.domain.model.KitchenId
+import com.kitchenai.shared.domain.model.KitchenJoinCode
+import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.port.IdGenerator
+import com.kitchenai.shared.domain.port.KitchenRepositoryContract
+import dev.gitlive.firebase.firestore.DocumentSnapshot
+import dev.gitlive.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.firestore.QuerySnapshot
+import dev.gitlive.firebase.firestore.Transaction
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.transform
+
+/**
+ * [KitchenRepositoryContract] over `kitchens/{kitchenId}` and `kitchenInvites/{code}`. There is
+ * no `users/{uid}` field pointing at a member's kitchen, so "my kitchen" is a query
+ * (`memberIds` array-contains the uid) rather than a document read — the same query the
+ * Firestore rules use to authorise it.
+ *
+ * Membership writes go through [FirebaseFirestore.runTransaction]: joining reads the invite and
+ * the kitchen it names in the same round trip a stale, concurrently-regenerated code would
+ * invalidate, and every membership change reads the current member list before writing it back.
+ */
+class FirestoreKitchenRepository(
+    private val paths: FirestorePaths,
+    private val firestore: FirebaseFirestore,
+    private val ids: IdGenerator,
+    private val dispatchers: DispatcherProvider,
+) : KitchenRepositoryContract {
+    private val errors = KeyedErrorSinks<UserId>()
+
+    override fun observeMyKitchen(userId: UserId): Flow<Kitchen> {
+        val sink = errors.of(userId)
+        return paths
+            .kitchens()
+            .where { MEMBER_IDS contains userId.value }
+            .snapshots
+            .transform { snapshot -> emitOrReport(snapshot.toKitchen(), sink) }
+            .reportingErrorsTo(sink)
+    }
+
+    override fun kitchenErrors(userId: UserId): Flow<AppError> = errors.of(userId).asSharedFlow()
+
+    override suspend fun getMyKitchen(userId: UserId): AppResult<Kitchen> =
+        firestoreCall(dispatchers) { paths.kitchens().where { MEMBER_IDS contains userId.value }.get() }
+            .flatMap { it.toKitchen() }
+
+    override suspend fun createKitchen(
+        ownerId: UserId,
+        displayName: String?,
+    ): AppResult<Kitchen> {
+        val kitchenId = KitchenId.of(ids.newId()).getOrElse { return AppResult.Failure(it) }
+        val joinCode = KitchenJoinCode.of(ids.newId()).getOrElse { return AppResult.Failure(it) }
+        val kitchen =
+            Kitchen(
+                id = kitchenId,
+                ownerId = ownerId,
+                memberIds = setOf(ownerId),
+                joinCode = joinCode,
+                memberDisplayNames = displayName?.let { mapOf(ownerId.value to it) }.orEmpty(),
+            )
+        // A transaction, not a batch: the invite's create rule reads the kitchen document by
+        // get(), and only a transaction guarantees that read sees this same write's kitchen.
+        return firestoreCall(dispatchers) {
+            firestore.runTransaction {
+                set(paths.kitchen(kitchenId), kitchen.toDto()) { encodeDefaults = true }
+                set(paths.kitchenInvite(joinCode), KitchenInviteDto(kitchenId.value)) { encodeDefaults = true }
+            }
+        }.map { kitchen }
+    }
+
+    override suspend fun joinKitchen(
+        userId: UserId,
+        displayName: String?,
+        joinCode: KitchenJoinCode,
+    ): AppResult<Kitchen> =
+        firestoreCall(dispatchers) {
+            firestore.runTransaction { joinTransaction(userId, displayName, joinCode) }
+        }.flatMap { it }
+
+    override suspend fun leaveKitchen(
+        userId: UserId,
+        kitchenId: KitchenId,
+    ): AppResult<Unit> =
+        firestoreCall(dispatchers) {
+            firestore.runTransaction { removeFromKitchenTransaction(kitchenId, userId) }
+        }.flatMap { it }
+
+    override suspend fun removeMember(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+        memberId: UserId,
+    ): AppResult<Unit> =
+        firestoreCall(dispatchers) {
+            firestore.runTransaction { removeMemberTransaction(kitchenId, requesterId, memberId) }
+        }.flatMap { it }
+
+    override suspend fun regenerateJoinCode(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+    ): AppResult<Kitchen> =
+        firestoreCall(dispatchers) {
+            firestore.runTransaction { regenerateJoinCodeTransaction(kitchenId, requesterId) }
+        }.flatMap { it }
+
+    /** A single dotted-path write: no read needed, and no other member's entry is touched. */
+    override suspend fun updateMyDisplayName(
+        userId: UserId,
+        kitchenId: KitchenId,
+        displayName: String,
+    ): AppResult<Unit> =
+        firestoreCall(dispatchers) {
+            paths.kitchen(kitchenId).updateFields { "$MEMBER_DISPLAY_NAMES.${userId.value}" to displayName }
+        }
+
+    private suspend fun Transaction.joinTransaction(
+        userId: UserId,
+        displayName: String?,
+        joinCode: KitchenJoinCode,
+    ): AppResult<Kitchen> {
+        val invite = getInviteDto(joinCode).getOrElse { return AppResult.Failure(it) }
+        val kitchenId = KitchenId.of(invite.kitchenId.orEmpty()).getOrElse { return AppResult.Failure(it) }
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
+        val names = displayName?.let { dto.memberDisplayNames + (userId.value to it) } ?: dto.memberDisplayNames
+        val updated =
+            dto.copy(
+                memberIds = (dto.memberIds + userId.value).distinct(),
+                memberDisplayNames = names,
+            )
+        set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
+        return updated.toDomain(kitchenId.value)
+    }
+
+    private suspend fun Transaction.removeFromKitchenTransaction(
+        kitchenId: KitchenId,
+        userId: UserId,
+    ): AppResult<Unit> {
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
+        set(paths.kitchen(kitchenId), dto.withoutMember(userId)) { encodeDefaults = true }
+        return AppResult.Success(Unit)
+    }
+
+    private suspend fun Transaction.removeMemberTransaction(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+        memberId: UserId,
+    ): AppResult<Unit> {
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
+        if (dto.ownerId != requesterId.value) return AppResult.Failure(AppError.Unauthorized())
+        // Blocklisted, not just dropped from memberIds: the kitchen id is not a secret to a
+        // former member, so the join code alone cannot stop them rejoining by writing directly
+        // to this document — isSelfJoin in firestore.rules checks removedMemberIds precisely
+        // because of that.
+        val updated =
+            dto.withoutMember(
+                memberId,
+            ).copy(removedMemberIds = (dto.removedMemberIds + memberId.value).distinct())
+        set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
+        return AppResult.Success(Unit)
+    }
+
+    /** Deletes the old invite in the same transaction it writes the new one, so it stops resolving immediately. */
+    private suspend fun Transaction.regenerateJoinCodeTransaction(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+    ): AppResult<Kitchen> {
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
+        if (dto.ownerId != requesterId.value) return AppResult.Failure(AppError.Unauthorized())
+        val newCode = KitchenJoinCode.of(ids.newId()).getOrElse { return AppResult.Failure(it) }
+        val updated = dto.copy(joinCode = newCode.value)
+        set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
+        dto.joinCode.asJoinCodeOrNull()?.let { oldCode -> delete(paths.kitchenInvite(oldCode)) }
+        set(paths.kitchenInvite(newCode), KitchenInviteDto(kitchenId.value)) { encodeDefaults = true }
+        return updated.toDomain(kitchenId.value)
+    }
+
+    /** Shared by every membership write: a missing document or an undecodable one fail the same way. */
+    private suspend fun Transaction.getKitchenDto(kitchenId: KitchenId): AppResult<KitchenDto> {
+        val snapshot = get(paths.kitchen(kitchenId))
+        if (!snapshot.exists) return AppResult.Failure(AppError.NotFound(KITCHEN_RESOURCE))
+        return runCatching { snapshot.data(KitchenDto.serializer()) }.fold(
+            onSuccess = { AppResult.Success(it) },
+            onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
+        )
+    }
+
+    private suspend fun Transaction.getInviteDto(joinCode: KitchenJoinCode): AppResult<KitchenInviteDto> {
+        val snapshot = get(paths.kitchenInvite(joinCode))
+        if (!snapshot.exists) return AppResult.Failure(AppError.NotFound(INVITE_RESOURCE))
+        return runCatching { snapshot.data(KitchenInviteDto.serializer()) }.fold(
+            onSuccess = { AppResult.Success(it) },
+            onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
+        )
+    }
+
+    private fun KitchenDto.withoutMember(memberId: UserId): KitchenDto =
+        copy(
+            memberIds = memberIds - memberId.value,
+            memberDisplayNames = memberDisplayNames - memberId.value,
+        )
+
+    /** A code already stored is already valid; this only guards a document written by hand. */
+    private fun String?.asJoinCodeOrNull(): KitchenJoinCode? =
+        this?.let {
+                raw ->
+            KitchenJoinCode.of(raw).getOrElse { null }
+        }
+
+    private fun QuerySnapshot.toKitchen(): AppResult<Kitchen> {
+        val document = documents.firstOrNull() ?: return AppResult.Failure(AppError.NotFound(KITCHEN_RESOURCE))
+        return document.decode()
+    }
+
+    private fun DocumentSnapshot.decode(): AppResult<Kitchen> =
+        runCatching { data(KitchenDto.serializer()) }.fold(
+            onSuccess = { dto -> dto.toDomain(id) },
+            onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
+        )
+
+    private suspend fun FlowCollector<Kitchen>.emitOrReport(
+        decoded: AppResult<Kitchen>,
+        sink: MutableSharedFlow<AppError>,
+    ) = when (decoded) {
+        is AppResult.Success -> emit(decoded.data)
+        is AppResult.Failure -> sink.emit(decoded.error)
+    }
+
+    private companion object {
+        const val MEMBER_IDS = "memberIds"
+        const val MEMBER_DISPLAY_NAMES = "memberDisplayNames"
+
+        // The collection, never the identifier: an error carries no user content.
+        const val KITCHEN_RESOURCE = "kitchen"
+        const val INVITE_RESOURCE = "kitchenInvite"
+    }
+}

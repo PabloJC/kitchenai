@@ -10,23 +10,37 @@ strings, so a change here is a change in exactly one place.
 
 ```
 users/{uid}                                     profile document
-users/{uid}/pantry/{itemId}
-users/{uid}/shoppingLists/{listId}
-users/{uid}/shoppingLists/{listId}/items/{itemId}
-users/{uid}/savedRecipes/{recipeId}
+kitchens/{kitchenId}                            ownerId, memberIds, joinCode, memberDisplayNames
+kitchens/{kitchenId}/pantry/{itemId}
+kitchens/{kitchenId}/shoppingLists/{listId}
+kitchens/{kitchenId}/shoppingLists/{listId}/items/{itemId}
+kitchens/{kitchenId}/savedRecipes/{recipeId}
+kitchenInvites/{joinCode}                       { kitchenId } only — resolves a code to a
+                                                 kitchen without reading the kitchen document
 taxonomies/{taxonomyId}                         read-only catalogue
 taxonomies/{taxonomyId}/terms/{termId}
 ingredients/{ingredientId}                      read-only catalogue
 recipes/{recipeId}                              read-only catalogue
 ```
 
-Everything user-owned hangs off `users/{uid}`. That is what lets the rules in
-`firebase/firestore.rules` stay a two-line owner check instead of a per-collection audit. A
-new user-owned collection goes under `users/{uid}` or it needs its own rule and its own
-review.
+The profile stays user-owned, under `users/{uid}`; everything a kitchen's members share —
+pantry, shopping lists, saved recipes — hangs off `kitchens/{kitchenId}` instead. Before
+sharing existed (#190), all of it lived under `users/{uid}` and the rules were a two-line
+owner check; a shared collection cannot be authorised that way, since the check is no longer
+"does this uid match the path" but "is this uid a member of the kitchen the path names" —
+`firebase/firestore.rules`' `isKitchenMember` does that lookup against
+`kitchens/{kitchenId}.data.memberIds`. `kitchenInvites/{joinCode}` exists as its own top-level
+collection, not nested under the kitchen it points at, precisely so a caller who is not yet a
+member can resolve a join code (`kitchenInvites` grants `get` to any signed-in user) without
+that read requiring — or granting — access to the kitchen document itself. A new
+kitchen-shared collection goes under `kitchens/{kitchenId}` or it needs its own rule and its
+own review; a new per-user collection still goes under `users/{uid}`.
 
 The `users` collection itself is never listed: the rules deny it, and `FirestorePaths` has
-no accessor for it.
+no accessor for it. The `kitchens` collection can be listed by a signed-in caller, but only
+for kitchens where `request.auth.uid` is already in `memberIds` — a single kitchen document
+can still be fetched by id by anyone signed in, which is what lets a join transaction read
+the kitchen an invite names before its own write makes the caller a member of it.
 
 ---
 

@@ -14,9 +14,11 @@ import com.kitchenai.shared.data.mapper.toDto
 import com.kitchenai.shared.data.remote.dto.RecipeDto
 import com.kitchenai.shared.data.remote.firebase.RecipeDocument
 import com.kitchenai.shared.data.remote.firebase.RecipeRemoteDataSource
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.port.KitchenRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import kotlinx.coroutines.flow.Flow
@@ -34,38 +36,53 @@ import kotlinx.coroutines.flow.map
 class RecipeRepository(
     private val localDataSource: RecipeLocalDataSource,
     private val remoteDataSource: RecipeRemoteDataSource,
+    private val kitchens: KitchenRepositoryContract,
     private val time: TimeProvider,
     private val dispatchers: DispatcherProvider,
 ) : RecipeRepositoryContract {
     // --- Saved recipes and the catalogue, over RecipeRemoteDataSource ---
 
-    override fun observeSavedRecipes(userId: UserId): Flow<List<Recipe>> =
+    override fun observeSavedRecipes(kitchenId: KitchenId): Flow<List<Recipe>> =
         remoteDataSource
-            .observeSavedRecipes(userId)
+            .observeSavedRecipes(kitchenId)
             .map { documents -> documents.map { it.dto.toDomain(it.id) }.decodedOrDropped() }
 
-    override fun savedRecipeErrors(userId: UserId): Flow<AppError> = remoteDataSource.savedRecipeErrors(userId)
+    override fun savedRecipeErrors(kitchenId: KitchenId): Flow<AppError> = remoteDataSource.savedRecipeErrors(kitchenId)
 
     override suspend fun getRecipe(recipeId: RecipeId): AppResult<Recipe> =
         firstFound(RECIPE_RESOURCE, recipeReads(recipeId)).flatMap { document -> document.dto.toDomain(document.id) }
 
     override suspend fun saveRecipe(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipe: Recipe,
-    ): AppResult<Unit> = remoteDataSource.save(userId, recipe.id, recipe.toDto(time.now()))
+    ): AppResult<Unit> = remoteDataSource.save(kitchenId, recipe.id, recipe.toDto(time.now()))
 
     override suspend fun removeSavedRecipe(
-        userId: UserId,
+        kitchenId: KitchenId,
         recipeId: RecipeId,
-    ): AppResult<Unit> = remoteDataSource.remove(userId, recipeId)
+    ): AppResult<Unit> = remoteDataSource.remove(kitchenId, recipeId)
 
-    /** A saved copy is looked up before the catalogue, since a generated recipe exists nowhere else. */
+    /**
+     * A saved copy in the caller's own kitchen is looked up before the catalogue, since a
+     * generated recipe exists nowhere else. [getRecipe] takes no [KitchenId] (it also answers the
+     * shared catalogue), so the signed-in user's own kitchen is resolved here instead — lazily,
+     * like every other read in this list, so resolving it costs nothing unless [firstFound]
+     * actually reaches it.
+     */
     private fun recipeReads(recipeId: RecipeId): List<suspend () -> AppResult<RecipeDocument?>> =
         buildList {
-            remoteDataSource.currentUserId()?.let { userId ->
-                add { remoteDataSource.getSavedRecipe(userId, recipeId) }
-            }
+            remoteDataSource.currentUserId()?.let { userId -> add { savedRecipeRead(userId, recipeId) } }
             add { remoteDataSource.getCataloguedRecipe(recipeId) }
+        }
+
+    /** No kitchen yet means nothing to check before the catalogue; any other failure propagates. */
+    private suspend fun savedRecipeRead(
+        userId: UserId,
+        recipeId: RecipeId,
+    ): AppResult<RecipeDocument?> =
+        when (val kitchen = kitchens.getMyKitchen(userId)) {
+            is AppResult.Success -> remoteDataSource.getSavedRecipe(kitchen.data.id, recipeId)
+            is AppResult.Failure -> if (kitchen.error is AppError.NotFound) AppResult.Success(null) else kitchen
         }
 
     // --- The local generation cache, over RecipeLocalDataSource ---

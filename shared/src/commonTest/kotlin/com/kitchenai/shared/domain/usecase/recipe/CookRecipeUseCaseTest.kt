@@ -33,7 +33,7 @@ class CookRecipeUseCaseTest {
                 )
             val pantry = pantryOf(someOfIngredientOne)
 
-            val result = cook(dish, pantry)(user, dish.id, servings = 2)
+            val result = cook(dish, pantry)(kitchen, dish.id, servings = 2)
 
             val error = (result as AppResult.Failure).error
             assertTrue(error is AppError.Validation)
@@ -54,7 +54,7 @@ class CookRecipeUseCaseTest {
                 )
             val pantry = pantryOf(someOfIngredientOne, pantryItem("item-2", "ing-2", Quantity(4.0)))
 
-            val result = cook(dish, pantry)(user, dish.id, servings = 2)
+            val result = cook(dish, pantry)(kitchen, dish.id, servings = 2)
 
             assertTrue(result is AppResult.Success)
             assertEquals(Quantity(300.0, unit), pantry.quantityOf("item-1"))
@@ -68,7 +68,7 @@ class CookRecipeUseCaseTest {
             val dish = dishOf(recipeIngredient("ing-1", quantity = Quantity(200.0, unit)))
             val pantry = pantryOf(someOfIngredientOne)
 
-            cook(dish, pantry)(user, dish.id, servings = 4)
+            cook(dish, pantry)(kitchen, dish.id, servings = 4)
 
             assertEquals(Quantity(100.0, unit), pantry.quantityOf("item-1"))
         }
@@ -83,7 +83,7 @@ class CookRecipeUseCaseTest {
                 )
             val pantry = pantryOf(someOfIngredientOne)
 
-            val result = cook(dish, pantry)(user, dish.id, servings = 2)
+            val result = cook(dish, pantry)(kitchen, dish.id, servings = 2)
 
             assertTrue(result is AppResult.Success)
             assertEquals(Quantity(300.0, unit), pantry.quantityOf("item-1"))
@@ -95,7 +95,7 @@ class CookRecipeUseCaseTest {
             val dish = dishOf(recipeIngredient("ing-1"))
             val pantry = pantryOf(someOfIngredientOne)
 
-            val result = cook(dish, pantry)(user, dish.id, servings = 2)
+            val result = cook(dish, pantry)(kitchen, dish.id, servings = 2)
 
             assertTrue(result is AppResult.Success)
             assertEquals(Quantity(500.0, unit), pantry.quantityOf("item-1"))
@@ -116,8 +116,8 @@ class CookRecipeUseCaseTest {
                     TimeProvider { now },
                 )
 
-            assertTrue(useCase(user, dish.id, servings = 2) is AppResult.Failure)
-            assertTrue(useCase(user, dish, servings = 2) is AppResult.Success)
+            assertTrue(useCase(kitchen, dish.id, servings = 2) is AppResult.Failure)
+            assertTrue(useCase(kitchen, dish, servings = 2) is AppResult.Success)
             assertEquals(Quantity(300.0, unit), pantry.quantityOf("item-1"))
         }
 
@@ -127,7 +127,7 @@ class CookRecipeUseCaseTest {
             val dish = dishOf(recipeIngredient("ing-1", quantity = Quantity(200.0, unit)))
             val pantry = FakePantryRepositoryContract(readError = AppError.Network())
 
-            assertTrue(cook(dish, pantry)(user, dish.id, servings = 2) is AppResult.Failure)
+            assertTrue(cook(dish, pantry)(kitchen, dish.id, servings = 2) is AppResult.Failure)
         }
 
     // Two servings, so that asking for four is a doubling and not the recipe as it stands.
