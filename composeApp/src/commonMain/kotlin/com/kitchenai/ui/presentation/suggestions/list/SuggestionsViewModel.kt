@@ -22,6 +22,7 @@ import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_suggestions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +77,11 @@ class SuggestionsViewModel(
     // so it is a listener like the pantry itself, not a value captured once at start().
     private val kitchenId = MutableStateFlow<KitchenId?>(null)
 
+    // generate()'s own launch runs on viewModelScope, not as a child of the collectLatest below,
+    // so a kitchen change does not cancel it for free the way collectLatest cancels its own
+    // block. Tracked here so the kitchen-change path can cancel it explicitly.
+    private val generation = MutableStateFlow<Job?>(null)
+
     /** Idempotent: a configuration change composes the screen again and must not double the listener or the launch. */
     fun start(
         userId: UserId,
@@ -111,8 +117,13 @@ class SuggestionsViewModel(
             }.collect { (id, recipes) -> matchSaved(id, recipes) }
         }
         viewModelScope.launch {
-            // A kitchen change re-runs both: a different kitchen's pantry needs a fresh generation.
+            // A kitchen change re-runs both: a different kitchen's pantry needs a fresh
+            // generation. The previous kitchen's generation is cancelled explicitly first:
+            // collectLatest only cancels this block's own coroutine, not generate()'s independent
+            // viewModelScope launch, so a stale answer would otherwise land as the new kitchen's.
             kitchenId.filterNotNull().collectLatest { id ->
+                generation.value?.cancel()
+                internalState.update { it.copy(isGenerating = false) }
                 showStored(id)
                 generate()
             }
@@ -138,20 +149,21 @@ class SuggestionsViewModel(
         val kitchen = kitchenId.value ?: return
         if (internalState.value.isGenerating) return
         internalState.update { it.copy(isGenerating = true, error = null) }
-        viewModelScope.launch {
-            when (
-                val answered =
-                    suggestRecipes(
-                        userId,
-                        kitchen,
-                        languageTags,
-                        internalState.value.options.toDomain(),
-                    )
-            ) {
-                is AppResult.Failure -> fail(answered.error)
-                is AppResult.Success -> generated(answered.data)
+        generation.value =
+            viewModelScope.launch {
+                when (
+                    val answered =
+                        suggestRecipes(
+                            userId,
+                            kitchen,
+                            languageTags,
+                            internalState.value.options.toDomain(),
+                        )
+                ) {
+                    is AppResult.Failure -> fail(answered.error)
+                    is AppResult.Success -> generated(answered.data)
+                }
             }
-        }
     }
 
     private fun editOptions(block: (SuggestionOptionsUi) -> SuggestionOptionsUi) =

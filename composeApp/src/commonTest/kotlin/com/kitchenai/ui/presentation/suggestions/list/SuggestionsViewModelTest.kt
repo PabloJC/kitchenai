@@ -8,6 +8,7 @@ import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.HouseholdContext
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.MissingIngredient
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
@@ -36,6 +37,7 @@ import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.defaultKitchenId
+import com.kitchenai.ui.presentation.common.kitchen
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_timeout
@@ -105,6 +107,32 @@ class SuggestionsViewModelTest {
             advanceUntilIdle()
 
             assertEquals(listOf("recipe-2"), viewModel.state.value.suggestions.map { it.id.value })
+        }
+
+    @Test
+    fun `a kitchen change cancels an in-flight generation instead of leaving it stuck`() =
+        runTest(dispatcher) {
+            agent.gate = CompletableDeferred()
+
+            val viewModel = started()
+            dispatcher.scheduler.runCurrent()
+
+            // The first kitchen's generation is in flight, gated behind the model call.
+            assertTrue(viewModel.state.value.isGenerating)
+            assertEquals(1, agent.calls)
+
+            kitchens.emit(kitchen(id = KitchenId.of("kitchen-2").orFail()))
+            advanceUntilIdle()
+
+            // A second call for the new kitchen, not a silent no-op behind a guard the first,
+            // now-cancelled call left stuck at true.
+            assertEquals(2, agent.calls)
+            assertTrue(viewModel.state.value.isGenerating)
+
+            agent.gate?.complete(Unit)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.isGenerating)
         }
 
     @Test
