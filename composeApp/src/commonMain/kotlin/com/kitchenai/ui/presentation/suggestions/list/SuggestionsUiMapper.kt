@@ -24,6 +24,7 @@ internal fun RecipeSuggestion.toUi(resolver: LabelResolver): SuggestionUi {
         unverifiable = match.unverifiable.map { line -> line.name(resolver) },
         // Both ids travel as the response reported them; neither is named anywhere in this module.
         provenance = (source as? RecipeSource.Agent)?.let { ProvenanceUi(it.agentId.value, it.modelId) },
+        tagRefs = recipe.tags,
     )
 }
 

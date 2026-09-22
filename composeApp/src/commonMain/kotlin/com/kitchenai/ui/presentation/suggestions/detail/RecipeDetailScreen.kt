@@ -55,7 +55,7 @@ import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.LoadingState
-import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
+import com.kitchenai.ui.designsystem.component.RecipeImage
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.theme.Dimens
@@ -196,9 +196,9 @@ private fun Header(
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
 ) {
-    // Edge to edge, unlike everything below it: the slot a photograph will one day fill sits
-    // flush with the top of the scroll rather than margined like body content.
-    RecipeImagePlaceholder()
+    // Edge to edge, unlike everything below it: the photograph sits flush with the top of the
+    // scroll rather than margined like body content.
+    RecipeImage(tags = state.tagRefs)
     Column(
         modifier = Modifier.padding(horizontal = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),
