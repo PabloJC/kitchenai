@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +26,7 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.profile_kitchen_action
 import com.kitchenai.ui.resources.profile_no_preferences
 import com.kitchenai.ui.resources.profile_no_vocabulary
 import com.kitchenai.ui.resources.profile_save
@@ -41,6 +43,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ProfileScreen(
     userId: UserId,
+    onOpenKitchen: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = koinViewModel(),
 ) {
@@ -50,7 +53,8 @@ fun ProfileScreen(
 
     val error = state.error
     when {
-        !state.isLoading -> ProfileContent(state = state, viewModel = viewModel, modifier = modifier)
+        !state.isLoading ->
+            ProfileContent(state = state, viewModel = viewModel, onOpenKitchen = onOpenKitchen, modifier = modifier)
         error == null -> LoadingState(modifier)
         else -> ErrorState(message = error.message.resolve(), modifier = modifier)
     }
@@ -60,6 +64,7 @@ fun ProfileScreen(
 private fun ProfileContent(
     state: ProfileUiState,
     viewModel: ProfileViewModel,
+    onOpenKitchen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A Column with a weighted middle, not one LazyColumn top to bottom: TransparencyLine and
@@ -68,6 +73,12 @@ private fun ProfileContent(
     Column(modifier = modifier.fillMaxSize()) {
         Spacer(Modifier.height(Dimens.large))
         TransparencyLine()
+        Spacer(Modifier.height(Dimens.medium))
+        // Account and kitchen are both "about me" screens; kitchen membership has its own state
+        // and lives in presentation/kitchen/, so this is a link out rather than a section here.
+        TextButton(onClick = onOpenKitchen, modifier = Modifier.padding(horizontal = Dimens.large)) {
+            Text(stringResource(Res.string.profile_kitchen_action))
+        }
         Spacer(Modifier.height(Dimens.medium))
 
         if (state.isCatalogueLoaded && state.sections.isEmpty()) {
