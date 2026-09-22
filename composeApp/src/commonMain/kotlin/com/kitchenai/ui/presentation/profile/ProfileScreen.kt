@@ -15,13 +15,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.platform.rememberGoogleSignInLauncher
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
@@ -31,6 +35,7 @@ import com.kitchenai.ui.resources.profile_save
 import com.kitchenai.ui.resources.profile_saving
 import com.kitchenai.ui.resources.profile_sent_summary
 import com.kitchenai.ui.resources.profile_vocabulary_failed
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -46,7 +51,7 @@ fun ProfileScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(userId) { viewModel.start(userId) }
+    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags()) }
 
     val error = state.error
     when {
@@ -62,11 +67,29 @@ private fun ProfileContent(
     viewModel: ProfileViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val launcher = rememberGoogleSignInLauncher()
+    val scope = rememberCoroutineScope()
+
     // A Column with a weighted middle, not one LazyColumn top to bottom: TransparencyLine and
     // SaveRow stay fixed so the empty state has a bounded height to centre inside — matching
     // ShoppingScreen's own header/content/footer split — and Save never needs a scroll to reach.
     Column(modifier = modifier.fillMaxSize()) {
         Spacer(Modifier.height(Dimens.large))
+        AccountSection(
+            signedInWithGoogle = state.signedInWithGoogle,
+            displayName = state.displayName,
+            isAuthenticating = state.isAuthenticating,
+            onSignIn = {
+                scope.launch {
+                    when (val result = launcher.launch()) {
+                        is AppResult.Success -> viewModel.signInWithGoogle(result.data.token, result.data.displayName)
+                        is AppResult.Failure -> viewModel.onGoogleSignInFailed(result.error)
+                    }
+                }
+            },
+            onSignOut = viewModel::signOut,
+        )
+        Spacer(Modifier.height(Dimens.medium))
         TransparencyLine()
         Spacer(Modifier.height(Dimens.medium))
 

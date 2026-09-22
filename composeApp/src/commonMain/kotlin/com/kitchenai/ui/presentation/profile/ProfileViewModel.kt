@@ -2,14 +2,18 @@ package com.kitchenai.ui.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ConstraintStrength
+import com.kitchenai.shared.domain.model.GoogleIdToken
+import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
+import com.kitchenai.shared.domain.usecase.NoParams
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
@@ -18,10 +22,13 @@ import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCas
 import com.kitchenai.ui.presentation.common.UiText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -36,10 +43,14 @@ class ProfileViewModel(
     private val observeTaxonomy: ObserveTaxonomyUseCase,
     private val saveUserProfile: SaveUserProfileUseCase,
     private val toggleDietaryConstraint: ToggleDietaryConstraintUseCase,
+    private val accountDelegate: ProfileAccountDelegate,
 ) : ViewModel() {
     private val draft = MutableStateFlow<ProfileDraft?>(null)
     private val catalogue = MutableStateFlow(CatalogueState())
     private val saving = MutableStateFlow(false)
+    private val session = MutableStateFlow<Session?>(null)
+    private val authenticating = MutableStateFlow(false)
+    private val account = combine(session, authenticating, ::AccountState)
 
     // One per source, each cleared by its own stream recovering: a profile that loads again must
     // not silence a catalogue that is still broken, and neither may outlive its own failure.
@@ -56,15 +67,34 @@ class ProfileViewModel(
     private var started = false
     private var termListeners: Job? = null
 
+    // Which uid the profile listener follows. A plain start() argument would freeze it: Google
+    // sign-in swaps the Firebase user outright rather than linking (#186), so the profile this
+    // screen must show changes mid-session, not just once at start().
+    private val activeUserId = MutableStateFlow<UserId?>(null)
+    private var languageTags: List<String> = emptyList()
+
+    // The name the platform launcher returned, waiting for the profile it belongs to: a brand
+    // new Google account has no document yet, and an existing one only arrives once its own
+    // listener answers. A plain field, not a flow — only ever touched from viewModelScope jobs,
+    // all confined to Main, with no suspension between a read and the write that follows it.
+    private var pendingDisplayName: String? = null
+    private var creatingProfileFor: UserId? = null
+
     val state: StateFlow<ProfileUiState> =
-        combine(draft, catalogue, saving, failure, ::uiState)
+        combine(draft, catalogue, saving, account, failure, ::uiState)
             .stateIn(viewModelScope, SharingStarted.Eagerly, ProfileUiState())
 
     /** Idempotent: a configuration change composes the screen again and must not double the listeners. */
-    fun start(userId: UserId) {
+    fun start(
+        userId: UserId,
+        languageTags: List<String>,
+    ) {
         if (started) return
         started = true
-        watchProfile(userId)
+        this.languageTags = languageTags
+        activeUserId.value = userId
+        watchSession()
+        watchProfile()
         watchCatalogue()
     }
 
@@ -92,6 +122,62 @@ class ProfileViewModel(
         }
     }
 
+    /**
+     * The platform sheet (#188), then [ProfileAccountDelegate.signInWithGoogle] with the token
+     * it returned. [displayName] is Google's own, carried no further than
+     * [UserProfile.displayName] once a profile exists to hold it (#189) — no email, no photo
+     * URL enters domain state.
+     */
+    fun signInWithGoogle(
+        token: GoogleIdToken,
+        displayName: String?,
+    ) {
+        if (authenticating.value) return
+        authenticating.value = true
+        writeFailure.value = null
+        pendingDisplayName = displayName?.takeUnless(String::isBlank)
+        viewModelScope.launch {
+            when (val result = accountDelegate.signInWithGoogle(token)) {
+                is AppResult.Failure -> {
+                    pendingDisplayName = null
+                    writeFailure.value = result.error.toProfileError()
+                }
+                is AppResult.Success -> switchActiveUser(result.data.userId)
+            }
+            authenticating.value = false
+        }
+    }
+
+    /** A cancelled or failed platform sheet never reaches a use case, but still owes the user a reason. */
+    fun onGoogleSignInFailed(error: AppError) {
+        writeFailure.value = error.toProfileError()
+    }
+
+    fun signOut() {
+        if (authenticating.value) return
+        authenticating.value = true
+        writeFailure.value = null
+        viewModelScope.launch {
+            val result = accountDelegate.signOut(NoParams)
+            if (result is AppResult.Failure) writeFailure.value = result.error.toProfileError()
+            authenticating.value = false
+        }
+    }
+
+    /** The account changed identity, not just its data: the previous uid's draft belongs to a different profile. */
+    private fun switchActiveUser(userId: UserId) {
+        if (activeUserId.value == userId) {
+            // The same uid signed in again (a token refresh, not a new account): the listener
+            // never restarts, so nothing else will call applyPendingDisplayName for it.
+            draft.value?.profile?.let(::applyPendingDisplayName)
+            return
+        }
+        profileFailure.value = null
+        creatingProfileFor = null
+        draft.value = null
+        activeUserId.value = userId
+    }
+
     private fun edit(block: (UserProfile) -> UserProfile) {
         writeFailure.value = null
         draft.update { current -> current?.let { ProfileDraft(block(it.profile), edited = true) } }
@@ -106,13 +192,24 @@ class ProfileViewModel(
         return toggleDietaryConstraint(toggleDietaryConstraint(this, term, next), term, next)
     }
 
-    private fun watchProfile(userId: UserId) {
+    private fun watchSession() {
         viewModelScope.launch {
-            observeUserProfile(userId).collect { loaded -> onProfile(loaded) }
+            accountDelegate.observeSession().collect { current -> session.value = current }
         }
+    }
+
+    /**
+     * Reactive rather than a one-off pair of listeners from [start]: [activeUserId] changes
+     * whenever [signInWithGoogle] swaps the account, and [collectLatest] tears down the
+     * previous uid's listeners before opening the new one's.
+     */
+    private fun watchProfile() {
         viewModelScope.launch {
-            observeUserProfile.errors(userId).collect { error ->
-                profileFailure.value = error.toProfileError()
+            activeUserId.filterNotNull().collectLatest { userId ->
+                coroutineScope {
+                    launch { observeUserProfile(userId).collect { loaded -> onProfile(loaded) } }
+                    launch { observeUserProfile.errors(userId).collect { error -> onProfileError(userId, error) } }
+                }
             }
         }
     }
@@ -121,6 +218,55 @@ class ProfileViewModel(
     private fun onProfile(loaded: UserProfile) {
         profileFailure.value = null
         draft.update { current -> if (current?.edited == true) current else ProfileDraft(loaded) }
+        applyPendingDisplayName(loaded)
+    }
+
+    /**
+     * Skipped once the profile already carries the name, so a write's own echo does not save it
+     * twice. The fake local-cache echo a Firestore listener gives for free never arrives for a
+     * write this class itself made, so [draft] is updated here rather than waiting for one.
+     */
+    private fun applyPendingDisplayName(loaded: UserProfile) {
+        val name = pendingDisplayName ?: return
+        pendingDisplayName = null
+        if (loaded.displayName == name) return
+        val updated = loaded.copy(displayName = name)
+        viewModelScope.launch {
+            when (val result = saveUserProfile(updated)) {
+                is AppResult.Failure -> writeFailure.value = result.error.toProfileError()
+                is AppResult.Success ->
+                    draft.update { current -> if (current?.edited == true) current else ProfileDraft(updated) }
+            }
+        }
+    }
+
+    private fun onProfileError(
+        userId: UserId,
+        error: AppError,
+    ) {
+        profileFailure.value = error.toProfileError()
+        // Mirrors SessionViewModel's own handling: a brand-new Google account has no profile
+        // document yet, and nothing else creates one for it once the screen is already open.
+        if (error is AppError.NotFound) createProfileIfMissing(userId)
+    }
+
+    /** Written once per uid: two NotFound emissions before the write lands must not become two documents. */
+    private fun createProfileIfMissing(userId: UserId) {
+        if (draft.value?.profile?.userId == userId || creatingProfileFor == userId) return
+        creatingProfileFor = userId
+        val name = pendingDisplayName
+        pendingDisplayName = null
+        viewModelScope.launch {
+            val seeded =
+                UserProfile.newFor(userId, languageTags, accountDelegate.time.now()).let { profile ->
+                    name?.let { profile.copy(displayName = it) } ?: profile
+                }
+            val result = saveUserProfile(seeded)
+            if (result is AppResult.Failure) {
+                creatingProfileFor = null
+                writeFailure.value = result.error.toProfileError()
+            }
+        }
     }
 
     private fun watchCatalogue() {
@@ -163,6 +309,12 @@ class ProfileViewModel(
 internal data class ProfileDraft(
     val profile: UserProfile,
     val edited: Boolean = false,
+)
+
+/** What the account section needs: the session as Firebase reports it, and whether an action is in flight. */
+internal data class AccountState(
+    val session: Session?,
+    val authenticating: Boolean,
 )
 
 /** The catalogue as the screen needs it: what exists, what is in it, and what failed to load. */

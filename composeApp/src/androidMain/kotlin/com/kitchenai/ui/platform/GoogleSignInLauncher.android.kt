@@ -34,7 +34,7 @@ private class CredentialManagerGoogleSignInLauncher(
 ) : GoogleSignInLauncher {
     private val credentialManager = CredentialManager.create(context)
 
-    override suspend fun launch(): AppResult<GoogleIdToken> {
+    override suspend fun launch(): AppResult<GoogleSignInResult> {
         val request =
             GetCredentialRequest.Builder()
                 .addCredentialOption(
@@ -49,7 +49,7 @@ private class CredentialManagerGoogleSignInLauncher(
                 .build()
 
         return try {
-            credentialManager.getCredential(context, request).credential.toGoogleIdToken()
+            credentialManager.getCredential(context, request).credential.toGoogleSignInResult()
         } catch (failure: GetCredentialException) {
             // Cancellation arrives as a GetCredentialCancellationException, a subtype of this:
             // no dedicated AppError case exists for it yet, so it is Unknown with the cause kept.
@@ -57,12 +57,13 @@ private class CredentialManagerGoogleSignInLauncher(
         }
     }
 
-    private fun Credential.toGoogleIdToken(): AppResult<GoogleIdToken> {
+    private fun Credential.toGoogleSignInResult(): AppResult<GoogleSignInResult> {
         if (this !is CustomCredential || type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             return AppResult.Failure(AppError.Unknown(IllegalStateException("Unexpected credential type: $type")))
         }
         return try {
-            AppResult.Success(GoogleIdToken(GoogleIdTokenCredential.createFrom(data).idToken))
+            val credential = GoogleIdTokenCredential.createFrom(data)
+            AppResult.Success(GoogleSignInResult(GoogleIdToken(credential.idToken), credential.displayName))
         } catch (parsing: GoogleIdTokenParsingException) {
             AppResult.Failure(AppError.Unknown(parsing))
         }

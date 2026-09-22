@@ -24,6 +24,12 @@ data class ProfileUiState(
     // Surfaces ProfileDraft.edited: without it, the screen looks identical whether the last
     // toggle was written or is still only sitting in memory.
     val hasUnsavedChanges: Boolean = false,
+    // True only for a non-anonymous Session.SignedIn: an anonymous session is drawn the same
+    // way as a signed-out one, since neither has an account to show.
+    val signedInWithGoogle: Boolean = false,
+    // Google's own name, never an email or a photo: UserProfile carries nothing else from it.
+    val displayName: String? = null,
+    val isAuthenticating: Boolean = false,
     val error: ProfileError? = null,
 ) {
     /** A message belongs to an input only when the use case named that input. */

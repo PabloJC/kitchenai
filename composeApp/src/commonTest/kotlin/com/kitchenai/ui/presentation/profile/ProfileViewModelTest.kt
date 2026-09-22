@@ -3,6 +3,8 @@ package com.kitchenai.ui.presentation.profile
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ConstraintStrength
+import com.kitchenai.shared.domain.model.GoogleIdToken
+import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
@@ -11,6 +13,7 @@ import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
+import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
@@ -19,6 +22,9 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
+import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
+import com.kitchenai.shared.domain.usecase.session.SignInWithGoogleUseCase
+import com.kitchenai.shared.domain.usecase.session.SignOutUseCase
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
@@ -49,6 +55,8 @@ class ProfileViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val profiles = FakeUserProfilePort()
     private val catalogue = FakeTaxonomyPort()
+    private val sessions = FakeSessionPort(Session.SignedIn(userId, isAnonymous = true))
+    private val languageTags = listOf("en")
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -211,7 +219,7 @@ class ProfileViewModelTest {
     fun `a profile that never loads is a state the screen can draw`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId)
+            viewModel.start(userId, languageTags)
             advanceUntilIdle()
 
             profiles.errors.emit(AppError.Network())
@@ -226,7 +234,7 @@ class ProfileViewModelTest {
     fun `a refused save is shown even while a listener banner is still up`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId)
+            viewModel.start(userId, languageTags)
             publish("t-1" to 1)
             profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
             advanceUntilIdle()
@@ -247,7 +255,7 @@ class ProfileViewModelTest {
     fun `a vocabulary the app reads structurally is not offered as a preference`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId)
+            viewModel.start(userId, languageTags)
             catalogue.publish(
                 listOf(
                     taxonomy("t-1"),
@@ -266,7 +274,7 @@ class ProfileViewModelTest {
     fun `an empty catalogue is answered but not failed`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId)
+            viewModel.start(userId, languageTags)
             profiles.profiles.emit(profile())
             catalogue.publish(emptyList())
             advanceUntilIdle()
@@ -280,7 +288,7 @@ class ProfileViewModelTest {
     fun `a catalogue that has not answered is not a catalogue that failed`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId)
+            viewModel.start(userId, languageTags)
             profiles.profiles.emit(profile())
             advanceUntilIdle()
 
@@ -306,9 +314,52 @@ class ProfileViewModelTest {
             assertEquals(null, viewModel.state.value.generalError)
         }
 
+    @Test
+    fun `a successful sign-in updates the display name Google returned`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
+            advanceUntilIdle()
+
+            assertEquals("Ada Lovelace", profiles.saved?.displayName)
+            assertEquals(true, viewModel.state.value.signedInWithGoogle)
+            assertEquals("Ada Lovelace", viewModel.state.value.displayName)
+        }
+
+    @Test
+    fun `a failed sign-in leaves the previous state untouched`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            val before = viewModel.state.value
+            sessions.signInWithGoogleResult = AppResult.Failure(AppError.Network())
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.state.value.signedInWithGoogle)
+            assertEquals(before.displayName, viewModel.state.value.displayName)
+            assertEquals(before.sections, viewModel.state.value.sections)
+            assertEquals(0, profiles.saveCount)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
+        }
+
+    @Test
+    fun `signing out reaches the port and a failure is shown rather than swallowed`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.signOutResult = AppResult.Failure(AppError.Network())
+
+            viewModel.signOut()
+            advanceUntilIdle()
+
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
+        }
+
     private suspend fun TestScope.ready(vararg sizes: Pair<String, Int>): ProfileViewModel {
         val viewModel = viewModel()
-        viewModel.start(userId)
+        viewModel.start(userId, languageTags)
         publish(*sizes)
         profiles.profiles.emit(profile())
         advanceUntilIdle()
@@ -328,7 +379,7 @@ class ProfileViewModelTest {
             // `preferences` is a field no input on this screen renders, so the message has
             // nowhere of its own to go and must fall through to the general one.
             val viewModel = viewModel()
-            viewModel.start(userId)
+            viewModel.start(userId, languageTags)
             publish("t-1" to 1)
             profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
             advanceUntilIdle()
@@ -352,6 +403,13 @@ class ProfileViewModelTest {
                     TimeProvider { Instant.fromEpochSeconds(500) },
                 ),
             toggleDietaryConstraint = ToggleDietaryConstraintUseCase(),
+            accountDelegate =
+                ProfileAccountDelegate(
+                    observeSession = ObserveSessionUseCase(sessions),
+                    signInWithGoogle = SignInWithGoogleUseCase(sessions),
+                    signOut = SignOutUseCase(sessions),
+                    time = TimeProvider { Instant.fromEpochSeconds(500) },
+                ),
         )
 
     private fun profile(): UserProfile = UserProfile.newFor(userId, listOf("xx"), Instant.fromEpochSeconds(1))
@@ -434,4 +492,32 @@ private class FakeTaxonomyPort : TaxonomyRepositoryContract {
     }
 
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(published)
+}
+
+/** Stateful on purpose: a sign-in or sign-out has to be visible on the same stream [observeSession] exposes. */
+private class FakeSessionPort(
+    initial: Session,
+) : SessionRepositoryContract {
+    private val state = MutableStateFlow(initial)
+
+    var signInWithGoogleResult: AppResult<Session.SignedIn> =
+        AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
+    var signOutResult: AppResult<Unit> = AppResult.Success(Unit)
+
+    override fun observeSession(): Flow<Session> = state
+
+    override suspend fun signInAnonymously(): AppResult<Session.SignedIn> =
+        AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
+
+    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> {
+        val result = signInWithGoogleResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
+
+    override suspend fun signOut(): AppResult<Unit> {
+        val result = signOutResult
+        if (result is AppResult.Success) state.value = Session.SignedOut
+        return result
+    }
 }

@@ -2,7 +2,6 @@ package com.kitchenai.ui.platform
 
 import androidx.compose.runtime.Composable
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.domain.model.GoogleIdToken
 
 /**
  * Presents the platform's own Google Sign-In UI. A cancelled or failed attempt is an
@@ -10,7 +9,7 @@ import com.kitchenai.shared.domain.model.GoogleIdToken
  * exception type.
  */
 interface GoogleSignInLauncher {
-    suspend fun launch(): AppResult<GoogleIdToken>
+    suspend fun launch(): AppResult<GoogleSignInResult>
 }
 
 /**
