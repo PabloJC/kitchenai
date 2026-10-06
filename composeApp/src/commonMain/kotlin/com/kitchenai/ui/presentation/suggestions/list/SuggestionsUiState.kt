@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.suggestions.list
 
 import com.kitchenai.shared.domain.model.RecipeId
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.UiText
 
 /**
@@ -20,7 +21,10 @@ data class SuggestionsUiState(
     val options: SuggestionOptionsUi = SuggestionOptionsUi(),
 )
 
-/** One card. Everything here is already resolved to words; the screen looks nothing up. */
+/**
+ * One card. Every word here is already resolved; the screen looks no label up. [tagRefs] is the
+ * one exception — it feeds `RecipeImage`'s own lookup, not text on screen.
+ */
 data class SuggestionUi(
     val id: RecipeId,
     val title: String,
@@ -34,6 +38,8 @@ data class SuggestionUi(
     val unverifiable: List<String>,
     /** Null for anything not generated: a catalogue dish has nobody to attribute it to. */
     val provenance: ProvenanceUi?,
+    /** Unresolved, unlike everything above: `RecipeImage` reads it itself, the screen does not. */
+    val tagRefs: List<TermRef> = emptyList(),
 )
 
 /**

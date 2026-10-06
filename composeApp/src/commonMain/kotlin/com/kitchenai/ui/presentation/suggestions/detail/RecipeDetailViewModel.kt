@@ -329,6 +329,7 @@ class RecipeDetailViewModel(
                     },
                 steps = found.steps,
                 tags = found.tags.map(resolver::wordFor),
+                tagRefs = found.tags,
                 isLoading = false,
                 error = null,
             )
