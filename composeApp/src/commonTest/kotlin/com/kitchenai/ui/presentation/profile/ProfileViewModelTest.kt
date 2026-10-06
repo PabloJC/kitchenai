@@ -370,7 +370,7 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `after a sign-out the profile listener follows the fresh session's uid`() =
+    fun `after a sign-out the profile listener follows the uid the session hands over`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
             val freshUserId = (UserId.of("fresh-anonymous") as AppResult.Success).data
@@ -379,10 +379,45 @@ class ProfileViewModelTest {
             advanceUntilIdle()
             // What SessionViewModel's re-established anonymous session looks like from here.
             sessions.emit(Session.SignedIn(freshUserId, isAnonymous = true))
+            viewModel.start(freshUserId)
             advanceUntilIdle()
 
             assertEquals(freshUserId, profiles.observedUserIds.last())
             assertEquals(false, viewModel.state.value.signedInWithGoogle)
+        }
+
+    /** The raw session stream runs ahead of SessionViewModel's setup: only start() may move the listener. */
+    @Test
+    fun `a uid Firebase reports is not followed until the session hands it over`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            val googleUserId = (UserId.of("user-google") as AppResult.Success).data
+
+            sessions.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            assertEquals(listOf(userId), profiles.observedUserIds)
+            assertEquals(true, viewModel.state.value.signedInWithGoogle)
+        }
+
+    @Test
+    fun `a Google sign-in that swaps the uid applies the name once the new uid is handed over`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            val googleUserId = (UserId.of("user-google") as AppResult.Success).data
+            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(googleUserId, isAnonymous = false))
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
+            advanceUntilIdle()
+            assertEquals(0, profiles.saveCount)
+
+            viewModel.start(googleUserId)
+            profiles.profiles.emit(UserProfile.newFor(googleUserId, listOf("xx"), Instant.fromEpochSeconds(1)))
+            advanceUntilIdle()
+
+            assertEquals(googleUserId, profiles.observedUserIds.last())
+            assertEquals("Ada Lovelace", profiles.saved?.displayName)
+            assertEquals(googleUserId, profiles.saved?.userId)
         }
 
     private suspend fun TestScope.ready(vararg sizes: Pair<String, Int>): ProfileViewModel {

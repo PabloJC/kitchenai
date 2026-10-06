@@ -44,7 +44,7 @@ fun SessionGate(
     when (val resolved = state) {
         SessionUiState.Loading -> LoadingState(safe)
 
-        is SessionUiState.Failed ->
+        is SessionUiState.Failure ->
             ErrorState(
                 message = resolved.message.resolve(),
                 modifier = safe,

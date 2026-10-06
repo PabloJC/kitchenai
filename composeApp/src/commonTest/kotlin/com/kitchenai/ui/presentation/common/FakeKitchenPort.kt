@@ -22,7 +22,7 @@ val defaultKitchenId: KitchenId = (KitchenId.of("kitchen-1") as AppResult.Succes
  */
 class FakeKitchenPort(
     initial: Kitchen? = kitchen(),
-    private val readError: AppError? = null,
+    var readError: AppError? = null,
 ) : KitchenRepositoryContract {
     private val state = MutableStateFlow(initial)
 

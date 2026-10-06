@@ -9,5 +9,13 @@ sealed interface SessionUiState {
 
     data class Ready(val userId: UserId) : SessionUiState
 
-    data class Failed(val message: UiText) : SessionUiState
+    /** What the gate draws, and retries, for either kind of failure. */
+    sealed interface Failure : SessionUiState {
+        val message: UiText
+    }
+
+    data class Failed(override val message: UiText) : Failure
+
+    /** The uid changed after [Ready] and its setup failed; the user is signed in, so retry never restarts. */
+    data class SwitchFailed(override val message: UiText) : Failure
 }
