@@ -16,11 +16,7 @@ import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
-/**
- * [content] is composed only once the session exists. A screen built before that queries
- * `users/{uid}` without a uid and greets a new user with a permission error that fixes itself
- * a second later.
- */
+/** [content] composes only once the session exists: earlier, it would read `users/{uid}` with no uid. */
 @Composable
 fun SessionGate(
     defaultListName: String,
@@ -34,11 +30,8 @@ fun SessionGate(
     // The composition guards the recomposition, the ViewModel guards the configuration change.
     LaunchedEffect(Unit) { viewModel.start(platformLanguageTags(), defaultListName) }
 
-    // These two are the only screens drawn before the shell exists, so nothing else is padding
-    // them: the Scaffold that pads everything else lives inside `content`. Applied here rather
-    // than inside the components, which are used under that Scaffold and would double up.
-    // fillMaxSize is needed here, not left to the caller: App.kt hands this no modifier of its
-    // own, and ErrorState's centring only works within a height its modifier actually bounds.
+    // Drawn before the shell exists, so the Scaffold inside `content` pads neither; the components
+    // themselves must not, or they double up. fillMaxSize bounds the height ErrorState centres in.
     val safe = modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)
 
     when (val resolved = state) {

@@ -16,6 +16,6 @@ sealed interface SessionUiState {
 
     data class Failed(override val message: UiText) : Failure
 
-    /** The uid changed after [Ready] and its setup failed; the user is signed in, so retry never restarts. */
+    /** A uid change after [Ready] failed; the user is signed in, so retry follows the session instead of restarting. */
     data class SwitchFailed(override val message: UiText) : Failure
 }

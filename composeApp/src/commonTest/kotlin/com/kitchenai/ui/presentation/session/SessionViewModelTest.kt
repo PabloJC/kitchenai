@@ -22,10 +22,12 @@ import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
+import com.kitchenai.ui.presentation.common.PendingDisplayName
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_unauthorized_own_data
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -43,6 +45,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -52,6 +55,7 @@ class SessionViewModelTest {
     private var kitchens = FakeKitchenPort()
     private val lists = FakeShoppingListPort()
     private val profiles = FakeUserProfilePort()
+    private val pendingName = PendingDisplayName()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -108,7 +112,7 @@ class SessionViewModelTest {
             assertEquals(SessionUiState.Failed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
         }
 
-    /** The gate's own new call site (#194): a kitchen that fails to resolve must not reach Ready. */
+    /** A kitchen that fails to resolve must not reach Ready (#194). */
     @Test
     fun `a failed kitchen ensure ends in Failed before the shopping list is ever touched`() =
         runTest(dispatcher) {
@@ -195,15 +199,7 @@ class SessionViewModelTest {
             assertEquals(SessionUiState.Failed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
         }
 
-    /**
-     * The retry path after `Ready`, which had no coverage: the listener from the first attempt
-     * is still subscribed, so it and the bootstrap both reach `createProfile`.
-     *
-     * It runs on the test dispatcher rather than a real pool. An earlier version used
-     * `Dispatchers.Default` and a fixed settle delay, which made it flaky on a loaded CI
-     * machine, and it never proved the lock in `createProfile` anyway: that window is a few
-     * instructions with no suspension point, which no unit test can interleave on demand.
-     */
+    /** The first attempt's listener is still subscribed, so it and the bootstrap both reach `createProfile`. */
     @Test
     fun `a retry after Ready writes the profile once more and no further`() =
         runTest(dispatcher) {
@@ -229,12 +225,7 @@ class SessionViewModelTest {
             assertEquals(2, profiles.saveCount())
         }
 
-    /**
-     * The review finding this covers: `signInWithGoogle` swaps Firebase's own auth uid, but
-     * before this fix `SessionUiState.Ready` never moved off whatever uid `start()` first
-     * resolved, so every screen below `SessionGate` kept reading `users/{oldUid}` and the old
-     * uid's kitchen — failing permission checks — until the app was restarted.
-     */
+    /** A Google sign-in swaps the Firebase uid; `Ready` must follow it or every read keeps using the old one. */
     @Test
     fun `a Google sign-in swap while Ready moves the session to the new uid`() =
         runTest(dispatcher) {
@@ -283,10 +274,7 @@ class SessionViewModelTest {
             assertEquals(1, lists.upsertCount)
         }
 
-    /**
-     * The review finding behind this block: a failing setup after `Ready` used to land in the
-     * cold-start `Failed`, replacing the app for a user who had just signed in successfully.
-     */
+    /** A failing setup after `Ready` is not the cold-start `Failed`: the user has just signed in. */
     @Test
     fun `a kitchen failure after Ready is a switch failure that never reaches Ready for the new uid`() =
         runTest(dispatcher) {
@@ -398,6 +386,233 @@ class SessionViewModelTest {
         }
 
     @Test
+    fun `a name pending through a failed switch is applied to the existing profile once the retry succeeds`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            pendingName.expect("Ada Lovelace")
+            kitchens.readError = AppError.Network()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+            assertEquals(SessionUiState.SwitchFailed(UiText.of(Res.string.error_no_connection)), viewModel.state.value)
+
+            kitchens.readError = null
+            viewModel.retry()
+            advanceUntilIdle()
+            profiles.profiles.emit(UserProfile.newFor(googleUserId, listOf("aa"), Instant.fromEpochSeconds(0)))
+            advanceUntilIdle()
+
+            assertEquals("Ada Lovelace", profiles.saved?.displayName)
+            assertEquals(googleUserId, profiles.saved?.userId)
+            assertEquals(1, profiles.saveCount())
+            assertNull(pendingName.current.value)
+        }
+
+    @Test
+    fun `a name pending through a failed switch is written with the profile that retry creates`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            pendingName.expect("Ada Lovelace")
+            kitchens.readError = AppError.Network()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            kitchens.readError = null
+            viewModel.retry()
+            advanceUntilIdle()
+            profiles.errors.emit(AppError.NotFound("profile"))
+            advanceUntilIdle()
+
+            // One write, not a bare profile followed by a rename.
+            assertEquals(1, profiles.saveCount())
+            assertEquals("Ada Lovelace", profiles.saved?.displayName)
+            assertNull(pendingName.current.value)
+        }
+
+    @Test
+    fun `a name offered after the uid is already Ready is applied when the sign-in binds it`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+            profiles.profiles.emit(UserProfile.newFor(googleUserId, listOf("aa"), Instant.fromEpochSeconds(0)))
+            advanceUntilIdle()
+
+            pendingName.expect("Ada Lovelace")
+            pendingName.bind(googleUserId)
+            advanceUntilIdle()
+
+            assertEquals("Ada Lovelace", profiles.saved?.displayName)
+            assertNull(pendingName.current.value)
+        }
+
+    @Test
+    fun `a name whose sign-in has not named its uid yet is never written to the current profile`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            pendingName.expect("Ada Lovelace")
+            profiles.profiles.emit(UserProfile.newFor(userId, listOf("aa"), Instant.fromEpochSeconds(0)))
+            advanceUntilIdle()
+
+            assertEquals(0, profiles.saveCount())
+            assertEquals(PendingDisplayName.Entry("Ada Lovelace"), pendingName.current.value)
+        }
+
+    @Test
+    fun `a name bound to a uid is dropped when another uid becomes active`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            pendingName.expect("Ada Lovelace")
+            pendingName.bind(googleUserId)
+
+            val freshAnonymousId = (UserId.of("user-2") as AppResult.Success).data
+            sessions.signIn = AppResult.Success(Session.SignedIn(freshAnonymousId, isAnonymous = true))
+            sessions.sessionChanges.emit(Session.SignedOut)
+            advanceUntilIdle()
+            profiles.profiles.emit(UserProfile.newFor(freshAnonymousId, listOf("aa"), Instant.fromEpochSeconds(0)))
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(freshAnonymousId), viewModel.state.value)
+            assertEquals(0, profiles.saveCount())
+            assertNull(pendingName.current.value)
+        }
+
+    @Test
+    fun `a name that fails to save stays pending without a failure state or a retry loop`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+            profiles.saveResult = AppResult.Failure(AppError.Network())
+
+            pendingName.expect("Ada Lovelace")
+            pendingName.bind(googleUserId)
+            profiles.profiles.emit(UserProfile.newFor(googleUserId, listOf("aa"), Instant.fromEpochSeconds(0)))
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(googleUserId), viewModel.state.value)
+            assertEquals(1, profiles.saveCount())
+            assertEquals(PendingDisplayName.Entry("Ada Lovelace", googleUserId), pendingName.current.value)
+        }
+
+    @Test
+    fun `a profile that already carries the pending name is not written again`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            pendingName.expect("Ada Lovelace")
+            pendingName.bind(userId)
+            val named = UserProfile.newFor(userId, listOf("aa"), Instant.fromEpochSeconds(0))
+            profiles.profiles.emit(named.copy(displayName = "Ada Lovelace"))
+            advanceUntilIdle()
+
+            assertEquals(0, profiles.saveCount())
+            assertNull(pendingName.current.value)
+        }
+
+    @Test
+    fun `a profile write failing after a switch is a switch failure and not a cold-start one`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            profiles.saveResult = AppResult.Failure(AppError.Unauthorized())
+            profiles.errors.emit(AppError.NotFound("profile"))
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.SwitchFailed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
+        }
+
+    @Test
+    fun `retrying a failed profile write after a switch neither signs in again nor restarts the listener`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+            profiles.saveResult = AppResult.Failure(AppError.Unauthorized())
+            profiles.errors.emit(AppError.NotFound("profile"))
+            advanceUntilIdle()
+
+            profiles.saveResult = AppResult.Success(Unit)
+            viewModel.retry()
+            // A second tap while the first is in flight must not start a second write.
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(googleUserId), viewModel.state.value)
+            assertEquals(1, sessions.signInCount)
+            assertEquals(listOf(userId, googleUserId), profiles.observedUserIds)
+            assertEquals(2, profiles.saveCount())
+        }
+
+    @Test
+    fun `a profile write that fails again after a switch retry stays recoverable`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+            profiles.saveResult = AppResult.Failure(AppError.Unauthorized())
+            profiles.errors.emit(AppError.NotFound("profile"))
+            advanceUntilIdle()
+
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.SwitchFailed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
+            assertEquals(2, profiles.saveCount())
+        }
+
+    /** The retry's write is still open when the switch queues behind it: its failure belongs to nobody. */
+    @Test
+    fun `a profile write of the dropped uid failing mid-switch leaves no failure state behind`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            profiles.saveResult = AppResult.Failure(AppError.Unauthorized())
+            profiles.errors.emit(AppError.NotFound("profile"))
+            advanceUntilIdle()
+            val inFlight = CompletableDeferred<AppResult<Unit>>()
+            profiles.saveGates += inFlight
+
+            viewModel.state.test {
+                assertEquals(SessionUiState.Failed(UNAUTHORIZED_MESSAGE), awaitItem())
+                viewModel.retry()
+                assertEquals(SessionUiState.Loading, awaitItem())
+                assertEquals(SessionUiState.Ready(userId), awaitItem())
+
+                sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+                advanceUntilIdle()
+                inFlight.complete(AppResult.Failure(AppError.Unauthorized()))
+                advanceUntilIdle()
+
+                assertEquals(SessionUiState.Ready(googleUserId), awaitItem())
+                expectNoEvents()
+            }
+        }
+
+    @Test
     fun `a cold-start kitchen failure is still Failed and retry re-runs the bootstrap`() =
         runTest(dispatcher) {
             kitchens.readError = AppError.Network()
@@ -439,6 +654,7 @@ class SessionViewModelTest {
             observeSession = ObserveSessionUseCase(sessions),
             observeUserProfile = ObserveUserProfileUseCase(profiles),
             saveUserProfile = SaveUserProfileUseCase(profiles, FakeTaxonomyPort(), kitchens, time),
+            pendingDisplayName = pendingName,
             time = time,
         )
     }
@@ -449,13 +665,8 @@ private val googleUserId = (UserId.of("user-google") as AppResult.Success).data
 private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
 
 /**
- * A [MutableStateFlow], not a plain event stream: [EnsureSessionUseCase] reads
- * `observeSession().first()` to check whether a session already exists, exactly like the real
- * `FirebaseSessionAdapter` (which replays `auth.currentUser` synchronously on subscribe) —
- * a fake with nothing to replay would suspend that `.first()` forever. Sign-in and sign-out
- * update [sessionChanges]'s value themselves, and a test can additionally `.emit(...)` into it
- * directly to simulate Firebase's own auth state changing independently, which is what
- * [SessionViewModel.watchSessionChanges] reacts to.
+ * A [MutableStateFlow] on purpose: [EnsureSessionUseCase] reads `observeSession().first()`,
+ * which an empty flow would suspend forever. A test can emit into it to move the auth state.
  */
 private class FakeSessionPort : SessionRepositoryContract {
     var signIn: AppResult<Session.SignedIn> = AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
@@ -504,12 +715,13 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
     var saveResult: AppResult<Unit> = AppResult.Success(Unit)
     var saved: UserProfile? = null
 
-    // Counted under a lock: the concurrency test writes from more than one thread, and an
-    // undercount there would hide the very bug that test exists to catch.
     private val counter = Mutex()
     private var saves = 0
 
     suspend fun saveCount(): Int = counter.withLock { saves }
+
+    // Each queued gate holds one save open until the test completes it with that save's result.
+    val saveGates = ArrayDeque<CompletableDeferred<AppResult<Unit>>>()
 
     val observedUserIds = mutableListOf<UserId>()
 
@@ -528,7 +740,7 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
         counter.withLock { saves++ }
         saved = profile
-        return saveResult
+        return saveGates.removeFirstOrNull()?.await() ?: saveResult
     }
 }
 
