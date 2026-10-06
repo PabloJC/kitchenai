@@ -45,7 +45,6 @@ import com.kitchenai.ui.resources.kitchen_owner
 import com.kitchenai.ui.resources.kitchen_regenerate_action
 import com.kitchenai.ui.resources.kitchen_remove_action
 import com.kitchenai.ui.resources.kitchen_title
-import com.kitchenai.ui.resources.kitchen_you_suffix
 import com.kitchenai.ui.resources.kitchen_your_code
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -169,9 +168,8 @@ private fun MemberRow(
     isBusy: Boolean,
     onRemove: (UserId) -> Unit,
 ) {
-    val name = if (member.isSelf) stringResource(Res.string.kitchen_you_suffix, member.name) else member.name
     ListItem(
-        headlineContent = { Text(name) },
+        headlineContent = { Text(member.name.resolve()) },
         supportingContent = { if (member.isOwner) Text(stringResource(Res.string.kitchen_owner)) },
         trailingContent = {
             if (member.canRemove) {

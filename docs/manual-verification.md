@@ -188,8 +188,8 @@ Shopping tab, field "Add an item", type a word, tap "Add".*
      find after signing back in.
 5. Profile tab, "Manage your kitchen".
    - A different join code from scenario 1, and one member ending in "(you)" and "Owner". The name
-     is the Google name once it has synced into the kitchen; if the id shows instead, wait a second
-     and re-enter the screen, then record it.
+     is the Google name once it has synced into the kitchen; if the plain label "You" shows instead,
+     wait a second and re-enter the screen, then record it.
 6. Console.
    - *Authentication → Users*: a user with the Google provider, a different uid from scenario 1.
      The anonymous user is still there, now orphaned.
@@ -212,7 +212,7 @@ Shopping tab, field "Add an item", type a word, tap "Add".*
    - **Pantry** and **Shopping** load empty and **Ideas** loads, none of them with an error state.
      This is a new anonymous account, not the Google one with its data hidden.
 3. "Manage your kitchen".
-   - A third join code, one member, the id instead of a name.
+   - A third join code, one member, labelled "You" (an anonymous account has no name).
 4. Console.
    - *Authentication → Users*: a new anonymous user, a uid you have not seen yet.
    - A new `kitchens` document and a new `shoppingLists` document for it.
@@ -260,22 +260,21 @@ different accounts) if you want names in the member list; anonymous works for ev
    - The same two members appear live, no relaunch. A sees a "Remove" button on B's row and none on
      its own. "New code" is visible.
 5. Member names.
-   - Joining passes no display name (`KitchenViewModel.join` hands `null`), so B's row shows its
-     name only if one had already been synced into this kitchen; otherwise it shows B's id. Record
-     which, on both devices.
+   - Joining passes the profile display name. B's row shows B's Google name if B signed in with
+     Google, and the label "Kitchen member" on A's screen (and "You" on B's) if B is anonymous. A
+     raw id never shows. Record what both devices show.
 6. Shared data. On A, Shopping tab, field "Add an item", type a word, tap "Add".
    - The item appears under "To buy" on B within a few seconds, with no relaunch. Tick it on B
      ("In the cart" section appears) and watch A follow.
 7. Console.
    - `kitchens/<kitchenId>.memberIds` holds both uids and `ownerId` is still A's.
    - B's earlier solo kitchen still exists with an empty `memberIds` (joining leaves the previous
-     kitchen first).
+     kitchen in the same write).
 8. Last, on device B: in "Join a kitchen", type a made-up string and tap "Join".
    - The red line "That code does not match any kitchen".
-   - Then look at the Kitchen screen. `JoinKitchenUseCase` leaves the current kitchen *before* it
-     tries the new code and is not a transaction (its KDoc says so), so B may now be out of A's
-     kitchen and show "No kitchen yet". Record which. If B left, have it join with A's code again
-     before scenario 6.
+   - B is still in A's kitchen: the Kitchen screen still lists both members, and the Pantry and
+     Shopping tabs still show the shared items. Leaving and joining are one transaction, so a bad
+     code changes nothing. Record anything else.
 
 ### 6. Leaving: what the owner and a member may do
 
@@ -288,19 +287,21 @@ different accounts) if you want names in the member list; anonymous works for ev
    - The same sentence appears as the error, since joining another kitchen would first leave this
      one. A is still in its kitchen afterwards.
 3. Device B (member): tap "Leave this kitchen".
-   - B's screen changes to the empty state "No kitchen yet" / "Join one with a code below, and its
-     members will show up here.", with the "Join a kitchen" field still usable.
-   - Record what B's **Pantry** and **Shopping** tabs show now. This screen does not provision a
-     replacement kitchen, so an error or empty state is possible; either way, write it down.
+   - B's screen may show the empty state "No kitchen yet" for a moment, then settles on a new solo
+     kitchen: a different join code, B as the only member and "Owner", with no restart. The session
+     provisions the replacement.
+   - B's **Pantry** and **Shopping** tabs end up empty (the shared items are not carried over) and
+     any error banner they showed in between goes away. Record how long that took.
 4. Device A.
    - B's row disappears, live. The muted line and the disabled state of "Leave this kitchen" go
      away, since A is alone again.
 5. Console: `memberIds` no longer holds B and `memberDisplayNames` has no entry for B.
    `removedMemberIds` is **not** extended by a voluntary leave.
 6. Device A (now a solo owner): tap "Leave this kitchen".
-   - It works. A's screen shows "No kitchen yet".
-   - Console: the kitchen document remains, with an empty `memberIds`; no member can reach it
-     again.
+   - It works. A's screen may show "No kitchen yet" for a moment, then a new solo kitchen with a
+     different code.
+   - Console: the old kitchen document remains, with an empty `memberIds`; no member can reach it
+     again. A new `kitchens` document lists A as the only member.
 
 ### 7. Owner removes a member; a removed member cannot rejoin
 
@@ -309,7 +310,8 @@ different accounts) if you want names in the member list; anonymous works for ev
 1. Device A: Members, B's row, tap "Remove".
    - B's row disappears from A's list.
 2. Device B.
-   - Live, the Kitchen screen changes to "No kitchen yet".
+   - Live, the Kitchen screen changes to "No kitchen yet" and then to a new solo kitchen of its own,
+     without a restart.
 3. Console.
    - `memberIds` no longer holds B; `removedMemberIds` now holds B's uid, and only B's.
 4. Device B: in "Join a kitchen", type A's **current** code (still valid) and tap "Join".

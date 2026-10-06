@@ -8,6 +8,7 @@ import com.kitchenai.shared.domain.model.Kitchen
 import com.kitchenai.shared.domain.model.KitchenJoinCode
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.ui.presentation.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,11 +27,11 @@ import kotlinx.coroutines.launch
  */
 class KitchenViewModel(
     private val observeKitchen: ObserveKitchenUseCase,
+    private val observeProfile: ObserveUserProfileUseCase,
     private val writes: KitchenWritesDelegate,
 ) : ViewModel() {
-    // Null while the listener has not answered yet; also set back to null once it reports the
-    // viewer has no kitchen at all (a genuine NotFound, not a transient failure) — the state a
-    // successful leave with nothing new provisioned leaves behind.
+    // Null while the listener has not answered yet, and again once it reports the viewer has no
+    // kitchen (a genuine NotFound): the moment between a leave and the session provisioning a new one.
     private val kitchen = MutableStateFlow<Kitchen?>(null)
     private val answered = MutableStateFlow(false)
     private val listenerFailure = MutableStateFlow<UiText?>(null)
@@ -38,6 +39,9 @@ class KitchenViewModel(
     private val joinCodeInput = MutableStateFlow("")
     private val busy = MutableStateFlow(false)
     private val writeFailure = MutableStateFlow<UiText?>(null)
+
+    // Only read here: the session stays the single writer of the profile, this just names the joiner.
+    private var profileName: String? = null
 
     private var started = false
     private var userId: UserId? = null
@@ -63,6 +67,9 @@ class KitchenViewModel(
         viewModelScope.launch {
             observeKitchen.errors(userId).collect { error -> onKitchenError(error) }
         }
+        viewModelScope.launch {
+            observeProfile(userId).collect { profile -> profileName = profile.displayName?.takeIf { it.isNotBlank() } }
+        }
     }
 
     fun onJoinCodeInputChange(text: String) {
@@ -77,7 +84,7 @@ class KitchenViewModel(
             is AppResult.Failure -> writeFailure.value = code.error.describeKitchenError()
             is AppResult.Success ->
                 write(describeError = AppError::describeJoinError, onSuccess = { joinCodeInput.value = "" }) {
-                    writes.join(uid, displayName = null, code.data)
+                    writes.join(uid, displayName = profileName, code.data)
                 }
         }
     }

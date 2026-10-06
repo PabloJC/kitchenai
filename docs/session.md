@@ -27,13 +27,35 @@ dropped it, so every read under it would fail.
 Which of the two a failed profile write ends in depends on how the active uid was established
 (`switched`, set when the uid changes), not on who called `createProfile`.
 
+## Keeping a kitchen
+
+The kitchen is provisioned in two places, both here: `establish` for a new uid, and a kitchen
+listener NotFound afterwards. Leaving a kitchen, or being removed from one by its owner, makes the
+user's kitchen query report NotFound; the ViewModel then runs `EnsureKitchenUseCase` plus the default
+shopping list for the active uid. No screen provisions anything, so two screens cannot race.
+
+- The listener only says "none". `EnsureKitchenUseCase` re-reads before it creates, so a repeated or
+  stale report creates nothing.
+- `EnsureKitchenUseCase`, `JoinKitchenUseCase` and `LeaveKitchenUseCase` share one
+  `KitchenMembershipLock`: a join that lands between the ensure's read and its create would
+  otherwise leave the user in two kitchens.
+- Joining leaves the old kitchen and joins the new one in one Firestore transaction, so there is no
+  NotFound in between and a failed join changes nothing.
+- A failed provisioning is `SwitchFailed` (the retry runs `establish` for the same uid and keeps its
+  listeners). It is ignored when the state is not `Ready` (a failing setup owns the state) and when
+  the uid moved on.
+- Until the replacement exists the kitchen, Pantry and Shopping screens show what their own
+  listeners report (an error banner or the empty state) and recover by themselves when the new
+  kitchen arrives.
+
 ## Invariants
 
 - One setup at a time (`setup` mutex): bootstrap, the session watcher and a switch retry would
   otherwise race `ensureKitchen`'s read-then-create.
-- A retry for the uid already active keeps its profile listener and its flags; a different uid
-  cancels the listener and resets `profileMissing` / `creatingProfile`.
-- An event from a listener of a dropped uid is ignored (`onProfileError`, `failProfileWrite`).
+- A retry for the uid already active keeps its listeners (profile and kitchen) and its flags; a
+  different uid cancels them and resets `profileMissing` / `creatingProfile`.
+- An event from a listener of a dropped uid is ignored (`onProfileError`, `onKitchenError`,
+  `failProfileWrite`).
 
 ## Pending display name
 
