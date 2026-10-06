@@ -26,6 +26,21 @@ class FakeKitchenPort(
 ) : KitchenRepositoryContract {
     private val state = MutableStateFlow(initial)
 
+    // Configurable per test, defaulting to what every screen but the kitchen one itself expects:
+    // joining and regenerating are not wired anywhere else, so a caller that never sets these
+    // keeps seeing them refused.
+    var joinResult: AppResult<Kitchen> = AppResult.Failure(AppError.Unknown())
+    var leaveResult: AppResult<Unit> = AppResult.Success(Unit)
+    var removeMemberResult: AppResult<Unit> = AppResult.Success(Unit)
+    var regenerateResult: AppResult<Kitchen> = AppResult.Failure(AppError.Unknown())
+
+    val joinCalls = mutableListOf<KitchenJoinCode>()
+    var leaveCount = 0
+        private set
+    val removedMembers = mutableListOf<UserId>()
+    var regenerateCount = 0
+        private set
+
     override fun observeMyKitchen(userId: UserId): Flow<Kitchen> =
         if (readError != null || state.value == null) emptyFlow() else state.filterNotNull()
 
@@ -45,23 +60,40 @@ class FakeKitchenPort(
         userId: UserId,
         displayName: String?,
         joinCode: KitchenJoinCode,
-    ): AppResult<Kitchen> = AppResult.Failure(AppError.Unknown())
+    ): AppResult<Kitchen> {
+        joinCalls += joinCode
+        val result = joinResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
 
     override suspend fun leaveKitchen(
         userId: UserId,
         kitchenId: KitchenId,
-    ): AppResult<Unit> = AppResult.Success(Unit)
+    ): AppResult<Unit> {
+        leaveCount++
+        if (leaveResult is AppResult.Success) state.value = null
+        return leaveResult
+    }
 
     override suspend fun removeMember(
         kitchenId: KitchenId,
         requesterId: UserId,
         memberId: UserId,
-    ): AppResult<Unit> = AppResult.Success(Unit)
+    ): AppResult<Unit> {
+        removedMembers += memberId
+        return removeMemberResult
+    }
 
     override suspend fun regenerateJoinCode(
         kitchenId: KitchenId,
         requesterId: UserId,
-    ): AppResult<Kitchen> = AppResult.Failure(AppError.Unknown())
+    ): AppResult<Kitchen> {
+        regenerateCount++
+        val result = regenerateResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
 
     override suspend fun updateMyDisplayName(
         userId: UserId,
@@ -79,4 +111,7 @@ fun kitchen(
     id: KitchenId = defaultKitchenId,
     ownerId: UserId = (UserId.of("kitchen-owner").let { it as AppResult.Success }).data,
     joinCode: String = "code-1",
-): Kitchen = Kitchen(id, ownerId, setOf(ownerId), (KitchenJoinCode.of(joinCode) as AppResult.Success).data, emptyMap())
+    memberIds: Set<UserId> = setOf(ownerId),
+    memberDisplayNames: Map<String, String> = emptyMap(),
+): Kitchen =
+    Kitchen(id, ownerId, memberIds, (KitchenJoinCode.of(joinCode) as AppResult.Success).data, memberDisplayNames)
