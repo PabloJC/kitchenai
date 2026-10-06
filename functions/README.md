@@ -130,6 +130,49 @@ node tools/smoke-agent.mjs --debug-token <from-logcat> --cert-sha1 <debug-keysto
 It is worth running after any change to the contract. It found both live defects this function
 has had: quantities arriving with no unit, and units arriving as labels rather than ids.
 
+## `writeCatalogue`
+
+The callable form of `tools/seed.mjs` for one document: it writes one `ingredients/{id}` or
+`recipes/{id}` through the Admin SDK. `firebase/firestore.rules` is untouched, so both collections
+stay `allow write: if false` for every client (#165).
+
+**Who may call it.** A caller whose ID token carries the custom claim `admin: true`. No auth is
+`unauthenticated`, a signed-in caller without the claim is `permission-denied`, and the claim is
+checked before the payload is read. Only the boolean `true` counts. App Check is not enforced:
+it is orthogonal to the claim, and where an admin surface lives is still undecided.
+
+**Setting the claim** is deliberately not automated here. With Application Default Credentials,
+once per admin account:
+
+```bash
+node -e "import('firebase-admin/app').then(async ({ initializeApp }) => { initializeApp({ projectId: '<projectId>' });
+  const { getAuth } = await import('firebase-admin/auth');
+  await getAuth().setCustomUserClaims('<uid>', { admin: true }); })"
+```
+
+The claim reaches the token on its next refresh: sign out and in, or force a token refresh.
+Removing it is `setCustomUserClaims('<uid>', null)`.
+
+**Payload**, validated strictly: an unknown field, a bad id or an empty label is `invalid-argument`.
+
+```jsonc
+{ "kind": "ingredient" | "recipe", "id": "brown-rice", "data": { /* below */ } }
+```
+
+- `ingredient`: `labels` (language tag to non-empty text, required), `defaultUnitTaxonomy` and
+  `defaultUnitTerm` (both or neither), `tags` (taxonomy id to list of term ids), `purchasedWhole`.
+  The seed file is one of the test inputs, so the two cannot drift.
+- `recipe`: `title`, `servings`, `ingredients`, `steps` (both non-empty), and optional `summary`,
+  `totalMinutes` and `tags` (`[{ taxonomy, term }]`). Each line carries exactly one of
+  `ingredientId` / `freeText`, plus optional `amount`, `unitTaxonomy` + `unitTerm` (only with an
+  amount) and `optional`. `source` is not accepted: the function writes `{ "type": "catalogue" }`.
+- `id` uses the same alphabet as the rest of the contract, at most 128 characters, and is never
+  `.`, `..` or `__*__`.
+
+**Write semantics** match the seed script: `set` without merge, so the document becomes exactly the
+payload and an existing id is replaced. The result is `{ kind, id, created }`. Nothing here checks
+that a referenced taxonomy term or ingredient exists.
+
 ## Tests
 
 `node --test` over the pure parts: request parsing, label resolution, and the mapping back to
