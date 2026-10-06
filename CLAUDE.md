@@ -106,6 +106,7 @@ request body.
 - Flows: `app.cash.turbine`.
 - ViewModels are tested with `kotlinx-coroutines-test` and a test `DispatcherProvider`.
 - Coverage is not a goal; uncovered error branches are a finding.
+- What unit tests cannot reach (Google sheet, uid swap, shared kitchen, bundled images) is checked by hand: [`docs/manual-verification.md`](docs/manual-verification.md).
 
 ---
 

@@ -326,3 +326,6 @@ could not launch at all, and it still cannot reach a signed-in state without a d
 that `docs/infra.md` records as absent. A criterion nobody can meet is worse than no criterion:
 it either blocks a correct branch or gets waved through, and both teach the wrong thing. State
 what was verified, on which platform, and what was not.
+
+The scenarios that need a device and real accounts are written down in
+[`manual-verification.md`](manual-verification.md), with a results table to fill in.
