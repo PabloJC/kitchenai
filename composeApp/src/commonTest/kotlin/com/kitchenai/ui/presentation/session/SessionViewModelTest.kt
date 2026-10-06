@@ -243,7 +243,6 @@ class SessionViewModelTest {
             advanceUntilIdle()
             assertEquals(SessionUiState.Ready(userId), viewModel.state.value)
 
-            val googleUserId = (UserId.of("user-google") as AppResult.Success).data
             sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
             advanceUntilIdle()
 
@@ -284,6 +283,153 @@ class SessionViewModelTest {
             assertEquals(1, lists.upsertCount)
         }
 
+    /**
+     * The review finding behind this block: a failing setup after `Ready` used to land in the
+     * cold-start `Failed`, replacing the app for a user who had just signed in successfully.
+     */
+    @Test
+    fun `a kitchen failure after Ready is a switch failure that never reaches Ready for the new uid`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            kitchens.readError = AppError.Network()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.SwitchFailed(UiText.of(Res.string.error_no_connection)), viewModel.state.value)
+            // No listener under a uid whose setup never completed, and the old one is gone too.
+            assertEquals(listOf(userId), profiles.observedUserIds)
+        }
+
+    @Test
+    fun `a shopping list failure after Ready is a switch failure and the new uid is not Ready`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            lists.upsert = AppResult.Failure(AppError.Unauthorized())
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.SwitchFailed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
+            assertEquals(listOf(userId), profiles.observedUserIds)
+        }
+
+    @Test
+    fun `retrying a switch failure sets up the new uid only and never signs in again`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            kitchens.readError = AppError.Network()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            kitchens.readError = null
+            viewModel.retry()
+            // A second tap while the first is in flight must not start a second setup.
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(googleUserId), viewModel.state.value)
+            assertEquals(1, sessions.signInCount)
+            assertEquals(listOf(userId, googleUserId), profiles.observedUserIds)
+            assertEquals(2, lists.upsertCount)
+        }
+
+    @Test
+    fun `a switch retry that fails again stays recoverable`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            lists.upsert = AppResult.Failure(AppError.Unauthorized())
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            viewModel.retry()
+            advanceUntilIdle()
+            assertEquals(SessionUiState.SwitchFailed(UNAUTHORIZED_MESSAGE), viewModel.state.value)
+
+            lists.upsert = AppResult.Success(Unit)
+            viewModel.retry()
+            advanceUntilIdle()
+            assertEquals(SessionUiState.Ready(googleUserId), viewModel.state.value)
+        }
+
+    @Test
+    fun `a stale profile error from the dropped uid neither writes nor replaces the switch failure`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            kitchens.readError = AppError.Network()
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            profiles.errors.emit(AppError.NotFound("profile"))
+            advanceUntilIdle()
+
+            assertEquals(0, profiles.saveCount())
+            assertEquals(SessionUiState.SwitchFailed(UiText.of(Res.string.error_no_connection)), viewModel.state.value)
+        }
+
+    @Test
+    fun `a failed re-established session after sign-out is recovered by retry`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            sessions.signIn = AppResult.Failure(AppError.Network())
+            sessions.sessionChanges.emit(Session.SignedOut)
+            advanceUntilIdle()
+            assertEquals(SessionUiState.SwitchFailed(UiText.of(Res.string.error_no_connection)), viewModel.state.value)
+
+            val freshAnonymousId = (UserId.of("user-2") as AppResult.Success).data
+            sessions.signIn = AppResult.Success(Session.SignedIn(freshAnonymousId, isAnonymous = true))
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(freshAnonymousId), viewModel.state.value)
+        }
+
+    @Test
+    fun `a cold-start kitchen failure is still Failed and retry re-runs the bootstrap`() =
+        runTest(dispatcher) {
+            kitchens.readError = AppError.Network()
+            val viewModel = viewModel()
+
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            assertEquals(SessionUiState.Failed(UiText.of(Res.string.error_no_connection)), viewModel.state.value)
+
+            kitchens.readError = null
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(userId), viewModel.state.value)
+            // The kitchen failed before the list was ever touched; the retry is what wrote it.
+            assertEquals(1, lists.upsertCount)
+        }
+
+    @Test
+    fun `retry does nothing while the session is Ready`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(userId), viewModel.state.value)
+            assertEquals(1, lists.upsertCount)
+        }
+
     private fun viewModel(): SessionViewModel {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         return SessionViewModel(
@@ -299,6 +445,7 @@ class SessionViewModelTest {
 }
 
 private val userId = (UserId.of("user-1") as AppResult.Success).data
+private val googleUserId = (UserId.of("user-google") as AppResult.Success).data
 private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
 
 /**
@@ -364,7 +511,12 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
 
     suspend fun saveCount(): Int = counter.withLock { saves }
 
-    override fun observeProfile(userId: UserId): Flow<UserProfile> = profiles
+    val observedUserIds = mutableListOf<UserId>()
+
+    override fun observeProfile(userId: UserId): Flow<UserProfile> {
+        observedUserIds += userId
+        return profiles
+    }
 
     override fun profileErrors(userId: UserId): Flow<AppError> = errors
 

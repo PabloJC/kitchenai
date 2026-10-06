@@ -22,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -71,6 +72,10 @@ class SessionViewModel(
     private var profileMissing = false
     private var creatingProfile = false
 
+    // Bootstrap, the session watcher and a switch retry can all reach `establish`; two of them
+    // for one uid would race ensureKitchen's read-then-create. Held across the round trips.
+    private val setup = Mutex()
+
     /**
      * Idempotent: a configuration change composes the gate again, and a second anonymous
      * sign-in would be a second account.
@@ -86,13 +91,19 @@ class SessionViewModel(
     }
 
     /**
-     * Only from a failure, and it re-runs the whole bootstrap — including the sign-in and the
-     * default list, which a failure after [SessionUiState.Ready] has already done. Both are
-     * idempotent, which is what makes repeating them safe rather than merely cheap.
+     * Only from a failure. [SessionUiState.Failed] re-runs the whole bootstrap, which is
+     * idempotent; [SessionUiState.SwitchFailed] re-follows the session Firebase reports now, so
+     * only the new uid's setup runs again and the sign-in that caused it is never repeated.
      */
     fun retry() {
-        if (_state.value !is SessionUiState.Failed) return
-        bootstrap = launchBootstrap()
+        when (_state.value) {
+            is SessionUiState.Failed -> bootstrap = launchBootstrap()
+            is SessionUiState.SwitchFailed -> {
+                _state.value = SessionUiState.Loading
+                viewModelScope.launch { follow(observeSession().first()) }
+            }
+            else -> return
+        }
     }
 
     private fun launchBootstrap(): Job =
@@ -103,85 +114,91 @@ class SessionViewModel(
                     is AppResult.Failure -> return@launch fail(session.error)
                     is AppResult.Success -> session.data.userId
                 }
-            if (!establish(userId)) return@launch
+            establish(userId)?.let { error -> return@launch fail(error) }
             watchSessionChanges()
         }
 
     /**
      * Everything a uid needs before a screen may read `users/{uid}`: a kitchen, a default
-     * shopping list, and its own profile listener. Runs for the uid [start] first resolves, for
-     * a [retry] of that same uid, and again for whichever uid [watchSessionChanges] sees next.
+     * shopping list, and its own profile listener. Returns the error that stopped it, and leaves
+     * [state] to the caller: a cold start and a mid-session switch fail differently.
      */
-    private suspend fun establish(userId: UserId): Boolean {
-        // No display name yet at this point — the profile that would carry one is created
-        // further down, and a kitchen without one can still be shown one later.
-        val kitchenId =
-            when (val kitchen = ensureKitchen(userId, displayName = null)) {
-                is AppResult.Failure -> {
-                    fail(kitchen.error)
-                    return false
+    private suspend fun establish(userId: UserId): AppError? =
+        setup.withLock {
+            // No display name yet at this point — the profile that would carry one is created
+            // further down, and a kitchen without one can still be shown one later.
+            val kitchenId =
+                when (val kitchen = ensureKitchen(userId, displayName = null)) {
+                    is AppResult.Failure -> return@withLock kitchen.error
+                    is AppResult.Success -> kitchen.data.id
                 }
-                is AppResult.Success -> kitchen.data.id
-            }
-        // The name is stored under the device's own tag: the app ships no translations of its
-        // own, and a name under a tag nobody reads resolves to nothing.
-        val labels = languageTags.take(1).associateWith { defaultListName }
-        val list = ensureDefaultShoppingList(kitchenId, labels)
-        if (list is AppResult.Failure) {
-            fail(list.error)
-            return false
-        }
+            // The name is stored under the device's own tag: the app ships no translations of its
+            // own, and a name under a tag nobody reads resolves to nothing.
+            val labels = languageTags.take(1).associateWith { defaultListName }
+            val list = ensureDefaultShoppingList(kitchenId, labels)
+            if (list is AppResult.Failure) return@withLock list.error
 
-        // A retry of the uid already active must not reset what its still-subscribed listener
-        // already learned (see "a retry after Ready" below); a genuinely different uid must not
-        // inherit the previous one's missing-profile or already-creating state.
-        if (activeUserId.value != userId) {
-            flags.withLock {
-                profileMissing = false
-                creatingProfile = false
+            // A retry of the uid already active must not reset what its still-subscribed listener
+            // already learned (see "a retry after Ready" below); a genuinely different uid must not
+            // inherit the previous one's missing-profile or already-creating state.
+            if (activeUserId.value != userId) {
+                flags.withLock {
+                    profileMissing = false
+                    creatingProfile = false
+                }
+                profile.value = null
             }
-            profile.value = null
+            activeUserId.value = userId
+            _state.value = SessionUiState.Ready(userId)
+            watchProfile(userId)
+            // A retry after a failed write: the listener will not repeat the NotFound.
+            if (flags.withLock { profileMissing }) createProfile(userId)
+            null
         }
-        activeUserId.value = userId
-        _state.value = SessionUiState.Ready(userId)
-        watchProfile(userId)
-        // A retry after a failed write: the listener will not repeat the NotFound.
-        if (flags.withLock { profileMissing }) createProfile(userId)
-        return true
-    }
 
     /**
      * The Firebase uid this app runs as can change after [SessionUiState.Ready]: a Google
      * sign-in swaps it outright rather than linking (#186), and signing out clears it. Every
      * screen below `SessionGate` reads `users/{uid}` and kitchen data keyed to whatever uid
      * [state] carries, so this is what keeps that uid current instead of frozen at whatever
-     * [ensureSession] first resolved. A sign-out re-runs [ensureSession] the same way a cold
-     * start would, rather than leaving every read failing with permission-denied until the app
-     * is restarted.
+     * [ensureSession] first resolved.
      */
     private fun watchSessionChanges() {
         if (watchingSession) return
         watchingSession = true
-        viewModelScope.launch {
-            observeSession().collect { session ->
-                val userId = session.resolvedOrReestablished() ?: return@collect
-                if (userId != activeUserId.value) establish(userId)
-            }
-        }
+        viewModelScope.launch { observeSession().collect { session -> follow(session) } }
     }
 
-    private suspend fun Session.resolvedOrReestablished(): UserId? =
-        when (this) {
-            is Session.SignedIn -> userId
-            Session.SignedOut ->
-                when (val reestablished = ensureSession(NoParams)) {
-                    is AppResult.Failure -> {
-                        fail(reestablished.error)
-                        null
+    /**
+     * Moves [state] to the uid [session] names, but only once that uid's setup has completed: a
+     * failure ends in [SessionUiState.SwitchFailed], never in [SessionUiState.Ready] for a uid
+     * with no kitchen. The previous uid is not kept on screen — Firebase has already dropped it,
+     * so every read under it would fail. A sign-out re-runs [ensureSession] the way a cold start
+     * would, rather than leaving every read failing with permission-denied until a restart.
+     */
+    private suspend fun follow(session: Session) {
+        val current = activeUserId.value
+        if (session is Session.SignedIn && session.userId == current && _state.value is SessionUiState.Ready) return
+        // Whatever follows, the previous uid's listener must not keep writing on its behalf.
+        if (session !is Session.SignedIn || session.userId != current) detachActiveUser()
+        val userId =
+            when (session) {
+                is Session.SignedIn -> session.userId
+                Session.SignedOut ->
+                    when (val reestablished = ensureSession(NoParams)) {
+                        is AppResult.Failure -> return switchFailed(reestablished.error)
+                        is AppResult.Success -> reestablished.data.userId
                     }
-                    is AppResult.Success -> reestablished.data.userId
-                }
-        }
+            }
+        establish(userId)?.let(::switchFailed)
+    }
+
+    private fun detachActiveUser() {
+        profileListeners?.cancel()
+        profileListeners = null
+        profileListenerUserId = null
+        activeUserId.value = null
+    }
 
     /**
      * Both streams, as the contract requires. The data one says the profile exists; the error
@@ -239,5 +256,9 @@ class SessionViewModel(
 
     private fun fail(error: AppError) {
         _state.value = SessionUiState.Failed(error.describe(Res.string.error_unauthorized_own_data))
+    }
+
+    private fun switchFailed(error: AppError) {
+        _state.value = SessionUiState.SwitchFailed(error.describe(Res.string.error_unauthorized_own_data))
     }
 }

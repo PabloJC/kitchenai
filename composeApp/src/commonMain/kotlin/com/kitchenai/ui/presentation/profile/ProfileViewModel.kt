@@ -67,9 +67,8 @@ class ProfileViewModel(
     private var started = false
     private var termListeners: Job? = null
 
-    // Which uid the profile listener follows. A plain start() argument would freeze it: Google
-    // sign-in swaps the Firebase user outright rather than linking (#186), so the profile this
-    // screen must show changes mid-session, not just once at start().
+    // Which uid the profile listener follows. Google sign-in swaps the Firebase user outright
+    // rather than linking (#186), so it changes mid-session, whenever start() is handed a new one.
     private val activeUserId = MutableStateFlow<UserId?>(null)
 
     // The name the platform launcher returned, waiting for the profile it belongs to: a brand
@@ -82,9 +81,13 @@ class ProfileViewModel(
         combine(draft, catalogue, saving, account, failure, ::uiState)
             .stateIn(viewModelScope, SharingStarted.Eagerly, ProfileUiState())
 
-    /** Idempotent: a configuration change composes the screen again and must not double the listeners. */
+    /**
+     * The listeners start once however often the screen composes. A later call with another uid
+     * is the session moving on: `SessionGate` only hands one over after that uid's setup
+     * finished, so this screen never reads `users/{uid}` ahead of what [SessionViewModel] wrote.
+     */
     fun start(userId: UserId) {
-        if (started) return
+        if (started) return switchActiveUser(userId)
         started = true
         activeUserId.value = userId
         watchSession()
@@ -136,7 +139,7 @@ class ProfileViewModel(
                     pendingDisplayName = null
                     writeFailure.value = result.error.toProfileError()
                 }
-                is AppResult.Success -> switchActiveUser(result.data.userId)
+                is AppResult.Success -> onSignedIn(result.data.userId)
             }
             authenticating.value = false
         }
@@ -158,14 +161,18 @@ class ProfileViewModel(
         }
     }
 
+    /**
+     * A different uid arrives through [start], once [SessionViewModel] has set it up, and its
+     * profile applies the pending name then. The same uid signed in again (a token refresh) never
+     * restarts the listener, so nothing else would apply it.
+     */
+    private fun onSignedIn(userId: UserId) {
+        if (userId == activeUserId.value) draft.value?.profile?.let(::applyPendingDisplayName)
+    }
+
     /** The account changed identity, not just its data: the previous uid's draft belongs to a different profile. */
     private fun switchActiveUser(userId: UserId) {
-        if (activeUserId.value == userId) {
-            // The same uid signed in again (a token refresh, not a new account): the listener
-            // never restarts, so nothing else will call applyPendingDisplayName for it.
-            draft.value?.profile?.let(::applyPendingDisplayName)
-            return
-        }
+        if (activeUserId.value == userId) return
         profileFailure.value = null
         draft.value = null
         activeUserId.value = userId
@@ -185,16 +192,11 @@ class ProfileViewModel(
         return toggleDietaryConstraint(toggleDietaryConstraint(this, term, next), term, next)
     }
 
-    // Follows the uid Firebase reports, not only the one signInWithGoogle returned: a sign-out
-    // re-establishes a fresh anonymous session elsewhere, and this screen has to move with it.
+    // Display only: the active uid comes from start(), never from the raw session stream, which
+    // runs ahead of the setup SessionViewModel finishes for it.
     private fun watchSession() {
         viewModelScope.launch {
-            accountDelegate.observeSession().collect { current ->
-                session.value = current
-                if (current is Session.SignedIn && current.userId != activeUserId.value) {
-                    switchActiveUser(current.userId)
-                }
-            }
+            accountDelegate.observeSession().collect { current -> session.value = current }
         }
     }
 
