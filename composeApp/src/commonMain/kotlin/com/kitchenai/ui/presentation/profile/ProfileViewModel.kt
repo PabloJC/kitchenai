@@ -192,9 +192,16 @@ class ProfileViewModel(
         return toggleDietaryConstraint(toggleDietaryConstraint(this, term, next), term, next)
     }
 
+    // Follows the uid Firebase reports, not only the one signInWithGoogle returned: a sign-out
+    // re-establishes a fresh anonymous session elsewhere, and this screen has to move with it.
     private fun watchSession() {
         viewModelScope.launch {
-            accountDelegate.observeSession().collect { current -> session.value = current }
+            accountDelegate.observeSession().collect { current ->
+                session.value = current
+                if (current is Session.SignedIn && current.userId != activeUserId.value) {
+                    switchActiveUser(current.userId)
+                }
+            }
         }
     }
 

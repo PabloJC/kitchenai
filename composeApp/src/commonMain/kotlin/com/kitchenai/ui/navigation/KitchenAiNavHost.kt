@@ -9,6 +9,7 @@ import androidx.navigation.toRoute
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.ui.presentation.kitchen.KitchenScreen
 import com.kitchenai.ui.presentation.pantry.PantryScreen
 import com.kitchenai.ui.presentation.profile.ProfileScreen
 import com.kitchenai.ui.presentation.shopping.ShoppingScreen
@@ -51,6 +52,7 @@ fun KitchenAiNavHost(
                 is AppResult.Failure -> placeholder(userId)
             }
         }
-        composable<Route.Profile> { ProfileScreen(userId) }
+        composable<Route.Profile> { ProfileScreen(userId, onOpenKitchen = { navController.navigate(Route.Kitchen) }) }
+        composable<Route.Kitchen> { KitchenScreen(userId, detailTopBar) }
     }
 }

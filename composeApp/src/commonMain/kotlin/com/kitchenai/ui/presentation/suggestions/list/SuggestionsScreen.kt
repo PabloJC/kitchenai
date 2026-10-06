@@ -33,6 +33,7 @@ import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.RecipeImage
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
 import com.kitchenai.ui.designsystem.component.SKELETON_SUMMARY_WIDTH
 import com.kitchenai.ui.designsystem.component.SKELETON_TITLE_WIDTH
@@ -221,9 +222,7 @@ private fun SuggestionCard(
     // already does everywhere else in the app.
     Card(onClick = { onOpen(suggestion.id) }, modifier = Modifier.fillMaxWidth()) {
         Column {
-            // The slot a photograph will occupy once the catalogue has one: even tonal and
-            // empty, it is what sets the card's proportions rather than leaving it a text slab.
-            RecipeImagePlaceholder()
+            RecipeImage(tags = suggestion.tagRefs)
             Column(
                 modifier = Modifier.padding(Dimens.large),
                 verticalArrangement = Arrangement.spacedBy(Dimens.small),

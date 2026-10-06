@@ -357,6 +357,22 @@ class ProfileViewModelTest {
             assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
         }
 
+    @Test
+    fun `after a sign-out the profile listener follows the fresh session's uid`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            val freshUserId = (UserId.of("fresh-anonymous") as AppResult.Success).data
+
+            viewModel.signOut()
+            advanceUntilIdle()
+            // What SessionViewModel's re-established anonymous session looks like from here.
+            sessions.emit(Session.SignedIn(freshUserId, isAnonymous = true))
+            advanceUntilIdle()
+
+            assertEquals(freshUserId, profiles.observedUserIds.last())
+            assertEquals(false, viewModel.state.value.signedInWithGoogle)
+        }
+
     private suspend fun TestScope.ready(vararg sizes: Pair<String, Int>): ProfileViewModel {
         val viewModel = viewModel()
         viewModel.start(userId, languageTags)
@@ -444,12 +460,16 @@ private fun <T> unwrap(result: AppResult<T>): T = (result as AppResult.Success).
 private class FakeUserProfilePort : UserProfileRepositoryContract {
     val profiles = MutableSharedFlow<UserProfile>(replay = 1)
     val errors = MutableSharedFlow<AppError>()
+    val observedUserIds = mutableListOf<UserId>()
     var saveCount = 0
         private set
     var saved: UserProfile? = null
         private set
 
-    override fun observeProfile(userId: UserId): Flow<UserProfile> = profiles
+    override fun observeProfile(userId: UserId): Flow<UserProfile> {
+        observedUserIds += userId
+        return profiles
+    }
 
     override fun profileErrors(userId: UserId): Flow<AppError> = errors
 
@@ -505,6 +525,10 @@ private class FakeSessionPort(
     var signOutResult: AppResult<Unit> = AppResult.Success(Unit)
 
     override fun observeSession(): Flow<Session> = state
+
+    fun emit(session: Session) {
+        state.value = session
+    }
 
     override suspend fun signInAnonymously(): AppResult<Session.SignedIn> =
         AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
