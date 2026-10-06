@@ -4,7 +4,8 @@
   "type": "module",
   "description": "One-off scripts run by hand against a real project. Not part of any build.",
   "scripts": {
-    "seed": "node seed.mjs"
+    "seed": "node seed.mjs",
+    "test": "node --test --experimental-strip-types __tests__/*.test.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0"
