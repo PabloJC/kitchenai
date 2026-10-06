@@ -141,17 +141,11 @@ stay `allow write: if false` for every client (#165).
 checked before the payload is read. Only the boolean `true` counts. App Check is not enforced:
 it is orthogonal to the claim, and where an admin surface lives is still undecided.
 
-**Setting the claim** is deliberately not automated here. With Application Default Credentials,
-once per admin account:
-
-```bash
-node -e "import('firebase-admin/app').then(async ({ initializeApp }) => { initializeApp({ projectId: '<projectId>' });
-  const { getAuth } = await import('firebase-admin/auth');
-  await getAuth().setCustomUserClaims('<uid>', { admin: true }); })"
-```
-
-The claim reaches the token on its next refresh: sign out and in, or force a token refresh.
-Removing it is `setCustomUserClaims('<uid>', null)`.
+**Setting the claim** is a one-off script, run by the owner with their own Application Default
+Credentials, once per admin account (`tools/grant-admin.mjs --project <projectId> --uid <uid>`;
+`--revoke` removes it). The claim reaches the token on its next refresh: the account must sign in
+again. Writing documents day to day is `tools/catalogue.mjs`; both are described in
+`docs/catalogue-admin.md`.
 
 **Payload**, validated strictly: an unknown field, a bad id or an empty label is `invalid-argument`.
 

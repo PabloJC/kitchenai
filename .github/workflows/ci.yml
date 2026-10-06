@@ -235,6 +235,12 @@ jobs:
         working-directory: functions
         run: npm test
 
+      # The catalogue CLI's dry-run imports the function's own validator, so it is tested here.
+      # Its tests import nothing from node_modules, hence no install in tools/.
+      - name: Run the tools tests
+        working-directory: tools
+        run: npm test
+
   # ---------------------------------------------------------------- #
   # Aggregated check: the only one marked as required on main.
   # ---------------------------------------------------------------- #
