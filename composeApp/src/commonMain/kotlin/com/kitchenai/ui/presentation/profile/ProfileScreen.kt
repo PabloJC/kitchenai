@@ -29,7 +29,6 @@ import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.GoogleSignInLauncher
-import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.platform.rememberGoogleSignInLauncher
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
@@ -58,7 +57,7 @@ fun ProfileScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags()) }
+    LaunchedEffect(userId) { viewModel.start(userId) }
 
     val error = state.error
     when {

@@ -56,7 +56,6 @@ class ProfileViewModelTest {
     private val profiles = FakeUserProfilePort()
     private val catalogue = FakeTaxonomyPort()
     private val sessions = FakeSessionPort(Session.SignedIn(userId, isAnonymous = true))
-    private val languageTags = listOf("en")
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -219,7 +218,7 @@ class ProfileViewModelTest {
     fun `a profile that never loads is a state the screen can draw`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId)
             advanceUntilIdle()
 
             profiles.errors.emit(AppError.Network())
@@ -234,7 +233,7 @@ class ProfileViewModelTest {
     fun `a refused save is shown even while a listener banner is still up`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId)
             publish("t-1" to 1)
             profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
             advanceUntilIdle()
@@ -255,7 +254,7 @@ class ProfileViewModelTest {
     fun `a vocabulary the app reads structurally is not offered as a preference`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId)
             catalogue.publish(
                 listOf(
                     taxonomy("t-1"),
@@ -274,7 +273,7 @@ class ProfileViewModelTest {
     fun `an empty catalogue is answered but not failed`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId)
             profiles.profiles.emit(profile())
             catalogue.publish(emptyList())
             advanceUntilIdle()
@@ -288,7 +287,7 @@ class ProfileViewModelTest {
     fun `a catalogue that has not answered is not a catalogue that failed`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId)
             profiles.profiles.emit(profile())
             advanceUntilIdle()
 
@@ -358,6 +357,19 @@ class ProfileViewModelTest {
         }
 
     @Test
+    fun `a missing profile is shown as an error but never written from this screen`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId)
+
+            profiles.errors.emit(AppError.NotFound("profile"))
+            advanceUntilIdle()
+
+            // SessionViewModel owns creating users/{uid}; a second writer here could race it.
+            assertEquals(0, profiles.saveCount)
+        }
+
+    @Test
     fun `after a sign-out the profile listener follows the fresh session's uid`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
@@ -375,7 +387,7 @@ class ProfileViewModelTest {
 
     private suspend fun TestScope.ready(vararg sizes: Pair<String, Int>): ProfileViewModel {
         val viewModel = viewModel()
-        viewModel.start(userId, languageTags)
+        viewModel.start(userId)
         publish(*sizes)
         profiles.profiles.emit(profile())
         advanceUntilIdle()
@@ -395,7 +407,7 @@ class ProfileViewModelTest {
             // `preferences` is a field no input on this screen renders, so the message has
             // nowhere of its own to go and must fall through to the general one.
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId)
             publish("t-1" to 1)
             profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
             advanceUntilIdle()
@@ -424,7 +436,6 @@ class ProfileViewModelTest {
                     observeSession = ObserveSessionUseCase(sessions),
                     signInWithGoogle = SignInWithGoogleUseCase(sessions),
                     signOut = SignOutUseCase(sessions),
-                    time = TimeProvider { Instant.fromEpochSeconds(500) },
                 ),
         )
 

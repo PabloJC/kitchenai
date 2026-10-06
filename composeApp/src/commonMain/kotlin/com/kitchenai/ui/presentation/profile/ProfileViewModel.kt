@@ -71,27 +71,21 @@ class ProfileViewModel(
     // sign-in swaps the Firebase user outright rather than linking (#186), so the profile this
     // screen must show changes mid-session, not just once at start().
     private val activeUserId = MutableStateFlow<UserId?>(null)
-    private var languageTags: List<String> = emptyList()
 
     // The name the platform launcher returned, waiting for the profile it belongs to: a brand
     // new Google account has no document yet, and an existing one only arrives once its own
     // listener answers. A plain field, not a flow — only ever touched from viewModelScope jobs,
     // all confined to Main, with no suspension between a read and the write that follows it.
     private var pendingDisplayName: String? = null
-    private var creatingProfileFor: UserId? = null
 
     val state: StateFlow<ProfileUiState> =
         combine(draft, catalogue, saving, account, failure, ::uiState)
             .stateIn(viewModelScope, SharingStarted.Eagerly, ProfileUiState())
 
     /** Idempotent: a configuration change composes the screen again and must not double the listeners. */
-    fun start(
-        userId: UserId,
-        languageTags: List<String>,
-    ) {
+    fun start(userId: UserId) {
         if (started) return
         started = true
-        this.languageTags = languageTags
         activeUserId.value = userId
         watchSession()
         watchProfile()
@@ -173,7 +167,6 @@ class ProfileViewModel(
             return
         }
         profileFailure.value = null
-        creatingProfileFor = null
         draft.value = null
         activeUserId.value = userId
     }
@@ -215,7 +208,7 @@ class ProfileViewModel(
             activeUserId.filterNotNull().collectLatest { userId ->
                 coroutineScope {
                     launch { observeUserProfile(userId).collect { loaded -> onProfile(loaded) } }
-                    launch { observeUserProfile.errors(userId).collect { error -> onProfileError(userId, error) } }
+                    launch { observeUserProfile.errors(userId).collect { error -> onProfileError(error) } }
                 }
             }
         }
@@ -247,33 +240,10 @@ class ProfileViewModel(
         }
     }
 
-    private fun onProfileError(
-        userId: UserId,
-        error: AppError,
-    ) {
+    // SessionViewModel is the only writer of a missing users/{uid}; a second one here would race
+    // it and could drop the display name. A pending name is applied once the profile arrives.
+    private fun onProfileError(error: AppError) {
         profileFailure.value = error.toProfileError()
-        // Mirrors SessionViewModel's own handling: a brand-new Google account has no profile
-        // document yet, and nothing else creates one for it once the screen is already open.
-        if (error is AppError.NotFound) createProfileIfMissing(userId)
-    }
-
-    /** Written once per uid: two NotFound emissions before the write lands must not become two documents. */
-    private fun createProfileIfMissing(userId: UserId) {
-        if (draft.value?.profile?.userId == userId || creatingProfileFor == userId) return
-        creatingProfileFor = userId
-        val name = pendingDisplayName
-        pendingDisplayName = null
-        viewModelScope.launch {
-            val seeded =
-                UserProfile.newFor(userId, languageTags, accountDelegate.time.now()).let { profile ->
-                    name?.let { profile.copy(displayName = it) } ?: profile
-                }
-            val result = saveUserProfile(seeded)
-            if (result is AppResult.Failure) {
-                creatingProfileFor = null
-                writeFailure.value = result.error.toProfileError()
-            }
-        }
     }
 
     private fun watchCatalogue() {

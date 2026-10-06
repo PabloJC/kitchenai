@@ -9,6 +9,6 @@ import org.koin.dsl.module
 /** The profile screen. Every use case it asks for is bound by the `:shared` profile and session modules. */
 val profilePresentationModule: Module =
     module {
-        factory { ProfileAccountDelegate(get(), get(), get(), get()) }
+        factory { ProfileAccountDelegate(get(), get(), get()) }
         viewModel { ProfileViewModel(get(), get(), get(), get(), get(), get()) }
     }
