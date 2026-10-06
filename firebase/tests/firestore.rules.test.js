@@ -1,6 +1,7 @@
 // Rules tests. Run them with `npm test` from this directory; see ../README.md.
 // Identifiers in the fixtures are opaque on purpose: no ingredient, unit or storage
 // location is named anywhere in this repository, fixtures included.
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,12 +11,13 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 const ALICE = 'user-alice';
 const BOB = 'user-bob';
+const CAROL = 'user-carol';
 const NOW_MILLIS = 1700000000000;
 
 // Alice owns kitchen-1 and shares it with Bob; kitchen-2 is Bob's alone, so it is what proves a
@@ -28,6 +30,7 @@ const JOIN_CODE_2 = 'join-code-2';
 let testEnv;
 let alice;
 let bob;
+let carol;
 let anonymous;
 
 before(async () => {
@@ -42,6 +45,7 @@ before(async () => {
   });
   alice = testEnv.authenticatedContext(ALICE).firestore();
   bob = testEnv.authenticatedContext(BOB).firestore();
+  carol = testEnv.authenticatedContext(CAROL).firestore();
   anonymous = testEnv.unauthenticatedContext().firestore();
 });
 
@@ -422,6 +426,150 @@ describe('kitchen document', () => {
 
   it('is never deletable through client rules', async () => {
     await assertFails(deleteDoc(doc(alice, `kitchens/${KITCHEN_1}`)));
+  });
+});
+
+// The write JoinKitchenUseCase ends in: leaving the current kitchen and joining the one a code
+// names as one commit. `moveKitchens` mirrors FirestoreKitchenRepository.joinTransaction (every
+// read first, no write at all when the invite does not resolve, then both documents written whole,
+// defaults included), so these tests pin the shapes the rules must accept for that transaction.
+const moveKitchens = (db, { uid, code, from, name = null }) =>
+  runTransaction(db, async (tx) => {
+    const inviteSnap = await tx.get(doc(db, `kitchenInvites/${code}`));
+    if (!inviteSnap.exists()) return 'no-invite';
+    const targetId = inviteSnap.data().kitchenId;
+    const targetSnap = await tx.get(doc(db, `kitchens/${targetId}`));
+    const fromSnap = await tx.get(doc(db, `kitchens/${from}`));
+    const left = fromSnap.data();
+    const names = { ...left.memberDisplayNames };
+    delete names[uid];
+    tx.set(doc(db, `kitchens/${from}`), {
+      ...left,
+      memberIds: left.memberIds.filter((member) => member !== uid),
+      memberDisplayNames: names,
+      removedMemberIds: left.removedMemberIds ?? [],
+    });
+    const target = targetSnap.data();
+    tx.set(doc(db, `kitchens/${targetId}`), {
+      ...target,
+      memberIds: [...target.memberIds, uid],
+      memberDisplayNames: { ...target.memberDisplayNames, ...(name ? { [uid]: name } : {}) },
+      removedMemberIds: target.removedMemberIds ?? [],
+    });
+    return 'moved';
+  });
+
+// `withSecurityRulesDisabled` hands nothing back, so the document is carried out through a closure.
+const readKitchen = async (id) => {
+  let data;
+  await seed(async (db) => {
+    data = (await getDoc(doc(db, `kitchens/${id}`))).data();
+  });
+  return data;
+};
+
+describe('leaving one kitchen and joining another in a single transaction', () => {
+  // Carol is a plain member of Alice's kitchen-1; Bob's kitchen-2 is the one she moves to.
+  beforeEach(async () => {
+    await seedKitchens();
+    await seed(async (db) => {
+      await setDoc(
+        doc(db, `kitchens/${KITCHEN_1}`),
+        kitchen({ memberIds: [ALICE, CAROL], memberDisplayNames: { [CAROL]: 'Carol' } }),
+      );
+    });
+  });
+
+  it('commits both writes, naming the joiner in the new kitchen only', async () => {
+    const outcome = await assertSucceeds(
+      moveKitchens(carol, { uid: CAROL, code: JOIN_CODE_2, from: KITCHEN_1, name: 'Carol' }),
+    );
+
+    assert.equal(outcome, 'moved');
+    const left = await readKitchen(KITCHEN_1);
+    assert.deepEqual(left.memberIds, [ALICE]);
+    assert.deepEqual(left.memberDisplayNames, {});
+    const joined = await readKitchen(KITCHEN_2);
+    assert.deepEqual(joined.memberIds, [BOB, CAROL]);
+    assert.deepEqual(joined.memberDisplayNames, { [CAROL]: 'Carol' });
+  });
+
+  it('joins without a name when the profile has none', async () => {
+    await assertSucceeds(moveKitchens(carol, { uid: CAROL, code: JOIN_CODE_2, from: KITCHEN_1 }));
+
+    const joined = await readKitchen(KITCHEN_2);
+    assert.deepEqual(joined.memberIds, [BOB, CAROL]);
+    assert.deepEqual(joined.memberDisplayNames, {});
+  });
+
+  it('writes nothing when the code does not resolve, so membership is untouched', async () => {
+    const outcome = await assertSucceeds(moveKitchens(carol, { uid: CAROL, code: 'unknown-code', from: KITCHEN_1 }));
+
+    assert.equal(outcome, 'no-invite');
+    assert.deepEqual((await readKitchen(KITCHEN_1)).memberIds, [ALICE, CAROL]);
+    assert.deepEqual((await readKitchen(KITCHEN_2)).memberIds, [BOB]);
+  });
+
+  it('writes nothing for a code whose invite was rotated away', async () => {
+    await seed(async (db) => deleteDoc(doc(db, `kitchenInvites/${JOIN_CODE_2}`)));
+
+    const outcome = await assertSucceeds(moveKitchens(carol, { uid: CAROL, code: JOIN_CODE_2, from: KITCHEN_1 }));
+
+    assert.equal(outcome, 'no-invite');
+    assert.deepEqual((await readKitchen(KITCHEN_1)).memberIds, [ALICE, CAROL]);
+  });
+
+  it('rolls the leave back when the target refuses the joiner', async () => {
+    await seed(async (db) => {
+      await setDoc(
+        doc(db, `kitchens/${KITCHEN_2}`),
+        kitchen({ ownerId: BOB, memberIds: [BOB], joinCode: JOIN_CODE_2, removedMemberIds: [CAROL] }),
+      );
+    });
+
+    await assertFails(moveKitchens(carol, { uid: CAROL, code: JOIN_CODE_2, from: KITCHEN_1 }));
+
+    assert.deepEqual((await readKitchen(KITCHEN_1)).memberIds, [ALICE, CAROL]);
+    assert.deepEqual((await readKitchen(KITCHEN_2)).memberIds, [BOB]);
+  });
+
+  it('rejects the owner of a kitchen with other members leaving it this way, and joins nothing', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `kitchens/${KITCHEN_1}`), kitchen({ ownerId: CAROL, memberIds: [CAROL, ALICE] }));
+    });
+
+    await assertFails(moveKitchens(carol, { uid: CAROL, code: JOIN_CODE_2, from: KITCHEN_1 }));
+
+    assert.deepEqual((await readKitchen(KITCHEN_1)).memberIds, [CAROL, ALICE]);
+    assert.deepEqual((await readKitchen(KITCHEN_2)).memberIds, [BOB]);
+  });
+
+  it('lets a sole owner move, leaving an empty kitchen behind', async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `kitchens/${KITCHEN_1}`), kitchen({ ownerId: CAROL, memberIds: [CAROL] }));
+    });
+
+    await assertSucceeds(moveKitchens(carol, { uid: CAROL, code: JOIN_CODE_2, from: KITCHEN_1, name: 'Carol' }));
+
+    assert.deepEqual((await readKitchen(KITCHEN_1)).memberIds, []);
+    assert.deepEqual((await readKitchen(KITCHEN_2)).memberIds, [BOB, CAROL]);
+  });
+
+  it('rejects a move that also renames someone else in the target', async () => {
+    await assertFails(
+      runTransaction(carol, async (tx) => {
+        const fromSnap = await tx.get(doc(carol, `kitchens/${KITCHEN_1}`));
+        const targetSnap = await tx.get(doc(carol, `kitchens/${KITCHEN_2}`));
+        tx.set(doc(carol, `kitchens/${KITCHEN_1}`), { ...fromSnap.data(), memberIds: [ALICE], memberDisplayNames: {} });
+        tx.set(doc(carol, `kitchens/${KITCHEN_2}`), {
+          ...targetSnap.data(),
+          memberIds: [BOB, CAROL],
+          memberDisplayNames: { [CAROL]: 'Carol', [BOB]: 'Renamed by Carol' },
+        });
+      }),
+    );
+
+    assert.deepEqual((await readKitchen(KITCHEN_1)).memberIds, [ALICE, CAROL]);
   });
 });
 
