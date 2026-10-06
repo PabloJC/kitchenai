@@ -55,6 +55,9 @@ class FirestoreTaxonomyRepository(
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> =
         firestoreCall(dispatchers) { paths.taxonomies().get().toTaxonomies() }
 
+    override suspend fun getTerms(id: TaxonomyId): AppResult<List<Term>> =
+        firestoreCall(dispatchers) { paths.terms(id).get().toTerms(id) }
+
     private fun QuerySnapshot.toTaxonomies(): List<Taxonomy> = documents.mapNotNull { it.toTaxonomy().orNull() }
 
     private fun QuerySnapshot.toTerms(taxonomy: TaxonomyId): List<Term> =

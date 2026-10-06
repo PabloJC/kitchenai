@@ -26,4 +26,7 @@ interface TaxonomyRepositoryContract {
 
     /** One-shot read: validating a profile cannot depend on a listener that may have failed. */
     suspend fun getTaxonomies(): AppResult<List<Taxonomy>>
+
+    /** One-shot read of one taxonomy's terms, for the same reason as [getTaxonomies]. */
+    suspend fun getTerms(id: TaxonomyId): AppResult<List<Term>>
 }

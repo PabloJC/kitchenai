@@ -219,4 +219,6 @@ private class FakeTaxonomyPort(
     // The one-shot read is what SaveUserProfileUseCase validates against, so this is where the
     // catalogue failure has to surface.
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = catalogue
+
+    override suspend fun getTerms(id: TaxonomyId): AppResult<List<Term>> = AppResult.Success(emptyList())
 }

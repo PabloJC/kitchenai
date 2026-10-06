@@ -62,4 +62,6 @@ private class StubTaxonomyPort(
     override fun taxonomiesErrors(): Flow<AppError> = emptyFlow()
 
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(emptyList())
+
+    override suspend fun getTerms(id: TaxonomyId): AppResult<List<Term>> = AppResult.Success(emptyList())
 }

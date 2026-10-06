@@ -29,8 +29,26 @@ async function read(name) {
   return JSON.parse(await readFile(join(seedDir, name), 'utf8'));
 }
 
+// Mirrors `UnitDimension`; the app ignores a dimension it does not know, so a typo here would
+// silently turn a unit into one that never converts.
+const DIMENSIONS = new Set(['MASS', 'VOLUME']);
+
+function checkConversions(taxonomies) {
+  for (const [id, { terms }] of Object.entries(taxonomies)) {
+    for (const [termId, { conversion }] of Object.entries(terms ?? {})) {
+      if (conversion === undefined) continue;
+      const { dimension, factor } = conversion;
+      if (!DIMENSIONS.has(dimension) || !Number.isFinite(factor) || factor <= 0) {
+        console.error(`invalid conversion on term ${id}/${termId}`);
+        process.exit(1);
+      }
+    }
+  }
+}
+
 // `set` by document id, never `add`: running this twice has to leave the same database.
 async function seedTaxonomies(db, taxonomies) {
+  checkConversions(taxonomies);
   let terms = 0;
   for (const [id, { terms: children, ...taxonomy }] of Object.entries(taxonomies)) {
     await db.collection('taxonomies').doc(id).set(taxonomy);

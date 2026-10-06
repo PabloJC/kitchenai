@@ -3,12 +3,15 @@ package com.kitchenai.shared.data.mapper
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.data.remote.dto.TaxonomyDto
 import com.kitchenai.shared.data.remote.dto.TermDto
+import com.kitchenai.shared.data.remote.dto.UnitConversionDto
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.shared.domain.model.UnitConversion
+import com.kitchenai.shared.domain.model.UnitDimension
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -69,6 +72,30 @@ class TaxonomyMapperTest {
         val expected = Term(TermRef(taxonomy, termId("a")), dto.labels, termId("b"), order = 7)
 
         assertEquals(AppResult.Success(expected), dto.toDomain(taxonomy, "a"))
+    }
+
+    @Test
+    fun `a unit term keeps its dimension and its factor`() {
+        val dto = TermDto(conversion = UnitConversionDto(dimension = "VOLUME", factor = 15.0))
+
+        val decoded = dto.toDomain(taxonomy, "a")
+
+        assertEquals(UnitConversion(UnitDimension.VOLUME, 15.0), (decoded as AppResult.Success).data.conversion)
+    }
+
+    @Test
+    fun `a term with no conversion decodes with none`() {
+        assertEquals(null, (TermDto().toDomain(taxonomy, "a") as AppResult.Success).data.conversion)
+    }
+
+    @Test
+    fun `a dimension this version does not know drops the conversion rather than the term`() {
+        val dto = TermDto(labels = mapOf("xx" to "Label"), conversion = UnitConversionDto("LENGTH", 2.0))
+
+        val decoded = dto.toDomain(taxonomy, "a")
+
+        assertEquals(null, (decoded as AppResult.Success).data.conversion)
+        assertEquals(dto.labels, decoded.data.labels)
     }
 
     @Test
