@@ -7,6 +7,8 @@
     // @google/genai declares an optional MCP peer this project does not install.
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
+    // Node's type stripping runs the tests on `.ts` paths; the emit still imports `.js`.
+    "rewriteRelativeImportExtensions": true,
     "outDir": "lib",
     "rootDir": "src",
     "sourceMap": true

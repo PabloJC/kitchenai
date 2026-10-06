@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
+import { writeCatalogueEntry } from './catalogueAdmin.js';
 import { loadCatalogue, resolve, toReadable } from './catalogue.js';
 import { BadRequest, parseRequest, SCHEMA_VERSION } from './contract.js';
 import { QuotaExceeded, chargeCall } from './quota.js';
@@ -93,6 +94,24 @@ export const suggestRecipes = onCall(
       logger.error('the model call failed', { requestId: request.requestId, failure: String(failure) });
       throw new HttpsError('unavailable', 'could not reach the model');
     }
+  },
+);
+
+/**
+ * Callable form of `tools/seed.mjs` for one ingredient or recipe; the rules keep both collections
+ * closed to clients. The `admin` claim is the gate. App Check stays off: it is orthogonal to the
+ * claim, and where an admin surface lives is undecided (#165).
+ */
+export const writeCatalogue = onCall(
+  {
+    region: process.env.FUNCTIONS_REGION ?? 'europe-southwest1',
+    timeoutSeconds: 30,
+    maxInstances: 2,
+  },
+  async (call) => {
+    const result = await writeCatalogueEntry(db, call);
+    logger.info('catalogue entry written', result);
+    return result;
   },
 );
 

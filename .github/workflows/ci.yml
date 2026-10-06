@@ -207,12 +207,41 @@ jobs:
         run: npm test
 
   # ---------------------------------------------------------------- #
+  # Cloud Functions: type check, build and unit tests. No secret and no Firebase project.
+  # ---------------------------------------------------------------- #
+  functions:
+    name: Functions (lint, build, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install the functions dependencies
+        working-directory: functions
+        run: npm install --no-audit --no-fund
+
+      - name: Type check
+        working-directory: functions
+        run: npm run lint
+
+      - name: Build
+        working-directory: functions
+        run: npm run build
+
+      - name: Run the functions tests
+        working-directory: functions
+        run: npm test
+
+  # ---------------------------------------------------------------- #
   # Aggregated check: the only one marked as required on main.
   # ---------------------------------------------------------------- #
   ci-passed:
     name: CI passed
     if: always()
-    needs: [static-analysis, shared-tests, build-android, build-ios, firestore-rules]
+    needs: [static-analysis, shared-tests, build-android, build-ios, firestore-rules, functions]
     runs-on: ubuntu-latest
     steps:
       - name: Verify every job passed

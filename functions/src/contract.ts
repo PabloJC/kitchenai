@@ -115,7 +115,7 @@ function pantryEntry(raw: unknown): PantryEntry {
   };
 }
 
-function asObject(raw: unknown, field: string): Record<string, unknown> {
+export function asObject(raw: unknown, field: string): Record<string, unknown> {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new BadRequest(`${field} must be an object`);
   }
@@ -133,7 +133,7 @@ function list(raw: unknown, max: number): unknown[] {
  * client's prose cannot cross, so anything that is not a plain id is refused rather than
  * cleaned up and passed to a model.
  */
-function identifier(raw: unknown, field: string): string {
+export function identifier(raw: unknown, field: string): string {
   if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_ID_LENGTH) {
     throw new BadRequest(`${field} must be a short identifier`);
   }

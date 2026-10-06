@@ -14,7 +14,7 @@ by the agent reviewing pull requests.
 | `:composeApp` | `com.android.kotlin.multiplatform.library` | `presentation` (ViewModels, UiState, composables), navigation, design system. Package `com.kitchenai.ui` | `:shared` |
 | `:androidApp` | `com.android.application` | `MainActivity`, `Application`, manifest, resources and icons. Package `com.kitchenai.app`. **No logic** | `:composeApp`, `:shared` |
 | `iosApp` | — | Xcode wrapper, `FirebaseApp.configure()` | `ComposeApp` framework |
-| `functions` | — | TypeScript. The `suggestRecipes` callable: the only thing that talks to a model, and the only thing holding a credential to do it | nothing in the project |
+| `functions` | — | TypeScript. The `suggestRecipes` callable: the only thing that talks to a model, and the only thing holding a credential to do it; plus `writeCatalogue`, the admin-claim-gated catalogue write | nothing in the project |
 
 Since AGP 9 the KMP plugin is incompatible with `com.android.application` in the same
 module: that is why `:androidApp` exists and holds nothing but the entry point. Any PR that
