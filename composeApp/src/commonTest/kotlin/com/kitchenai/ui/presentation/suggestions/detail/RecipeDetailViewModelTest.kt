@@ -40,6 +40,7 @@ import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_missing_ingredients
 import com.kitchenai.ui.resources.error_not_found
@@ -488,7 +489,7 @@ class RecipeDetailViewModelTest {
             RecipeDetailReadsDelegate(
                 recipe = GetRecipeByIdUseCase(recipePort),
                 storedRecipe = GetStoredRecipeUseCase(recipePort),
-                match = MatchRecipeAgainstPantryUseCase(recipePort, pantryPort, time),
+                match = MatchRecipeAgainstPantryUseCase(recipePort, pantryPort, time, noUnits()),
                 ingredients = ObserveIngredientsUseCase(catalogue),
                 taxonomies = ObserveTaxonomiesUseCase(taxonomies),
                 taxonomy = ObserveTaxonomyUseCase(taxonomies),
@@ -497,7 +498,14 @@ class RecipeDetailViewModelTest {
         val writes =
             RecipeDetailWritesDelegate(
                 save = SaveRecipeUseCase(recipePort),
-                cook = CookRecipeUseCase(recipePort, pantryPort, ConsumePantryItemsUseCase(pantryPort, time), time),
+                cook =
+                    CookRecipeUseCase(
+                        recipePort,
+                        pantryPort,
+                        ConsumePantryItemsUseCase(pantryPort, time, noUnits()),
+                        time,
+                        noUnits(),
+                    ),
                 addMissing =
                     AddMissingIngredientsToShoppingListUseCase(
                         recipePort,
@@ -506,6 +514,7 @@ class RecipeDetailViewModelTest {
                         catalogue,
                         sequentialIds(),
                         time,
+                        noUnits(),
                     ),
                 defaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
             )

@@ -61,4 +61,6 @@ private class StubCataloguePort(
     override fun taxonomiesErrors(): Flow<AppError> = failure?.let { flowOf(it) } ?: emptyFlow()
 
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(catalogue)
+
+    override suspend fun getTerms(id: TaxonomyId): AppResult<List<Term>> = AppResult.Success(emptyList())
 }

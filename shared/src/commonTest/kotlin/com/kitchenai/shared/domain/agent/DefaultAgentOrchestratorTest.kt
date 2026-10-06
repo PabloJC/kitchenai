@@ -11,6 +11,7 @@ import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.pantry.termRef
+import com.kitchenai.shared.domain.usecase.profile.metricUnitConverter
 import com.kitchenai.shared.domain.usecase.recipe.ingredientId
 import com.kitchenai.shared.domain.usecase.recipe.recipe
 import com.kitchenai.shared.domain.usecase.recipe.recipeId
@@ -164,4 +165,24 @@ class DefaultAgentOrchestratorTest {
         )
 
     private fun AppResult<List<RecipeSuggestion>>.unwrap(): List<RecipeSuggestion> = (this as AppResult.Success).data
+
+    @Test
+    fun `coverage is verified across units when the caller passes a converter`() =
+        runTest {
+            val proposed =
+                recipe(
+                    ingredients = listOf(recipeIngredient("ing-1", quantity = Quantity(250.0, termRef("millilitre")))),
+                )
+            val answer = agentAnswer("agent-1", listOf(proposed))
+            val held = listOf(pantryItem("item-1", "ing-1", Quantity(1.0, termRef("litre"))))
+
+            val converted =
+                orchestrator(FakeRecipeAgent("agent-1", answer))
+                    .suggest(profile(), held, options, languageTags, metricUnitConverter("taxonomy-1"))
+            val unconverted =
+                orchestrator(FakeRecipeAgent("agent-1", answer)).suggest(profile(), held, options, languageTags)
+
+            assertEquals(1f, converted.unwrap().single().match.coverage)
+            assertEquals(1, unconverted.unwrap().single().match.unverifiable.size)
+        }
 }

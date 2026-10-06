@@ -78,3 +78,6 @@ it again to change a label. It prints counts and never contents.
 Two taxonomies carry a `purpose` the app reads: `units` and `storage`. Everything else has none,
 which is what tells the preferences screen to show a vocabulary without pretending to know what
 it means. See #94.
+
+Unit terms may also carry `conversion` (`dimension` and `factor`, see `docs/data-model.md`); the
+seed script refuses to write a unit with an unknown dimension or a non-positive factor.

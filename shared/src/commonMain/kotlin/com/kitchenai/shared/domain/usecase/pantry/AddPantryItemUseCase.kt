@@ -11,19 +11,21 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 import kotlin.time.Instant
 
 /**
  * Adds a holding to the pantry.
  *
  * Merging is the whole reason this is a use case and not a port call: buying more of
- * something already held in the same unit tops up that row instead of leaving two rows the
- * user has to reconcile. Different units never merge — the MVP converts nothing.
+ * something already held in the same unit, or one that converts into it, tops up that row
+ * instead of leaving two rows the user has to reconcile. Units that do not convert never merge.
  */
 class AddPantryItemUseCase(
     private val pantry: PantryRepositoryContract,
     private val ids: IdGenerator,
     private val time: TimeProvider,
+    private val units: GetUnitConverterUseCase,
 ) {
     suspend operator fun invoke(
         kitchenId: KitchenId,
@@ -61,7 +63,13 @@ class AddPantryItemUseCase(
         location: TermRef?,
         expiresAt: Instant?,
     ): AppResult<PantryItem> {
-        val built = draftPantryHolding(held, ingredient, freeText, quantity, location, expiresAt, ids, time.now())
+        val converter =
+            when (val loaded = units()) {
+                is AppResult.Failure -> return loaded
+                is AppResult.Success -> loaded.data
+            }
+        val built =
+            draftPantryHolding(held, ingredient, freeText, quantity, location, expiresAt, ids, time.now(), converter)
         return when (built) {
             is AppResult.Failure -> built
             is AppResult.Success -> pantry.upsert(kitchenId, built.data).map { built.data }

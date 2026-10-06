@@ -8,6 +8,8 @@ import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.service.UnitConverter
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 
 /**
  * Subtracts what has been used from the pantry.
@@ -18,15 +20,27 @@ import com.kitchenai.shared.domain.port.TimeProvider
 class ConsumePantryItemsUseCase(
     private val pantry: PantryRepositoryContract,
     private val time: TimeProvider,
+    private val units: GetUnitConverterUseCase,
 ) {
     suspend operator fun invoke(
         kitchenId: KitchenId,
         consumptions: List<Pair<PantryItemId, Quantity>>,
     ): AppResult<Unit> =
+        when (val converter = units()) {
+            is AppResult.Failure -> converter
+            is AppResult.Success -> consume(kitchenId, consumptions, converter.data)
+        }
+
+    /** For a caller that already holds the converter, so it is not read twice for one action. */
+    internal suspend fun consume(
+        kitchenId: KitchenId,
+        consumptions: List<Pair<PantryItemId, Quantity>>,
+        converter: UnitConverter,
+    ): AppResult<Unit> =
         when (val held = pantry.getPantry(kitchenId)) {
             is AppResult.Failure -> held
             is AppResult.Success ->
-                when (val applied = apply(held.data, consumptions)) {
+                when (val applied = apply(held.data, consumptions, converter)) {
                     is AppResult.Failure -> applied
                     is AppResult.Success -> write(kitchenId, applied.data)
                 }
@@ -36,11 +50,13 @@ class ConsumePantryItemsUseCase(
      * Returns only the touched holdings, so an unrelated row is never rewritten.
      *
      * Five exits, one per rejection reason: collapsing them would hide which check failed.
+     * A consumption in another unit is converted into the holding's, which keeps its own unit.
      */
     @Suppress("ReturnCount")
     private fun apply(
         held: List<PantryItem>,
         consumptions: List<Pair<PantryItemId, Quantity>>,
+        converter: UnitConverter,
     ): AppResult<List<PantryItem>> {
         val now = time.now()
         val byId = held.associateBy { it.id }
@@ -53,7 +69,7 @@ class ConsumePantryItemsUseCase(
             }
             val item = touched[id] ?: byId[id] ?: return AppResult.Failure(AppError.NotFound("PantryItem"))
             val left =
-                when (val rest = item.quantity - taken) {
+                when (val rest = item.quantity.minus(taken, converter)) {
                     is AppResult.Failure -> return rest
                     is AppResult.Success -> rest.data
                 }

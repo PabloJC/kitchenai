@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 import kotlinx.coroutines.flow.firstOrNull
 
 /**
@@ -29,6 +30,7 @@ class SuggestRecipesUseCase(
     private val profiles: UserProfileRepositoryContract,
     private val pantry: PantryRepositoryContract,
     private val orchestrator: AgentOrchestrator,
+    private val units: GetUnitConverterUseCase,
 ) {
     suspend operator fun invoke(
         userId: UserId,
@@ -41,7 +43,18 @@ class SuggestRecipesUseCase(
                 ?: return AppResult.Failure(AppError.NotFound("profile"))
         return when (val held = pantry.getPantry(kitchenId)) {
             is AppResult.Failure -> held
-            is AppResult.Success -> orchestrator.suggest(profile, held.data, options, languageTags)
+            is AppResult.Success ->
+                when (val converter = units()) {
+                    is AppResult.Failure -> converter
+                    is AppResult.Success ->
+                        orchestrator.suggest(
+                            profile,
+                            held.data,
+                            options,
+                            languageTags,
+                            converter.data,
+                        )
+                }
         }
     }
 }

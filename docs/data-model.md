@@ -60,6 +60,11 @@ shared across users and languages.
 documents under `taxonomies/`, referenced as opaque `TermRef`. No enum, no fallback list, not
 even in test fixtures.
 
+**Unit conversion is catalogue data too.** A term of the `units` taxonomy may carry
+`conversion: { dimension, factor }`, where `factor` is the amount of the dimension's base unit
+(`MASS` or `VOLUME`; the base has factor 1) in one of this unit. A term without it, such as
+`piece`, never converts. Mass to volume is not converted: it would need a density.
+
 **Encoding.** DTOs are written with `encodeDefaults = true`. With defaults dropped, a field
 holding its default value is absent from the payload, and on a merge write an absent field
 means "leave it alone" — the two together make a reset to the default value silently

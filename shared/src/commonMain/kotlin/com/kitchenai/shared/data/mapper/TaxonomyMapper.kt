@@ -5,12 +5,15 @@ import com.kitchenai.shared.core.getOrElse
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.data.remote.dto.TaxonomyDto
 import com.kitchenai.shared.data.remote.dto.TermDto
+import com.kitchenai.shared.data.remote.dto.UnitConversionDto
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.shared.domain.model.UnitConversion
+import com.kitchenai.shared.domain.model.UnitDimension
 
 // One direction only: the catalogue is read-only for the client, so an encoder here would be
 // public API nothing calls. Seeding the documents is out of scope.
@@ -35,5 +38,12 @@ fun TermDto.toDomain(
 ): AppResult<Term> {
     val id = TermId.of(documentId).getOrElse { return AppResult.Failure(it) }
     val parentId = parent?.let { raw -> TermId.of(raw).getOrElse { failure -> return AppResult.Failure(failure) } }
-    return AppResult.Success(Term(TermRef(taxonomy, id), labels, parentId, order))
+    return AppResult.Success(Term(TermRef(taxonomy, id), labels, parentId, order, conversion?.toDomain()))
 }
+
+/**
+ * An unrecognised dimension is null, never a failure, for the same reason as [toPurpose]: the
+ * unit stays usable as a plain label and merely stops converting.
+ */
+private fun UnitConversionDto.toDomain(): UnitConversion? =
+    UnitDimension.entries.firstOrNull { it.name == dimension }?.let { UnitConversion(it, factor) }

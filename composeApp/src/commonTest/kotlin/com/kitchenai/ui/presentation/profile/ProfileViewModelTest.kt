@@ -594,6 +594,8 @@ private class FakeTaxonomyPort : TaxonomyRepositoryContract {
     }
 
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(published)
+
+    override suspend fun getTerms(id: TaxonomyId): AppResult<List<Term>> = AppResult.Success(termsOf(id).value)
 }
 
 /** Stateful on purpose: a sign-in or sign-out has to be visible on the same stream [observeSession] exposes. */

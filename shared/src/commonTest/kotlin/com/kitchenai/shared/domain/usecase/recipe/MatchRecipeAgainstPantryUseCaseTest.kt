@@ -9,6 +9,11 @@ import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.pantry.termRef
+import com.kitchenai.shared.domain.usecase.profile.FakeTaxonomyRepositoryContract
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
+import com.kitchenai.shared.domain.usecase.profile.metricUnitTerms
+import com.kitchenai.shared.domain.usecase.profile.metricUnits
+import com.kitchenai.shared.domain.usecase.profile.noUnits
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,6 +54,7 @@ class MatchRecipeAgainstPantryUseCaseTest {
                     FakeRecipeRepositoryContract(readError = AppError.Unauthorized()),
                     FakePantryRepositoryContract(),
                     TimeProvider { now },
+                    noUnits(),
                 )
 
             assertTrue(useCase(kitchen, stored.id) is AppResult.Failure)
@@ -62,6 +68,7 @@ class MatchRecipeAgainstPantryUseCaseTest {
                     FakeRecipeRepositoryContract(catalogue = listOf(stored)),
                     FakePantryRepositoryContract(readError = AppError.Network()),
                     TimeProvider { now },
+                    noUnits(),
                 )
 
             assertTrue(useCase(kitchen, stored.id) is AppResult.Failure)
@@ -90,7 +97,7 @@ class MatchRecipeAgainstPantryUseCaseTest {
         runTest {
             val pantry = FakePantryRepositoryContract(readError = AppError.Network())
             val recipes = FakeRecipeRepositoryContract(catalogue = listOf(stored))
-            val useCase = MatchRecipeAgainstPantryUseCase(recipes, pantry, TimeProvider { now })
+            val useCase = MatchRecipeAgainstPantryUseCase(recipes, pantry, TimeProvider { now }, noUnits())
 
             // Network is what the pantry would answer; a validation failure proves it was never asked.
             val error = (useCase(kitchen, stored.id, servings = 0) as AppResult.Failure).error
@@ -107,6 +114,7 @@ class MatchRecipeAgainstPantryUseCaseTest {
                     FakeRecipeRepositoryContract(),
                     FakePantryRepositoryContract(listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit)))),
                     TimeProvider { now },
+                    noUnits(),
                 )
 
             assertTrue(useCase(kitchen, stored.id) is AppResult.Failure)
@@ -121,7 +129,46 @@ class MatchRecipeAgainstPantryUseCaseTest {
             FakeRecipeRepositoryContract(catalogue = listOf(stored)),
             FakePantryRepositoryContract(pantry),
             TimeProvider { now },
+            noUnits(),
         )
 
     private fun AppResult<PantryMatch>.unwrap(): PantryMatch = (this as AppResult.Success).data
+
+    @Test
+    fun `a pantry in another unit covers the recipe when the units convert`() =
+        runTest {
+            val millilitre = termRef("millilitre")
+            val milk = recipe(ingredients = listOf(recipeIngredient("ing-1", quantity = Quantity(250.0, millilitre))))
+            val useCase =
+                MatchRecipeAgainstPantryUseCase(
+                    FakeRecipeRepositoryContract(catalogue = listOf(milk)),
+                    FakePantryRepositoryContract(
+                        listOf(pantryItem("item-1", "ing-1", Quantity(1.0, termRef("litre")))),
+                    ),
+                    TimeProvider { now },
+                    metricUnits("taxonomy-1"),
+                )
+
+            assertEquals(1f, useCase(kitchen, milk.id).unwrap().coverage)
+            assertEquals(1f, useCase(kitchen, milk).unwrap().coverage)
+        }
+
+    @Test
+    fun `a converter that cannot be read is reported rather than matching without it`() =
+        runTest {
+            val broken =
+                GetUnitConverterUseCase(
+                    FakeTaxonomyRepositoryContract(metricUnitTerms("taxonomy-1"), termsError = AppError.Network()),
+                )
+            val useCase =
+                MatchRecipeAgainstPantryUseCase(
+                    FakeRecipeRepositoryContract(catalogue = listOf(stored)),
+                    FakePantryRepositoryContract(),
+                    TimeProvider { now },
+                    broken,
+                )
+
+            assertTrue(useCase(kitchen, stored.id) is AppResult.Failure)
+            assertTrue(useCase(kitchen, stored) is AppResult.Failure)
+        }
 }

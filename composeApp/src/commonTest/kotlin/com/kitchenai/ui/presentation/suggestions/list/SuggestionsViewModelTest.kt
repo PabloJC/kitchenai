@@ -23,6 +23,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
+import com.kitchenai.shared.domain.service.UnitConverter
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
@@ -38,6 +39,7 @@ import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.defaultKitchenId
 import com.kitchenai.ui.presentation.common.kitchen
+import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_timeout
@@ -433,12 +435,12 @@ class SuggestionsViewModelTest {
         pantryPort: FakePantryPort = FakePantryPort(),
     ): SuggestionsViewModel {
         return SuggestionsViewModel(
-            suggestRecipes = SuggestRecipesUseCase(StubProfilePort(profile), pantryPort, agent),
-            getStoredSuggestions = GetStoredSuggestionsUseCase(recipes, pantryPort, TimeProvider { now }),
+            suggestRecipes = SuggestRecipesUseCase(StubProfilePort(profile), pantryPort, agent, noUnits()),
+            getStoredSuggestions = GetStoredSuggestionsUseCase(recipes, pantryPort, TimeProvider { now }, noUnits()),
             storeSuggestions = StoreSuggestionsUseCase(recipes),
             observeIngredients = ObserveIngredientsUseCase(catalogue),
             observeSavedRecipes = ObserveSavedRecipesUseCase(recipes),
-            matchRecipe = MatchRecipeAgainstPantryUseCase(recipes, pantryPort, TimeProvider { now }),
+            matchRecipe = MatchRecipeAgainstPantryUseCase(recipes, pantryPort, TimeProvider { now }, noUnits()),
             observePantry = ObservePantryUseCase(pantryPort),
             observeKitchen = ObserveKitchenUseCase(kitchens),
         ).also { it.start(UserId.of("user-1").orFail(), languageTags) }
@@ -493,6 +495,7 @@ private class RecordingOrchestrator : AgentOrchestrator {
         pantry: List<PantryItem>,
         options: SuggestionOptions,
         languageTags: List<String>,
+        units: UnitConverter,
     ): AppResult<List<RecipeSuggestion>> {
         calls++
         lastOptions = options

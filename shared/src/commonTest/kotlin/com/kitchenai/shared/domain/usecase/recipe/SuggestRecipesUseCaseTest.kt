@@ -11,9 +11,15 @@ import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
+import com.kitchenai.shared.domain.service.UnitConverter
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.pantry.termRef
+import com.kitchenai.shared.domain.usecase.profile.FakeTaxonomyRepositoryContract
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
+import com.kitchenai.shared.domain.usecase.profile.metricUnitTerms
+import com.kitchenai.shared.domain.usecase.profile.metricUnits
+import com.kitchenai.shared.domain.usecase.profile.noUnits
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -31,7 +37,12 @@ class SuggestRecipesUseCaseTest {
         runTest {
             val orchestrator = RecordingOrchestrator()
             val useCase =
-                SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), FakePantryRepositoryContract(held), orchestrator)
+                SuggestRecipesUseCase(
+                    FakeProfilePort(flowOf(stored)),
+                    FakePantryRepositoryContract(held),
+                    orchestrator,
+                    noUnits(),
+                )
 
             val result = useCase(user, kitchen, listOf("en"), SuggestionOptions(useOnlyPantry = true))
 
@@ -47,7 +58,12 @@ class SuggestRecipesUseCaseTest {
         runTest {
             val orchestrator = RecordingOrchestrator()
             val useCase =
-                SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), FakePantryRepositoryContract(held), orchestrator)
+                SuggestRecipesUseCase(
+                    FakeProfilePort(flowOf(stored)),
+                    FakePantryRepositoryContract(held),
+                    orchestrator,
+                    noUnits(),
+                )
 
             useCase(user, kitchen, listOf("es"))
 
@@ -59,7 +75,8 @@ class SuggestRecipesUseCaseTest {
     fun `a failing pantry read is reported`() =
         runTest {
             val pantry = FakePantryRepositoryContract(readError = AppError.Network())
-            val useCase = SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), pantry, RecordingOrchestrator())
+            val useCase =
+                SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), pantry, RecordingOrchestrator(), noUnits())
 
             assertTrue(useCase(user, kitchen, listOf("en")) is AppResult.Failure)
         }
@@ -72,11 +89,53 @@ class SuggestRecipesUseCaseTest {
                     FakeProfilePort(emptyFlow()),
                     FakePantryRepositoryContract(held),
                     RecordingOrchestrator(),
+                    noUnits(),
                 )
 
             val result = useCase(user, kitchen, listOf("en"))
 
             assertEquals(AppError.NotFound("profile"), (result as AppResult.Failure).error)
+        }
+
+    @Test
+    fun `a converter that cannot be read is reported and the orchestrator is never asked`() =
+        runTest {
+            val orchestrator = RecordingOrchestrator()
+            val broken =
+                GetUnitConverterUseCase(
+                    FakeTaxonomyRepositoryContract(metricUnitTerms("taxonomy-1"), termsError = AppError.Network()),
+                )
+
+            val result =
+                SuggestRecipesUseCase(
+                    FakeProfilePort(flowOf(stored)),
+                    FakePantryRepositoryContract(held),
+                    orchestrator,
+                    broken,
+                )(
+                    user,
+                    kitchen,
+                    listOf("en"),
+                )
+
+            assertTrue(result is AppResult.Failure)
+            assertEquals(null, orchestrator.profile)
+        }
+
+    @Test
+    fun `the converter built from the units taxonomy is what the orchestrator verifies with`() =
+        runTest {
+            val orchestrator = RecordingOrchestrator()
+
+            SuggestRecipesUseCase(
+                FakeProfilePort(flowOf(stored)),
+                FakePantryRepositoryContract(held),
+                orchestrator,
+                metricUnits("taxonomy-1"),
+            )(user, kitchen, listOf("en"))
+
+            val converter = requireNotNull(orchestrator.units)
+            assertEquals(0.5, converter.amountIn(Quantity(500.0, termRef("gram")), termRef("kilogram")))
         }
 }
 
@@ -89,17 +148,21 @@ private class RecordingOrchestrator : AgentOrchestrator {
         private set
     var languageTags: List<String>? = null
         private set
+    var units: UnitConverter? = null
+        private set
 
     override suspend fun suggest(
         profile: UserProfile,
         pantry: List<PantryItem>,
         options: SuggestionOptions,
         languageTags: List<String>,
+        units: UnitConverter,
     ): AppResult<List<RecipeSuggestion>> {
         this.profile = profile
         this.pantry = pantry
         this.options = options
         this.languageTags = languageTags
+        this.units = units
         return AppResult.Success(emptyList())
     }
 }

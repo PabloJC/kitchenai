@@ -14,7 +14,9 @@ import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.service.UnitConverter
 import com.kitchenai.shared.domain.usecase.pantry.draftPantryHolding
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 
 /**
  * Moves what is ticked in the cart into the pantry — the same claim a checked line and a pantry
@@ -39,6 +41,7 @@ class MoveCheckedItemsToPantryUseCase(
     private val pantry: PantryRepositoryContract,
     private val ids: IdGenerator,
     private val time: TimeProvider,
+    private val units: GetUnitConverterUseCase,
 ) {
     suspend operator fun invoke(
         kitchenId: KitchenId,
@@ -52,24 +55,38 @@ class MoveCheckedItemsToPantryUseCase(
         if (withQuantity.isEmpty()) return AppResult.Success(MovedToPantrySummary(0, skipped))
         val held = pantry.getPantry(kitchenId)
         if (held is AppResult.Failure) return held
-        return when (val touched = plan((held as AppResult.Success).data, withQuantity)) {
-            is AppResult.Failure -> touched
-            is AppResult.Success ->
-                pantry
-                    .upsertAllConfirmed(kitchenId, touched.data)
-                    .flatMap {
-                        shoppingItems.removeItems(kitchenId, listId, withQuantity.map { (item, _) -> item.id })
-                    }.map { MovedToPantrySummary(withQuantity.size, skipped) }
-        }
+        return commit(kitchenId, listId, (held as AppResult.Success).data, withQuantity, skipped)
     }
+
+    private suspend fun commit(
+        kitchenId: KitchenId,
+        listId: ShoppingListId,
+        held: List<PantryItem>,
+        withQuantity: List<Pair<ShoppingItem, Quantity>>,
+        skipped: Int,
+    ): AppResult<MovedToPantrySummary> =
+        when (val converter = units()) {
+            is AppResult.Failure -> converter
+            is AppResult.Success ->
+                when (val touched = plan(held, withQuantity, converter.data)) {
+                    is AppResult.Failure -> touched
+                    is AppResult.Success ->
+                        pantry
+                            .upsertAllConfirmed(kitchenId, touched.data)
+                            .flatMap {
+                                shoppingItems.removeItems(kitchenId, listId, withQuantity.map { (item, _) -> item.id })
+                            }.map { MovedToPantrySummary(withQuantity.size, skipped) }
+                }
+        }
 
     /**
      * Folded against a working copy, so two checked lines for the same ingredient in the same
-     * unit merge with each other too, not only with what the pantry already held.
+     * unit, or units that convert, merge with each other too, not only with what the pantry held.
      */
     private fun plan(
         held: List<PantryItem>,
         lines: List<Pair<ShoppingItem, Quantity>>,
+        converter: UnitConverter,
     ): AppResult<List<PantryItem>> {
         val working = held.toMutableList()
         val touched = LinkedHashMap<PantryItemId, PantryItem>()
@@ -78,7 +95,17 @@ class MoveCheckedItemsToPantryUseCase(
             val built =
                 when (
                     val drafted =
-                        draftPantryHolding(working, item.ingredient, item.freeText, quantity, null, null, ids, now)
+                        draftPantryHolding(
+                            working,
+                            item.ingredient,
+                            item.freeText,
+                            quantity,
+                            null,
+                            null,
+                            ids,
+                            now,
+                            converter,
+                        )
                 ) {
                     is AppResult.Failure -> return drafted
                     is AppResult.Success -> drafted.data

@@ -4,6 +4,12 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
+import com.kitchenai.shared.domain.usecase.pantry.pantryItem
+import com.kitchenai.shared.domain.usecase.profile.FakeTaxonomyRepositoryContract
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
+import com.kitchenai.shared.domain.usecase.profile.metricUnitTerms
+import com.kitchenai.shared.domain.usecase.profile.metricUnits
+import com.kitchenai.shared.domain.usecase.profile.noUnits
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,11 +19,13 @@ class MoveCheckedItemsToPantryUseCaseTest {
     private val list = listId()
     private val time = fixedTime(1_000)
     private val unit = termRef("units", "gram")
+    private val kilograms = termRef("units", "kilogram")
 
     private fun useCase(
         items: FakeShoppingItemRepositoryContract,
         pantry: FakePantryRepositoryContract = FakePantryRepositoryContract(),
-    ) = MoveCheckedItemsToPantryUseCase(items, pantry, sequentialIds(), time)
+        units: GetUnitConverterUseCase = noUnits(),
+    ) = MoveCheckedItemsToPantryUseCase(items, pantry, sequentialIds(), time, units)
 
     @Test
     fun `the pantry write goes through the confirmed path rather than the optimistic one`() =
@@ -180,4 +188,54 @@ class MoveCheckedItemsToPantryUseCaseTest {
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Network)
         }
+
+    @Test
+    fun `a checked line merges into a holding in another unit of the same dimension`() =
+        runTest {
+            val items = FakeShoppingItemRepositoryContract()
+            items.seed(list, shoppingItem("rice", quantity = Quantity(1.0, kilograms)).copy(checked = true))
+            val pantry = FakePantryRepositoryContract(listOf(heldRice(Quantity(500.0, unit))))
+
+            val result = useCase(items, pantry, metricUnits("units"))(kitchenId(), list)
+
+            assertTrue(result is AppResult.Success)
+            assertEquals(listOf(Quantity(1500.0, unit)), pantry.items.map { it.quantity })
+            assertTrue(items.itemsOf(list).isEmpty())
+        }
+
+    @Test
+    fun `two checked lines in convertible units merge into the first one's unit`() =
+        runTest {
+            val items = FakeShoppingItemRepositoryContract()
+            items.seed(
+                list,
+                shoppingItem("rice-1", "rice", quantity = Quantity(250.0, unit)).copy(checked = true),
+                shoppingItem("rice-2", "rice", quantity = Quantity(0.25, kilograms)).copy(checked = true),
+            )
+            val pantry = FakePantryRepositoryContract()
+
+            useCase(items, pantry, metricUnits("units"))(kitchenId(), list)
+
+            assertEquals(listOf(Quantity(500.0, unit)), pantry.items.map { it.quantity })
+        }
+
+    @Test
+    fun `a converter that cannot be read leaves the pantry and the list as they were`() =
+        runTest {
+            val items = FakeShoppingItemRepositoryContract()
+            items.seed(list, shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true))
+            val pantry = FakePantryRepositoryContract()
+            val broken =
+                GetUnitConverterUseCase(
+                    FakeTaxonomyRepositoryContract(metricUnitTerms("units"), taxonomiesError = AppError.Network()),
+                )
+
+            val result = useCase(items, pantry, broken)(kitchenId(), list)
+
+            assertTrue(result is AppResult.Failure)
+            assertTrue(pantry.items.isEmpty())
+            assertEquals(listOf("rice"), items.itemsOf(list).map { it.id.value })
+        }
+
+    private fun heldRice(quantity: Quantity) = pantryItem("held-rice", "rice", quantity)
 }

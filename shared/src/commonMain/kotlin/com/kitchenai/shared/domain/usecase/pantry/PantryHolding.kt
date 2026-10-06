@@ -10,6 +10,7 @@ import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.port.IdGenerator
+import com.kitchenai.shared.domain.service.UnitConverter
 import kotlin.time.Instant
 
 /**
@@ -19,6 +20,8 @@ import kotlin.time.Instant
  *
  * A free-text holding never merges: two different spellings of "the good bread" are not provably
  * the same thing, and folding them into one row risks discarding a real one.
+ *
+ * Quantities merge across units [units] can convert, and the row keeps the unit it already had.
  */
 @Suppress("LongParameterList")
 internal fun draftPantryHolding(
@@ -30,6 +33,7 @@ internal fun draftPantryHolding(
     expiresAt: Instant?,
     ids: IdGenerator,
     now: Instant,
+    units: UnitConverter,
 ): AppResult<PantryItem> {
     // Enforced here rather than left to each caller: AddPantryItemUseCase used to check this
     // itself before this logic was shared, and a caller that forgot would silently let a
@@ -39,9 +43,11 @@ internal fun draftPantryHolding(
         return AppResult.Failure(AppError.Validation("amount", "must be greater than zero"))
     }
     val mergeInto =
-        ingredient?.let { known -> held.firstOrNull { it.ingredient == known && it.quantity.canCombineWith(quantity) } }
+        ingredient?.let { known ->
+            held.firstOrNull { it.ingredient == known && it.quantity.canCombineWith(quantity, units) }
+        }
     return mergeInto?.let { existing ->
-        (existing.quantity + quantity).map { total ->
+        existing.quantity.plus(quantity, units).map { total ->
             existing.copy(
                 quantity = total,
                 location = location ?: existing.location,

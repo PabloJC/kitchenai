@@ -36,6 +36,7 @@ import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import kotlinx.coroutines.Dispatchers
@@ -315,7 +316,7 @@ class ShoppingViewModelTest {
                     ),
                 writes =
                     ShoppingWritesDelegate(
-                        add = AddShoppingItemUseCase(items, IdGenerator { "added-${++generated}" }, time),
+                        add = AddShoppingItemUseCase(items, IdGenerator { "added-${++generated}" }, time, noUnits()),
                         setChecked = SetShoppingItemCheckedUseCase(items, time),
                         remove = RemoveShoppingItemUseCase(items),
                         clearChecked = ClearCheckedItemsUseCase(items),
@@ -325,6 +326,7 @@ class ShoppingViewModelTest {
                                 pantry,
                                 IdGenerator { "moved-${++generated}" },
                                 time,
+                                noUnits(),
                             ),
                     ),
             )

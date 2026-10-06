@@ -5,6 +5,11 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.usecase.profile.FakeTaxonomyRepositoryContract
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
+import com.kitchenai.shared.domain.usecase.profile.metricUnitTerms
+import com.kitchenai.shared.domain.usecase.profile.metricUnits
+import com.kitchenai.shared.domain.usecase.profile.noUnits
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,7 +24,7 @@ class AddPantryItemUseCaseTest {
     private val sooner = Instant.fromEpochSeconds(5_000)
 
     private fun useCase(port: FakePantryRepositoryContract) =
-        AddPantryItemUseCase(port, IdGenerator { "generated-1" }, TimeProvider { now })
+        AddPantryItemUseCase(port, IdGenerator { "generated-1" }, TimeProvider { now }, noUnits())
 
     @Test
     fun `tops up the held row when the ingredient and the unit match`() =
@@ -126,6 +131,65 @@ class AddPantryItemUseCaseTest {
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Validation)
+            assertEquals(0, port.upsertCalls)
+        }
+
+    @Test
+    fun `tops up the held row across units and keeps the unit it already had`() =
+        runTest {
+            val port =
+                FakePantryRepositoryContract(listOf(pantryItem("item-1", "ing-1", Quantity(500.0, termRef("gram")))))
+            val converting =
+                AddPantryItemUseCase(
+                    port,
+                    IdGenerator { "generated-1" },
+                    TimeProvider { now },
+                    metricUnits("taxonomy-1"),
+                )
+
+            converting(kitchen, ingredientId("ing-1"), null, Quantity(1.0, termRef("kilogram")), null, null)
+
+            assertEquals(listOf(Quantity(1500.0, termRef("gram"))), port.items.map { it.quantity })
+        }
+
+    @Test
+    fun `keeps a separate row for a unit of another dimension even with a converter`() =
+        runTest {
+            val port =
+                FakePantryRepositoryContract(listOf(pantryItem("item-1", "ing-1", Quantity(500.0, termRef("gram")))))
+            val converting =
+                AddPantryItemUseCase(
+                    port,
+                    IdGenerator { "generated-1" },
+                    TimeProvider { now },
+                    metricUnits("taxonomy-1"),
+                )
+
+            converting(kitchen, ingredientId("ing-1"), null, Quantity(1.0, termRef("litre")), null, null)
+
+            assertEquals(2, port.items.size)
+        }
+
+    @Test
+    fun `a converter that cannot be read fails the add and writes nothing`() =
+        runTest {
+            val port = FakePantryRepositoryContract()
+            val broken =
+                GetUnitConverterUseCase(
+                    FakeTaxonomyRepositoryContract(metricUnitTerms("taxonomy-1"), termsError = AppError.Network()),
+                )
+
+            val result =
+                AddPantryItemUseCase(port, IdGenerator { "generated-1" }, TimeProvider { now }, broken)(
+                    kitchen,
+                    ingredientId("ing-1"),
+                    null,
+                    Quantity(1.0, termRef("gram")),
+                    null,
+                    null,
+                )
+
+            assertTrue(result is AppResult.Failure)
             assertEquals(0, port.upsertCalls)
         }
 }

@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
+import com.kitchenai.shared.domain.service.UnitConverter
 import kotlin.time.Instant
 
 /** One requested addition, before it is known whether it opens a line or folds into one. */
@@ -24,16 +25,17 @@ internal data class ShoppingLine(
  * up, or a new one.
  *
  * Shared rather than duplicated so that adding one item and adding a whole recipe deduplicate
- * by the very same rule.
+ * by the very same rule. Lines in units [units] can convert merge too, in the existing line's unit.
  */
 internal fun draftShoppingLine(
     current: List<ShoppingItem>,
     line: ShoppingLine,
     ids: IdGenerator,
     time: TimeProvider,
+    units: UnitConverter,
 ): AppResult<ShoppingItem> {
-    val duplicate = line.ingredient?.let { known -> current.firstOrNull { it.absorbs(known, line.quantity) } }
-    return duplicate?.mergedWith(line.quantity, time.now()) ?: line.open(ids, time)
+    val duplicate = line.ingredient?.let { known -> current.firstOrNull { it.absorbs(known, line.quantity, units) } }
+    return duplicate?.mergedWith(line.quantity, time.now(), units) ?: line.open(ids, time)
 }
 
 // A free-text line never merges: two people write "the good bread" in two different ways, and
@@ -41,20 +43,22 @@ internal fun draftShoppingLine(
 private fun ShoppingItem.absorbs(
     other: IngredientId,
     added: Quantity?,
+    units: UnitConverter,
 ): Boolean {
     if (checked || ingredient != other) return false
     return when {
         quantity == null || added == null -> quantity == null && added == null
-        else -> quantity.canCombineWith(added)
+        else -> quantity.canCombineWith(added, units)
     }
 }
 
 private fun ShoppingItem.mergedWith(
     added: Quantity?,
     now: Instant,
+    units: UnitConverter,
 ): AppResult<ShoppingItem> {
     val total: AppResult<Quantity?> =
-        if (quantity == null || added == null) AppResult.Success(quantity) else quantity + added
+        if (quantity == null || added == null) AppResult.Success(quantity) else quantity.plus(added, units)
     return total.map { copy(quantity = it, updatedAt = now) }
 }
 
