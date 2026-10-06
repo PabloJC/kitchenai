@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.profile
 
 import com.kitchenai.shared.core.AppError
+import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.model.resolve
 import com.kitchenai.ui.presentation.common.LabelResolver
@@ -13,6 +14,7 @@ internal fun uiState(
     draft: ProfileDraft?,
     catalogue: CatalogueState,
     saving: Boolean,
+    account: AccountState,
     failure: ProfileError?,
 ): ProfileUiState {
     val profile = draft?.profile
@@ -23,9 +25,15 @@ internal fun uiState(
         isLoading = draft == null,
         isSaving = saving,
         hasUnsavedChanges = draft?.edited == true,
+        signedInWithGoogle = account.session.isGoogleSignedIn(),
+        displayName = profile?.displayName,
+        isAuthenticating = account.authenticating,
         error = failure,
     )
 }
+
+/** Anonymous and signed-out both show the same "sign in" affordance, so only this case is true. */
+private fun Session?.isGoogleSignedIn(): Boolean = this is Session.SignedIn && !isAnonymous
 
 /**
  * One section per taxonomy the catalogue published, in its order. A label that resolves to

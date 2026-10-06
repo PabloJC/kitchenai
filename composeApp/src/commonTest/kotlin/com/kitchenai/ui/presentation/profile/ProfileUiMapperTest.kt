@@ -4,6 +4,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.DietaryConstraint
+import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
@@ -23,10 +24,12 @@ class ProfileUiMapperTest {
     private val termRef = TermRef(taxonomyId, TermId.of("vegan").value())
     private val userId = UserId.of("user-1").value()
     private val now = Instant.fromEpochSeconds(1_000)
+    private val noAccount = AccountState(session = null, authenticating = false)
 
     @Test
     fun `a loading draft renders as loading`() {
-        val state = uiState(draft = null, catalogue = CatalogueState(), saving = false, failure = null)
+        val state =
+            uiState(draft = null, catalogue = CatalogueState(), saving = false, account = noAccount, failure = null)
 
         assertEquals(true, state.isLoading)
     }
@@ -34,10 +37,54 @@ class ProfileUiMapperTest {
     @Test
     fun `a loaded draft is not loading and carries the saving flag`() {
         val state =
-            uiState(draft = ProfileDraft(profile()), catalogue = CatalogueState(), saving = true, failure = null)
+            uiState(
+                draft = ProfileDraft(profile()),
+                catalogue = CatalogueState(),
+                saving = true,
+                account = noAccount,
+                failure = null,
+            )
 
         assertEquals(false, state.isLoading)
         assertEquals(true, state.isSaving)
+    }
+
+    @Test
+    fun `a signed-out session shows no Google account`() {
+        val account = AccountState(session = Session.SignedOut, authenticating = false)
+
+        val state = accountUiState(account)
+
+        assertEquals(false, state.signedInWithGoogle)
+    }
+
+    @Test
+    fun `an anonymous session shows no Google account`() {
+        val account = AccountState(session = Session.SignedIn(userId, isAnonymous = true), authenticating = false)
+
+        val state = accountUiState(account)
+
+        assertEquals(false, state.signedInWithGoogle)
+    }
+
+    @Test
+    fun `a non-anonymous session shows the account with the profile's own display name`() {
+        val account = AccountState(session = Session.SignedIn(userId, isAnonymous = false), authenticating = false)
+        val draft = ProfileDraft(profile().copy(displayName = "Ada"))
+
+        val state = accountUiState(account, draft)
+
+        assertEquals(true, state.signedInWithGoogle)
+        assertEquals("Ada", state.displayName)
+    }
+
+    @Test
+    fun `authenticating is carried through regardless of the session`() {
+        val account = AccountState(session = null, authenticating = true)
+
+        val state = accountUiState(account, draft = null)
+
+        assertEquals(true, state.isAuthenticating)
     }
 
     @Test
@@ -82,6 +129,11 @@ class ProfileUiMapperTest {
 
         assertNull(result.field)
     }
+
+    private fun accountUiState(
+        account: AccountState,
+        draft: ProfileDraft? = ProfileDraft(profile()),
+    ): ProfileUiState = uiState(draft, CatalogueState(), saving = false, account = account, failure = null)
 
     private fun profile(): UserProfile = UserProfile.newFor(userId, listOf("en"), now)
 

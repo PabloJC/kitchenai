@@ -32,9 +32,11 @@ actual fun rememberGoogleSignInLauncher(): GoogleSignInLauncher {
 private class KmpAuthGoogleSignInLauncher(
     private val uiProvider: GoogleAuthUiProvider,
 ) : GoogleSignInLauncher {
-    override suspend fun launch(): AppResult<GoogleIdToken> =
+    override suspend fun launch(): AppResult<GoogleSignInResult> =
         uiProvider.signIn().fold(
-            onSuccess = { user -> AppResult.Success(GoogleIdToken(user.idToken)) },
+            onSuccess = { user ->
+                AppResult.Success(GoogleSignInResult(GoogleIdToken(user.idToken), user.displayName))
+            },
             // Covers both a platform error and the user dismissing the chooser: KMPAuth
             // reports cancellation as a failed Result too, never a thrown exception.
             onFailure = { error -> AppResult.Failure(AppError.Unknown(error)) },

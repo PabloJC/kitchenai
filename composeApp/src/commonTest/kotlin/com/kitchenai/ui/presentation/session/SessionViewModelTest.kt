@@ -18,6 +18,7 @@ import com.kitchenai.shared.domain.usecase.kitchen.EnsureKitchenUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
+import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
@@ -29,8 +30,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -228,12 +229,68 @@ class SessionViewModelTest {
             assertEquals(2, profiles.saveCount())
         }
 
+    /**
+     * The review finding this covers: `signInWithGoogle` swaps Firebase's own auth uid, but
+     * before this fix `SessionUiState.Ready` never moved off whatever uid `start()` first
+     * resolved, so every screen below `SessionGate` kept reading `users/{oldUid}` and the old
+     * uid's kitchen — failing permission checks — until the app was restarted.
+     */
+    @Test
+    fun `a Google sign-in swap while Ready moves the session to the new uid`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            assertEquals(SessionUiState.Ready(userId), viewModel.state.value)
+
+            val googleUserId = (UserId.of("user-google") as AppResult.Success).data
+            sessions.sessionChanges.emit(Session.SignedIn(googleUserId, isAnonymous = false))
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(googleUserId), viewModel.state.value)
+            // The new uid's own kitchen/shopping-list setup ran too, not just the state label.
+            assertEquals(2, lists.upsertCount)
+        }
+
+    /** Signing out clears the Firebase user outright (no re-link back to a restored anonymous one). */
+    @Test
+    fun `signing out while Ready re-establishes a fresh anonymous session instead of freezing`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            val freshAnonymousId = (UserId.of("user-2") as AppResult.Success).data
+            sessions.signIn = AppResult.Success(Session.SignedIn(freshAnonymousId, isAnonymous = true))
+            sessions.sessionChanges.emit(Session.SignedOut)
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(freshAnonymousId), viewModel.state.value)
+            assertEquals(2, sessions.signInCount)
+        }
+
+    /** A session emission for the uid already active (a token refresh) must not re-run the setup. */
+    @Test
+    fun `a session emission for the same uid already active is a no-op`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+
+            sessions.sessionChanges.emit(Session.SignedIn(userId, isAnonymous = true))
+            advanceUntilIdle()
+
+            assertEquals(SessionUiState.Ready(userId), viewModel.state.value)
+            assertEquals(1, lists.upsertCount)
+        }
+
     private fun viewModel(): SessionViewModel {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         return SessionViewModel(
             ensureSession = EnsureSessionUseCase(sessions),
             ensureKitchen = EnsureKitchenUseCase(kitchens),
             ensureDefaultShoppingList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
+            observeSession = ObserveSessionUseCase(sessions),
             observeUserProfile = ObserveUserProfileUseCase(profiles),
             saveUserProfile = SaveUserProfileUseCase(profiles, FakeTaxonomyPort(), kitchens, time),
             time = time,
@@ -244,20 +301,34 @@ class SessionViewModelTest {
 private val userId = (UserId.of("user-1") as AppResult.Success).data
 private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
 
+/**
+ * A [MutableStateFlow], not a plain event stream: [EnsureSessionUseCase] reads
+ * `observeSession().first()` to check whether a session already exists, exactly like the real
+ * `FirebaseSessionAdapter` (which replays `auth.currentUser` synchronously on subscribe) —
+ * a fake with nothing to replay would suspend that `.first()` forever. Sign-in and sign-out
+ * update [sessionChanges]'s value themselves, and a test can additionally `.emit(...)` into it
+ * directly to simulate Firebase's own auth state changing independently, which is what
+ * [SessionViewModel.watchSessionChanges] reacts to.
+ */
 private class FakeSessionPort : SessionRepositoryContract {
     var signIn: AppResult<Session.SignedIn> = AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
     var signInCount = 0
+    val sessionChanges = MutableStateFlow<Session>(Session.SignedOut)
 
-    override fun observeSession(): Flow<Session> = flowOf(Session.SignedOut)
+    override fun observeSession(): Flow<Session> = sessionChanges
 
     override suspend fun signInAnonymously(): AppResult<Session.SignedIn> {
         signInCount++
-        return signIn
+        return signIn.also { result -> if (result is AppResult.Success) sessionChanges.value = result.data }
     }
 
-    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> = signIn
+    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> =
+        signIn.also { result -> if (result is AppResult.Success) sessionChanges.value = result.data }
 
-    override suspend fun signOut(): AppResult<Unit> = AppResult.Success(Unit)
+    override suspend fun signOut(): AppResult<Unit> {
+        sessionChanges.value = Session.SignedOut
+        return AppResult.Success(Unit)
+    }
 }
 
 /** It never keeps what it is given: a second bootstrap has to be visible as a second write. */
