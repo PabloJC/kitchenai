@@ -6,6 +6,7 @@ import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -29,4 +30,9 @@ class FakeTaxonomyPort : TaxonomyRepositoryContract {
     override fun taxonomiesErrors(): Flow<AppError> = emptyFlow()
 
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(emptyList())
+
+    override suspend fun getTerms(id: TaxonomyId): AppResult<List<Term>> = AppResult.Success(emptyList())
 }
+
+/** A catalogue with no units: nothing converts, which is what a screen test that is not about units wants. */
+fun noUnits(): GetUnitConverterUseCase = GetUnitConverterUseCase(FakeTaxonomyPort())

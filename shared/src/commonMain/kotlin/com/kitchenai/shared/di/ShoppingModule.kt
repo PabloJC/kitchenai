@@ -12,7 +12,7 @@ import org.koin.dsl.module
 /** Shopping use cases. Both port bindings come with the Firestore adapter. */
 val shoppingModule: Module =
     module {
-        factory { AddShoppingItemUseCase(get(), get(), get()) }
+        factory { AddShoppingItemUseCase(get(), get(), get(), get()) }
         factory { ClearCheckedItemsUseCase(get()) }
         factory { EnsureDefaultShoppingListUseCase(get(), get(), get()) }
         factory { ObserveShoppingItemsUseCase(get()) }

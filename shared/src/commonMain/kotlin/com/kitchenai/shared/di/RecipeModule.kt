@@ -16,8 +16,8 @@ val recipeModule: Module =
     module {
         factory { GetRecipeByIdUseCase(get()) }
         factory { GetStoredRecipeUseCase(get()) }
-        factory { GetStoredSuggestionsUseCase(get(), get(), get()) }
-        factory { MatchRecipeAgainstPantryUseCase(get(), get(), get()) }
+        factory { GetStoredSuggestionsUseCase(get(), get(), get(), get()) }
+        factory { MatchRecipeAgainstPantryUseCase(get(), get(), get(), get()) }
         factory { ObserveSavedRecipesUseCase(get()) }
         factory { RemoveSavedRecipeUseCase(get()) }
         factory { SaveRecipeUseCase(get()) }

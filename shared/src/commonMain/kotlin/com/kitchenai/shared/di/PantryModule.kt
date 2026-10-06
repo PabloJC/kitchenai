@@ -12,8 +12,8 @@ import org.koin.dsl.module
 /** The pantry use cases. The ports they ask for are bound by the data layer. */
 val pantryModule: Module =
     module {
-        factory { AddPantryItemUseCase(get(), get(), get()) }
-        factory { ConsumePantryItemsUseCase(get(), get()) }
+        factory { AddPantryItemUseCase(get(), get(), get(), get()) }
+        factory { ConsumePantryItemsUseCase(get(), get(), get()) }
         factory { ObserveIngredientsUseCase(get()) }
         factory { ObservePantryUseCase(get()) }
         factory { RemovePantryItemUseCase(get()) }

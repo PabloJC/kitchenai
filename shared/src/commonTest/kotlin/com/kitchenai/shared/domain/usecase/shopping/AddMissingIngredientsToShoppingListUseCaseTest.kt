@@ -10,6 +10,11 @@ import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
+import com.kitchenai.shared.domain.usecase.profile.FakeTaxonomyRepositoryContract
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
+import com.kitchenai.shared.domain.usecase.profile.metricUnitTerms
+import com.kitchenai.shared.domain.usecase.profile.metricUnits
+import com.kitchenai.shared.domain.usecase.profile.noUnits
 import com.kitchenai.shared.domain.usecase.recipe.FakeRecipeRepositoryContract
 import com.kitchenai.shared.domain.usecase.recipe.recipe
 import com.kitchenai.shared.domain.usecase.recipe.recipeId
@@ -178,6 +183,97 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             assertTrue(result is AppResult.Success)
         }
 
+    private val gram = termRef("taxonomy-1", "gram")
+    private val kilogram = termRef("taxonomy-1", "kilogram")
+    private val litre = termRef("taxonomy-1", "litre")
+    private val millilitre = termRef("taxonomy-1", "millilitre")
+    private val metric = metricUnits("taxonomy-1")
+
+    @Test
+    fun `only the amount missing across units reaches the list in the recipe's unit`() =
+        runTest {
+            val dish = dishOf(recipeIngredient("flour", quantity = Quantity(1.0, kilogram)))
+            val held = listOf(pantryItem("item-1", "flour", Quantity(500.0, gram)))
+
+            val result = useCase(dish, held, units = metric)(kitchen, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(0.5, kilogram), items.itemsOf(list).single().quantity)
+            assertEquals(AddedToListSummary(added = 1, skipped = 0), result.unwrap())
+        }
+
+    @Test
+    fun `a pantry that covers the recipe across units adds nothing`() =
+        runTest {
+            val dish = dishOf(recipeIngredient("milk", quantity = Quantity(250.0, millilitre)))
+            val held = listOf(pantryItem("item-1", "milk", Quantity(1.0, litre)))
+
+            val result = useCase(dish, held, units = metric)(kitchen, list, dish.id, servings = 2)
+
+            assertTrue(items.itemsOf(list).isEmpty())
+            assertEquals(AddedToListSummary(added = 0, skipped = 1), result.unwrap())
+        }
+
+    @Test
+    fun `a line already on the list in another unit is topped up in that unit`() =
+        runTest {
+            items.seed(list, shoppingItem("flour", quantity = Quantity(500.0, gram)))
+            val dish = dishOf(recipeIngredient("flour", quantity = Quantity(1.0, kilogram)))
+
+            useCase(dish, units = metric)(kitchen, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(1500.0, gram), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `a whole-item ingredient is rounded up in its own unit after a conversion`() =
+        runTest {
+            val catalogue = listOf(ingredient("flour", purchasedWhole = true, defaultUnit = kilogram))
+
+            val dish = dishOf(recipeIngredient("flour", quantity = Quantity(500.0, gram)))
+
+            useCase(dish, catalogue = catalogue, units = metric)(kitchen, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(1.0, kilogram), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `a whole-item shortfall computed across units is rounded up`() =
+        runTest {
+            val catalogue = listOf(ingredient("flour", purchasedWhole = true, defaultUnit = kilogram))
+            val dish = dishOf(recipeIngredient("flour", quantity = Quantity(2.5, kilogram)))
+            val held = listOf(pantryItem("item-1", "flour", Quantity(1000.0, gram)))
+
+            useCase(dish, held, catalogue, metric)(kitchen, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(2.0, kilogram), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `a whole-item amount in a unit that cannot convert to its own is left alone`() =
+        runTest {
+            val catalogue = listOf(ingredient("flour", purchasedWhole = true, defaultUnit = kilogram))
+            val dish = dishOf(recipeIngredient("flour", quantity = Quantity(250.0, millilitre)))
+
+            useCase(dish, catalogue = catalogue, units = metric)(kitchen, list, dish.id, servings = 2)
+
+            assertEquals(Quantity(250.0, millilitre), items.itemsOf(list).single().quantity)
+        }
+
+    @Test
+    fun `a converter that cannot be read fails the add and writes nothing`() =
+        runTest {
+            val dish = dishOf(recipeIngredient("flour", quantity = Quantity(1.0, kilogram)))
+            val broken =
+                GetUnitConverterUseCase(
+                    FakeTaxonomyRepositoryContract(metricUnitTerms("taxonomy-1"), termsError = AppError.Network()),
+                )
+
+            val result = useCase(dish, units = broken)(kitchen, list, dish.id, servings = 2)
+
+            assertTrue(result is AppResult.Failure)
+            assertEquals(0, items.upsertCalls)
+        }
+
     @Test
     fun `a failing recipe read is reported and nothing is written`() =
         runTest {
@@ -189,6 +285,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
                     FakeIngredientRepositoryContract(),
                     sequentialIds(),
                     fixedTime(2_000),
+                    noUnits(),
                 )
 
             assertTrue(useCase(kitchen, list, recipeId("recipe-1"), servings = 2) is AppResult.Failure)
@@ -208,6 +305,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
                     FakeIngredientRepositoryContract(),
                     sequentialIds(),
                     fixedTime(2_000),
+                    noUnits(),
                 )
 
             assertTrue(useCase(kitchen, list, dish.id, servings = 2) is AppResult.Failure)
@@ -226,6 +324,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
         dish: Recipe,
         held: List<PantryItem> = emptyList(),
         catalogue: List<Ingredient> = emptyList(),
+        units: GetUnitConverterUseCase = noUnits(),
     ): AddMissingIngredientsToShoppingListUseCase =
         AddMissingIngredientsToShoppingListUseCase(
             FakeRecipeRepositoryContract(catalogue = listOf(dish)),
@@ -234,6 +333,7 @@ class AddMissingIngredientsToShoppingListUseCaseTest {
             FakeIngredientRepositoryContract(catalogue),
             sequentialIds(),
             fixedTime(2_000),
+            units,
         )
 
     private fun AppResult<AddedToListSummary>.unwrap(): AddedToListSummary = (this as AppResult.Success).data

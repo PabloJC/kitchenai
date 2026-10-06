@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 
 /**
  * The last generation, matched against the pantry as it stands now rather than as it stood when
@@ -21,12 +22,17 @@ class GetStoredSuggestionsUseCase(
     private val recipes: RecipeRepositoryContract,
     private val pantry: PantryRepositoryContract,
     private val time: TimeProvider,
+    private val units: GetUnitConverterUseCase,
 ) {
     suspend operator fun invoke(kitchenId: KitchenId): AppResult<List<RecipeSuggestion>> =
         recipes.getAll().flatMap { stored ->
-            pantry.getPantry(kitchenId).map { held ->
-                val now = time.now()
-                stored.map { recipe -> RecipeSuggestion(recipe, PantryMatcher.match(recipe, held, now), recipe.source) }
+            pantry.getPantry(kitchenId).flatMap { held ->
+                units().map { converter ->
+                    val now = time.now()
+                    stored.map { recipe ->
+                        RecipeSuggestion(recipe, PantryMatcher.match(recipe, held, now, converter), recipe.source)
+                    }
+                }
             }
         }
 }

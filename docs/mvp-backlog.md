@@ -21,7 +21,7 @@ These are decided here so that 22 issues do not each re-decide them.
 | **No provider API key in the binary.** The app calls a callable Cloud Function protected by the App Check work already in `main`. | #51 |
 | **Everything user-owned lives under `users/{uid}`.** That is what keeps the Firestore rules a two-line owner check. | #38, #33 |
 | **"Synchronised" means across one user's devices**, not shared with other people. Household sharing needs a top-level collection and a membership model — post-MVP. **Superseded by #190**: a `Kitchen` membership model shipped into the MVP by product decision; see #191–#194 for the follow-up work moving pantry/list/recipes onto it. | #37, #43 |
-| **No unit conversion in the MVP.** Mismatched units are `unverifiable`, never silently converted. | #31, #39 |
+| **No unit conversion in the MVP.** Mismatched units are `unverifiable`, never silently converted. **Superseded by #212**: units that carry conversion data in the `units` taxonomy convert within one dimension; everything else stays `unverifiable`. | #31, #39 |
 | **Observers stream data, not results.** Every `observeX` returns a bare `Flow<T>`; a listener that fails ends its stream and publishes on the port's `streamErrors(): Flow<AppError>`. Read-modify-write goes through a one-shot `getX(): AppResult<…>`, never the first emission of a listener. Decided in #68 after wave 2 shipped both shapes. | #39, #41, #42, #43, #44, #47 |
 
 ### Firestore layout (normative)

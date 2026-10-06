@@ -12,6 +12,7 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
+import com.kitchenai.shared.domain.service.UnitConverter
 import kotlin.time.Instant
 
 /**
@@ -30,12 +31,13 @@ class DefaultAgentOrchestrator(
         pantry: List<PantryItem>,
         options: SuggestionOptions,
         languageTags: List<String>,
+        units: UnitConverter,
     ): AppResult<List<RecipeSuggestion>> {
         val candidates = selection.select(AgentCapability.SUGGEST_FROM_PANTRY, registry.agents())
         if (candidates.isEmpty()) return AppResult.Failure(AppError.NotFound("agent"))
         val now = time.now()
         val context = AgentContextBuilder.build(profile, pantry, options, languageTags, now)
-        return ask(candidates, context).map { answer -> verify(answer, profile, pantry, options, now) }
+        return ask(candidates, context).map { answer -> verify(answer, profile, pantry, options, now, units) }
     }
 
     /**
@@ -69,6 +71,7 @@ class DefaultAgentOrchestrator(
         pantry: List<PantryItem>,
         options: SuggestionOptions,
         now: Instant,
+        units: UnitConverter,
     ): List<RecipeSuggestion> {
         val excluded = profile.constraints.filter { it.strength == ConstraintStrength.AVOID }.map { it.term }.toSet()
         return answer.suggestions
@@ -77,7 +80,7 @@ class DefaultAgentOrchestrator(
             .map { recipe ->
                 RecipeSuggestion(
                     recipe = recipe,
-                    match = PantryMatcher.match(recipe, pantry, now),
+                    match = PantryMatcher.match(recipe, pantry, now, units),
                     source = RecipeSource.Agent(answer.agentId, answer.modelId, now),
                 )
             }

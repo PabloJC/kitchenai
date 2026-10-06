@@ -31,6 +31,7 @@ import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_unauthorized_own_data
@@ -345,7 +346,7 @@ class PantryViewModelTest {
                 ),
             writes =
                 PantryWritesDelegate(
-                    add = AddPantryItemUseCase(pantry, IdGenerator { "item-2" }, time),
+                    add = AddPantryItemUseCase(pantry, IdGenerator { "item-2" }, time, noUnits()),
                     update = UpdatePantryItemUseCase(pantry, time),
                     remove = RemovePantryItemUseCase(pantry),
                     time = time,

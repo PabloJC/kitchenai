@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeIngredient
+import com.kitchenai.shared.domain.model.reaches
 import kotlin.time.Instant
 
 /**
@@ -16,13 +17,15 @@ import kotlin.time.Instant
  * `covered` claim in a model response is never displayed.
  *
  * Pure, synchronous and total: [now] is a parameter rather than a clock, so the same inputs
- * always give the same match and every rule below is testable without a scheduler.
+ * always give the same match and every rule below is testable without a scheduler. [units] is a
+ * parameter for the same reason: without one, a holding in another unit stays unverifiable.
  */
 object PantryMatcher {
     fun match(
         recipe: Recipe,
         pantry: List<PantryItem>,
         now: Instant,
+        units: UnitConverter = UnitConverter.NONE,
     ): PantryMatch {
         // A free-text holding has no catalogue id to compare a recipe line against, so it is
         // dropped here rather than left to land under a key nothing ever looks up.
@@ -35,7 +38,7 @@ object PantryMatcher {
         val missing = mutableListOf<MissingIngredient>()
         val unverifiable = mutableListOf<RecipeIngredient>()
         for (line in recipe.ingredients) {
-            when (val verdict = classify(line, held)) {
+            when (val verdict = classify(line, held, units)) {
                 is Verdict.Covered -> covered += CoveredIngredient(line, verdict.by)
                 is Verdict.Missing -> missing += MissingIngredient(line, verdict.shortfall)
                 Verdict.Unverifiable -> unverifiable += line
@@ -47,6 +50,7 @@ object PantryMatcher {
     private fun classify(
         line: RecipeIngredient,
         held: Map<IngredientId, List<PantryItem>>,
+        units: UnitConverter,
     ): Verdict {
         // No catalogue id means a free-text line, and there is nothing to compare it against.
         val ingredient = line.ingredient ?: return Verdict.Unverifiable
@@ -56,11 +60,12 @@ object PantryMatcher {
             // The recipe asks for no amount, so holding any of it at all is enough.
             return if (holdings.isEmpty()) Verdict.Missing(null) else Verdict.Covered(holdings.ids())
         }
-        val comparable = holdings.filter { it.quantity.canCombineWith(required) }
-        val available = comparable.sumOf { it.quantity.amount }
+        val comparable = holdings.filter { it.quantity.canCombineWith(required, units) }
+        // Held amounts are expressed in the recipe's unit, so the shortfall is too.
+        val available = comparable.sumOf { units.amountIn(it.quantity, required.unit) ?: 0.0 }
         return when {
-            available >= required.amount -> Verdict.Covered(comparable.ids())
-            // A holding in another unit could close the gap and nothing here converts units.
+            available.reaches(required.amount) -> Verdict.Covered(comparable.ids())
+            // A holding in a unit that cannot be converted could close the gap, and nothing can tell.
             comparable.size < holdings.size -> Verdict.Unverifiable
             else -> Verdict.Missing(Quantity(required.amount - available, required.unit))
         }

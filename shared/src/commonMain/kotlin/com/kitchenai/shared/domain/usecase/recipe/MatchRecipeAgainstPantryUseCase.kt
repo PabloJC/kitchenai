@@ -12,6 +12,7 @@ import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.PantryMatcher
+import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 
 /**
  * Answers "can I cook this tonight" from stored facts only.
@@ -27,6 +28,7 @@ class MatchRecipeAgainstPantryUseCase(
     private val recipes: RecipeRepositoryContract,
     private val pantry: PantryRepositoryContract,
     private val time: TimeProvider,
+    private val units: GetUnitConverterUseCase,
 ) {
     suspend operator fun invoke(
         kitchenId: KitchenId,
@@ -38,9 +40,7 @@ class MatchRecipeAgainstPantryUseCase(
             // A scaling failure propagates untouched: an impossible serving count is the
             // caller's error, and answering it with a match would hide that.
             is AppResult.Success ->
-                recipe.data.at(servings).flatMap { scaled ->
-                    pantry.getPantry(kitchenId).map { held -> PantryMatcher.match(scaled, held, time.now()) }
-                }
+                recipe.data.at(servings).flatMap { scaled -> match(kitchenId, scaled) }
         }
 
     /**
@@ -51,9 +51,14 @@ class MatchRecipeAgainstPantryUseCase(
         kitchenId: KitchenId,
         recipe: Recipe,
         servings: Int? = null,
+    ): AppResult<PantryMatch> = recipe.at(servings).flatMap { scaled -> match(kitchenId, scaled) }
+
+    private suspend fun match(
+        kitchenId: KitchenId,
+        scaled: Recipe,
     ): AppResult<PantryMatch> =
-        recipe.at(servings).flatMap { scaled ->
-            pantry.getPantry(kitchenId).map { held -> PantryMatcher.match(scaled, held, time.now()) }
+        pantry.getPantry(kitchenId).flatMap { held ->
+            units().map { converter -> PantryMatcher.match(scaled, held, time.now(), converter) }
         }
 
     private fun Recipe.at(servings: Int?): AppResult<Recipe> =
