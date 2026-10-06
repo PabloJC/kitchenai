@@ -26,6 +26,7 @@ import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithGoogleUseCase
 import com.kitchenai.shared.domain.usecase.session.SignOutUseCase
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
+import com.kitchenai.ui.presentation.common.PendingDisplayName
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
@@ -56,6 +57,7 @@ class ProfileViewModelTest {
     private val profiles = FakeUserProfilePort()
     private val catalogue = FakeTaxonomyPort()
     private val sessions = FakeSessionPort(Session.SignedIn(userId, isAnonymous = true))
+    private val pendingName = PendingDisplayName()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -314,7 +316,22 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `a successful sign-in updates the display name Google returned`() =
+    fun `a successful sign-in binds the name Google returned to the uid it produced`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            val googleUserId = (UserId.of("user-google") as AppResult.Success).data
+            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(googleUserId, isAnonymous = false))
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
+            advanceUntilIdle()
+
+            assertEquals(PendingDisplayName.Entry("Ada Lovelace", googleUserId), pendingName.current.value)
+            assertEquals(true, viewModel.state.value.signedInWithGoogle)
+        }
+
+    /** The name belongs to `SessionViewModel`, the only writer of `users/{uid}`: this screen never saves it. */
+    @Test
+    fun `a sign-in never writes the display name from this screen`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
             sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
@@ -322,9 +339,46 @@ class ProfileViewModelTest {
             viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
             advanceUntilIdle()
 
+            assertEquals(0, profiles.saveCount)
+        }
+
+    @Test
+    fun `a blank display name offers nothing`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "   ")
+            advanceUntilIdle()
+
+            assertNull(pendingName.current.value)
+        }
+
+    @Test
+    fun `a name offered before the sign-in answers is already waiting when the screen is torn down`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
+
+            assertEquals(PendingDisplayName.Entry("Ada Lovelace"), pendingName.current.value)
+            advanceUntilIdle()
+        }
+
+    /** The remote name wins over a draft that predates it: saving the draft must not erase the name. */
+    @Test
+    fun `a remote display name reaches an edited draft without discarding the edit`() =
+        runTest(dispatcher) {
+            val viewModel = ready("tx-1" to 1)
+            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
+            advanceUntilIdle()
+
+            profiles.profiles.emit(profile().copy(displayName = "Ada Lovelace"))
+            advanceUntilIdle()
+            viewModel.save()
+            advanceUntilIdle()
+
             assertEquals("Ada Lovelace", profiles.saved?.displayName)
-            assertEquals(true, viewModel.state.value.signedInWithGoogle)
-            assertEquals("Ada Lovelace", viewModel.state.value.displayName)
+            assertEquals(1, profiles.saved?.constraints?.size)
         }
 
     @Test
@@ -341,6 +395,7 @@ class ProfileViewModelTest {
             assertEquals(before.displayName, viewModel.state.value.displayName)
             assertEquals(before.sections, viewModel.state.value.sections)
             assertEquals(0, profiles.saveCount)
+            assertNull(pendingName.current.value)
             assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
         }
 
@@ -400,26 +455,6 @@ class ProfileViewModelTest {
             assertEquals(true, viewModel.state.value.signedInWithGoogle)
         }
 
-    @Test
-    fun `a Google sign-in that swaps the uid applies the name once the new uid is handed over`() =
-        runTest(dispatcher) {
-            val viewModel = ready("t-1" to 1)
-            val googleUserId = (UserId.of("user-google") as AppResult.Success).data
-            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(googleUserId, isAnonymous = false))
-
-            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
-            advanceUntilIdle()
-            assertEquals(0, profiles.saveCount)
-
-            viewModel.start(googleUserId)
-            profiles.profiles.emit(UserProfile.newFor(googleUserId, listOf("xx"), Instant.fromEpochSeconds(1)))
-            advanceUntilIdle()
-
-            assertEquals(googleUserId, profiles.observedUserIds.last())
-            assertEquals("Ada Lovelace", profiles.saved?.displayName)
-            assertEquals(googleUserId, profiles.saved?.userId)
-        }
-
     private suspend fun TestScope.ready(vararg sizes: Pair<String, Int>): ProfileViewModel {
         val viewModel = viewModel()
         viewModel.start(userId)
@@ -471,6 +506,7 @@ class ProfileViewModelTest {
                     observeSession = ObserveSessionUseCase(sessions),
                     signInWithGoogle = SignInWithGoogleUseCase(sessions),
                     signOut = SignOutUseCase(sessions),
+                    pendingDisplayName = pendingName,
                 ),
         )
 
