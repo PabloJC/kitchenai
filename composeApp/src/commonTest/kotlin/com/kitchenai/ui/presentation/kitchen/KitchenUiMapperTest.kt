@@ -12,6 +12,9 @@ import com.kitchenai.ui.resources.error_invalid_field
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.kitchen_invalid_code
 import com.kitchenai.ui.resources.kitchen_leave_disabled_owner
+import com.kitchenai.ui.resources.kitchen_member_unnamed
+import com.kitchenai.ui.resources.kitchen_you_suffix
+import com.kitchenai.ui.resources.kitchen_you_unnamed
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -70,10 +73,23 @@ class KitchenUiMapperTest {
     }
 
     @Test
-    fun `a member without a display name falls back to their identifier`() {
-        val loaded = kitchen(ownerId = owner, memberIds = setOf(owner))
+    fun `a member without a display name is labelled and never shown by identifier`() {
+        val loaded = kitchen(ownerId = owner, memberIds = setOf(owner, member))
 
-        assertEquals(owner.value, loaded.toUi(owner).members.single().name)
+        val members = loaded.toUi(owner).members.associateBy { it.id }
+
+        assertEquals(UiText.of(Res.string.kitchen_you_unnamed), members.getValue(owner).name)
+        assertEquals(UiText.of(Res.string.kitchen_member_unnamed), members.getValue(member).name)
+    }
+
+    @Test
+    fun `a blank display name is treated as none`() {
+        val names = mapOf(member.value to "  ")
+        val loaded = kitchen(ownerId = owner, memberIds = setOf(owner, member), memberDisplayNames = names)
+
+        val shown = loaded.toUi(owner).members.first { it.id == member }
+
+        assertEquals(UiText.of(Res.string.kitchen_member_unnamed), shown.name)
     }
 
     @Test
@@ -81,7 +97,26 @@ class KitchenUiMapperTest {
         val names = mapOf(member.value to "Ada")
         val loaded = kitchen(ownerId = owner, memberIds = setOf(owner, member), memberDisplayNames = names)
 
-        assertEquals("Ada", loaded.toUi(owner).members.first { it.id == member }.name)
+        assertEquals(UiText.Raw("Ada"), loaded.toUi(owner).members.first { it.id == member }.name)
+    }
+
+    @Test
+    fun `the viewer's own name carries the you marker`() {
+        val names = mapOf(member.value to "Ada")
+        val loaded = kitchen(ownerId = owner, memberIds = setOf(owner, member), memberDisplayNames = names)
+
+        val own = loaded.toUi(member).members.first { it.isSelf }
+
+        assertEquals(UiText.of(Res.string.kitchen_you_suffix, "Ada"), own.name)
+    }
+
+    @Test
+    fun `the owner comes first then the named members then the nameless ones`() {
+        val third = userId("third")
+        val names = mapOf(third.value to "Ada")
+        val loaded = kitchen(ownerId = owner, memberIds = setOf(member, third, owner), memberDisplayNames = names)
+
+        assertEquals(listOf(owner, third, member), loaded.toUi(owner).members.map { it.id })
     }
 
     @Test
@@ -102,8 +137,8 @@ class KitchenUiMapperTest {
 
     @Test
     fun `joining while owning a kitchen with other members reuses the proactive leave-disabled wording`() {
-        // JoinKitchenUseCase leaves the caller's current kitchen first, so LeaveKitchenUseCase's own
-        // owner guard is what actually fails here — reachable, not just theoretical (review finding).
+        // JoinKitchenUseCase checks the owner rule on the caller's current kitchen before joining, so the
+        // refusal is reachable from the join field, not just from the leave button.
         val error = AppError.Validation("kitchen", "owner cannot leave a kitchen with other members")
 
         assertEquals(UiText.of(Res.string.kitchen_leave_disabled_owner), error.describeJoinError())

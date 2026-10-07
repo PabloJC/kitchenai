@@ -14,7 +14,6 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.PendingDisplayName
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
@@ -25,15 +24,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Resolves the session and writes what a first launch needs before any screen reads `users/{uid}`. */
+/**
+ * Resolves the session and writes what a first launch needs before any screen reads `users/{uid}`,
+ * and keeps the user in a kitchen afterwards: a leave or a removal makes the kitchen listener
+ * report none, and the replacement is provisioned here, never by a screen (`docs/session.md`).
+ */
 class SessionViewModel(
     private val ensureSession: EnsureSessionUseCase,
-    private val ensureKitchen: EnsureKitchenUseCase,
-    private val ensureDefaultShoppingList: EnsureDefaultShoppingListUseCase,
+    private val kitchen: SessionKitchenDelegate,
     private val observeSession: ObserveSessionUseCase,
     private val observeUserProfile: ObserveUserProfileUseCase,
     private val saveUserProfile: SaveUserProfileUseCase,
@@ -51,9 +54,9 @@ class SessionViewModel(
     private var bootstrap: Job? = null
     private var watchingSession = false
 
-    // Lets `establish` tell a retry of the same uid (listener kept) from a different one (listener restarted).
-    private var profileListenerUserId: UserId? = null
-    private var profileListeners: Job? = null
+    // Lets `establish` tell a retry of the same uid (listeners kept) from a different one (listeners restarted).
+    private var listenedUserId: UserId? = null
+    private var userListeners: Job? = null
 
     // Set per uid by `establish`: a profile write failing at cold start is `Failed`, after a switch `SwitchFailed`.
     private var switched = false
@@ -103,22 +106,14 @@ class SessionViewModel(
             watchSessionChanges()
         }
 
-    /** Kitchen, default list and profile listener for a uid; the caller owns [state] on failure. */
+    /** Kitchen, default list and listeners for a uid; the caller owns [state] on failure. */
     private suspend fun establish(
         userId: UserId,
         coldStart: Boolean,
     ): AppError? =
         setup.withLock {
             // The profile that would carry a name does not exist yet, and the kitchen can be renamed later.
-            val kitchenId =
-                when (val kitchen = ensureKitchen(userId, displayName = null)) {
-                    is AppResult.Failure -> return@withLock kitchen.error
-                    is AppResult.Success -> kitchen.data.id
-                }
-            // Stored under the device's own tag: the app ships no translations, so another tag resolves to nothing.
-            val labels = languageTags.take(1).associateWith { defaultListName }
-            val list = ensureDefaultShoppingList(kitchenId, labels)
-            if (list is AppResult.Failure) return@withLock list.error
+            provisionKitchen(userId, displayName = null)?.let { return@withLock it }
 
             // The same uid again keeps what its listener learned; a different one starts clean.
             if (activeUserId.value != userId) {
@@ -132,11 +127,26 @@ class SessionViewModel(
             }
             activeUserId.value = userId
             _state.value = SessionUiState.Ready(userId)
-            watchProfile(userId)
+            watchUser(userId)
             // A retry after a failed write: the listener will not repeat the NotFound.
             if (flags.withLock { profileMissing }) createProfile(userId)
             null
         }
+
+    /** A kitchen for [userId] and its default list; idempotent, so any number of callers converge on one. */
+    private suspend fun provisionKitchen(
+        userId: UserId,
+        displayName: String?,
+    ): AppError? {
+        val kitchenId =
+            when (val ensured = kitchen.ensure(userId, displayName)) {
+                is AppResult.Failure -> return ensured.error
+                is AppResult.Success -> ensured.data.id
+            }
+        // Stored under the device's own tag: the app ships no translations, so another tag resolves to nothing.
+        val labels = languageTags.take(1).associateWith { defaultListName }
+        return (kitchen.ensureDefaultList(kitchenId, labels) as? AppResult.Failure)?.error
+    }
 
     /** The uid can change after `Ready`: a Google sign-in swaps it (#186) and a sign-out clears it. */
     private fun watchSessionChanges() {
@@ -169,25 +179,48 @@ class SessionViewModel(
     }
 
     private fun detachActiveUser() {
-        profileListeners?.cancel()
-        profileListeners = null
-        profileListenerUserId = null
+        userListeners?.cancel()
+        userListeners = null
+        listenedUserId = null
         activeUserId.value = null
     }
 
     /**
      * The data stream says the profile exists; the error stream is where a new user announces itself.
-     * The same uid is a no-op so a retry keeps its listener; a different one replaces it.
+     * The kitchen listener works the same way: its NotFound is how a leave or a removal is learned.
+     * The same uid is a no-op so a retry keeps its listeners; a different one replaces them.
      */
-    private fun watchProfile(userId: UserId) {
-        if (profileListenerUserId == userId) return
-        profileListeners?.cancel()
-        profileListenerUserId = userId
-        profileListeners =
+    private fun watchUser(userId: UserId) {
+        if (listenedUserId == userId) return
+        userListeners?.cancel()
+        listenedUserId = userId
+        userListeners =
             viewModelScope.launch {
                 launch { observeUserProfile(userId).collect { loaded -> profile.value = loaded } }
                 launch { observeUserProfile.errors(userId).collect { error -> onProfileError(userId, error) } }
+                // The error stream first, so it is subscribed before the data stream can report anything.
+                launch { kitchen.observe.errors(userId).collect { error -> onKitchenError(userId, error) } }
+                // Never read: collecting is what keeps the listener open to report its NotFound.
+                kitchen.observe(userId).launchIn(this)
             }
+    }
+
+    /**
+     * A leave or a removal left the user with no kitchen: provision one without a restart. The listener
+     * only says "none"; [EnsureKitchenUseCase] re-reads, so a stale or repeated event creates nothing.
+     */
+    private suspend fun onKitchenError(
+        userId: UserId,
+        error: AppError,
+    ) {
+        if (error !is AppError.NotFound) return
+        setup.withLock {
+            // Under the lock: the uid may have moved on, or a failed or restarting setup owns the state.
+            if (userId != activeUserId.value || _state.value !is SessionUiState.Ready) return@withLock
+            val name = profile.value?.takeIf { it.userId == userId }?.displayName
+            // A failure of a uid that moved on during the write belongs to nobody.
+            provisionKitchen(userId, name)?.let { failure -> if (userId == activeUserId.value) switchFailed(failure) }
+        }
     }
 
     private suspend fun onProfileError(

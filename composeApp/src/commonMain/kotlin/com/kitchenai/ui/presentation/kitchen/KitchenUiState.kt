@@ -5,8 +5,8 @@ import com.kitchenai.ui.presentation.common.UiText
 
 /**
  * Everything the kitchen screen draws. [kitchen] is null both while the listener has not
- * answered yet and once the viewer has left with nothing new provisioned — [isLoading] is what
- * tells the two apart, and the join field below stays usable through either.
+ * answered yet and between a leave and the session provisioning a replacement — [isLoading] is
+ * what tells the two apart, and the join field below stays usable through either.
  */
 data class KitchenUiState(
     val isLoading: Boolean = true,
@@ -29,10 +29,10 @@ data class KitchenUi(
     val leaveDisabledReason: UiText?,
 )
 
-/** [canRemove] is the owner's own action on someone else; it is never true for the viewer's own row. */
+/** [name] is the label to draw, placeholder included; [canRemove] is the owner's action on others only. */
 data class KitchenMemberUi(
     val id: UserId,
-    val name: String,
+    val name: UiText,
     val isSelf: Boolean,
     val isOwner: Boolean,
     val canRemove: Boolean,

@@ -10,5 +10,5 @@ import org.koin.dsl.module
 val kitchenPresentationModule: Module =
     module {
         factory { KitchenWritesDelegate(get(), get(), get(), get()) }
-        viewModel { KitchenViewModel(get(), get()) }
+        viewModel { KitchenViewModel(get(), get(), get()) }
     }

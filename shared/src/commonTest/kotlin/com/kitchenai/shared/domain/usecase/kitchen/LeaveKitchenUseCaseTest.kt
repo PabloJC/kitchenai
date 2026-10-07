@@ -14,7 +14,7 @@ class LeaveKitchenUseCaseTest {
             val shared = kitchen(ownerId = user, memberIds = setOf(user, otherUser))
             val port = FakeKitchenRepositoryContract(initial = shared)
 
-            val result = LeaveKitchenUseCase(port)(user)
+            val result = LeaveKitchenUseCase(port, KitchenMembershipLock())(user)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.Validation)
@@ -27,7 +27,7 @@ class LeaveKitchenUseCaseTest {
             val solo = kitchen(ownerId = user, memberIds = setOf(user))
             val port = FakeKitchenRepositoryContract(initial = solo)
 
-            val result = LeaveKitchenUseCase(port)(user)
+            val result = LeaveKitchenUseCase(port, KitchenMembershipLock())(user)
 
             assertEquals(AppResult.Success(Unit), result)
             assertEquals(listOf(solo.id), port.leftKitchens)
@@ -39,7 +39,7 @@ class LeaveKitchenUseCaseTest {
             val shared = kitchen(ownerId = otherUser, memberIds = setOf(user, otherUser))
             val port = FakeKitchenRepositoryContract(initial = shared)
 
-            val result = LeaveKitchenUseCase(port)(user)
+            val result = LeaveKitchenUseCase(port, KitchenMembershipLock())(user)
 
             assertEquals(AppResult.Success(Unit), result)
             assertEquals(listOf(shared.id), port.leftKitchens)
@@ -50,7 +50,7 @@ class LeaveKitchenUseCaseTest {
         runTest {
             val port = FakeKitchenRepositoryContract(initial = null)
 
-            val result = LeaveKitchenUseCase(port)(user)
+            val result = LeaveKitchenUseCase(port, KitchenMembershipLock())(user)
 
             assertTrue(result is AppResult.Failure)
             assertTrue(result.error is AppError.NotFound)
@@ -62,7 +62,7 @@ class LeaveKitchenUseCaseTest {
             val error = AppError.Network()
             val port = FakeKitchenRepositoryContract(readError = error)
 
-            val result = LeaveKitchenUseCase(port)(user)
+            val result = LeaveKitchenUseCase(port, KitchenMembershipLock())(user)
 
             assertEquals(AppResult.Failure(error), result)
             assertTrue(port.leftKitchens.isEmpty())

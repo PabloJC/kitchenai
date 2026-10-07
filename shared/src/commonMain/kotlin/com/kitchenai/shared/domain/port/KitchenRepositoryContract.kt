@@ -28,10 +28,16 @@ interface KitchenRepositoryContract {
         displayName: String?,
     ): AppResult<Kitchen>
 
+    /**
+     * Joins the kitchen [joinCode] names and, when [leaving] is set, leaves that one in the same
+     * atomic write: a failure of either changes neither membership. [displayName] becomes the
+     * caller's entry in [Kitchen.memberDisplayNames]; null leaves them unnamed.
+     */
     suspend fun joinKitchen(
         userId: UserId,
         displayName: String?,
         joinCode: KitchenJoinCode,
+        leaving: KitchenId?,
     ): AppResult<Kitchen>
 
     suspend fun leaveKitchen(

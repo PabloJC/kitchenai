@@ -2,13 +2,18 @@ package com.kitchenai.ui.presentation.kitchen
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.KitchenJoinCode
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.model.UserProfile
+import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.kitchen.JoinKitchenUseCase
+import com.kitchenai.shared.domain.usecase.kitchen.KitchenMembershipLock
 import com.kitchenai.shared.domain.usecase.kitchen.LeaveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.RegenerateKitchenJoinCodeUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.RemoveKitchenMemberUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.kitchen
@@ -17,6 +22,9 @@ import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.kitchen_invalid_code
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -28,6 +36,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class KitchenViewModelTest {
@@ -77,6 +86,56 @@ class KitchenViewModelTest {
             assertEquals("", viewModel.state.value.joinCodeInput)
             assertNull(viewModel.state.value.error)
             assertEquals("new-code", viewModel.state.value.kitchen?.joinCode)
+        }
+
+    @Test
+    fun `joining passes the profile display name so the member is listed under it`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self)))
+            kitchens.joinResult = AppResult.Success(kitchen(ownerId = other, joinCode = "new-code"))
+            val viewModel = viewModel(kitchens, profileName = "Ada")
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.onJoinCodeInputChange("new-code")
+            viewModel.join()
+            advanceUntilIdle()
+
+            assertEquals(listOf<String?>("Ada"), kitchens.joinedAs)
+        }
+
+    @Test
+    fun `joining with a profile that has no name passes none rather than a blank one`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self)))
+            kitchens.joinResult = AppResult.Success(kitchen(ownerId = other, joinCode = "new-code"))
+            val viewModel = viewModel(kitchens, profileName = "   ")
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.onJoinCodeInputChange("new-code")
+            viewModel.join()
+            advanceUntilIdle()
+
+            assertEquals(listOf<String?>(null), kitchens.joinedAs)
+        }
+
+    @Test
+    fun `a failed join leaves the current kitchen on screen`() =
+        runTest(dispatcher) {
+            val current = kitchen(ownerId = self, memberIds = setOf(self), joinCode = "mine")
+            val kitchens = FakeKitchenPort(initial = current)
+            kitchens.joinResult = AppResult.Failure(AppError.NotFound("kitchenInvite"))
+            val viewModel = viewModel(kitchens)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.onJoinCodeInputChange("does-not-exist")
+            viewModel.join()
+            advanceUntilIdle()
+
+            assertEquals(listOf<KitchenId?>(current.id), kitchens.joinedLeaving)
+            assertEquals("mine", viewModel.state.value.kitchen?.joinCode)
         }
 
     @Test
@@ -206,14 +265,21 @@ class KitchenViewModelTest {
             assertEquals(1, kitchens.regenerateCount)
         }
 
-    private fun viewModel(kitchens: FakeKitchenPort): KitchenViewModel {
-        val leave = LeaveKitchenUseCase(kitchens)
+    private fun viewModel(
+        kitchens: FakeKitchenPort,
+        profileName: String? = null,
+    ): KitchenViewModel {
+        val lock = KitchenMembershipLock()
+        val profile =
+            UserProfile.newFor(self, listOf("aa"), Instant.fromEpochSeconds(0))
+                .copy(displayName = profileName)
         return KitchenViewModel(
             observeKitchen = ObserveKitchenUseCase(kitchens),
+            observeProfile = ObserveUserProfileUseCase(StubProfilePort(profile)),
             writes =
                 KitchenWritesDelegate(
-                    join = JoinKitchenUseCase(kitchens, leave),
-                    leave = leave,
+                    join = JoinKitchenUseCase(kitchens, lock),
+                    leave = LeaveKitchenUseCase(kitchens, lock),
                     removeMember = RemoveKitchenMemberUseCase(kitchens),
                     regenerateJoinCode = RegenerateKitchenJoinCodeUseCase(kitchens),
                 ),
@@ -223,4 +289,14 @@ class KitchenViewModelTest {
     private fun userId(raw: String): UserId = (UserId.of(raw) as AppResult.Success).data
 
     private fun joinCode(raw: String): KitchenJoinCode = (KitchenJoinCode.of(raw) as AppResult.Success).data
+}
+
+private class StubProfilePort(private val profile: UserProfile) : UserProfileRepositoryContract {
+    override fun observeProfile(userId: UserId): Flow<UserProfile> = flowOf(profile)
+
+    override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()
+
+    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> = AppResult.Success(profile)
+
+    override suspend fun save(profile: UserProfile): AppResult<Unit> = AppResult.Success(Unit)
 }

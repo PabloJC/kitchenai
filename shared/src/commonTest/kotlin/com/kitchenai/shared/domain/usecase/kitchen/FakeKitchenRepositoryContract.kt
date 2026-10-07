@@ -7,6 +7,7 @@ import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.KitchenJoinCode
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.KitchenRepositoryContract
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -38,7 +39,11 @@ class FakeKitchenRepositoryContract(
         private set
     var regenerateCalls: Int = 0
         private set
+
+    /** Holds a join open after it started, so a test can interleave another caller with it. */
+    var joinGate: CompletableDeferred<Unit>? = null
     val leftKitchens = mutableListOf<KitchenId>()
+    val joins = mutableListOf<JoinCall>()
     val removedMembers = mutableListOf<Pair<KitchenId, UserId>>()
     val updatedDisplayNames = mutableListOf<Triple<UserId, KitchenId, String>>()
     val current: Kitchen? get() = state.value
@@ -67,10 +72,17 @@ class FakeKitchenRepositoryContract(
         userId: UserId,
         displayName: String?,
         joinCode: KitchenJoinCode,
+        leaving: KitchenId?,
     ): AppResult<Kitchen> {
         joinCalls++
+        joins += JoinCall(userId, displayName, joinCode, leaving)
+        joinGate?.await()
         val result = joinResult
-        if (result is AppResult.Success) state.value = result.data
+        // Atomic like the real write: the old kitchen is only left when the join itself succeeded.
+        if (result is AppResult.Success) {
+            leaving?.let { leftKitchens += it }
+            state.value = result.data
+        }
         return result
     }
 
@@ -116,6 +128,13 @@ class FakeKitchenRepositoryContract(
         state.value = kitchen
     }
 }
+
+class JoinCall(
+    val userId: UserId,
+    val displayName: String?,
+    val joinCode: KitchenJoinCode,
+    val leaving: KitchenId?,
+)
 
 // Fixtures. Every identifier here is opaque on purpose, same reasoning as the pantry fixtures.
 internal val user: UserId = (UserId.of("user-1") as AppResult.Success).data

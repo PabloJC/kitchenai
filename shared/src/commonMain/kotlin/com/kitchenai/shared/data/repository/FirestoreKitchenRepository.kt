@@ -18,6 +18,7 @@ import com.kitchenai.shared.domain.model.Kitchen
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.KitchenJoinCode
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.model.leaveRefusalFor
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.KitchenRepositoryContract
 import dev.gitlive.firebase.firestore.DocumentSnapshot
@@ -92,9 +93,10 @@ class FirestoreKitchenRepository(
         userId: UserId,
         displayName: String?,
         joinCode: KitchenJoinCode,
+        leaving: KitchenId?,
     ): AppResult<Kitchen> =
         firestoreCall(dispatchers) {
-            firestore.runTransaction { joinTransaction(userId, displayName, joinCode) }
+            firestore.runTransaction { joinTransaction(userId, displayName, joinCode, leaving) }
         }.flatMap { it }
 
     override suspend fun leaveKitchen(
@@ -132,22 +134,64 @@ class FirestoreKitchenRepository(
             paths.kitchen(kitchenId).updateFields { "$MEMBER_DISPLAY_NAMES.${userId.value}" to displayName }
         }
 
+    /**
+     * Leaving and joining are one commit, each write in a shape `isSelfLeave` / `isSelfJoin` already
+     * accept. Every read and every refusal comes before the first write, so a bad code, a blocklisted
+     * caller or a stranding leave aborts with nothing changed.
+     */
     private suspend fun Transaction.joinTransaction(
         userId: UserId,
         displayName: String?,
         joinCode: KitchenJoinCode,
+        leaving: KitchenId?,
     ): AppResult<Kitchen> {
+        val (kitchenId, dto) = getJoinTarget(joinCode).getOrElse { return AppResult.Failure(it) }
+        return when {
+            // The code of the kitchen the caller is already in: nothing to leave and nothing to join.
+            userId.value in dto.memberIds -> dto.toDomain(kitchenId.value)
+            userId.value in dto.removedMemberIds -> AppResult.Failure(AppError.Unauthorized())
+            else -> moveInto(kitchenId, dto, userId, displayName, leaving)
+        }
+    }
+
+    private suspend fun Transaction.getJoinTarget(joinCode: KitchenJoinCode): AppResult<Pair<KitchenId, KitchenDto>> {
         val invite = getInviteDto(joinCode).getOrElse { return AppResult.Failure(it) }
         val kitchenId = KitchenId.of(invite.kitchenId.orEmpty()).getOrElse { return AppResult.Failure(it) }
         val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
+        return AppResult.Success(kitchenId to dto)
+    }
+
+    private suspend fun Transaction.moveInto(
+        kitchenId: KitchenId,
+        dto: KitchenDto,
+        userId: UserId,
+        displayName: String?,
+        leaving: KitchenId?,
+    ): AppResult<Kitchen> {
+        val departing = leaving?.takeIf { it != kitchenId }
+        val leftBehind = departing?.let { id -> kitchenWithout(id, userId).getOrElse { return AppResult.Failure(it) } }
         val names = displayName?.let { dto.memberDisplayNames + (userId.value to it) } ?: dto.memberDisplayNames
         val updated =
             dto.copy(
                 memberIds = (dto.memberIds + userId.value).distinct(),
                 memberDisplayNames = names,
             )
+        if (departing != null && leftBehind != null) set(paths.kitchen(departing), leftBehind) { encodeDefaults = true }
         set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
         return updated.toDomain(kitchenId.value)
+    }
+
+    /** The kitchen to write back without [userId], or null when they are no longer in it (a stale read). */
+    private suspend fun Transaction.kitchenWithout(
+        id: KitchenId,
+        userId: UserId,
+    ): AppResult<KitchenDto?> {
+        val dto = getKitchenDto(id).getOrElse { return AppResult.Failure(it) }
+        if (userId.value !in dto.memberIds) return AppResult.Success(null)
+        return dto.toDomain(id.value).flatMap { kitchen ->
+            val refusal = kitchen.leaveRefusalFor(userId)
+            if (refusal != null) AppResult.Failure(refusal) else AppResult.Success(dto.withoutMember(userId))
+        }
     }
 
     private suspend fun Transaction.removeFromKitchenTransaction(

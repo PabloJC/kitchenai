@@ -1,5 +1,7 @@
 package com.kitchenai.shared.domain.model
 
+import com.kitchenai.shared.core.AppError
+
 /**
  * A group of users sharing one pantry, shopping list and saved recipes.
  *
@@ -19,3 +21,14 @@ data class Kitchen(
     val joinCode: KitchenJoinCode,
     val memberDisplayNames: Map<String, String>,
 )
+
+/** An owner leaving with others inside would strand the kitchen: nobody left could manage it. */
+fun Kitchen.isStrandedIfLeftBy(userId: UserId): Boolean = ownerId == userId && memberIds.size > 1
+
+/** The one place the owner-cannot-leave rule is worded; the use cases and the join transaction both apply it. */
+fun Kitchen.leaveRefusalFor(userId: UserId): AppError? =
+    if (isStrandedIfLeftBy(userId)) {
+        AppError.Validation("kitchen", "owner cannot leave a kitchen with other members")
+    } else {
+        null
+    }

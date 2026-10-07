@@ -15,6 +15,8 @@ import com.kitchenai.shared.domain.port.ShoppingListRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.kitchen.EnsureKitchenUseCase
+import com.kitchenai.shared.domain.usecase.kitchen.KitchenMembershipLock
+import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
@@ -649,8 +651,12 @@ class SessionViewModelTest {
         val time = TimeProvider { Instant.fromEpochSeconds(0) }
         return SessionViewModel(
             ensureSession = EnsureSessionUseCase(sessions),
-            ensureKitchen = EnsureKitchenUseCase(kitchens),
-            ensureDefaultShoppingList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
+            kitchen =
+                SessionKitchenDelegate(
+                    ensure = EnsureKitchenUseCase(kitchens, KitchenMembershipLock()),
+                    ensureDefaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
+                    observe = ObserveKitchenUseCase(kitchens),
+                ),
             observeSession = ObserveSessionUseCase(sessions),
             observeUserProfile = ObserveUserProfileUseCase(profiles),
             saveUserProfile = SaveUserProfileUseCase(profiles, FakeTaxonomyPort(), kitchens, time),
@@ -660,15 +666,15 @@ class SessionViewModelTest {
     }
 }
 
-private val userId = (UserId.of("user-1") as AppResult.Success).data
-private val googleUserId = (UserId.of("user-google") as AppResult.Success).data
-private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
+internal val userId = (UserId.of("user-1") as AppResult.Success).data
+internal val googleUserId = (UserId.of("user-google") as AppResult.Success).data
+internal val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
 
 /**
  * A [MutableStateFlow] on purpose: [EnsureSessionUseCase] reads `observeSession().first()`,
  * which an empty flow would suspend forever. A test can emit into it to move the auth state.
  */
-private class FakeSessionPort : SessionRepositoryContract {
+internal class FakeSessionPort : SessionRepositoryContract {
     var signIn: AppResult<Session.SignedIn> = AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
     var signInCount = 0
     val sessionChanges = MutableStateFlow<Session>(Session.SignedOut)
@@ -690,7 +696,7 @@ private class FakeSessionPort : SessionRepositoryContract {
 }
 
 /** It never keeps what it is given: a second bootstrap has to be visible as a second write. */
-private class FakeShoppingListPort : ShoppingListRepositoryContract {
+internal class FakeShoppingListPort : ShoppingListRepositoryContract {
     var upsert: AppResult<Unit> = AppResult.Success(Unit)
     var upsertCount = 0
 
@@ -709,7 +715,7 @@ private class FakeShoppingListPort : ShoppingListRepositoryContract {
     }
 }
 
-private class FakeUserProfilePort : UserProfileRepositoryContract {
+internal class FakeUserProfilePort : UserProfileRepositoryContract {
     val profiles = MutableSharedFlow<UserProfile>(replay = 1)
     val errors = MutableSharedFlow<AppError>()
     var saveResult: AppResult<Unit> = AppResult.Success(Unit)

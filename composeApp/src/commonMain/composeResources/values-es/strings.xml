@@ -97,6 +97,8 @@
     <string name="kitchen_members_title">Miembros</string>
     <string name="kitchen_owner">Propietario</string>
     <string name="kitchen_you_suffix">%1$s (tú)</string>
+    <string name="kitchen_you_unnamed">Tú</string>
+    <string name="kitchen_member_unnamed">Miembro de la cocina</string>
     <string name="kitchen_remove_action">Eliminar</string>
     <string name="kitchen_leave_action">Salir de esta cocina</string>
     <string name="kitchen_leave_disabled_owner">Como propietario, no puedes salir mientras haya otras personas en esta cocina. Elimínalas primero.</string>

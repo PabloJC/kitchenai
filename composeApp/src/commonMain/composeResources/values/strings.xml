@@ -99,6 +99,8 @@
     <string name="kitchen_members_title">Members</string>
     <string name="kitchen_owner">Owner</string>
     <string name="kitchen_you_suffix">%1$s (you)</string>
+    <string name="kitchen_you_unnamed">You</string>
+    <string name="kitchen_member_unnamed">Kitchen member</string>
     <string name="kitchen_remove_action">Remove</string>
     <string name="kitchen_leave_action">Leave this kitchen</string>
     <string name="kitchen_leave_disabled_owner">As the owner, you cannot leave while others are still in this kitchen. Remove them first.</string>
