@@ -21,7 +21,8 @@ enum GoogleSignInConfiguration {
         let registered = (Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? [])
             .flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
 
-        guard registered.contains(expected) else {
+        // URL schemes are case-insensitive, so a differently cased paste must not stop the app.
+        guard registered.contains(where: { $0.caseInsensitiveCompare(expected) == .orderedSame }) else {
             fatalError(
                 "GIDClientID is set but its reversed form is not a registered URL scheme, so Google " +
                     "sign-in cannot return to the app. Set GOOGLE_IOS_REVERSED_CLIENT_ID in " +
