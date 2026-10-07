@@ -16,3 +16,10 @@ FUNCTIONS_REGION=europe-southwest1
 // once Google is enabled as a sign-in provider — the same value GoogleService-Info.plist's
 // CLIENT_ID carries, which is why it isn't committed here). GIDClientID in Info.plist reads it.
 GOOGLE_IOS_CLIENT_ID=
+
+// The same client id with its dot-separated parts in reverse order (id.apps.googleusercontent.com
+// becomes com.googleusercontent.apps.id; the Cloud console shows it as "iOS URL scheme"). It is
+// registered as the app's URL scheme so the Google sheet can return to the app. An xcconfig cannot
+// compute it from GOOGLE_IOS_CLIENT_ID, so it is filled in beside it; the app stops at launch if
+// the two disagree.
+GOOGLE_IOS_REVERSED_CLIENT_ID=

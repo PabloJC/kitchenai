@@ -42,7 +42,7 @@ checkout has to supply its own.
 | Setting | Android | iOS |
 |---|---|---|
 | Functions region | `kitchenai.functionsRegion` Gradle property (default in `gradle.properties`; the build fails if it is blank). Reaches the app as `BuildConfig.FUNCTIONS_REGION` | `FUNCTIONS_REGION` in `iosApp/Configuration/Config.xcconfig`, read through `Info.plist` |
-| Google sign-in client id | `kitchenai.googleWebClientId` Gradle property — the OAuth **Web** client id. Blank by default; reaches the app as `BuildConfig.GOOGLE_WEB_CLIENT_ID` | `GOOGLE_IOS_CLIENT_ID` in `Config.xcconfig`, read by `GIDClientID` in `Info.plist`. Blank by default |
+| Google sign-in client id | `kitchenai.googleWebClientId` Gradle property — the OAuth **Web** client id. Blank by default; reaches the app as `BuildConfig.GOOGLE_WEB_CLIENT_ID` | `GOOGLE_IOS_CLIENT_ID` in `Config.xcconfig`, read by `GIDClientID` in `Info.plist`, plus `GOOGLE_IOS_REVERSED_CLIENT_ID` (the same id with its dot-separated parts reversed), registered as the app's URL scheme. Both blank by default |
 
 The region must match `FUNCTIONS_REGION` in `functions/`; client and deployment change together or
 the suggestion call reaches nothing. Where the Google client ids come from: *Firebase console →
@@ -56,7 +56,10 @@ Supply the Android value without committing it, either on the command line or in
 ./gradlew :androidApp:installDebug -Pkitchenai.googleWebClientId=<webClientId>
 ```
 
-For iOS, fill `GOOGLE_IOS_CLIENT_ID` locally in `Config.xcconfig` and **do not commit the change**.
+For iOS, fill `GOOGLE_IOS_CLIENT_ID` and `GOOGLE_IOS_REVERSED_CLIENT_ID` locally in `Config.xcconfig`
+(the Cloud console shows the second as "iOS URL scheme") and **do not commit the change**. With a client
+id and no matching scheme the app stops at launch with a message naming the setting; with both blank it
+runs and logs that Google sign-in is not configured; signing in cannot work.
 `TEAM_ID` in the same file stays empty on purpose (`docs/infra.md`); run on a simulator or sign with
 a personal team.
 
@@ -169,8 +172,10 @@ Shopping tab, field "Add an item", type a word, tap "Add".*
 2. Profile tab, tap "Sign in with Google" again.
    - The platform's own Google sheet opens (Credential Manager on Android, the Google Sign-In view
      on iOS). While it is up, the button is disabled and a second tap does not stack a second sheet.
-   - iOS only: if the sheet opens but control never returns to the app after you pick an account,
-     record it. `Info.plist` carries `GIDClientID` and nothing else for this flow.
+   - iOS only: the sheet needs the reversed client id registered as a URL scheme and the callback
+     forwarded to `GIDSignIn.handle(url)` (Google's and KMPAuth's setup both require it; the app does
+     both). After you pick an account the app comes back to the foreground. If the sheet opens but
+     control never returns, check `GOOGLE_IOS_REVERSED_CLIENT_ID` first, then record it.
 3. Pick one of your throwaway accounts.
    - The "Sign in with Google" button is replaced by a row with the account's Google name on the
      left and a "Sign out" button on the right. If Google returned no name the row reads "Signed

@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseCore
 import FirebaseAppCheck
+import GoogleSignIn
 import ComposeApp   // the framework also exports the :shared types
 
 @main
@@ -17,6 +18,8 @@ struct iOSApp: App {
 
         // Order matters: Firebase before anything Kotlin.
         FirebaseApp.configure()
+
+        GoogleSignInConfiguration.verify()
 
         // Read rather than defaulted: the region comes from Config.xcconfig through Info.plist,
         // and a build that lost it must stop here instead of calling a region nobody chose.
@@ -35,6 +38,10 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .ignoresSafeArea(.all)
+                // The Google sheet's return URL; KMPAuth's iOS docs ask the app to forward it.
+                .onOpenURL { url in
+                    _ = GIDSignIn.sharedInstance.handle(url)
+                }
         }
     }
 }
