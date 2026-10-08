@@ -1,5 +1,6 @@
 package com.kitchenai.ui
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -48,7 +49,8 @@ fun App() {
                         userId = userId,
                         detailTopBar = detailTopBar,
                         placeholder = { _ -> PlaceholderScreen() },
-                        modifier = Modifier.padding(padding),
+                        // Consumed so the screens' own imePadding() subtracts the bar it already sits above.
+                        modifier = Modifier.padding(padding).consumeWindowInsets(padding),
                     )
                 }
             }
