@@ -478,12 +478,11 @@ private fun Actions(
  * Why Cook this is disabled, when the reason is something the reader can fix. A busy or still
  * loading screen is transient and says nothing: a hint that flickered per tap would be noise.
  */
-internal fun RecipeDetailUiState.cookHint(): UiText? =
-    if (!canCook && !isLoading && !isWorking && missing.isNotEmpty()) {
-        UiText.Plural(Res.plurals.detail_cook_missing_hint, missing.size)
-    } else {
-        null
-    }
+internal fun RecipeDetailUiState.cookHint(): UiText? {
+    val settled = !isLoading && !isWorking
+    if (!settled || missing.isEmpty()) return null
+    return UiText.Plural(Res.plurals.detail_cook_missing_hint, missing.size)
+}
 
 /**
  * Two buttons, not one. The prototype gave this a single acknowledgement, but the action

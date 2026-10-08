@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 
 class ShoppingSentenceTest {
     @Test
-    fun `moved and left counts each pick their own plural, moved first`() {
+    fun `moved and left counts each pick their own plural with moved first`() {
         val sentence = ShoppingEvent.MovedToPantry(moved = 1, skipped = 4).sentence()
 
         val expected =

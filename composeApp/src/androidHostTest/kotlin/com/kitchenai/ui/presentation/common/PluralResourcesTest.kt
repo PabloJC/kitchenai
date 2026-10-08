@@ -8,8 +8,10 @@ import kotlin.test.assertTrue
 /**
  * The plural tables read straight from the resource files: the Compose resource API needs an
  * Android runtime to resolve anything, which a host test does not have. One and other are the
- * only categories Spanish and English use for these counts.
+ * only categories Spanish and English use for these counts. The suppressions are because detekt
+ * only exempts commonTest from those two rules, and this source set is JVM-only.
  */
+@Suppress("FunctionNaming", "MagicNumber")
 class PluralResourcesTest {
     private val english = plurals("values/strings.xml")
     private val spanish = plurals("values-es/strings.xml")

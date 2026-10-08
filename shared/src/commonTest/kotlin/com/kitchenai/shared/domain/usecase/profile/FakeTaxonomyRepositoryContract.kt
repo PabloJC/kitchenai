@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.flowOf
 
 /**
  * In-memory [TaxonomyRepositoryContract] holding one `UNITS` taxonomy made of [units], or none
- * at all when it is empty, plus any [others] as given. The two one-shot reads fail independently, so both error branches of
- * a caller can be reached.
+ * at all when it is empty, plus any [others] as given. The two one-shot reads fail independently,
+ * so both error branches of a caller can be reached.
  */
 class FakeTaxonomyRepositoryContract(
     private val units: List<Term> = emptyList(),
