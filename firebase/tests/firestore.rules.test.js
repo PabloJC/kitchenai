@@ -11,7 +11,7 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { collection, deleteDoc, doc, getDoc, getDocs, runTransaction, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, runTransaction, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -590,6 +590,26 @@ describe('kitchen invites', () => {
 
     await assertFails(deleteDoc(doc(bob, `kitchenInvites/${JOIN_CODE_1}`)));
     await assertSucceeds(deleteDoc(doc(alice, `kitchenInvites/${JOIN_CODE_1}`)));
+  });
+
+  // The write createKitchen issues. In production get() reads the state before the commit, so the
+  // invite rule must judge the kitchen as it will be after the write (getAfter).
+  it('lets a new owner create their kitchen and its invite in one atomic write', async () => {
+    const batch = writeBatch(carol);
+    batch.set(doc(carol, 'kitchens/carol-kitchen'), kitchen({ ownerId: CAROL, memberIds: [CAROL], joinCode: 'carol-code' }));
+    batch.set(doc(carol, 'kitchenInvites/carol-code'), invite('carol-kitchen'));
+    await assertSucceeds(batch.commit());
+  });
+
+  it('rejects an atomic write whose invite names a kitchen that someone else owns', async () => {
+    const batch = writeBatch(carol);
+    batch.set(doc(carol, 'kitchens/carol-kitchen'), kitchen({ ownerId: CAROL, memberIds: [CAROL], joinCode: 'carol-code' }));
+    batch.set(doc(carol, 'kitchenInvites/hijack-code'), invite(KITCHEN_1));
+    await assertFails(batch.commit());
+  });
+
+  it('rejects an invite for a kitchen that does not exist and is not created with it', async () => {
+    await assertFails(setDoc(doc(carol, 'kitchenInvites/orphan-code'), invite('no-such-kitchen')));
   });
 
   it('rejects an invite naming a kitchen the caller does not own', async () => {

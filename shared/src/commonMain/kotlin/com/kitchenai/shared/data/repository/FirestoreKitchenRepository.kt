@@ -79,8 +79,8 @@ class FirestoreKitchenRepository(
                 joinCode = joinCode,
                 memberDisplayNames = displayName?.let { mapOf(ownerId.value to it) }.orEmpty(),
             )
-        // A transaction, not a batch: the invite's create rule reads the kitchen document by
-        // get(), and only a transaction guarantees that read sees this same write's kitchen.
+        // One atomic write: the invite's create rule judges the kitchen with getAfter(), because
+        // get() sees the state before the commit in production and would refuse the invite.
         return firestoreCall(dispatchers) {
             firestore.runTransaction {
                 set(paths.kitchen(kitchenId), kitchen.toDto()) { encodeDefaults = true }
