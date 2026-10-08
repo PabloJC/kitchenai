@@ -19,5 +19,5 @@ val agentModule: Module =
         single<AgentRegistry> { AgentRegistry { getAll<RecipeAgent>() } }
         single<AgentSelectionStrategy> { DefaultAgentSelectionStrategy() }
         single<AgentOrchestrator> { DefaultAgentOrchestrator(get(), get(), get()) }
-        factory { SuggestRecipesUseCase(get(), get(), get(), get()) }
+        factory { SuggestRecipesUseCase(get(), get(), get(), get(), get()) }
     }

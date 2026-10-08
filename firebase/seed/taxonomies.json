@@ -74,6 +74,7 @@
   "dish-types": {
     "labels": { "en": "Dish type", "es": "Tipo de plato" },
     "defaultLanguageTag": "en",
+    "purpose": "RECIPE_CLASSIFICATION",
     "terms": {
       "pasta": { "labels": { "en": "Pasta", "es": "Pasta" }, "order": 1 },
       "soup": { "labels": { "en": "Soup", "es": "Sopa" }, "order": 2 },
