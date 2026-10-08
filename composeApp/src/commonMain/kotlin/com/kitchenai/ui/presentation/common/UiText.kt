@@ -1,8 +1,11 @@
 package com.kitchenai.ui.presentation.common
 
 import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -19,6 +22,18 @@ sealed interface UiText {
     data class Resource(
         val id: StringResource,
         val args: List<Any> = emptyList(),
+    ) : UiText
+
+    /** A sentence whose wording agrees with [quantity]; the count is its only argument. */
+    data class Plural(
+        val id: PluralStringResource,
+        val quantity: Int,
+    ) : UiText
+
+    /** Sentences joined by [id], which takes them as its arguments, so the separator is the locale's. */
+    data class Joined(
+        val id: StringResource,
+        val parts: List<UiText>,
     ) : UiText
 
     /**
@@ -48,6 +63,8 @@ fun UiText.resolve(): String =
     when (this) {
         is UiText.Resource ->
             if (args.isEmpty()) stringResource(id) else stringResource(id, *args.toTypedArray())
+        is UiText.Plural -> pluralStringResource(id, quantity, quantity)
+        is UiText.Joined -> stringResource(id, *parts.map { part -> part.resolve() }.toTypedArray())
         is UiText.Raw -> value
     }
 
@@ -60,5 +77,7 @@ suspend fun UiText.text(): String =
     when (this) {
         is UiText.Resource ->
             if (args.isEmpty()) getString(id) else getString(id, *args.toTypedArray())
+        is UiText.Plural -> getPluralString(id, quantity, quantity)
+        is UiText.Joined -> getString(id, *parts.map { part -> part.text() }.toTypedArray())
         is UiText.Raw -> value
     }

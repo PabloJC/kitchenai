@@ -85,8 +85,10 @@ import com.kitchenai.ui.resources.detail_steps
 import com.kitchenai.ui.resources.detail_unverifiable
 import com.kitchenai.ui.resources.detail_unverifiable_body
 import com.kitchenai.ui.resources.shopping_default_list
-import com.kitchenai.ui.resources.snack_added_to_list
+import com.kitchenai.ui.resources.snack_added_count
 import com.kitchenai.ui.resources.snack_cooked
+import com.kitchenai.ui.resources.snack_counts_joined
+import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_saved
 import com.kitchenai.ui.resources.suggestions_minutes
 import org.jetbrains.compose.resources.stringResource
@@ -489,9 +491,16 @@ private suspend fun SnackbarHostState.announce(event: RecipeDetailEvent) = showS
  */
 internal fun RecipeDetailEvent.sentence(): UiText =
     when (this) {
-        // Both counts. What "skipped" means is in the string itself now: a line the pantry
-        // covers or one the recipe marks optional, never one already on the list.
-        is RecipeDetailEvent.AddedToList -> UiText.of(Res.string.snack_added_to_list, added, skipped)
+        // Both counts, each agreeing with its own noun. "Skipped" is a line the pantry covers or
+        // one the recipe marks optional, never one already on the list.
+        is RecipeDetailEvent.AddedToList ->
+            UiText.Joined(
+                Res.string.snack_counts_joined,
+                listOf(
+                    UiText.Plural(Res.plurals.snack_added_count, added),
+                    UiText.Plural(Res.plurals.snack_not_needed_count, skipped),
+                ),
+            )
         RecipeDetailEvent.Cooked -> UiText.of(Res.string.snack_cooked)
         RecipeDetailEvent.Saved -> UiText.of(Res.string.snack_saved)
         is RecipeDetailEvent.Failed -> message

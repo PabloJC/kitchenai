@@ -45,12 +45,13 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.shopping_cancel
 import com.kitchenai.ui.resources.shopping_clear
 import com.kitchenai.ui.resources.shopping_clear_body
 import com.kitchenai.ui.resources.shopping_clear_title
-import com.kitchenai.ui.resources.shopping_cleared_suffix
+import com.kitchenai.ui.resources.shopping_cleared_count
 import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.shopping_empty_body
 import com.kitchenai.ui.resources.shopping_empty_title
@@ -61,7 +62,9 @@ import com.kitchenai.ui.resources.shopping_move_to_pantry
 import com.kitchenai.ui.resources.shopping_removed_suffix
 import com.kitchenai.ui.resources.shopping_to_buy
 import com.kitchenai.ui.resources.shopping_undo
-import com.kitchenai.ui.resources.snack_moved_to_pantry
+import com.kitchenai.ui.resources.snack_counts_joined
+import com.kitchenai.ui.resources.snack_left_on_list_count
+import com.kitchenai.ui.resources.snack_moved_count
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -268,13 +271,22 @@ private suspend fun SnackbarHostState.announce(
             if (undone) onUndo(event.restore)
         }
 
-        is ShoppingEvent.CheckedCleared ->
-            showSnackbar("${event.count} ${getString(Res.string.shopping_cleared_suffix)}")
-
-        is ShoppingEvent.MovedToPantry ->
-            showSnackbar(getString(Res.string.snack_moved_to_pantry, event.moved, event.skipped))
+        is ShoppingEvent.CheckedCleared -> showSnackbar(event.sentence().text())
+        is ShoppingEvent.MovedToPantry -> showSnackbar(event.sentence().text())
     }
 }
+
+/** Both counts agree with their own noun, so the wording is a plural per count rather than one string. */
+internal fun ShoppingEvent.CheckedCleared.sentence(): UiText = UiText.Plural(Res.plurals.shopping_cleared_count, count)
+
+internal fun ShoppingEvent.MovedToPantry.sentence(): UiText =
+    UiText.Joined(
+        Res.string.snack_counts_joined,
+        listOf(
+            UiText.Plural(Res.plurals.snack_moved_count, moved),
+            UiText.Plural(Res.plurals.snack_left_on_list_count, skipped),
+        ),
+    )
 
 // The screen owns its own wording; every component it draws takes each string as a parameter.
 // This one is not private: the detail screen can reach the same list, and two spellings of the
