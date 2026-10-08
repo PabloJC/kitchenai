@@ -78,6 +78,10 @@
     <string name="detail_servings">Raciones</string>
     <string name="detail_add_missing">Añadir lo que falta</string>
     <string name="detail_cook">Cocinar esto</string>
+    <plurals name="detail_cook_missing_hint">
+        <item quantity="one">Falta %1$d ingrediente para cocinar esto</item>
+        <item quantity="other">Faltan %1$d ingredientes para cocinar esto</item>
+    </plurals>
     <string name="detail_save">Guardar</string>
     <string name="detail_saved">Guardado</string>
     <string name="detail_cook_title">¿Cocinar esto?</string>

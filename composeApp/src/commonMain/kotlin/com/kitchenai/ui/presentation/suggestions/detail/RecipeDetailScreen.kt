@@ -73,6 +73,7 @@ import com.kitchenai.ui.resources.detail_candidate_prompt
 import com.kitchenai.ui.resources.detail_cook
 import com.kitchenai.ui.resources.detail_cook_body
 import com.kitchenai.ui.resources.detail_cook_confirm
+import com.kitchenai.ui.resources.detail_cook_missing_hint
 import com.kitchenai.ui.resources.detail_cook_title
 import com.kitchenai.ui.resources.detail_have
 import com.kitchenai.ui.resources.detail_ingredients
@@ -462,8 +463,27 @@ private fun Actions(
                 Text(stringResource(Res.string.detail_cook))
             }
         }
+        state.cookHint()?.let { hint ->
+            Text(
+                text = hint.resolve(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = Dimens.large, end = Dimens.large, bottom = Dimens.medium),
+            )
+        }
     }
 }
+
+/**
+ * Why Cook this is disabled, when the reason is something the reader can fix. A busy or still
+ * loading screen is transient and says nothing: a hint that flickered per tap would be noise.
+ */
+internal fun RecipeDetailUiState.cookHint(): UiText? =
+    if (!canCook && !isLoading && !isWorking && missing.isNotEmpty()) {
+        UiText.Plural(Res.plurals.detail_cook_missing_hint, missing.size)
+    } else {
+        null
+    }
 
 /**
  * Two buttons, not one. The prototype gave this a single acknowledgement, but the action

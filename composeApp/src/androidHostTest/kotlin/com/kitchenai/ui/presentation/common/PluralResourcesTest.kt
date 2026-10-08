@@ -42,6 +42,14 @@ class PluralResourcesTest {
     }
 
     @Test
+    fun `the cook hint agrees with the count in both locales`() {
+        assertEquals("Falta 1 ingrediente para cocinar esto", spanish.form("detail_cook_missing_hint", 1))
+        assertEquals("Faltan 3 ingredientes para cocinar esto", spanish.form("detail_cook_missing_hint", 3))
+        assertEquals("Missing 1 ingredient to cook this", english.form("detail_cook_missing_hint", 1))
+        assertEquals("Missing 3 ingredients to cook this", english.form("detail_cook_missing_hint", 3))
+    }
+
+    @Test
     fun `zero takes the plural form`() {
         assertEquals("0 añadidos", spanish.form("snack_added_count", 0))
         assertEquals("0 lines cleared", english.form("shopping_cleared_count", 0))

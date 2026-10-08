@@ -81,6 +81,10 @@
     <string name="detail_servings">Servings</string>
     <string name="detail_add_missing">Add missing</string>
     <string name="detail_cook">Cook this</string>
+    <plurals name="detail_cook_missing_hint">
+        <item quantity="one">Missing %1$d ingredient to cook this</item>
+        <item quantity="other">Missing %1$d ingredients to cook this</item>
+    </plurals>
     <string name="detail_save">Save</string>
     <string name="detail_saved">Saved</string>
     <string name="detail_cook_title">Cook this?</string>
