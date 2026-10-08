@@ -3,13 +3,15 @@ package com.kitchenai.ui.presentation.pantry
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -22,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -72,9 +75,18 @@ fun PantryItemEditor(
     var location by remember(editing) { mutableStateOf(editing?.location) }
     var expiresAt by remember(editing) { mutableStateOf(editing?.expiresAt) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, modifier = modifier) {
+    // Fully expanded from the start and scrollable: partially expanded, Save sat below the fold.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         Column(
-            modifier = Modifier.padding(horizontal = Dimens.large).padding(bottom = Dimens.extraLarge),
+            modifier =
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = Dimens.large)
+                    .padding(bottom = Dimens.extraLarge),
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
             IngredientPicker(
@@ -176,9 +188,15 @@ private fun LocationChips(
     onToggle: (TermRef) -> Unit,
 ) {
     if (options.isEmpty()) return
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(Dimens.small)) {
-        items(options, key = { (ref, _) -> ref.term.value }) { (ref, label) ->
-            TermChip(label = label, selected = ref == selected, onToggle = { onToggle(ref) })
+    // Wraps instead of scrolling: a row inside a vertically scrolling sheet clipped its last chip.
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(Dimens.small),
+        verticalArrangement = Arrangement.spacedBy(Dimens.small),
+    ) {
+        options.forEach { (ref, label) ->
+            key(ref.term.value) {
+                TermChip(label = label, selected = ref == selected, onToggle = { onToggle(ref) })
+            }
         }
     }
 }
