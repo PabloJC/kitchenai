@@ -117,6 +117,12 @@ npm --prefix functions test
 firebase deploy --only functions --project <your-project-id>
 ```
 
+Deploy functions **last**: rules and indexes first, then the seed, then this (the order, and the
+smoke check that proves it, are in `firebase/README.md`). The functions read the catalogue the seed
+writes, and a deployment that lags the code is invisible to CI. After it,
+`firebase functions:list --project <your-project-id>` must show both `suggestRecipes` and
+`writeCatalogue` in the region above.
+
 ## Proving it end to end
 
 `tools/smoke-agent.mjs` calls the deployed function the way the app does — anonymous sign-in,
@@ -126,6 +132,9 @@ can be checked without a screen:
 ```bash
 node tools/smoke-agent.mjs --debug-token <from-logcat> --cert-sha1 <debug-keystore-sha1>
 ```
+
+The kitchen rules have their own post-deploy check, `tools/smoke-rules.mjs` (`firebase/README.md`); run
+both after a full deploy. This one needs an App Check debug token, so it stays a manual step.
 
 It is worth running after any change to the contract. It found both live defects this function
 has had: quantities arriving with no unit, and units arriving as labels rather than ids.
