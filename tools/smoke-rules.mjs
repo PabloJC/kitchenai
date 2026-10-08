@@ -119,16 +119,22 @@ async function main() {
   secrets = [target.project, target.apiKey];
 
   console.log(target.emulated ? 'target: emulator' : 'target: deployed project');
-  const owner = await signIn(target);
-  const member = await signIn(target);
-  console.log('ok   -- two throwaway anonymous users signed in');
-
-  const steps = buildSteps(runIds(randomBytes(4).toString('hex'), owner.uid, member.uid));
-  const actors = { owner, member };
-  const paths = touchedPaths(steps);
+  // Inside the try so a failure after the first sign-in still deletes the account it created.
+  const accounts = [];
+  let paths = [];
   let failed = false;
 
   try {
+    const owner = await signIn(target);
+    accounts.push(owner);
+    const member = await signIn(target);
+    accounts.push(member);
+    console.log('ok   -- two throwaway anonymous users signed in');
+
+    const steps = buildSteps(runIds(randomBytes(4).toString('hex'), owner.uid, member.uid));
+    const actors = { owner, member };
+    paths = touchedPaths(steps);
+
     for (const [index, step] of steps.entries()) {
       let verdict;
       try {
@@ -146,17 +152,24 @@ async function main() {
       }
     }
   } finally {
-    const removed = await Promise.all([deleteAccount(target, owner), deleteAccount(target, member)]).catch(() => []);
+    const removed = await Promise.all(accounts.map((account) => deleteAccount(target, account))).catch(() => []);
     console.log(
-      removed.length === 2 && removed.every(Boolean)
+      accounts.length > 0 && removed.length === accounts.length && removed.every(Boolean)
         ? 'ok   -- throwaway users deleted'
         : 'warn -- could not delete the throwaway anonymous users',
     );
   }
 
   report(paths, target.cleanup);
-  if (target.cleanup) await cleanUp(target, paths);
+  // The verdict is about the steps; a cleanup problem is reported beside it, never instead of it.
   console.log(failed ? 'SMOKE FAILED' : 'SMOKE PASSED');
+  if (target.cleanup) {
+    try {
+      await cleanUp(target, paths);
+    } catch (failure) {
+      console.log(`warn -- cleanup did not run: ${redact(failure.message, secrets)}`);
+    }
+  }
   return failed ? 1 : 0;
 }
 
