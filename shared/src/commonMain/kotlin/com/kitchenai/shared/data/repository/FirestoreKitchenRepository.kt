@@ -70,7 +70,7 @@ class FirestoreKitchenRepository(
         displayName: String?,
     ): AppResult<Kitchen> {
         val kitchenId = KitchenId.of(ids.newId()).getOrElse { return AppResult.Failure(it) }
-        val joinCode = KitchenJoinCode.of(ids.newId()).getOrElse { return AppResult.Failure(it) }
+        val joinCode = KitchenJoinCode.normalised(ids.newId()).getOrElse { return AppResult.Failure(it) }
         val kitchen =
             Kitchen(
                 id = kitchenId,
@@ -229,7 +229,7 @@ class FirestoreKitchenRepository(
     ): AppResult<Kitchen> {
         val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
         if (dto.ownerId != requesterId.value) return AppResult.Failure(AppError.Unauthorized())
-        val newCode = KitchenJoinCode.of(ids.newId()).getOrElse { return AppResult.Failure(it) }
+        val newCode = KitchenJoinCode.normalised(ids.newId()).getOrElse { return AppResult.Failure(it) }
         val updated = dto.copy(joinCode = newCode.value)
         set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
         dto.joinCode.asJoinCodeOrNull()?.let { oldCode -> delete(paths.kitchenInvite(oldCode)) }
@@ -247,13 +247,17 @@ class FirestoreKitchenRepository(
         )
     }
 
+    /** Tries each spelling the code may be filed under; missing under all of them is one not-found. */
     private suspend fun Transaction.getInviteDto(joinCode: KitchenJoinCode): AppResult<KitchenInviteDto> {
-        val snapshot = get(paths.kitchenInvite(joinCode))
-        if (!snapshot.exists) return AppResult.Failure(AppError.NotFound(INVITE_RESOURCE))
-        return runCatching { snapshot.data(KitchenInviteDto.serializer()) }.fold(
-            onSuccess = { AppResult.Success(it) },
-            onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
-        )
+        for (form in joinCode.storedForms()) {
+            val snapshot = get(paths.kitchenInvite(form))
+            if (!snapshot.exists) continue
+            return runCatching { snapshot.data(KitchenInviteDto.serializer()) }.fold(
+                onSuccess = { AppResult.Success(it) },
+                onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
+            )
+        }
+        return AppResult.Failure(AppError.NotFound(INVITE_RESOURCE))
     }
 
     private fun KitchenDto.withoutMember(memberId: UserId): KitchenDto =
