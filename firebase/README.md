@@ -183,3 +183,6 @@ it means. See #94.
 
 Unit terms may also carry `conversion` (`dimension` and `factor`, see `docs/data-model.md`); the
 seed script refuses to write a unit with an unknown dimension or a non-positive factor.
+A countable unit may carry `pluralLabels` (same language keys as `labels`), used for any amount
+but exactly one; the seed script refuses a plural in a language the term has no label for.
+The seed has to be re-applied for a change to `pluralLabels` to reach the app.

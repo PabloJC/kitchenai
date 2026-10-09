@@ -67,6 +67,10 @@ even in test fixtures.
 (`MASS` or `VOLUME`; the base has factor 1) in one of this unit. A term without it, such as
 `piece`, never converts. Mass to volume is not converted: it would need a density.
 
+**Plural labels.** A countable unit (`piece`) may carry `pluralLabels`, a language-keyed map like
+`labels`, shown for any amount but exactly one ("1 unidad", "2 unidades"). Abbreviations such as
+`g` or `tbsp` have none and read the same whatever the amount.
+
 **Encoding.** DTOs are written with `encodeDefaults = true`. With defaults dropped, a field
 holding its default value is absent from the payload, and on a merge write an absent field
 means "leave it alone" — the two together make a reset to the default value silently

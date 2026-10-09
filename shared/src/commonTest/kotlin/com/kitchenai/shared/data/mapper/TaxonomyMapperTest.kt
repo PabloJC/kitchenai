@@ -93,6 +93,20 @@ class TaxonomyMapperTest {
     }
 
     @Test
+    fun `a countable term keeps its plural labels`() {
+        val dto = TermDto(labels = mapOf("xx" to "one"), pluralLabels = mapOf("xx" to "many"))
+
+        val decoded = dto.toDomain(taxonomy, "a")
+
+        assertEquals(mapOf("xx" to "many"), (decoded as AppResult.Success).data.pluralLabels)
+    }
+
+    @Test
+    fun `a term with no plural labels decodes with none`() {
+        assertEquals(emptyMap(), (TermDto().toDomain(taxonomy, "a") as AppResult.Success).data.pluralLabels)
+    }
+
+    @Test
     fun `a term with no conversion decodes with none`() {
         assertEquals(null, (TermDto().toDomain(taxonomy, "a") as AppResult.Success).data.conversion)
     }

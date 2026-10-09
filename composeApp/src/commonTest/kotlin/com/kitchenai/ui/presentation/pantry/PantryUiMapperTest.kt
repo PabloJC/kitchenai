@@ -42,6 +42,15 @@ class PantryUiMapperTest {
     }
 
     @Test
+    fun `a countable unit agrees in number with the amount`() {
+        val countable = Term(unitRef, mapOf("es" to "unidad"), null, 0, pluralLabels = mapOf("es" to "unidades"))
+        val resolver = LabelResolver(terms = listOf(countable), languageTags = listOf("es"))
+
+        assertEquals("1 unidad", pantryItem(quantity = Quantity(1.0, unitRef)).toUi(resolver, now).quantityLabel)
+        assertEquals("67 unidades", pantryItem(quantity = Quantity(67.0, unitRef)).toUi(resolver, now).quantityLabel)
+    }
+
+    @Test
     fun `a miss in the catalogue falls back to the identifier`() {
         val item = pantryItem(quantity = Quantity(200.0, null))
 

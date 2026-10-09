@@ -20,4 +20,4 @@ internal fun ShoppingItem.label(labels: LabelResolver): String =
     freeText ?: ingredient?.let { id -> labels.label(id) ?: id.value }.orEmpty()
 
 private fun Quantity.render(labels: LabelResolver): String =
-    formatQuantity(amount, unit?.let { ref -> labels.wordFor(ref) })
+    formatQuantity(amount, unit?.let { ref -> labels.wordFor(ref, amount) })

@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { applicationDefault, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { unknownPurposes } from './lib/seed-checks.mjs';
+import { invalidPluralLabels, unknownPurposes } from './lib/seed-checks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const seedDir = join(here, '..', 'firebase', 'seed');
@@ -55,10 +55,19 @@ function checkPurposes(taxonomies) {
   }
 }
 
+function checkPluralLabels(taxonomies) {
+  const invalid = invalidPluralLabels(taxonomies);
+  if (invalid.length > 0) {
+    console.error(`invalid pluralLabels on term ${invalid.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 // `set` by document id, never `add`: running this twice has to leave the same database.
 async function seedTaxonomies(db, taxonomies) {
   checkConversions(taxonomies);
   checkPurposes(taxonomies);
+  checkPluralLabels(taxonomies);
   let terms = 0;
   for (const [id, { terms: children, ...taxonomy }] of Object.entries(taxonomies)) {
     await db.collection('taxonomies').doc(id).set(taxonomy);

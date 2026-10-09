@@ -63,6 +63,50 @@ class LabelResolverTest {
         assertNull(resolver.label(ingredientId))
     }
 
+    @Test
+    fun `exactly one takes the singular label`() {
+        val resolver = pluralResolver(plurals = mapOf("es" to "unidades"))
+
+        assertEquals("unidad", resolver.label(termRef, 1.0))
+    }
+
+    @Test
+    fun `any other amount takes the plural label`() {
+        val resolver = pluralResolver(plurals = mapOf("es" to "unidades"))
+
+        assertEquals("unidades", resolver.label(termRef, 2.0))
+        assertEquals("unidades", resolver.label(termRef, 0.5))
+        assertEquals("unidades", resolver.label(termRef, 0.0))
+    }
+
+    @Test
+    fun `a term without a plural keeps its label whatever the amount`() {
+        val resolver = pluralResolver(plurals = emptyMap())
+
+        assertEquals("unidad", resolver.label(termRef, 67.0))
+    }
+
+    @Test
+    fun `the plural follows the language preference chain`() {
+        val resolver = pluralResolver(plurals = mapOf("es" to "unidades", "en" to "pieces"), tags = listOf("en-GB"))
+
+        assertEquals("pieces", resolver.label(termRef, 2.0))
+    }
+
+    @Test
+    fun `a term outside the snapshot has no plural either`() {
+        assertNull(LabelResolver(languageTags = listOf("es")).label(termRef, 2.0))
+    }
+
+    private fun pluralResolver(
+        plurals: Map<String, String>,
+        tags: List<String> = listOf("es"),
+    ): LabelResolver =
+        LabelResolver(
+            terms = listOf(Term(termRef, mapOf("es" to "unidad", "en" to "piece"), null, 0, pluralLabels = plurals)),
+            languageTags = tags,
+        )
+
     private fun resolverFor(
         labels: Map<String, String>,
         tags: List<String>,
