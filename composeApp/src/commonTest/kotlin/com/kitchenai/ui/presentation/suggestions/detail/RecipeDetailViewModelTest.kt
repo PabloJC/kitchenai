@@ -18,6 +18,7 @@ import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase
@@ -39,11 +40,14 @@ import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
+import com.kitchenai.ui.presentation.common.FlakyPantryPort
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.defaultKitchenId
 import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_missing_ingredients
 import com.kitchenai.ui.resources.error_not_found
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -236,10 +240,10 @@ class RecipeDetailViewModelTest {
             // 300 left after cooking two servings, and four servings need 400.
             assertEquals(4, viewModel.state.value.servings)
             assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
-            // The refresh and the tap share one flight, so the superseded match never reaches
-            // the pantry. Outside it there is a fifth read: two matches running unmanaged, with
-            // whichever answered last deciding what the screen shows.
-            assertEquals(4, pantry.reads)
+            // The tap and the refresh the cook's own write triggers share one flight, so a
+            // superseded match never reaches the pantry. A sixth read would be two matches
+            // running unmanaged, with whichever answered last deciding what the screen shows.
+            assertEquals(5, pantry.reads)
         }
 
     @Test
@@ -447,6 +451,69 @@ class RecipeDetailViewModelTest {
             assertTrue(viewModel.state.value.unverifiable.single().candidates.isEmpty())
         }
 
+    @Test
+    fun `cooking enables once the pantry covers every ingredient without reopening the dish`() =
+        runTest(dispatcher) {
+            val pantry = FakePantryPort()
+            val viewModel =
+                started(
+                    pantry = emptyList(),
+                    pantryPort = pantry,
+                    recipePort = FakeRecipePort(catalogue = emptyList(), stored = listOf(dish)),
+                )
+            advanceUntilIdle()
+            assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
+            assertFalse(viewModel.state.value.canCook)
+
+            // Shopping happens on another tab while this detail sits on the back stack.
+            pantry.upsert(defaultKitchenId, holding(200.0))
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.missing.isEmpty())
+            assertEquals(listOf("rice"), viewModel.state.value.held.map { it.name })
+            assertTrue(viewModel.state.value.canCook)
+        }
+
+    @Test
+    fun `a re-match that fails after a pantry change leaves the screen as it was`() =
+        runTest(dispatcher) {
+            val pantry = FlakyPantryPort()
+            val viewModel = started(pantry = emptyList(), pantryPort = pantry)
+            advanceUntilIdle()
+            val before = viewModel.state.value
+            val seen = mutableListOf<RecipeDetailEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            pantry.failReads = true
+            pantry.upsert(defaultKitchenId, holding(200.0))
+            advanceUntilIdle()
+            collector.cancel()
+
+            assertEquals(before, viewModel.state.value)
+            assertTrue(seen.isEmpty())
+        }
+
+    @Test
+    fun `a pantry re-match that lands after a stepper tap does not overwrite it`() =
+        runTest(dispatcher) {
+            val pantry = FlakyPantryPort()
+            val viewModel = started(pantry = emptyList(), pantryPort = pantry)
+            advanceUntilIdle()
+
+            // Enough for two servings and not for four; the re-match for two is held mid-read.
+            val late = CompletableDeferred<Unit>()
+            pantry.holdNextRead = late
+            pantry.upsert(defaultKitchenId, holding(300.0))
+            dispatcher.scheduler.runCurrent()
+            viewModel.setServings(4)
+            advanceUntilIdle()
+            late.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(4, viewModel.state.value.servings)
+            assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
+        }
+
     private fun holding(amount: Double): PantryItem =
         PantryItem(
             id = PantryItemId.of("item-1").orFail(),
@@ -480,7 +547,7 @@ class RecipeDetailViewModelTest {
 
     private fun started(
         pantry: List<PantryItem>,
-        pantryPort: FakePantryPort = FakePantryPort(pantry),
+        pantryPort: PantryRepositoryContract = FakePantryPort(pantry),
         recipePort: FakeRecipePort = FakeRecipePort(catalogue = listOf(dish)),
         recipeId: RecipeId = dish.id,
     ): RecipeDetailViewModel {

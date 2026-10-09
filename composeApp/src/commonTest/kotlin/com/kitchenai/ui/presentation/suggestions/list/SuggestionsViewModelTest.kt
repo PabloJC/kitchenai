@@ -21,6 +21,7 @@ import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
+import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.service.UnitConverter
@@ -36,6 +37,7 @@ import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
+import com.kitchenai.ui.presentation.common.FlakyPantryPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.defaultKitchenId
 import com.kitchenai.ui.presentation.common.kitchen
@@ -416,6 +418,93 @@ class SuggestionsViewModelTest {
             assertTrue(viewModel.state.value.savedRecipes.single().missing.isEmpty())
         }
 
+    @Test
+    fun `a generated card's coverage follows the pantry without another model call`() =
+        runTest(dispatcher) {
+            val pantry = FakePantryPort()
+            agent.answer = AppResult.Success(listOf(shortOfRice()))
+            val viewModel = started(pantryPort = pantry)
+            advanceUntilIdle()
+
+            val before = viewModel.state.value.suggestions.single()
+            assertEquals(listOf("rice"), before.missing)
+            assertEquals(0, before.heldCount)
+
+            pantry.upsert(defaultKitchenId, riceHolding())
+            advanceUntilIdle()
+
+            // The stamped match said short of rice; shopping moved it without regenerating.
+            val after = viewModel.state.value.suggestions.single()
+            assertTrue(after.missing.isEmpty())
+            assertEquals(1, after.heldCount)
+            assertEquals(1f, after.coverage)
+            assertEquals(1, agent.calls)
+        }
+
+    @Test
+    fun `a re-match that fails leaves the generated card as it was`() =
+        runTest(dispatcher) {
+            val pantry = FlakyPantryPort()
+            agent.answer = AppResult.Success(listOf(shortOfRice()))
+            val viewModel = started(pantryPort = pantry)
+            advanceUntilIdle()
+            val before = viewModel.state.value
+
+            pantry.failReads = true
+            pantry.upsert(defaultKitchenId, riceHolding())
+            advanceUntilIdle()
+
+            // The stamped match stays and nobody is told: a failed read is not the user's doing.
+            assertEquals(before, viewModel.state.value)
+            assertEquals(null, viewModel.state.value.error)
+        }
+
+    @Test
+    fun `a re-match that lands after a newer generation does not overwrite it`() =
+        runTest(dispatcher) {
+            val pantry = FlakyPantryPort()
+            agent.answer = AppResult.Success(listOf(shortOfRice()))
+            val viewModel = started(pantryPort = pantry)
+            advanceUntilIdle()
+            assertEquals(listOf("recipe-1"), viewModel.state.value.suggestions.map { it.id.value })
+
+            // The pantry changes and the re-match of the first list is held mid-read...
+            val late = CompletableDeferred<Unit>()
+            pantry.holdNextRead = late
+            pantry.upsert(defaultKitchenId, riceHolding())
+            dispatcher.scheduler.runCurrent()
+
+            // ...while a newer generation replaces that list.
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-2")))
+            viewModel.generate()
+            dispatcher.scheduler.runCurrent()
+            assertEquals(listOf("recipe-2"), viewModel.state.value.suggestions.map { it.id.value })
+
+            late.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(listOf("recipe-2"), viewModel.state.value.suggestions.map { it.id.value })
+        }
+
+    @Test
+    fun `a pantry change during generation is reflected when the suggestions land`() =
+        runTest(dispatcher) {
+            val pantry = FakePantryPort()
+            agent.gate = CompletableDeferred()
+            agent.answer = AppResult.Success(listOf(shortOfRice()))
+            val viewModel = started(pantryPort = pantry)
+            dispatcher.scheduler.runCurrent()
+            assertTrue(viewModel.state.value.isGenerating)
+
+            // The stamped match was computed before this, and nothing on screen to re-match yet.
+            pantry.upsert(defaultKitchenId, riceHolding())
+            dispatcher.scheduler.runCurrent()
+            agent.gate?.complete(Unit)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.suggestions.single().missing.isEmpty())
+        }
+
     private fun riceHolding(): PantryItem =
         PantryItem(
             id = PantryItemId.of("item-1").orFail(),
@@ -432,7 +521,7 @@ class SuggestionsViewModelTest {
     private fun started(
         recipes: FakeRecipePort = FakeRecipePort(),
         languageTags: List<String> = listOf("en"),
-        pantryPort: FakePantryPort = FakePantryPort(),
+        pantryPort: PantryRepositoryContract = FakePantryPort(),
     ): SuggestionsViewModel {
         return SuggestionsViewModel(
             suggestRecipes = SuggestRecipesUseCase(StubProfilePort(profile), pantryPort, agent, noUnits()),

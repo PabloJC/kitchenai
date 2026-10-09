@@ -30,8 +30,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -117,6 +119,13 @@ class SuggestionsViewModel(
             }.collect { (id, recipes) -> matchSaved(id, recipes) }
         }
         viewModelScope.launch {
+            // The stamped match is a snapshot of the pantry at generation time. distinctUntilChanged
+            // keeps a snapshot that re-emits unchanged holdings from costing a pass of reads.
+            kitchenId.filterNotNull().flatMapLatest { id ->
+                observePantry(id).distinctUntilChanged().map { id }
+            }.collectLatest { id -> rematchGenerated(id) }
+        }
+        viewModelScope.launch {
             // A kitchen change re-runs both: a different kitchen's pantry needs a fresh
             // generation. The previous kitchen's generation is cancelled explicitly first:
             // collectLatest only cancels this block's own coroutine, not generate()'s independent
@@ -161,7 +170,7 @@ class SuggestionsViewModel(
                         )
                 ) {
                     is AppResult.Failure -> fail(answered.error)
-                    is AppResult.Success -> generated(answered.data)
+                    is AppResult.Success -> generated(kitchen, answered.data)
                 }
             }
     }
@@ -177,11 +186,16 @@ class SuggestionsViewModel(
     }
 
     /** A new generation replaces what was stored, on screen and on disk. */
-    private suspend fun generated(suggestions: List<RecipeSuggestion>) {
+    private suspend fun generated(
+        kitchenId: KitchenId,
+        suggestions: List<RecipeSuggestion>,
+    ) {
         // The write's own failure does not undo a run the user already sees the result of: it
         // only costs the next launch its head start.
         storeSuggestions(suggestions.map { it.recipe })
-        render(suggestions)
+        // The pantry may have changed during the minute-long call, and its emission found the
+        // previous list on screen. A stamped match is only as fresh as the model call's start.
+        render(withFreshMatch(kitchenId, suggestions))
         internalState.update { it.copy(isGenerating = false, hasGenerated = true, error = null) }
     }
 
@@ -189,6 +203,31 @@ class SuggestionsViewModel(
         current = suggestions
         reresolve()
     }
+
+    /**
+     * Generated suggestions re-matched on a pantry change, so shopping moves a card's coverage
+     * without another model call. A result is applied only if the list it was computed for is
+     * still the one on screen, in the same kitchen: a newer generation or a kitchen change that
+     * landed while the reads were suspended must never receive a match computed for the old list.
+     */
+    private suspend fun rematchGenerated(kitchenId: KitchenId) {
+        val snapshot = current
+        if (snapshot.isEmpty()) return
+        val fresh = withFreshMatch(kitchenId, snapshot)
+        if (current !== snapshot || this.kitchenId.value != kitchenId) return
+        current = fresh
+        reresolve()
+    }
+
+    /** A line whose own re-match fails keeps the match it had: a read error is not the user's to see. */
+    private suspend fun withFreshMatch(
+        kitchenId: KitchenId,
+        suggestions: List<RecipeSuggestion>,
+    ): List<RecipeSuggestion> =
+        suggestions.map { suggestion ->
+            val match = matchRecipe(kitchenId, suggestion.recipe) as? AppResult.Success
+            if (match == null) suggestion else suggestion.copy(match = match.data)
+        }
 
     /**
      * A saved recipe carries no match of its own — matching is what a suggestion's orchestrator

@@ -80,6 +80,7 @@ class RecipeDetailViewModel(
     // above, and dropped the snapshot along the way. Never persisted: a candidate a person
     // confirms is a fact about this viewing, not a write to the pantry or the catalogue (#163).
     private val pantry = MutableStateFlow<List<PantryItem>>(emptyList())
+    private var pantryKnown = false
     private val confirmedCandidates = MutableStateFlow<Set<PantryItemId>>(emptySet())
     private val loading = MutableStateFlow<Job?>(null)
     private var id: RecipeId? = null
@@ -113,8 +114,11 @@ class RecipeDetailViewModel(
         }
         viewModelScope.launch {
             kitchenId.filterNotNull().flatMapLatest(reads.pantry::invoke).collect { loaded ->
+                val changed = pantryKnown && loaded != pantry.value
+                pantryKnown = true
                 pantry.value = loaded
                 recipe.value?.let { held -> render(held, currentMatch.value) }
+                if (changed) refreshMatchOnPantryChange()
             }
         }
         watchVocabulary()
@@ -261,15 +265,15 @@ class RecipeDetailViewModel(
     }
 
     /**
-     * The buckets after a cook, from the recipe in hand. Never by id: a generated dish may have
-     * left the cache by now, and the repository would answer NotFound for a cook that just
-     * succeeded.
+     * The buckets against the pantry as it is now, from the recipe in hand. Never by id: a
+     * generated dish may have left the cache by now, and the repository would answer NotFound
+     * for a cook that just succeeded.
      *
      * Reads the servings when it runs rather than when it was queued, so a stepper tap that
      * overlapped the cook is answered for rather than overwritten.
      *
      * Silent when the re-match fails. The pantry has already changed and cannot be put back, so
-     * a stale bucket is a smaller lie than telling somebody their cook did not happen.
+     * a stale bucket is a smaller lie than blaming somebody for a read they never asked for.
      */
     private fun refreshMatch(kitchenId: KitchenId) {
         val held = recipe.value ?: return
@@ -281,6 +285,21 @@ class RecipeDetailViewModel(
                 render(held, match.data, servings)
             }
         }
+    }
+
+    /**
+     * The pantry changed under a dish that is open or retained on the back stack (shopping
+     * happens on another tab), so its buckets are stale. Skipped while the first match is
+     * still loading: that load reads the pantry itself, and cancelling it here would restart it
+     * before the servings it was asked for are on screen.
+     *
+     * This is also what refreshes after a cook, which changes the pantry like any other writer:
+     * a second explicit refresh there would match twice for one change.
+     */
+    private fun refreshMatchOnPantryChange() {
+        val kitchen = kitchenId.value ?: return
+        if (internalState.value.isLoading) return
+        refreshMatch(kitchen)
     }
 
     private suspend fun matched(
@@ -359,8 +378,6 @@ class RecipeDetailViewModel(
                 is AppResult.Success -> {
                     if (outcome.data is RecipeDetailEvent.Saved) internalState.update { it.copy(isSaved = true) }
                     announce(outcome.data)
-                    // Cooking changed the pantry, so the buckets beside it are now stale.
-                    if (outcome.data is RecipeDetailEvent.Cooked) refreshMatch(kitchen)
                 }
             }
             internalState.update { it.copy(isWorking = false) }
