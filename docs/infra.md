@@ -461,6 +461,24 @@ The linker cannot find the iOS Firebase frameworks, which Xcode supplies through
 real fix is splitting `:shared` into `:domain` (pure Kotlin, testable everywhere) and
 `:data`. Still pending.
 
+### Should CI deploy the backend on merge? (open, the owner's call)
+
+Today nothing deploys: rules, indexes, the seed and the functions go out by hand, in the order in
+`firebase/README.md`, and `tools/smoke-rules.mjs` proves the result. That is how the backend ended
+up two months behind the code (#224). No deployment is enabled by this decision record.
+
+| Option | What it needs | What it buys | What it costs |
+|---|---|---|---|
+| **A. Manual checklist + smoke script** (today) | Nothing new | No deploy credential outside a person's machine | Relies on someone remembering; the gap only shows when a user hits it |
+| **B. CI deploys rules, indexes and functions on merge to `main`** | A service account with deploy roles (Firebase Rules Admin, Cloud Datastore Index Admin, Cloud Functions Admin, Service Account User), stored as a repository secret, and a protected `production` environment | Rules and code cannot drift | A long-lived key that can rewrite every security rule; a bad merge reaches users before anyone reads it |
+| **C. As B, with Workload Identity Federation** | The same roles on a service account that GitHub's OIDC token impersonates; no key in secrets | B without a stored key | Setup in Google Cloud, a one-off the owner must do |
+| **D. A scheduled or on-demand drift check** | The smoke script's inputs as secrets (project id, web API key; no deploy role) | Detects a lagging deployment within a day without granting write access to the backend | It writes a handful of `smoke-` documents on every run (`--cleanup` needs Admin credentials, so CI would leave them) |
+
+The seed stays manual under every option: it rewrites the catalogue every client reads, which is
+the reason it is a deliberate command and not a CI step. If B or C is chosen, the deploy job should
+run after `CI passed`, on `main` only, behind a required reviewer on the environment, and finish with
+the smoke script.
+
 ---
 
 ## Known debt

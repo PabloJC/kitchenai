@@ -622,3 +622,53 @@ describe('kitchen invites', () => {
     );
   });
 });
+
+// Why firestore.rules judges a document written in the same commit with getAfter(). The rules
+// here are throwaway, not the project's: they isolate the one behaviour the convention rests on
+// (firebase/README.md). The deployed project is checked by tools/smoke-rules.mjs, which is the
+// authority; this pins what the emulator does so a change in it shows up as a red test.
+describe('exists() and existsAfter() inside one atomic write', () => {
+  let semanticsEnv;
+
+  before(async () => {
+    semanticsEnv = await initializeTestEnvironment({
+      projectId: 'demo-kitchenai-rules-semantics',
+      firestore: {
+        rules: `rules_version = '2';
+          service cloud.firestore {
+            match /databases/{database}/documents {
+              match /parents/{id} { allow create: if true; }
+              match /beforeChildren/{id} {
+                allow create: if exists(/databases/$(database)/documents/parents/$(request.resource.data.parent));
+              }
+              match /afterChildren/{id} {
+                allow create: if existsAfter(/databases/$(database)/documents/parents/$(request.resource.data.parent));
+              }
+            }
+          }`,
+        host: '127.0.0.1',
+        port: 8080,
+      },
+    });
+  });
+
+  after(async () => {
+    await semanticsEnv.cleanup();
+  });
+
+  const writeParentAndChild = (childCollection) => {
+    const db = semanticsEnv.authenticatedContext('user-semantics').firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'parents/p'), { name: 'p' });
+    batch.set(doc(db, `${childCollection}/c`), { parent: 'p' });
+    return batch.commit();
+  };
+
+  it('does not let exists() see a document created in the same commit', async () => {
+    await assertFails(writeParentAndChild('beforeChildren'));
+  });
+
+  it('lets existsAfter() see a document created in the same commit', async () => {
+    await assertSucceeds(writeParentAndChild('afterChildren'));
+  });
+});
