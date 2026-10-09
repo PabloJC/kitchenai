@@ -5,18 +5,21 @@ import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.KitchenId
+import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
+import com.kitchenai.ui.presentation.common.wordFor
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_list
 import kotlinx.coroutines.channels.Channel
@@ -95,9 +98,10 @@ class ShoppingViewModel(
     private val writeFailure = MutableStateFlow<UiText?>(null)
 
     private val lines =
-        combine(items, itemsError, itemsAnswered, resolver) { loaded, error, answered, labels ->
+        combine(items, itemsError, itemsAnswered, resolver, units) { loaded, error, answered, labels, unitTerms ->
             LinesState(
                 lines = loaded.orEmpty().map { item -> item.toUi(labels) },
+                units = unitTerms.map { term -> term.ref to labels.wordFor(term.ref) },
                 error = error,
                 isLoading = !answered,
                 failedToLoad = error != null && loaded == null,
@@ -193,6 +197,15 @@ class ShoppingViewModel(
         edit { kitchen, list -> writes.setChecked(kitchen, list, itemId, checked) }
     }
 
+    /** Replaces the quantity of a line, which is what lets a line typed by hand reach the pantry. */
+    fun setQuantity(
+        itemId: ShoppingItemId,
+        amount: Double,
+        unit: TermRef?,
+    ) {
+        edit { kitchen, list -> writes.setQuantity(kitchen, list, itemId, Quantity(amount, unit)) }
+    }
+
     fun remove(itemId: ShoppingItemId) {
         val item = items.value?.firstOrNull { it.id == itemId } ?: return
         edit { kitchen, list ->
@@ -237,11 +250,19 @@ class ShoppingViewModel(
 
     /** Typing anywhere drops the pick: the word on screen would otherwise stop matching the identifier. */
     fun onDraftChange(text: String) {
-        draft.value = ShoppingDraftUi(text = text, suggestions = suggest(text))
+        draft.value = draft.value.copy(text = text, picked = null, suggestions = suggest(text))
     }
 
     fun onPick(suggestion: IngredientSuggestion) {
-        draft.value = ShoppingDraftUi(text = suggestion.label, picked = suggestion)
+        draft.value = draft.value.copy(text = suggestion.label, picked = suggestion, suggestions = emptyList())
+    }
+
+    /** Null amount is an empty or half-typed field: the line is then added without a quantity. */
+    fun onQuantityChange(
+        amount: Double?,
+        unit: TermRef?,
+    ) {
+        draft.value = draft.value.copy(amount = amount, unit = unit)
     }
 
     fun add() {
@@ -249,6 +270,8 @@ class ShoppingViewModel(
         val text = current.text.trim()
         val picked = current.picked
         if (picked == null && text.isEmpty()) return
+        // Zero or less is not an amount: it would be refused downstream, so the line goes in bare.
+        val quantity = current.amount?.takeIf { it > 0.0 }?.let { amount -> Quantity(amount, current.unit) }
         val dispatched =
             edit { kitchen, list ->
                 writes.add(
@@ -256,11 +279,12 @@ class ShoppingViewModel(
                     listId = list,
                     ingredient = picked?.id,
                     freeText = if (picked == null) text else null,
+                    quantity = quantity,
                 )
             }
         // Only once the write is on its way: clearing first loses the line the user typed while
         // the default list was still resolving.
-        if (dispatched) draft.value = ShoppingDraftUi()
+        if (dispatched) draft.value = ShoppingDraftUi(revision = current.revision + 1)
     }
 
     /** Rebuilt from every source at once: a resolver missing one of them answers with an id. */
@@ -324,6 +348,7 @@ class ShoppingViewModel(
             unchecked = lines.lines.filterNot(ShoppingItemUi::checked),
             checked = lines.lines.filter(ShoppingItemUi::checked),
             draft = draft,
+            units = lines.units,
             isLoading = lines.isLoading,
             failedToLoad = lines.failedToLoad,
             // A write that was rejected is the newest thing that happened, so it speaks first.
@@ -377,6 +402,7 @@ private const val SUGGESTION_LIMIT = 6
 /** What the item listener has produced so far, as one value rather than four fields. */
 private data class LinesState(
     val lines: List<ShoppingItemUi> = emptyList(),
+    val units: List<Pair<TermRef, String>> = emptyList(),
     val error: UiText? = null,
     val isLoading: Boolean = true,
     val failedToLoad: Boolean = false,

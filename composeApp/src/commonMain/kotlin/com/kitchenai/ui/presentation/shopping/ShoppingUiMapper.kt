@@ -11,6 +11,8 @@ internal fun ShoppingItem.toUi(labels: LabelResolver): ShoppingItemUi =
         id = id,
         label = label(labels),
         quantity = quantity?.render(labels),
+        amount = quantity?.amount,
+        unit = quantity?.unit,
         fromCatalogue = ingredient != null,
         checked = checked,
     )

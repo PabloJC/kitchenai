@@ -33,8 +33,8 @@ class PluralResourcesTest {
     fun `Spanish agrees with one and with the rest`() {
         assertEquals("1 movido a la despensa", spanish.form("snack_moved_count", 1))
         assertEquals("4 movidos a la despensa", spanish.form("snack_moved_count", 4))
-        assertEquals("1 se queda en la lista", spanish.form("snack_left_on_list_count", 1))
-        assertEquals("4 se quedan en la lista", spanish.form("snack_left_on_list_count", 4))
+        assertEquals("1 no tiene cantidad y se queda en la lista", spanish.form("snack_left_no_amount_count", 1))
+        assertEquals("4 no tienen cantidad y se quedan en la lista", spanish.form("snack_left_no_amount_count", 4))
         assertEquals("1 añadido", spanish.form("snack_added_count", 1))
         assertEquals("4 añadidos", spanish.form("snack_added_count", 4))
         assertEquals("1 que no hace falta", spanish.form("snack_not_needed_count", 1))
@@ -60,7 +60,8 @@ class PluralResourcesTest {
     @Test
     fun `English reads the same counts in its own words`() {
         assertEquals("1 moved to the pantry", english.form("snack_moved_count", 1))
-        assertEquals("4 left on the list", english.form("snack_left_on_list_count", 4))
+        assertEquals("1 has no amount and stays on the list", english.form("snack_left_no_amount_count", 1))
+        assertEquals("4 have no amount and stay on the list", english.form("snack_left_no_amount_count", 4))
         assertEquals("1 line cleared", english.form("shopping_cleared_count", 1))
         assertEquals("3 lines cleared", english.form("shopping_cleared_count", 3))
     }
