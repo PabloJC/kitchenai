@@ -64,6 +64,7 @@ fun SwipeToDismissRow(
                 )
             }
         },
-        content = { content() },
+        // Opaque: the reveal is drawn behind it all the time, so a transparent row would show it.
+        content = { Box(Modifier.background(MaterialTheme.colorScheme.background)) { content() } },
     )
 }
