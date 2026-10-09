@@ -27,9 +27,8 @@ service cloud.firestore {
              && request.auth.uid == get(/databases/$(database)/documents/kitchens/$(kitchenId)).data.ownerId;
     }
 
-    // Owner as of the end of this write. get() reads the state BEFORE the commit in production
-    // (the emulator lets it see the same write), so a create that lands together with its own
-    // kitchen document must be judged on getAfter().
+    // Owner as of the end of this write. get() reads the state BEFORE the commit, so an invite
+    // created in the same commit as its kitchen must be judged on getAfter().
     function isKitchenOwnerAfterWrite(kitchenId) {
       return isSignedIn()
              && request.auth.uid == getAfter(/databases/$(database)/documents/kitchens/$(kitchenId)).data.ownerId;
