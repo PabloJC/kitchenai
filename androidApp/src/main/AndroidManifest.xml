@@ -10,10 +10,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KitchenAI">
 
+        <!-- adjustResize: the default pan stacks on imePadding() and strands the field mid-screen. -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="true"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.KitchenAI">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
