@@ -13,7 +13,7 @@ it against.
 - `dish_curry.jpg` — **CC0**, by Hrittick Mondal. Source: https://commons.wikimedia.org/wiki/File:%E0%A6%B0%E0%A7%81%E0%A6%87_%E0%A6%AE%E0%A6%BE%E0%A6%9B%E0%A7%87%E0%A6%B0_%E0%A6%9D%E0%A6%BE%E0%A6%B2.jpg
 - `dish_stir_fry.jpg` — **CC0**, by Andy Li. Source: https://commons.wikimedia.org/wiki/File:Pan_Fry_Beef_Rice_Noodles_-_Stir_Fry_by_CK.jpg
 - `dish_roast.jpg` — **CC0**, by Andy Li. Source: https://commons.wikimedia.org/wiki/File:Sunday_roasts_in_Haus_on_the_Hill_pub,_Brighton.jpg
-- `dish_grilled.jpg` — **CC0**, by pompi. Source: https://commons.wikimedia.org/wiki/File:Plated_grilled_fish_(cropped).jpg
+- `dish_grilled.jpg` — **CC BY-SA 4.0**, by PattayaPatrol. Source: https://commons.wikimedia.org/wiki/File:DFC_5010_Grilled_sesame_pork_slices_with_fresh_garden_salad_and_creamy_dipping_sauce_-_a_flavorful_Thai-style_plate_from_Sattahip.jpg
 - `dish_sandwich.jpg` — **CC BY-SA 3.0**, by Senator2029. Source: https://commons.wikimedia.org/wiki/File:Grilled_cheese_sandwich_on_white_plate.jpg
 - `dish_pizza.jpg` — **CC BY-SA 4.0**, by PattayaPatrol. Source: https://commons.wikimedia.org/wiki/File:DFC_4204_Cheesy_slice_pull_gooey_golden_pizza_perfection.jpg
 - `dish_rice_dish.jpg` — **CC BY-SA 4.0**, by Bahnfrend. Source: https://commons.wikimedia.org/wiki/File:Chicken_Biryani,_Caf%C3%A9_Levant,_Mombasa,_2025_(01).jpg

@@ -37,6 +37,7 @@ import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
+import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.FlakyPantryPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.defaultKitchenId
@@ -524,8 +525,21 @@ class SuggestionsViewModelTest {
         pantryPort: PantryRepositoryContract = FakePantryPort(),
     ): SuggestionsViewModel {
         return SuggestionsViewModel(
-            suggestRecipes = SuggestRecipesUseCase(StubProfilePort(profile), pantryPort, agent, noUnits()),
-            getStoredSuggestions = GetStoredSuggestionsUseCase(recipes, pantryPort, TimeProvider { now }, noUnits()),
+            suggestRecipes =
+                SuggestRecipesUseCase(
+                    StubProfilePort(profile),
+                    pantryPort,
+                    agent,
+                    noUnits(),
+                    FakeTaxonomyPort(),
+                ),
+            getStoredSuggestions =
+                GetStoredSuggestionsUseCase(
+                    recipes,
+                    pantryPort,
+                    TimeProvider { now },
+                    noUnits(),
+                ),
             storeSuggestions = StoreSuggestionsUseCase(recipes),
             observeIngredients = ObserveIngredientsUseCase(catalogue),
             observeSavedRecipes = ObserveSavedRecipesUseCase(recipes),

@@ -5,9 +5,16 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.agent.AgentOrchestrator
 import com.kitchenai.shared.domain.agent.SuggestionOptions
 import com.kitchenai.shared.domain.agent.profile
+import com.kitchenai.shared.domain.model.ConstraintStrength
+import com.kitchenai.shared.domain.model.DietaryConstraint
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.RecipeSuggestion
+import com.kitchenai.shared.domain.model.Taxonomy
+import com.kitchenai.shared.domain.model.TaxonomyId
+import com.kitchenai.shared.domain.model.TaxonomyPurpose
+import com.kitchenai.shared.domain.model.TermId
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
@@ -42,6 +49,7 @@ class SuggestRecipesUseCaseTest {
                     FakePantryRepositoryContract(held),
                     orchestrator,
                     noUnits(),
+                    FakeTaxonomyRepositoryContract(),
                 )
 
             val result = useCase(user, kitchen, listOf("en"), SuggestionOptions(useOnlyPantry = true))
@@ -63,6 +71,7 @@ class SuggestRecipesUseCaseTest {
                     FakePantryRepositoryContract(held),
                     orchestrator,
                     noUnits(),
+                    FakeTaxonomyRepositoryContract(),
                 )
 
             useCase(user, kitchen, listOf("es"))
@@ -72,11 +81,71 @@ class SuggestRecipesUseCaseTest {
         }
 
     @Test
+    fun `terms of a taxonomy that declares a purpose never reach the agent`() =
+        runTest {
+            val orchestrator = RecordingOrchestrator()
+            val dish = termIn("dish-types", "pasta")
+            val diet = termIn("diets", "vegan")
+            val withDishType =
+                stored.copy(
+                    constraints =
+                        listOf(
+                            DietaryConstraint(dish, ConstraintStrength.SOFTEST),
+                            DietaryConstraint(diet, ConstraintStrength.AVOID),
+                        ),
+                    preferences = listOf(dish, diet),
+                )
+            val catalogue =
+                FakeTaxonomyRepositoryContract(
+                    others =
+                        listOf(
+                            Taxonomy(dish.taxonomy, emptyMap(), purpose = TaxonomyPurpose.RECIPE_CLASSIFICATION),
+                            Taxonomy(diet.taxonomy, emptyMap()),
+                        ),
+                )
+
+            SuggestRecipesUseCase(
+                FakeProfilePort(flowOf(withDishType)),
+                FakePantryRepositoryContract(held),
+                orchestrator,
+                noUnits(),
+                catalogue,
+            )(user, kitchen, listOf("en"))
+
+            assertEquals(listOf(DietaryConstraint(diet, ConstraintStrength.AVOID)), orchestrator.profile?.constraints)
+            assertEquals(listOf(diet), orchestrator.profile?.preferences)
+        }
+
+    @Test
+    fun `a catalogue that cannot be read is reported and the orchestrator is never asked`() =
+        runTest {
+            val orchestrator = RecordingOrchestrator()
+
+            val result =
+                SuggestRecipesUseCase(
+                    FakeProfilePort(flowOf(stored)),
+                    FakePantryRepositoryContract(held),
+                    orchestrator,
+                    noUnits(),
+                    FakeTaxonomyRepositoryContract(taxonomiesError = AppError.Network()),
+                )(user, kitchen, listOf("en"))
+
+            assertTrue(result is AppResult.Failure)
+            assertEquals(null, orchestrator.profile)
+        }
+
+    @Test
     fun `a failing pantry read is reported`() =
         runTest {
             val pantry = FakePantryRepositoryContract(readError = AppError.Network())
             val useCase =
-                SuggestRecipesUseCase(FakeProfilePort(flowOf(stored)), pantry, RecordingOrchestrator(), noUnits())
+                SuggestRecipesUseCase(
+                    FakeProfilePort(flowOf(stored)),
+                    pantry,
+                    RecordingOrchestrator(),
+                    noUnits(),
+                    FakeTaxonomyRepositoryContract(),
+                )
 
             assertTrue(useCase(user, kitchen, listOf("en")) is AppResult.Failure)
         }
@@ -90,6 +159,7 @@ class SuggestRecipesUseCaseTest {
                     FakePantryRepositoryContract(held),
                     RecordingOrchestrator(),
                     noUnits(),
+                    FakeTaxonomyRepositoryContract(),
                 )
 
             val result = useCase(user, kitchen, listOf("en"))
@@ -112,6 +182,7 @@ class SuggestRecipesUseCaseTest {
                     FakePantryRepositoryContract(held),
                     orchestrator,
                     broken,
+                    FakeTaxonomyRepositoryContract(),
                 )(
                     user,
                     kitchen,
@@ -132,12 +203,18 @@ class SuggestRecipesUseCaseTest {
                 FakePantryRepositoryContract(held),
                 orchestrator,
                 metricUnits("taxonomy-1"),
+                FakeTaxonomyRepositoryContract(),
             )(user, kitchen, listOf("en"))
 
             val converter = requireNotNull(orchestrator.units)
             assertEquals(0.5, converter.amountIn(Quantity(500.0, termRef("gram")), termRef("kilogram")))
         }
 }
+
+private fun termIn(
+    taxonomy: String,
+    term: String,
+): TermRef = TermRef((TaxonomyId.of(taxonomy) as AppResult.Success).data, (TermId.of(term) as AppResult.Success).data)
 
 private class RecordingOrchestrator : AgentOrchestrator {
     var profile: UserProfile? = null

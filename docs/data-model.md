@@ -16,7 +16,9 @@ kitchens/{kitchenId}/shoppingLists/{listId}
 kitchens/{kitchenId}/shoppingLists/{listId}/items/{itemId}
 kitchens/{kitchenId}/savedRecipes/{recipeId}
 kitchenInvites/{joinCode}                       { kitchenId } only — resolves a code to a
-                                                 kitchen without reading the kitchen document
+                                                 kitchen without reading the kitchen document;
+                                                 the id is a lower-case UUID, and a join also
+                                                 tries its upper-case spelling (older iOS codes)
 taxonomies/{taxonomyId}                         read-only catalogue
 taxonomies/{taxonomyId}/terms/{termId}
 ingredients/{ingredientId}                      read-only catalogue

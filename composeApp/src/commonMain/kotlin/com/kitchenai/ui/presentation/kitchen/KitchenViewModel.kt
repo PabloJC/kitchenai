@@ -78,9 +78,9 @@ class KitchenViewModel(
 
     fun join() {
         val uid = userId ?: return
-        val raw = joinCodeInput.value.trim()
-        if (raw.isEmpty()) return
-        when (val code = KitchenJoinCode.of(raw)) {
+        val raw = joinCodeInput.value
+        if (raw.isBlank()) return
+        when (val code = KitchenJoinCode.normalised(raw)) {
             is AppResult.Failure -> writeFailure.value = code.error.describeKitchenError()
             is AppResult.Success ->
                 write(describeError = AppError::describeJoinError, onSuccess = { joinCodeInput.value = "" }) {

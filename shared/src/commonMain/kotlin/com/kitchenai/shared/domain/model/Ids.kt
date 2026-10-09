@@ -78,11 +78,29 @@ value class KitchenId private constructor(val value: String) {
     }
 }
 
-/** The code a `Kitchen` is joined by. Not a secret: it identifies a group to join, not a user. */
+/**
+ * The code a `Kitchen` is joined by: the only thing standing between a stranger and a kitchen,
+ * so it stays a full-length random id rather than something short enough to guess.
+ */
 @JvmInline
 value class KitchenJoinCode private constructor(val value: String) {
+    /**
+     * Every spelling an invite for this code may be filed under: lower case first, then the upper
+     * case iOS builds wrote before codes were normalised. Looking up only [value] would orphan them.
+     */
+    fun storedForms(): List<KitchenJoinCode> =
+        listOf(value.lowercase(), value.uppercase(), value).distinct().map(::KitchenJoinCode)
+
     companion object {
+        /** A code as already stored, verbatim: deleting an invite needs the exact id it was written under. */
         fun of(raw: String): AppResult<KitchenJoinCode> = nonBlank("KitchenJoinCode", raw).map { KitchenJoinCode(it) }
+
+        /**
+         * A code as a person typed it or a platform generated it: trimmed and lower case, so one
+         * made on iOS (upper case) can be typed on Android and the other way round.
+         */
+        fun normalised(raw: String): AppResult<KitchenJoinCode> =
+            nonBlank("KitchenJoinCode", raw.trim()).map { KitchenJoinCode(it.lowercase()) }
     }
 }
 

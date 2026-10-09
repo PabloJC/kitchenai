@@ -38,6 +38,15 @@ class TaxonomyMapperTest {
     }
 
     @Test
+    fun `the recipe classification purpose decodes`() {
+        val dto = TaxonomyDto(labels = mapOf("xx" to "Label"), purpose = "RECIPE_CLASSIFICATION")
+
+        val decoded = dto.toDomain("dish-types")
+
+        assertEquals(TaxonomyPurpose.RECIPE_CLASSIFICATION, (decoded as AppResult.Success).data.purpose)
+    }
+
+    @Test
     fun `a purpose this version does not know is null rather than a failure`() {
         // A newer catalogue must not break an older app: what it cannot place, it can still show.
         val dto = TaxonomyDto(labels = mapOf("xx" to "Label"), purpose = "SOMETHING_LATER")

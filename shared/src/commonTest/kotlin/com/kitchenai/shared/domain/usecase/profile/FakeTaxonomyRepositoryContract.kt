@@ -18,13 +18,14 @@ import kotlinx.coroutines.flow.flowOf
 
 /**
  * In-memory [TaxonomyRepositoryContract] holding one `UNITS` taxonomy made of [units], or none
- * at all when it is empty. The two one-shot reads fail independently, so both error branches of
- * a caller can be reached.
+ * at all when it is empty, plus any [others] as given. The two one-shot reads fail independently,
+ * so both error branches of a caller can be reached.
  */
 class FakeTaxonomyRepositoryContract(
     private val units: List<Term> = emptyList(),
     private val taxonomiesError: AppError? = null,
     private val termsError: AppError? = null,
+    private val others: List<Taxonomy> = emptyList(),
 ) : TaxonomyRepositoryContract {
     override fun observeTaxonomy(id: TaxonomyId): Flow<List<Term>> = flowOf(units.filter { it.ref.taxonomy == id })
 
@@ -45,7 +46,7 @@ class FakeTaxonomyRepositoryContract(
             listOf(
                 Taxonomy(it.ref.taxonomy, emptyMap(), purpose = TaxonomyPurpose.UNITS),
             )
-        }.orEmpty()
+        }.orEmpty() + others
 }
 
 /** A unit term, with no conversion data unless [dimension] and [factor] say so. */

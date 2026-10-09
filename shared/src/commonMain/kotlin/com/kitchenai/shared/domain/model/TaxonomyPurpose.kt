@@ -15,4 +15,7 @@ enum class TaxonomyPurpose {
 
     /** Where a [PantryItem] is kept, which is the only way that picker can be offered at all. */
     STORAGE_LOCATIONS,
+
+    /** Describes a recipe (how it is tagged and pictured), not the cook: never a preference. */
+    RECIPE_CLASSIFICATION,
 }

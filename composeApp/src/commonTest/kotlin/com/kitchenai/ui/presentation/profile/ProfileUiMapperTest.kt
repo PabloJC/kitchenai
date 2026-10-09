@@ -99,6 +99,21 @@ class ProfileUiMapperTest {
     }
 
     @Test
+    fun `a taxonomy describing recipes is not offered as a preference`() {
+        val diets = Taxonomy(taxonomyId, mapOf("en" to "Diets"), purpose = null)
+        val dishes =
+            Taxonomy(
+                TaxonomyId.of("dish-types").value(),
+                mapOf("en" to "Dish type"),
+                purpose = TaxonomyPurpose.RECIPE_CLASSIFICATION,
+            )
+
+        val result = sections(CatalogueState(taxonomies = listOf(diets, dishes)), profile())
+
+        assertEquals(listOf(taxonomyId), result.map { it.taxonomy })
+    }
+
+    @Test
     fun `a term resolves selected against the profile's own constraints`() {
         val taxonomy = Taxonomy(taxonomyId, mapOf("en" to "Diets"), purpose = null)
         val term = Term(termRef, mapOf("en" to "Vegan"), null, 0)

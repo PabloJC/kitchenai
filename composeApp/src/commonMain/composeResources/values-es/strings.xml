@@ -9,8 +9,23 @@
     <string name="error_unauthorized_own_data">Esta cuenta no tiene permiso para leer sus propios datos</string>
     <string name="error_unauthorized_list">Esta cuenta no tiene permiso para leer esta lista</string>
     <string name="error_unauthorized_action">Esta cuenta no tiene permiso para hacer eso</string>
-    <string name="snack_added_to_list">%1$d añadidos, %2$d que no hacen falta</string>
-    <string name="snack_moved_to_pantry">%1$d movidos a la despensa, %2$d se quedan en la lista</string>
+    <string name="snack_counts_joined">%1$s, %2$s</string>
+    <plurals name="snack_added_count">
+        <item quantity="one">%1$d añadido</item>
+        <item quantity="other">%1$d añadidos</item>
+    </plurals>
+    <plurals name="snack_not_needed_count">
+        <item quantity="one">%1$d que no hace falta</item>
+        <item quantity="other">%1$d que no hacen falta</item>
+    </plurals>
+    <plurals name="snack_moved_count">
+        <item quantity="one">%1$d movido a la despensa</item>
+        <item quantity="other">%1$d movidos a la despensa</item>
+    </plurals>
+    <plurals name="snack_left_on_list_count">
+        <item quantity="one">%1$d se queda en la lista</item>
+        <item quantity="other">%1$d se quedan en la lista</item>
+    </plurals>
     <string name="snack_cooked">Descontado de tu despensa</string>
     <string name="snack_saved">Guardado</string>
 
@@ -46,7 +61,10 @@
     <string name="shopping_empty_title">Nada que comprar</string>
     <string name="shopping_empty_body">Añade lo que necesites y ve marcándolo.</string>
     <string name="shopping_removed_suffix">eliminado</string>
-    <string name="shopping_cleared_suffix">líneas vaciadas</string>
+    <plurals name="shopping_cleared_count">
+        <item quantity="one">%1$d línea vaciada</item>
+        <item quantity="other">%1$d líneas vaciadas</item>
+    </plurals>
     <string name="shopping_undo">Deshacer</string>
     <string name="detail_title">Receta</string>
     <string name="nav_back">Atrás</string>
@@ -60,6 +78,10 @@
     <string name="detail_servings">Raciones</string>
     <string name="detail_add_missing">Añadir lo que falta</string>
     <string name="detail_cook">Cocinar esto</string>
+    <plurals name="detail_cook_missing_hint">
+        <item quantity="one">Falta %1$d ingrediente para cocinar esto</item>
+        <item quantity="other">Faltan %1$d ingredientes para cocinar esto</item>
+    </plurals>
     <string name="detail_save">Guardar</string>
     <string name="detail_saved">Guardado</string>
     <string name="detail_cook_title">¿Cocinar esto?</string>

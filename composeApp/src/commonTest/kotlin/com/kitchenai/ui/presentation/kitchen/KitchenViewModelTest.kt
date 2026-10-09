@@ -89,6 +89,37 @@ class KitchenViewModelTest {
         }
 
     @Test
+    fun `a code typed in upper case is looked up in lower case`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = other, memberIds = setOf(other, self)))
+            kitchens.joinResult = AppResult.Success(kitchen(ownerId = other, joinCode = "abc-123"))
+            val viewModel = viewModel(kitchens)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.onJoinCodeInputChange(" ABC-123 ")
+            viewModel.join()
+            advanceUntilIdle()
+
+            assertEquals(listOf(joinCode("abc-123")), kitchens.joinCalls)
+        }
+
+    @Test
+    fun `a blank code never reaches the port`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = other, memberIds = setOf(other, self)))
+            val viewModel = viewModel(kitchens)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.onJoinCodeInputChange("   ")
+            viewModel.join()
+            advanceUntilIdle()
+
+            assertEquals(emptyList(), kitchens.joinCalls)
+        }
+
+    @Test
     fun `joining passes the profile display name so the member is listed under it`() =
         runTest(dispatcher) {
             val kitchens = FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self)))

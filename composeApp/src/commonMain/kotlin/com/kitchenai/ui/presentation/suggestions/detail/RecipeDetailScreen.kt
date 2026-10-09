@@ -73,6 +73,7 @@ import com.kitchenai.ui.resources.detail_candidate_prompt
 import com.kitchenai.ui.resources.detail_cook
 import com.kitchenai.ui.resources.detail_cook_body
 import com.kitchenai.ui.resources.detail_cook_confirm
+import com.kitchenai.ui.resources.detail_cook_missing_hint
 import com.kitchenai.ui.resources.detail_cook_title
 import com.kitchenai.ui.resources.detail_have
 import com.kitchenai.ui.resources.detail_ingredients
@@ -85,8 +86,10 @@ import com.kitchenai.ui.resources.detail_steps
 import com.kitchenai.ui.resources.detail_unverifiable
 import com.kitchenai.ui.resources.detail_unverifiable_body
 import com.kitchenai.ui.resources.shopping_default_list
-import com.kitchenai.ui.resources.snack_added_to_list
+import com.kitchenai.ui.resources.snack_added_count
 import com.kitchenai.ui.resources.snack_cooked
+import com.kitchenai.ui.resources.snack_counts_joined
+import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_saved
 import com.kitchenai.ui.resources.suggestions_minutes
 import org.jetbrains.compose.resources.stringResource
@@ -460,7 +463,25 @@ private fun Actions(
                 Text(stringResource(Res.string.detail_cook))
             }
         }
+        state.cookHint()?.let { hint ->
+            Text(
+                text = hint.resolve(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = Dimens.large, end = Dimens.large, bottom = Dimens.medium),
+            )
+        }
     }
+}
+
+/**
+ * Why Cook this is disabled, when the reason is something the reader can fix. A busy or still
+ * loading screen is transient and says nothing: a hint that flickered per tap would be noise.
+ */
+internal fun RecipeDetailUiState.cookHint(): UiText? {
+    val settled = !isLoading && !isWorking
+    if (!settled || missing.isEmpty()) return null
+    return UiText.Plural(Res.plurals.detail_cook_missing_hint, missing.size)
 }
 
 /**
@@ -489,9 +510,16 @@ private suspend fun SnackbarHostState.announce(event: RecipeDetailEvent) = showS
  */
 internal fun RecipeDetailEvent.sentence(): UiText =
     when (this) {
-        // Both counts. What "skipped" means is in the string itself now: a line the pantry
-        // covers or one the recipe marks optional, never one already on the list.
-        is RecipeDetailEvent.AddedToList -> UiText.of(Res.string.snack_added_to_list, added, skipped)
+        // Both counts, each agreeing with its own noun. "Skipped" is a line the pantry covers or
+        // one the recipe marks optional, never one already on the list.
+        is RecipeDetailEvent.AddedToList ->
+            UiText.Joined(
+                Res.string.snack_counts_joined,
+                listOf(
+                    UiText.Plural(Res.plurals.snack_added_count, added),
+                    UiText.Plural(Res.plurals.snack_not_needed_count, skipped),
+                ),
+            )
         RecipeDetailEvent.Cooked -> UiText.of(Res.string.snack_cooked)
         RecipeDetailEvent.Saved -> UiText.of(Res.string.snack_saved)
         is RecipeDetailEvent.Failed -> message

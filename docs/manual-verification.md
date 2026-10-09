@@ -253,7 +253,8 @@ Easiest to force on the sign-out half, which only needs the network for the step
 different accounts) if you want names in the member list; anonymous works for everything else.*
 
 1. Device A: Profile, "Manage your kitchen". Read the code under "Your join code". Tap "Copy" and
-   paste it somewhere you can read it on B, or type it by hand; it is case-sensitive.
+   paste it somewhere you can read it on B, or type it by hand; the case does not matter, so try
+   typing it in upper case on B.
 2. Device B: Profile, "Manage your kitchen". Type A's code into the field "Enter a join code".
    - "Join" becomes enabled as soon as the field is not blank.
 3. Tap "Join".
