@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.shopping
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,17 +37,22 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.LoadingState
+import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
+import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.shopping_add_amount
+import com.kitchenai.ui.resources.shopping_amount
 import com.kitchenai.ui.resources.shopping_cancel
 import com.kitchenai.ui.resources.shopping_clear
 import com.kitchenai.ui.resources.shopping_clear_body
@@ -59,11 +65,13 @@ import com.kitchenai.ui.resources.shopping_failed_body
 import com.kitchenai.ui.resources.shopping_failed_title
 import com.kitchenai.ui.resources.shopping_in_cart
 import com.kitchenai.ui.resources.shopping_move_to_pantry
+import com.kitchenai.ui.resources.shopping_nothing_moved_no_amount
 import com.kitchenai.ui.resources.shopping_removed_suffix
+import com.kitchenai.ui.resources.shopping_save
 import com.kitchenai.ui.resources.shopping_to_buy
 import com.kitchenai.ui.resources.shopping_undo
 import com.kitchenai.ui.resources.snack_counts_joined
-import com.kitchenai.ui.resources.snack_left_on_list_count
+import com.kitchenai.ui.resources.snack_left_no_amount_count
 import com.kitchenai.ui.resources.snack_moved_count
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -82,6 +90,7 @@ fun ShoppingScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var confirmingClear by rememberSaveable { mutableStateOf(false) }
+    var editingAmountOf by rememberSaveable { mutableStateOf<String?>(null) }
 
     val defaultListName = stringResource(Res.string.shopping_default_list)
 
@@ -101,42 +110,32 @@ fun ShoppingScreen(
             SectionHeader(title = state.listName)
             state.error?.let { message -> ErrorBanner(message) }
 
-            when {
-                state.isLoading -> LoadingState(Modifier.weight(1f))
-                // The banner above already carries the reason; this only avoids claiming the
-                // list is empty when it never loaded.
-                state.failedToLoad ->
-                    EmptyState(
-                        title = stringResource(Res.string.shopping_failed_title),
-                        body = stringResource(Res.string.shopping_failed_body),
-                        modifier = Modifier.weight(1f),
-                    )
-
-                state.unchecked.isEmpty() && state.checked.isEmpty() ->
-                    EmptyState(
-                        title = stringResource(Res.string.shopping_empty_title),
-                        body = stringResource(Res.string.shopping_empty_body),
-                        modifier = Modifier.weight(1f),
-                    )
-                else ->
-                    ShoppingItems(
-                        state = state,
-                        onCheck = viewModel::setChecked,
-                        onRemove = viewModel::remove,
-                        onClearChecked = { confirmingClear = true },
-                        onMoveToPantry = viewModel::moveCheckedToPantry,
-                        modifier = Modifier.weight(1f),
-                    )
-            }
+            ShoppingBody(
+                state = state,
+                onCheck = viewModel::setChecked,
+                onRemove = viewModel::remove,
+                onEditAmount = { id -> editingAmountOf = id.value },
+                onClearChecked = { confirmingClear = true },
+                onMoveToPantry = viewModel::moveCheckedToPantry,
+            )
 
             ShoppingAddField(
                 draft = state.draft,
                 onDraftChange = viewModel::onDraftChange,
                 onPick = viewModel::onPick,
                 onAdd = viewModel::add,
+                units = state.units,
+                onQuantityChange = viewModel::onQuantityChange,
             )
         }
     }
+
+    EditAmountHost(
+        state = state,
+        lineId = editingAmountOf,
+        onSave = { id, amount, unit -> viewModel.setQuantity(id, amount, unit) },
+        onClose = { editingAmountOf = null },
+    )
 
     if (confirmingClear) {
         ClearCheckedDialog(
@@ -149,11 +148,52 @@ fun ShoppingScreen(
     }
 }
 
+/** The part of the screen that depends on whether the list loaded, failed or is empty. */
+@Composable
+private fun ColumnScope.ShoppingBody(
+    state: ShoppingUiState,
+    onCheck: (ShoppingItemId, Boolean) -> Unit,
+    onRemove: (ShoppingItemId) -> Unit,
+    onEditAmount: (ShoppingItemId) -> Unit,
+    onClearChecked: () -> Unit,
+    onMoveToPantry: () -> Unit,
+) {
+    when {
+        state.isLoading -> LoadingState(Modifier.weight(1f))
+        // The banner above already carries the reason; this only avoids claiming the
+        // list is empty when it never loaded.
+        state.failedToLoad ->
+            EmptyState(
+                title = stringResource(Res.string.shopping_failed_title),
+                body = stringResource(Res.string.shopping_failed_body),
+                modifier = Modifier.weight(1f),
+            )
+
+        state.unchecked.isEmpty() && state.checked.isEmpty() ->
+            EmptyState(
+                title = stringResource(Res.string.shopping_empty_title),
+                body = stringResource(Res.string.shopping_empty_body),
+                modifier = Modifier.weight(1f),
+            )
+        else ->
+            ShoppingItems(
+                state = state,
+                onCheck = onCheck,
+                onRemove = onRemove,
+                onEditAmount = onEditAmount,
+                onClearChecked = onClearChecked,
+                onMoveToPantry = onMoveToPantry,
+                modifier = Modifier.weight(1f),
+            )
+    }
+}
+
 @Composable
 private fun ShoppingItems(
     state: ShoppingUiState,
     onCheck: (ShoppingItemId, Boolean) -> Unit,
     onRemove: (ShoppingItemId) -> Unit,
+    onEditAmount: (ShoppingItemId) -> Unit,
     onClearChecked: () -> Unit,
     onMoveToPantry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -165,6 +205,7 @@ private fun ShoppingItems(
                 item = line,
                 onCheck = { checked -> onCheck(line.id, checked) },
                 onRemove = { onRemove(line.id) },
+                onEditAmount = { onEditAmount(line.id) },
             )
         }
 
@@ -187,6 +228,7 @@ private fun ShoppingItems(
                     item = line,
                     onCheck = { checked -> onCheck(line.id, checked) },
                     onRemove = { onRemove(line.id) },
+                    onEditAmount = { onEditAmount(line.id) },
                 )
             }
         }
@@ -199,6 +241,7 @@ private fun ShoppingItemRow(
     item: ShoppingItemUi,
     onCheck: (Boolean) -> Unit,
     onRemove: () -> Unit,
+    onEditAmount: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     SwipeToDismissRow(onDismiss = onRemove, modifier = modifier) {
@@ -224,11 +267,71 @@ private fun ShoppingItemRow(
                 )
             }
 
-            item.quantity?.let { quantity ->
-                Text(text = quantity, style = MaterialTheme.typography.bodyMedium)
+            // Also the way to give a line an amount: without one it cannot move to the pantry.
+            TextButton(onClick = onEditAmount) {
+                Text(
+                    text = item.quantity ?: stringResource(Res.string.shopping_add_amount),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
         }
     }
+}
+
+/** The line is looked up by id, not held: it can change or go while the dialog is open. */
+@Composable
+private fun EditAmountHost(
+    state: ShoppingUiState,
+    lineId: String?,
+    onSave: (ShoppingItemId, Double, TermRef?) -> Unit,
+    onClose: () -> Unit,
+) {
+    val line = (state.unchecked + state.checked).firstOrNull { it.id.value == lineId } ?: return
+    EditAmountDialog(
+        line = line,
+        units = state.units,
+        onSave = { amount, unit ->
+            onClose()
+            onSave(line.id, amount, unit)
+        },
+        onDismiss = onClose,
+    )
+}
+
+@Composable
+private fun EditAmountDialog(
+    line: ShoppingItemUi,
+    units: List<Pair<TermRef, String>>,
+    onSave: (Double, TermRef?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var amount by remember { mutableStateOf(line.amount) }
+    var unit by remember { mutableStateOf(line.unit) }
+    val valid = amount?.let { it > 0.0 } == true
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(line.label) },
+        text = {
+            QuantityField(
+                amountLabel = stringResource(Res.string.shopping_amount),
+                units = units.map { (ref, label) -> ref.term.value to label },
+                onChange = { typed, unitId ->
+                    amount = typed
+                    unit = units.firstOrNull { (ref, _) -> ref.term.value == unitId }?.first
+                },
+                initialAmount = line.amount?.let { held -> formatQuantity(held, null) }.orEmpty(),
+                initialUnitId = line.unit?.term?.value,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { amount?.let { typed -> onSave(typed, unit) } },
+                enabled = valid,
+            ) { Text(stringResource(Res.string.shopping_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.shopping_cancel)) } },
+    )
 }
 
 @Composable
@@ -276,17 +379,25 @@ private suspend fun SnackbarHostState.announce(
     }
 }
 
-/** Both counts agree with their own noun, so the wording is a plural per count rather than one string. */
+/**
+ * Both counts agree with their own noun, so the wording is a plural per count rather than one string.
+ * A line stays only for lack of an amount, so the message says that and what to do about it.
+ */
 internal fun ShoppingEvent.CheckedCleared.sentence(): UiText = UiText.Plural(Res.plurals.shopping_cleared_count, count)
 
 internal fun ShoppingEvent.MovedToPantry.sentence(): UiText =
-    UiText.Joined(
-        Res.string.snack_counts_joined,
-        listOf(
-            UiText.Plural(Res.plurals.snack_moved_count, moved),
-            UiText.Plural(Res.plurals.snack_left_on_list_count, skipped),
-        ),
-    )
+    when {
+        skipped == 0 -> UiText.Plural(Res.plurals.snack_moved_count, moved)
+        moved == 0 -> UiText.Plural(Res.plurals.shopping_nothing_moved_no_amount, skipped)
+        else ->
+            UiText.Joined(
+                Res.string.snack_counts_joined,
+                listOf(
+                    UiText.Plural(Res.plurals.snack_moved_count, moved),
+                    UiText.Plural(Res.plurals.snack_left_no_amount_count, skipped),
+                ),
+            )
+    }
 
 // The screen owns its own wording; every component it draws takes each string as a parameter.
 // This one is not private: the detail screen can reach the same list, and two spellings of the

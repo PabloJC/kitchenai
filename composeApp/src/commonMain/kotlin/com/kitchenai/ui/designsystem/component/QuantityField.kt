@@ -38,7 +38,9 @@ fun QuantityField(
     initialUnitId: String? = units.firstOrNull()?.first,
 ) {
     var text by rememberSaveable { mutableStateOf(initialAmount) }
-    var unitId by rememberSaveable { mutableStateOf(initialUnitId) }
+    var chosenUnitId by rememberSaveable { mutableStateOf(initialUnitId) }
+    // Units can arrive after the field is first composed; the first one is shown, so it is reported.
+    val unitId = chosenUnitId ?: units.firstOrNull()?.first
     var malformed by rememberSaveable { mutableStateOf(false) }
     var expanded by rememberSaveable { mutableStateOf(false) }
 
@@ -73,7 +75,7 @@ fun QuantityField(
                         DropdownMenuItem(
                             text = { Text(label) },
                             onClick = {
-                                unitId = id
+                                chosenUnitId = id
                                 expanded = false
                                 onChange(parseAmount(text), id)
                             },

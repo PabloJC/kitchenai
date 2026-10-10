@@ -22,9 +22,9 @@
         <item quantity="one">%1$d movido a la despensa</item>
         <item quantity="other">%1$d movidos a la despensa</item>
     </plurals>
-    <plurals name="snack_left_on_list_count">
-        <item quantity="one">%1$d se queda en la lista</item>
-        <item quantity="other">%1$d se quedan en la lista</item>
+    <plurals name="snack_left_no_amount_count">
+        <item quantity="one">%1$d no tiene cantidad y se queda en la lista</item>
+        <item quantity="other">%1$d no tienen cantidad y se quedan en la lista</item>
     </plurals>
     <string name="snack_cooked">Descontado de tu despensa</string>
     <string name="snack_saved">Guardado</string>
@@ -66,6 +66,13 @@
         <item quantity="other">%1$d líneas vaciadas</item>
     </plurals>
     <string name="shopping_undo">Deshacer</string>
+    <string name="shopping_amount">Cantidad</string>
+    <string name="shopping_add_amount">Añadir cantidad</string>
+    <string name="shopping_save">Guardar</string>
+    <plurals name="shopping_nothing_moved_no_amount">
+        <item quantity="one">No se ha movido nada: %1$d línea no tiene cantidad. Toca Añadir cantidad para ponerla.</item>
+        <item quantity="other">No se ha movido nada: %1$d líneas no tienen cantidad. Toca Añadir cantidad para ponerla.</item>
+    </plurals>
     <string name="detail_title">Receta</string>
     <string name="nav_back">Atrás</string>
     <string name="detail_ingredients">Ingredientes</string>

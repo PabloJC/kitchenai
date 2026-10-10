@@ -25,9 +25,9 @@
         <item quantity="one">%1$d moved to the pantry</item>
         <item quantity="other">%1$d moved to the pantry</item>
     </plurals>
-    <plurals name="snack_left_on_list_count">
-        <item quantity="one">%1$d left on the list</item>
-        <item quantity="other">%1$d left on the list</item>
+    <plurals name="snack_left_no_amount_count">
+        <item quantity="one">%1$d has no amount and stays on the list</item>
+        <item quantity="other">%1$d have no amount and stay on the list</item>
     </plurals>
     <string name="snack_cooked">Taken out of your pantry</string>
     <string name="snack_saved">Saved</string>
@@ -69,6 +69,13 @@
         <item quantity="other">%1$d lines cleared</item>
     </plurals>
     <string name="shopping_undo">Undo</string>
+    <string name="shopping_amount">Amount</string>
+    <string name="shopping_add_amount">Add amount</string>
+    <string name="shopping_save">Save</string>
+    <plurals name="shopping_nothing_moved_no_amount">
+        <item quantity="one">Nothing moved: %1$d line has no amount. Tap Add amount to set one.</item>
+        <item quantity="other">Nothing moved: %1$d lines have no amount. Tap Add amount to set one.</item>
+    </plurals>
     <string name="detail_title">Recipe</string>
     <string name="nav_back">Back</string>
     <string name="detail_ingredients">Ingredients</string>

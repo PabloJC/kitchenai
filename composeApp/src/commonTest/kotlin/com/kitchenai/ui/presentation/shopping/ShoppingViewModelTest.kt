@@ -29,6 +29,7 @@ import com.kitchenai.shared.domain.usecase.shopping.MoveCheckedItemsToPantryUseC
 import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemCheckedUseCase
+import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemQuantityUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
@@ -140,6 +141,146 @@ class ShoppingViewModelTest {
                 assertEquals(listOf(itemId("item-1")), items.removedBatch)
                 assertEquals(listOf(ingredientId), pantry.held.map { it.ingredient })
             }
+        }
+
+    @Test
+    fun `a checked line with no amount is counted as staying and is not removed`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1", freeText = "written by hand", checked = true)))
+            advanceUntilIdle()
+
+            viewModel.events.test {
+                viewModel.moveCheckedToPantry()
+                advanceUntilIdle()
+
+                assertEquals(ShoppingEvent.MovedToPantry(moved = 0, skipped = 1), awaitItem())
+            }
+            assertTrue(items.removedBatch.isEmpty())
+        }
+
+    @Test
+    fun `a hand-typed line added with an amount carries it and then moves to the pantry`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(emptyList())
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("something nobody catalogued")
+            viewModel.onQuantityChange(2.0, gram)
+            viewModel.add()
+            advanceUntilIdle()
+
+            val added = items.upserts.last().single()
+            assertEquals("something nobody catalogued", added.freeText)
+            assertEquals(Quantity(2.0, gram), added.quantity)
+
+            items.emit(listOf(added.copy(checked = true)))
+            advanceUntilIdle()
+            viewModel.events.test {
+                viewModel.moveCheckedToPantry()
+                advanceUntilIdle()
+
+                assertEquals(ShoppingEvent.MovedToPantry(moved = 1, skipped = 0), awaitItem())
+            }
+            assertEquals(Quantity(2.0, gram), pantry.held.single().quantity)
+        }
+
+    @Test
+    fun `a line added without an amount stays bare and an unusable amount is dropped`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(emptyList())
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("first")
+            viewModel.add()
+            advanceUntilIdle()
+            assertNull(items.upserts.last().single().quantity)
+
+            viewModel.onDraftChange("second")
+            viewModel.onQuantityChange(0.0, gram)
+            viewModel.add()
+            advanceUntilIdle()
+            assertNull(items.upserts.last().single().quantity)
+        }
+
+    @Test
+    fun `adding clears the amount and moves the revision so the field starts empty`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(emptyList())
+            advanceUntilIdle()
+            val before = viewModel.state.value.draft.revision
+
+            viewModel.onDraftChange("something")
+            viewModel.onQuantityChange(3.0, gram)
+            viewModel.add()
+            advanceUntilIdle()
+
+            val draft = viewModel.state.value.draft
+            assertNull(draft.amount)
+            assertEquals("", draft.text)
+            assertEquals(before + 1, draft.revision)
+        }
+
+    @Test
+    fun `typing after setting an amount keeps the amount`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(emptyList())
+            advanceUntilIdle()
+
+            viewModel.onQuantityChange(2.0, gram)
+            viewModel.onDraftChange("milk")
+            advanceUntilIdle()
+
+            assertEquals(2.0, viewModel.state.value.draft.amount)
+            assertEquals(gram, viewModel.state.value.draft.unit)
+        }
+
+    @Test
+    fun `an existing line is given a quantity and the unit options reach the state`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            taxonomies.taxonomies.emit(listOf(unitsTaxonomy))
+            taxonomies.terms.emit(listOf(gramTerm))
+            items.emit(listOf(line("item-1", freeText = "written by hand")))
+            advanceUntilIdle()
+
+            assertEquals(listOf(gram to "g"), viewModel.state.value.units)
+            viewModel.setQuantity(itemId("item-1"), 500.0, gram)
+            advanceUntilIdle()
+
+            val written = items.upserts.last().single()
+            assertEquals(itemId("item-1"), written.id)
+            assertEquals(Quantity(500.0, gram), written.quantity)
+        }
+
+    @Test
+    fun `a rejected amount edit is announced`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+
+            viewModel.setQuantity(itemId("item-1"), 0.0, gram)
+            advanceUntilIdle()
+
+            assertTrue(items.upserts.isEmpty())
+            assertTrue(viewModel.state.value.error != null)
+        }
+
+    @Test
+    fun `a line exposes its amount and unit for the editor`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1", quantity = Quantity(400.0, gram))))
+            advanceUntilIdle()
+
+            val ui = viewModel.state.value.unchecked.single()
+            assertEquals(400.0, ui.amount)
+            assertEquals(gram, ui.unit)
         }
 
     @Test
@@ -318,6 +459,7 @@ class ShoppingViewModelTest {
                     ShoppingWritesDelegate(
                         add = AddShoppingItemUseCase(items, IdGenerator { "added-${++generated}" }, time, noUnits()),
                         setChecked = SetShoppingItemCheckedUseCase(items, time),
+                        setQuantity = SetShoppingItemQuantityUseCase(items, time),
                         remove = RemoveShoppingItemUseCase(items),
                         clearChecked = ClearCheckedItemsUseCase(items),
                         moveCheckedToPantry =

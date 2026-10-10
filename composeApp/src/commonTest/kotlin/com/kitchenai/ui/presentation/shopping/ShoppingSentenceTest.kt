@@ -3,8 +3,9 @@ package com.kitchenai.ui.presentation.shopping
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.shopping_cleared_count
+import com.kitchenai.ui.resources.shopping_nothing_moved_no_amount
 import com.kitchenai.ui.resources.snack_counts_joined
-import com.kitchenai.ui.resources.snack_left_on_list_count
+import com.kitchenai.ui.resources.snack_left_no_amount_count
 import com.kitchenai.ui.resources.snack_moved_count
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,10 +20,26 @@ class ShoppingSentenceTest {
                 Res.string.snack_counts_joined,
                 listOf(
                     UiText.Plural(Res.plurals.snack_moved_count, 1),
-                    UiText.Plural(Res.plurals.snack_left_on_list_count, 4),
+                    UiText.Plural(Res.plurals.snack_left_no_amount_count, 4),
                 ),
             )
         assertEquals(expected, sentence)
+    }
+
+    @Test
+    fun `nothing moved because no line has an amount says so instead of counting zero`() {
+        assertEquals(
+            UiText.Plural(Res.plurals.shopping_nothing_moved_no_amount, 3),
+            ShoppingEvent.MovedToPantry(moved = 0, skipped = 3).sentence(),
+        )
+    }
+
+    @Test
+    fun `a move that leaves nothing behind does not mention the list`() {
+        assertEquals(
+            UiText.Plural(Res.plurals.snack_moved_count, 2),
+            ShoppingEvent.MovedToPantry(moved = 2, skipped = 0).sentence(),
+        )
     }
 
     @Test
