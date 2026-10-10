@@ -38,7 +38,7 @@ fun TermDto.toDomain(
 ): AppResult<Term> {
     val id = TermId.of(documentId).getOrElse { return AppResult.Failure(it) }
     val parentId = parent?.let { raw -> TermId.of(raw).getOrElse { failure -> return AppResult.Failure(failure) } }
-    return AppResult.Success(Term(TermRef(taxonomy, id), labels, parentId, order, conversion?.toDomain()))
+    return AppResult.Success(Term(TermRef(taxonomy, id), labels, parentId, order, conversion?.toDomain(), pluralLabels))
 }
 
 /**

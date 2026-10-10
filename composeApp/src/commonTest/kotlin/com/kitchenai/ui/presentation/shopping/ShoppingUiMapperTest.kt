@@ -38,6 +38,15 @@ class ShoppingUiMapperTest {
     }
 
     @Test
+    fun `a countable unit agrees in number with the amount`() {
+        val countable = Term(unitRef, mapOf("es" to "unidad"), null, 0, pluralLabels = mapOf("es" to "unidades"))
+        val resolver = LabelResolver(terms = listOf(countable), languageTags = listOf("es"))
+
+        assertEquals("1 unidad", item(quantity = Quantity(1.0, unitRef)).toUi(resolver).quantity)
+        assertEquals("2 unidades", item(quantity = Quantity(2.0, unitRef)).toUi(resolver).quantity)
+    }
+
+    @Test
     fun `a free-text line has no catalogue label`() {
         val item = item(freeText = "Toothpaste")
 

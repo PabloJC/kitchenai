@@ -40,6 +40,15 @@ class RecipeDetailUiMapperTest {
     }
 
     @Test
+    fun `a countable unit agrees in number with the amount`() {
+        val countable = Term(unitRef, mapOf("es" to "unidad"), null, 0, pluralLabels = mapOf("es" to "unidades"))
+        val resolver = LabelResolver(terms = listOf(countable), languageTags = listOf("es"))
+
+        assertEquals("1 unidad", line(freeText = "x", quantity = Quantity(1.0, unitRef)).toUi(resolver).quantity)
+        assertEquals("2 unidades", line(freeText = "x", quantity = Quantity(2.0, unitRef)).toUi(resolver).quantity)
+    }
+
+    @Test
     fun `a free-text line keeps its own wording`() {
         val ui = line(freeText = "Pinch of salt").toUi(LabelResolver())
 

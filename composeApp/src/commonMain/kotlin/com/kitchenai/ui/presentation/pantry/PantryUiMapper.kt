@@ -41,7 +41,7 @@ internal fun PantryItem.toUi(
     resolver: LabelResolver,
     now: Instant,
 ): PantryItemUi {
-    val unitLabel = quantity.unit?.let { unit -> resolver.wordFor(unit) }
+    val unitLabel = quantity.unit?.let { unit -> resolver.wordFor(unit, quantity.amount) }
     return PantryItemUi(
         id = id,
         ingredient = ingredient,

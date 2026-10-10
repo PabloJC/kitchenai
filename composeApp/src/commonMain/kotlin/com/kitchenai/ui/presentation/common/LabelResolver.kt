@@ -24,15 +24,31 @@ class LabelResolver(
     private val languageTags: List<String> = emptyList(),
 ) {
     private val termLabels = terms.associate { term -> term.ref to term.labels }
+    private val termPlurals = terms.associate { term -> term.ref to term.pluralLabels }
     private val ingredientLabels = ingredients.associate { ingredient -> ingredient.id to ingredient.labels }
     private val fallbackTags = taxonomies.associate { taxonomy -> taxonomy.id to taxonomy.defaultLanguageTag }
 
     fun label(ref: TermRef): String? = termLabels[ref]?.resolve(languageTags, fallbackTags[ref.taxonomy])
+
+    /** The plural label for any amount but exactly one, when the term has one; the singular otherwise. */
+    fun label(
+        ref: TermRef,
+        amount: Double,
+    ): String? {
+        if (amount == 1.0) return label(ref)
+        return termPlurals[ref]?.resolve(languageTags, fallbackTags[ref.taxonomy]) ?: label(ref)
+    }
 
     fun label(id: IngredientId): String? = ingredientLabels[id]?.resolve(languageTags)
 }
 
 /** A miss renders the identifier: ugly and honest beats a placeholder hiding a missing label. */
 internal fun LabelResolver.wordFor(ref: TermRef): String = label(ref) ?: ref.term.value
+
+/** [wordFor] agreeing in number with [amount]: "1 unidad", "2 unidades". */
+internal fun LabelResolver.wordFor(
+    ref: TermRef,
+    amount: Double,
+): String = label(ref, amount) ?: ref.term.value
 
 internal fun LabelResolver.nameOf(ingredient: Ingredient): String = label(ingredient.id) ?: ingredient.id.value

@@ -8,7 +8,7 @@
       "kilogram": { "labels": { "en": "kg", "es": "kg" }, "order": 2, "conversion": { "dimension": "MASS", "factor": 1000 } },
       "millilitre": { "labels": { "en": "ml", "es": "ml" }, "order": 3, "conversion": { "dimension": "VOLUME", "factor": 1 } },
       "litre": { "labels": { "en": "l", "es": "l" }, "order": 4, "conversion": { "dimension": "VOLUME", "factor": 1000 } },
-      "piece": { "labels": { "en": "piece", "es": "unidad" }, "order": 5 },
+      "piece": { "labels": { "en": "piece", "es": "unidad" }, "pluralLabels": { "en": "pieces", "es": "unidades" }, "order": 5 },
       "tablespoon": { "labels": { "en": "tbsp", "es": "cda" }, "order": 6, "conversion": { "dimension": "VOLUME", "factor": 15 } },
       "teaspoon": { "labels": { "en": "tsp", "es": "cdta" }, "order": 7, "conversion": { "dimension": "VOLUME", "factor": 5 } }
     }
