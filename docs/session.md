@@ -47,6 +47,8 @@ shopping list for the active uid. No screen provisions anything, so two screens 
 - Until the replacement exists the kitchen, Pantry and Shopping screens show what their own
   listeners report (an error banner or the empty state) and recover by themselves when the new
   kitchen arrives.
+- A different uid rebuilds everything under the gate (`key(userId)` in `App.kt`): the screens'
+  ViewModels bind to a uid once and do not follow a swap, so each is created again for the new one.
 
 ## Invariants
 
