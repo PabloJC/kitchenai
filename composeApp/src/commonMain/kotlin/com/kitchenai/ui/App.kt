@@ -10,6 +10,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
@@ -41,17 +42,24 @@ fun App() {
                 defaultListName = stringResource(Res.string.shopping_default_list),
                 retryLabel = stringResource(Res.string.session_retry),
             ) { userId ->
-                val navController = rememberNavController()
-                val detailTopBar = remember { DetailTopBarState() }
-                AppShell(navController = navController, destinations = tabs, detailTopBar = detailTopBar) { padding ->
-                    KitchenAiNavHost(
+                // Keyed by uid: a ViewModel started for the old user keeps listening to its kitchen after a swap.
+                key(userId) {
+                    val navController = rememberNavController()
+                    val detailTopBar = remember { DetailTopBarState() }
+                    AppShell(
                         navController = navController,
-                        userId = userId,
+                        destinations = tabs,
                         detailTopBar = detailTopBar,
-                        placeholder = { _ -> PlaceholderScreen() },
-                        // Consumed so the screens' own imePadding() subtracts the bar it already sits above.
-                        modifier = Modifier.padding(padding).consumeWindowInsets(padding),
-                    )
+                    ) { padding ->
+                        KitchenAiNavHost(
+                            navController = navController,
+                            userId = userId,
+                            detailTopBar = detailTopBar,
+                            placeholder = { _ -> PlaceholderScreen() },
+                            // Consumed so the screens' own imePadding() subtracts the bar it already sits above.
+                            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+                        )
+                    }
                 }
             }
         }
