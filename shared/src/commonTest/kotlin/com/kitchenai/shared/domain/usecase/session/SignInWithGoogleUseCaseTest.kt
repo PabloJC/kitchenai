@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 class SignInWithGoogleUseCaseTest {
     @Test
-    fun `an anonymous session is linked, keeping its uid`() =
+    fun `an anonymous session is linked and keeps its uid`() =
         runTest {
             val port = FakeSessionPort(anonymousUser)
             port.linkWithGoogleResult = AppResult.Success(googleUser)
@@ -29,7 +29,7 @@ class SignInWithGoogleUseCaseTest {
         }
 
     @Test
-    fun `a Google account that already has a uid comes back as a conflict, and nothing is swapped`() =
+    fun `a Google account that already has a uid comes back as a conflict and nothing is swapped`() =
         runTest {
             val conflict = AppError.Conflict()
             val port = FakeSessionPort(anonymousUser)
@@ -44,7 +44,7 @@ class SignInWithGoogleUseCaseTest {
         }
 
     @Test
-    fun `with no anonymous user to keep, it signs in`() =
+    fun `with no anonymous user to keep it signs in`() =
         runTest {
             val port = FakeSessionPort(Session.SignedOut)
             port.signInWithGoogleResult = AppResult.Success(googleUser)

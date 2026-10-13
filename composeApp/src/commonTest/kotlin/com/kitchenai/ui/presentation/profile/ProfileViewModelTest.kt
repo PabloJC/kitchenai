@@ -319,7 +319,7 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `a guest who signs in is linked, keeps their uid and gets the name Google returned`() =
+    fun `a guest who signs in is linked and keeps their uid and the name Google returned`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
 
