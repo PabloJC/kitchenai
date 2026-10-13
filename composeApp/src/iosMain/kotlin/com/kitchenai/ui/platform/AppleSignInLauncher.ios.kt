@@ -24,8 +24,7 @@ import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.AuthenticationServices.ASAuthorization
 import platform.AuthenticationServices.ASAuthorizationAppleIDButton
-import platform.AuthenticationServices.ASAuthorizationAppleIDButtonStyleBlack
-import platform.AuthenticationServices.ASAuthorizationAppleIDButtonStyleWhite
+import platform.AuthenticationServices.ASAuthorizationAppleIDButtonStyle
 import platform.AuthenticationServices.ASAuthorizationAppleIDButtonTypeSignIn
 import platform.AuthenticationServices.ASAuthorizationAppleIDCredential
 import platform.AuthenticationServices.ASAuthorizationAppleIDProvider
@@ -168,8 +167,13 @@ actual fun AppleSignInButton(
     }
 }
 
-private fun appleButtonStyle(dark: Boolean) =
-    if (dark) ASAuthorizationAppleIDButtonStyleWhite else ASAuthorizationAppleIDButtonStyleBlack
+// An NS_ENUM with no aliases, so Kotlin/Native imports it as an enum rather than loose constants.
+private fun appleButtonStyle(dark: Boolean): ASAuthorizationAppleIDButtonStyle =
+    if (dark) {
+        ASAuthorizationAppleIDButtonStyle.ASAuthorizationAppleIDButtonStyleWhite
+    } else {
+        ASAuthorizationAppleIDButtonStyle.ASAuthorizationAppleIDButtonStyleBlack
+    }
 
 /** A UIKit target-action receiver; Compose lambdas cannot be handed to `addTarget` directly. */
 @OptIn(BetaInteropApi::class)
