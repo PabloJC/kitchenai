@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.common
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_conflict
 import com.kitchenai.ui.resources.error_invalid_field
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_not_found
@@ -52,6 +53,11 @@ class AppErrorUiMapperTest {
     @Test
     fun `unknown reads as unknown`() {
         assertEquals(UiText.of(Res.string.error_unknown), AppError.Unknown().describe(UNAUTHORIZED))
+    }
+
+    @Test
+    fun `conflict reads as already in use`() {
+        assertEquals(UiText.of(Res.string.error_conflict), AppError.Conflict().describe(UNAUTHORIZED))
     }
 
     private companion object {

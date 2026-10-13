@@ -26,6 +26,7 @@ import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCas
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithGoogleUseCase
 import com.kitchenai.shared.domain.usecase.session.SignOutUseCase
+import com.kitchenai.shared.domain.usecase.session.SwitchToGoogleAccountUseCase
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.PendingDisplayName
 import com.kitchenai.ui.presentation.common.UiText
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -317,17 +319,88 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `a successful sign-in binds the name Google returned to the uid it produced`() =
+    fun `a guest who signs in is linked, keeps their uid and gets the name Google returned`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
-            val googleUserId = (UserId.of("user-google") as AppResult.Success).data
-            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(googleUserId, isAnonymous = false))
 
             viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
             advanceUntilIdle()
 
-            assertEquals(PendingDisplayName.Entry("Ada Lovelace", googleUserId), pendingName.current.value)
+            assertEquals(1, sessions.linkCalls)
+            assertEquals(0, sessions.signInWithGoogleCalls)
+            assertEquals(PendingDisplayName.Entry("Ada Lovelace", userId), pendingName.current.value)
             assertEquals(true, viewModel.state.value.signedInWithGoogle)
+            assertEquals(false, viewModel.state.value.isConfirmingAccountSwitch)
+        }
+
+    @Test
+    fun `a Google account that has its own kitchen asks before switching and shows no error`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.linkWithGoogleResult = AppResult.Failure(AppError.Conflict())
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.state.value.isConfirmingAccountSwitch)
+            assertEquals(false, viewModel.state.value.signedInWithGoogle)
+            assertEquals(false, viewModel.state.value.isAuthenticating)
+            assertNull(viewModel.state.value.generalError)
+            assertNull(pendingName.current.value)
+            assertEquals(0, sessions.signInWithGoogleCalls)
+        }
+
+    @Test
+    fun `staying a guest closes the question and leaves the session alone`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.linkWithGoogleResult = AppResult.Failure(AppError.Conflict())
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
+            advanceUntilIdle()
+
+            viewModel.cancelAccountSwitch()
+            viewModel.confirmAccountSwitch()
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.state.value.isConfirmingAccountSwitch)
+            assertEquals(0, sessions.signInWithGoogleCalls)
+            assertEquals(Session.SignedIn(userId, isAnonymous = true), sessions.observeSession().first())
+            assertNull(pendingName.current.value)
+        }
+
+    @Test
+    fun `confirming the switch signs in with the same tokens and binds the name to the Google uid`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            val googleUserId = (UserId.of("user-google") as AppResult.Success).data
+            sessions.linkWithGoogleResult = AppResult.Failure(AppError.Conflict())
+            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(googleUserId, isAnonymous = false))
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace", GoogleAccessToken("access-token"))
+            advanceUntilIdle()
+
+            viewModel.confirmAccountSwitch()
+            advanceUntilIdle()
+
+            assertEquals(1, sessions.signInWithGoogleCalls)
+            assertEquals(GoogleAccessToken("access-token"), sessions.lastAccessToken)
+            assertEquals(false, viewModel.state.value.isConfirmingAccountSwitch)
+            assertEquals(PendingDisplayName.Entry("Ada Lovelace", googleUserId), pendingName.current.value)
+        }
+
+    @Test
+    fun `a switch that fails is shown and drops the name it offered`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.linkWithGoogleResult = AppResult.Failure(AppError.Conflict())
+            sessions.signInWithGoogleResult = AppResult.Failure(AppError.Network())
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
+            advanceUntilIdle()
+
+            viewModel.confirmAccountSwitch()
+            advanceUntilIdle()
+
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
+            assertNull(pendingName.current.value)
         }
 
     /** iOS cannot build the Firebase credential without it, so the sheet's access token must reach the port. */
@@ -335,7 +408,6 @@ class ProfileViewModelTest {
     fun `the access token the sheet returned reaches the sign-in`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
-            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
 
             viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace", GoogleAccessToken("access-token"))
             advanceUntilIdle()
@@ -348,7 +420,6 @@ class ProfileViewModelTest {
     fun `a sign-in never writes the display name from this screen`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
-            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
 
             viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
             advanceUntilIdle()
@@ -400,7 +471,7 @@ class ProfileViewModelTest {
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
             val before = viewModel.state.value
-            sessions.signInWithGoogleResult = AppResult.Failure(AppError.Network())
+            sessions.linkWithGoogleResult = AppResult.Failure(AppError.Network())
 
             viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
             advanceUntilIdle()
@@ -519,6 +590,7 @@ class ProfileViewModelTest {
                 ProfileAccountDelegate(
                     observeSession = ObserveSessionUseCase(sessions),
                     signInWithGoogle = SignInWithGoogleUseCase(sessions),
+                    switchToGoogleAccount = SwitchToGoogleAccountUseCase(sessions),
                     signOut = SignOutUseCase(sessions),
                     pendingDisplayName = pendingName,
                 ),
@@ -620,8 +692,12 @@ private class FakeSessionPort(
 
     var signInWithGoogleResult: AppResult<Session.SignedIn> =
         AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
+    var linkWithGoogleResult: AppResult<Session.SignedIn> =
+        AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
     var signOutResult: AppResult<Unit> = AppResult.Success(Unit)
     var lastAccessToken: GoogleAccessToken? = null
+    var signInWithGoogleCalls = 0
+    var linkCalls = 0
 
     override fun observeSession(): Flow<Session> = state
 
@@ -636,8 +712,20 @@ private class FakeSessionPort(
         idToken: GoogleIdToken,
         accessToken: GoogleAccessToken?,
     ): AppResult<Session.SignedIn> {
+        signInWithGoogleCalls++
         lastAccessToken = accessToken
         val result = signInWithGoogleResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
+
+    override suspend fun linkWithGoogle(
+        idToken: GoogleIdToken,
+        accessToken: GoogleAccessToken?,
+    ): AppResult<Session.SignedIn> {
+        linkCalls++
+        lastAccessToken = accessToken
+        val result = linkWithGoogleResult
         if (result is AppResult.Success) state.value = result.data
         return result
     }

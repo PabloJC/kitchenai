@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +40,10 @@ import com.kitchenai.ui.resources.profile_no_vocabulary
 import com.kitchenai.ui.resources.profile_save
 import com.kitchenai.ui.resources.profile_saving
 import com.kitchenai.ui.resources.profile_sent_summary
+import com.kitchenai.ui.resources.profile_switch_body
+import com.kitchenai.ui.resources.profile_switch_cancel
+import com.kitchenai.ui.resources.profile_switch_confirm
+import com.kitchenai.ui.resources.profile_switch_title
 import com.kitchenai.ui.resources.profile_vocabulary_failed
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -146,6 +151,25 @@ private fun ProfileContent(
         )
         Spacer(Modifier.height(Dimens.large))
     }
+
+    if (state.isConfirmingAccountSwitch) {
+        SwitchAccountDialog(onConfirm = viewModel::confirmAccountSwitch, onDismiss = viewModel::cancelAccountSwitch)
+    }
+}
+
+/** Switching leaves the guest data behind, so it is never the default: dismissing keeps the user a guest. */
+@Composable
+private fun SwitchAccountDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.profile_switch_title)) },
+        text = { Text(stringResource(Res.string.profile_switch_body)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(Res.string.profile_switch_confirm)) } },
+        dismissButton = { Button(onClick = onDismiss) { Text(stringResource(Res.string.profile_switch_cancel)) } },
+    )
 }
 
 /** [onFinished] always runs, cancelled or not, so a stuck sheet can never leave the button disabled forever. */

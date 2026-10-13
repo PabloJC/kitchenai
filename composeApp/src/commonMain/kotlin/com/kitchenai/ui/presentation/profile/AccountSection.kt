@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.profile
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.profile_sign_in_benefit
 import com.kitchenai.ui.resources.profile_sign_in_google
 import com.kitchenai.ui.resources.profile_sign_out
 import com.kitchenai.ui.resources.profile_signed_in_fallback
@@ -34,12 +36,19 @@ fun AccountSection(
     if (signedInWithGoogle) {
         SignedInRow(displayName, isAuthenticating, onSignOut, modifier)
     } else {
-        Button(
-            onClick = onSignIn,
-            enabled = !isAuthenticating,
+        // Says what signing in keeps: a guest deciding whether to sign in is deciding about their data.
+        Column(
             modifier = modifier.fillMaxWidth().padding(horizontal = Dimens.large),
+            verticalArrangement = Arrangement.spacedBy(Dimens.small),
         ) {
-            Text(stringResource(Res.string.profile_sign_in_google))
+            Button(onClick = onSignIn, enabled = !isAuthenticating, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(Res.string.profile_sign_in_google))
+            }
+            Text(
+                text = stringResource(Res.string.profile_sign_in_benefit),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

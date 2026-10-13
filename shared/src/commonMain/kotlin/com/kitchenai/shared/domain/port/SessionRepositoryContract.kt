@@ -22,5 +22,14 @@ interface SessionRepositoryContract {
         accessToken: GoogleAccessToken? = null,
     ): AppResult<Session.SignedIn>
 
+    /**
+     * Attaches Google to the current anonymous user, keeping its uid and so everything stored under it.
+     * A Google account that already has a uid of its own fails with `AppError.Conflict`.
+     */
+    suspend fun linkWithGoogle(
+        idToken: GoogleIdToken,
+        accessToken: GoogleAccessToken? = null,
+    ): AppResult<Session.SignedIn>
+
     suspend fun signOut(): AppResult<Unit>
 }

@@ -30,6 +30,8 @@ data class ProfileUiState(
     // Google's own name, never an email or a photo: UserProfile carries nothing else from it.
     val displayName: String? = null,
     val isAuthenticating: Boolean = false,
+    // The Google account already has a kitchen of its own: switching to it leaves the guest data behind (#250).
+    val isConfirmingAccountSwitch: Boolean = false,
     val error: ProfileError? = null,
 ) {
     /** A message belongs to an input only when the use case named that input. */

@@ -4,6 +4,7 @@
     <string name="error_unknown">Algo ha ido mal</string>
     <string name="error_not_found">No se encuentra %1$s</string>
     <string name="error_invalid_field">%1$s no es válido: %2$s</string>
+    <string name="error_conflict">Eso ya está en uso</string>
     <string name="error_unauthorized_suggestions">La app no ha podido demostrar quién es, así que no hay sugerencias</string>
     <string name="error_missing_ingredients">Te faltan ingredientes para esto</string>
     <string name="error_unauthorized_own_data">Esta cuenta no tiene permiso para leer sus propios datos</string>
@@ -117,6 +118,11 @@
     <string name="profile_vocabulary_failed">No se ha podido cargar el vocabulario, así que todavía no hay nada que elegir.</string>
     <string name="profile_sign_in_google">Iniciar sesión con Google</string>
     <string name="profile_sign_out">Cerrar sesión</string>
+    <string name="profile_sign_in_benefit">Conserva tu despensa, tu lista y tus recetas, y te permite usarlas en otros dispositivos.</string>
+    <string name="profile_switch_title">¿Cambiar a esta cuenta de Google?</string>
+    <string name="profile_switch_body">Esta cuenta de Google ya tiene su propia cocina. Si cambias a ella, lo que añadiste como invitado se queda atrás y dejará de verse.</string>
+    <string name="profile_switch_confirm">Cambiar</string>
+    <string name="profile_switch_cancel">Seguir como invitado</string>
     <string name="profile_signed_in_fallback">Sesión iniciada</string>
     <string name="profile_kitchen_action">Gestionar tu cocina</string>
     <string name="kitchen_title">Cocina</string>

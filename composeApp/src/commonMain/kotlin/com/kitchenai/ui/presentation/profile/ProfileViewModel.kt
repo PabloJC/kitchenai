@@ -48,7 +48,11 @@ class ProfileViewModel(
     private val saving = MutableStateFlow(false)
     private val session = MutableStateFlow<Session?>(null)
     private val authenticating = MutableStateFlow(false)
-    private val account = combine(session, authenticating, ::AccountState)
+    private val confirmingSwitch = MutableStateFlow(false)
+    private val account = combine(session, authenticating, confirmingSwitch, ::AccountState)
+
+    // Held only while the switch dialog is open: a refused link is answered by the user, not retried here.
+    private var pendingSwitch: PendingSwitch? = null
 
     // One per source, each cleared by its own stream recovering, so one source never silences another.
     private val profileFailure = MutableStateFlow<ProfileError?>(null)
@@ -63,7 +67,7 @@ class ProfileViewModel(
     private var started = false
     private var termListeners: Job? = null
 
-    // Which uid the profile listener follows; start() is handed a new one after a Google sign-in (#186).
+    // Which uid the profile listener follows; start() is handed a new one after a switch to another account (#250).
     private val activeUserId = MutableStateFlow<UserId?>(null)
 
     val state: StateFlow<ProfileUiState> =
@@ -101,11 +105,52 @@ class ProfileViewModel(
         }
     }
 
-    /** [displayName] is Google's own and goes no further than the profile (#189): no email or photo URL. */
+    /**
+     * [displayName] is Google's own and goes no further than the profile (#189): no email or photo URL.
+     * A guest is linked and keeps their data; a Google account with data of its own asks before switching.
+     */
     fun signInWithGoogle(
         token: GoogleIdToken,
         displayName: String?,
         accessToken: GoogleAccessToken? = null,
+    ) = authenticate(displayName) {
+        when (val result = accountDelegate.signInWithGoogle(token, accessToken)) {
+            is AppResult.Failure ->
+                if (result.error is AppError.Conflict) {
+                    accountDelegate.pendingDisplayName.dropUnbound()
+                    pendingSwitch = PendingSwitch(token, accessToken, displayName)
+                    confirmingSwitch.value = true
+                    AppResult.Success(null)
+                } else {
+                    result
+                }
+            is AppResult.Success -> result
+        }
+    }
+
+    /** The user agreed to leave the guest data behind; the same Google tokens sign in to the existing account. */
+    fun confirmAccountSwitch() {
+        val switch = pendingSwitch ?: return
+        pendingSwitch = null
+        confirmingSwitch.value = false
+        authenticate(switch.displayName) { accountDelegate.switchToGoogleAccount(switch.token, switch.accessToken) }
+    }
+
+    /** Staying a guest changes nothing: the anonymous uid and everything under it are untouched. */
+    fun cancelAccountSwitch() {
+        pendingSwitch = null
+        confirmingSwitch.value = false
+    }
+
+    /** A cancelled or failed platform sheet never reaches a use case but still owes the user a reason. */
+    fun onGoogleSignInFailed(error: AppError) {
+        writeFailure.value = error.toProfileError()
+    }
+
+    /** A success with no session is the switch dialog taking over: no uid to bind, no failure to show. */
+    private fun authenticate(
+        displayName: String?,
+        attempt: suspend () -> AppResult<Session.SignedIn?>,
     ) {
         if (authenticating.value) return
         authenticating.value = true
@@ -113,20 +158,15 @@ class ProfileViewModel(
         // Handed over before the sign-in: a failed switch tears this screen down before it answers.
         displayName?.takeUnless(String::isBlank)?.let(accountDelegate.pendingDisplayName::expect)
         viewModelScope.launch {
-            when (val result = accountDelegate.signInWithGoogle(token, accessToken)) {
+            when (val result = attempt()) {
                 is AppResult.Failure -> {
                     accountDelegate.pendingDisplayName.dropUnbound()
                     writeFailure.value = result.error.toProfileError()
                 }
-                is AppResult.Success -> accountDelegate.pendingDisplayName.bind(result.data.userId)
+                is AppResult.Success -> result.data?.userId?.let(accountDelegate.pendingDisplayName::bind)
             }
             authenticating.value = false
         }
-    }
-
-    /** A cancelled or failed platform sheet never reaches a use case but still owes the user a reason. */
-    fun onGoogleSignInFailed(error: AppError) {
-        writeFailure.value = error.toProfileError()
     }
 
     fun signOut() {
@@ -241,6 +281,14 @@ internal data class ProfileDraft(
 internal data class AccountState(
     val session: Session?,
     val authenticating: Boolean,
+    val confirmingSwitch: Boolean = false,
+)
+
+/** The refused link's tokens, kept so a confirmed switch does not open the Google sheet a second time. */
+private class PendingSwitch(
+    val token: GoogleIdToken,
+    val accessToken: GoogleAccessToken?,
+    val displayName: String?,
 )
 
 /** The catalogue as the screen needs it: what exists, what is in it, and what failed to load. */

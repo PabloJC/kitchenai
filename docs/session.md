@@ -8,9 +8,16 @@ Code comments stay short and point here.
 `SessionViewModel` is the single writer of a missing `users/{uid}`. `SessionGate` composes the app
 only while the state is `Ready(uid)`; every screen below it reads data keyed to that uid.
 
-The uid can change after `Ready`: Google sign-in swaps the Firebase user outright rather than
-linking (#186), and signing out clears it. The ViewModel follows `observeSession()` and sets up
-the new uid (kitchen, default shopping list, profile listener) before `Ready` moves to it.
+Google sign-in links first (#250): an anonymous user gets Google attached to the same uid, so the
+kitchen and everything in it stay. `observeSession()` re-emits the same uid with `isAnonymous = false`
+(the adapter emits it itself, as Firebase's auth-state listener does not fire on a link), and
+`follow` treats it as no change.
+
+The uid can still change after `Ready`: when the Google account already has a uid of its own the
+link fails with `AppError.Conflict`, the profile asks, and only a confirmed switch signs in to that
+uid and leaves the guest one behind. Signing out clears it. The ViewModel follows
+`observeSession()` and sets up the new uid (kitchen, default shopping list, profile listener)
+before `Ready` moves to it.
 
 ## Failure states
 

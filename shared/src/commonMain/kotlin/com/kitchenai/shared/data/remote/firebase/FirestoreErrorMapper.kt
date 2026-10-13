@@ -1,6 +1,7 @@
 package com.kitchenai.shared.data.remote.firebase
 
 import com.kitchenai.shared.core.AppError
+import dev.gitlive.firebase.auth.FirebaseAuthUserCollisionException
 import dev.gitlive.firebase.firestore.FirebaseFirestoreException
 import dev.gitlive.firebase.firestore.code
 import dev.gitlive.firebase.functions.FirebaseFunctionsException
@@ -22,6 +23,8 @@ fun Throwable.toAppError(): AppError {
     return when (this) {
         is FirebaseFirestoreException -> appErrorForCode(code.name, this)
         is FirebaseFunctionsException -> appErrorForCode(code.name, this, FUNCTIONS_RESOURCE)
+        // A link whose credential already has a uid of its own: the caller decides whether to switch.
+        is FirebaseAuthUserCollisionException -> AppError.Conflict(this)
         else -> AppError.Unknown(this)
     }
 }
