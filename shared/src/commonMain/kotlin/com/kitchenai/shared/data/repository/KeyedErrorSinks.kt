@@ -1,6 +1,7 @@
 package com.kitchenai.shared.data.repository
 
 import com.kitchenai.shared.core.AppError
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.updateAndGet
@@ -18,5 +19,11 @@ internal class KeyedErrorSinks<K> {
             .getValue(key)
 }
 
-/** Buffered so that publishing a failure never suspends the listener that is dying. */
-internal fun errorSink(): MutableSharedFlow<AppError> = MutableSharedFlow(extraBufferCapacity = 1)
+/**
+ * Publishing never suspends: a listener must not wait on the slowest observer, or a stale error
+ * is delivered after the recovery it preceded. Drop-oldest, since a repeated error adds nothing.
+ */
+internal fun errorSink(): MutableSharedFlow<AppError> =
+    MutableSharedFlow(extraBufferCapacity = ERROR_BUFFER, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+private const val ERROR_BUFFER = 16
