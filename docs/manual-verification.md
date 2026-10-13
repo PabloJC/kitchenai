@@ -442,6 +442,21 @@ stop using Apple ID for the app to reset it.*
    - The "Switch to this account?" dialog appears (the same dialog Google uses).
    - "Switch" opens Apple's sheet once more, then shows the data from step 3, not the guest item.
 
+### 13. Deleting an account
+
+*Signed in with a throwaway Google account, as owner of a kitchen with one item in the pantry. For the
+shared case, a second device joined to that kitchen (scenario 5).*
+
+1. Profile tab: a red "Delete account" button sits under the account row. It is absent for a guest.
+2. Tap it, then "Cancel": nothing changes.
+3. Tap it, then "Delete".
+   - The app comes back as a fresh guest: empty pantry and list, the profile offers sign-in again.
+   - *Authentication → Users*: the account is gone. `users/<uid>` is gone.
+   - Alone in the kitchen: `kitchens/<id>`, its `pantry`/`shoppingLists`/`savedRecipes` and its
+     `kitchenInvites/<code>` are gone.
+   - Shared kitchen: it is still there for the second device, which now shows itself as "Owner".
+4. Airplane mode, then "Delete": "No connection" under the button and the account is untouched.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

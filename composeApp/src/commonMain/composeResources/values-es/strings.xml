@@ -123,6 +123,11 @@
     <string name="profile_switch_body">Esta cuenta ya tiene su propia cocina. Si cambias a ella, lo que añadiste como invitado se queda atrás y dejará de verse.</string>
     <string name="profile_switch_confirm">Cambiar</string>
     <string name="profile_switch_cancel">Seguir como invitado</string>
+    <string name="profile_delete_account">Eliminar cuenta</string>
+    <string name="profile_delete_title">¿Eliminar tu cuenta?</string>
+    <string name="profile_delete_body">Se eliminan tu perfil y tus preferencias. Una cocina que solo usas tú se elimina con su despensa, sus listas y sus recetas guardadas. Una cocina que compartes se queda para los demás y, si eres el propietario, el siguiente miembro pasa a serlo. No se puede deshacer.</string>
+    <string name="profile_delete_confirm">Eliminar</string>
+    <string name="profile_delete_cancel">Cancelar</string>
     <string name="profile_signed_in_fallback">Sesión iniciada</string>
     <string name="profile_kitchen_action">Gestionar tu cocina</string>
     <string name="kitchen_title">Cocina</string>

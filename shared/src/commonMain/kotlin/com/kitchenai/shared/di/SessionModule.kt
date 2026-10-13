@@ -1,5 +1,6 @@
 package com.kitchenai.shared.di
 
+import com.kitchenai.shared.domain.usecase.session.DeleteAccountUseCase
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithAppleUseCase
@@ -20,4 +21,5 @@ val sessionModule: Module =
         factory { SignInWithAppleUseCase(get()) }
         factory { SwitchToAppleAccountUseCase(get()) }
         factory { SignOutUseCase(get()) }
+        factory { DeleteAccountUseCase(get(), get()) }
     }

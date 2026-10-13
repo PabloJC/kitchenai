@@ -1,6 +1,9 @@
 package com.kitchenai.shared.di
 
+import com.kitchenai.shared.data.remote.firebase.AccountRemoteDataSource
 import com.kitchenai.shared.data.remote.firebase.FirebaseSessionAdapter
+import com.kitchenai.shared.data.repository.AccountRepository
+import com.kitchenai.shared.domain.port.AccountRepositoryContract
 import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.FirebaseAuth
@@ -14,4 +17,8 @@ val authModule: Module =
         single<FirebaseAuth> { Firebase.auth }
 
         single<SessionRepositoryContract> { FirebaseSessionAdapter(get(), get()) }
+
+        // FirebaseFunctions is bound by agentDataModule, with the region the deployment uses.
+        single { AccountRemoteDataSource(get(), get()) }
+        single<AccountRepositoryContract> { AccountRepository(get()) }
     }
