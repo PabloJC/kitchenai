@@ -1,6 +1,7 @@
 package com.kitchenai.shared.domain.port
 
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import kotlinx.coroutines.flow.Flow
@@ -16,7 +17,10 @@ interface SessionRepositoryContract {
     suspend fun signInAnonymously(): AppResult<Session.SignedIn>
 
     /** Always starts a fresh session: the previous anonymous account, if any, is left behind unmerged. */
-    suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn>
+    suspend fun signInWithGoogle(
+        idToken: GoogleIdToken,
+        accessToken: GoogleAccessToken? = null,
+    ): AppResult<Session.SignedIn>
 
     suspend fun signOut(): AppResult<Unit>
 }

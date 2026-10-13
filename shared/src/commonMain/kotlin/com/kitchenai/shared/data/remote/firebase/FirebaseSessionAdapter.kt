@@ -3,6 +3,7 @@ package com.kitchenai.shared.data.remote.firebase
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.DispatcherProvider
+import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.port.SessionRepositoryContract
@@ -55,10 +56,13 @@ class FirebaseSessionAdapter(
      * session's data is left behind by product decision, so `currentUser.linkWithCredential`
      * is not used here.
      */
-    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> {
+    override suspend fun signInWithGoogle(
+        idToken: GoogleIdToken,
+        accessToken: GoogleAccessToken?,
+    ): AppResult<Session.SignedIn> {
         val signedIn =
             firestoreCall(dispatchers) {
-                auth.signInWithCredential(GoogleAuthProvider.credential(idToken.value, null)).user
+                auth.signInWithCredential(GoogleAuthProvider.credential(idToken.value, accessToken?.value)).user
             }
 
         return when (signedIn) {

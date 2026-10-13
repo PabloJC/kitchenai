@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ConstraintStrength
+import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.Taxonomy
@@ -104,6 +105,7 @@ class ProfileViewModel(
     fun signInWithGoogle(
         token: GoogleIdToken,
         displayName: String?,
+        accessToken: GoogleAccessToken? = null,
     ) {
         if (authenticating.value) return
         authenticating.value = true
@@ -111,7 +113,7 @@ class ProfileViewModel(
         // Handed over before the sign-in: a failed switch tears this screen down before it answers.
         displayName?.takeUnless(String::isBlank)?.let(accountDelegate.pendingDisplayName::expect)
         viewModelScope.launch {
-            when (val result = accountDelegate.signInWithGoogle(token)) {
+            when (val result = accountDelegate.signInWithGoogle(token, accessToken)) {
                 is AppResult.Failure -> {
                     accountDelegate.pendingDisplayName.dropUnbound()
                     writeFailure.value = result.error.toProfileError()

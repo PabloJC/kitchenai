@@ -2,6 +2,7 @@ package com.kitchenai.shared.domain.usecase.session
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import kotlinx.coroutines.test.runTest
@@ -20,6 +21,19 @@ class SignInWithGoogleUseCaseTest {
             val result = SignInWithGoogleUseCase(port)(GoogleIdToken("id-token"))
 
             assertEquals(AppResult.Success(googleUser), result)
+        }
+
+    @Test
+    fun `forwards the access token to the port and none when the sheet had none`() =
+        runTest {
+            val port = FakeSessionPort(Session.SignedOut)
+            port.signInWithGoogleResult = AppResult.Success(googleUser)
+
+            SignInWithGoogleUseCase(port)(GoogleIdToken("id-token"), GoogleAccessToken("access-token"))
+            assertEquals(GoogleAccessToken("access-token"), port.lastGoogleAccessToken)
+
+            SignInWithGoogleUseCase(port)(GoogleIdToken("id-token"))
+            assertEquals(null, port.lastGoogleAccessToken)
         }
 
     @Test
