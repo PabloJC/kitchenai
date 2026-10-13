@@ -156,7 +156,8 @@ private suspend fun performGoogleSignIn(
 ) {
     try {
         when (val result = launcher.launch()) {
-            is AppResult.Success -> viewModel.signInWithGoogle(result.data.token, result.data.displayName)
+            is AppResult.Success ->
+                viewModel.signInWithGoogle(result.data.token, result.data.displayName, result.data.accessToken)
             is AppResult.Failure -> viewModel.onGoogleSignInFailed(result.error)
         }
     } finally {

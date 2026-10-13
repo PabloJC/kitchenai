@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.mmk.kmpauth.google.GoogleAuthCredentials
 import com.mmk.kmpauth.google.GoogleAuthProvider
@@ -35,7 +36,13 @@ private class KmpAuthGoogleSignInLauncher(
     override suspend fun launch(): AppResult<GoogleSignInResult> =
         uiProvider.signIn().fold(
             onSuccess = { user ->
-                AppResult.Success(GoogleSignInResult(GoogleIdToken(user.idToken), user.displayName))
+                AppResult.Success(
+                    GoogleSignInResult(
+                        token = GoogleIdToken(user.idToken),
+                        displayName = user.displayName,
+                        accessToken = user.accessToken?.let(::GoogleAccessToken),
+                    ),
+                )
             },
             // Covers both a platform error and the user dismissing the chooser: KMPAuth
             // reports cancellation as a failed Result too, never a thrown exception.

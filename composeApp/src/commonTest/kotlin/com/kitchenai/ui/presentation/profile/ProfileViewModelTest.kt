@@ -3,6 +3,7 @@ package com.kitchenai.ui.presentation.profile
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ConstraintStrength
+import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.Taxonomy
@@ -329,6 +330,19 @@ class ProfileViewModelTest {
             assertEquals(true, viewModel.state.value.signedInWithGoogle)
         }
 
+    /** iOS cannot build the Firebase credential without it, so the sheet's access token must reach the port. */
+    @Test
+    fun `the access token the sheet returned reaches the sign-in`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.signInWithGoogleResult = AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace", GoogleAccessToken("access-token"))
+            advanceUntilIdle()
+
+            assertEquals(GoogleAccessToken("access-token"), sessions.lastAccessToken)
+        }
+
     /** The name belongs to `SessionViewModel`, the only writer of `users/{uid}`: this screen never saves it. */
     @Test
     fun `a sign-in never writes the display name from this screen`() =
@@ -607,6 +621,7 @@ private class FakeSessionPort(
     var signInWithGoogleResult: AppResult<Session.SignedIn> =
         AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
     var signOutResult: AppResult<Unit> = AppResult.Success(Unit)
+    var lastAccessToken: GoogleAccessToken? = null
 
     override fun observeSession(): Flow<Session> = state
 
@@ -617,7 +632,11 @@ private class FakeSessionPort(
     override suspend fun signInAnonymously(): AppResult<Session.SignedIn> =
         AppResult.Success(Session.SignedIn(userId, isAnonymous = true))
 
-    override suspend fun signInWithGoogle(idToken: GoogleIdToken): AppResult<Session.SignedIn> {
+    override suspend fun signInWithGoogle(
+        idToken: GoogleIdToken,
+        accessToken: GoogleAccessToken?,
+    ): AppResult<Session.SignedIn> {
+        lastAccessToken = accessToken
         val result = signInWithGoogleResult
         if (result is AppResult.Success) state.value = result.data
         return result
