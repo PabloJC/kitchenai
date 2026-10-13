@@ -52,6 +52,8 @@ import platform.darwin.NSObject
 import kotlin.coroutines.resume
 
 private const val SHA256_BYTES = 32
+private const val HEX_RADIX = 16
+private const val HEX_DIGITS_PER_BYTE = 2
 
 @Composable
 actual fun rememberAppleSignInLauncher(): AppleSignInLauncher? = remember { AuthorizationControllerLauncher() }
@@ -134,7 +136,7 @@ private fun sha256Hex(input: String): String {
             CC_SHA256(pinnedInput.addressOf(0), bytes.size.convert(), pinnedDigest.addressOf(0))
         }
     }
-    return digest.joinToString("") { byte -> byte.toString(16).padStart(2, '0') }
+    return digest.joinToString("") { byte -> byte.toString(HEX_RADIX).padStart(HEX_DIGITS_PER_BYTE, '0') }
 }
 
 @OptIn(ExperimentalForeignApi::class)
