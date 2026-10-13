@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 class SwitchToAppleAccountUseCaseTest {
     @Test
-    fun `replaces an anonymous session with the Apple ID's own uid, without linking`() =
+    fun `replaces an anonymous session with the Apple ID's own uid without linking`() =
         runTest {
             val existing =
                 anonymousUser.copy(

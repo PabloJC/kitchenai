@@ -323,7 +323,7 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `a guest who signs in is linked, keeps their uid and gets the name Google returned`() =
+    fun `a guest who signs in is linked and keeps their uid and the name Google returned`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
 
@@ -406,7 +406,7 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `an Apple ID with its own kitchen asks, and confirming needs Apple's sheet again`() =
+    fun `an Apple ID with its own kitchen asks and confirming needs Apple's sheet again`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
             sessions.linkWithAppleResult = AppResult.Failure(AppError.Conflict())

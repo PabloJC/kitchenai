@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 class SignInWithAppleUseCaseTest {
     @Test
-    fun `an anonymous session is linked, keeping its uid`() =
+    fun `an anonymous session is linked and keeps its uid`() =
         runTest {
             val port = FakeSessionPort(anonymousUser)
             port.linkWithAppleResult = AppResult.Success(appleUser)
@@ -29,7 +29,7 @@ class SignInWithAppleUseCaseTest {
         }
 
     @Test
-    fun `an Apple ID that already has a uid comes back as a conflict, and nothing is swapped`() =
+    fun `an Apple ID that already has a uid comes back as a conflict and nothing is swapped`() =
         runTest {
             val conflict = AppError.Conflict()
             val port = FakeSessionPort(anonymousUser)
@@ -44,7 +44,7 @@ class SignInWithAppleUseCaseTest {
         }
 
     @Test
-    fun `with no anonymous user to keep, it signs in`() =
+    fun `with no anonymous user to keep it signs in`() =
         runTest {
             val port = FakeSessionPort(Session.SignedOut)
             port.signInWithAppleResult = AppResult.Success(appleUser)

@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 class SwitchToGoogleAccountUseCaseTest {
     @Test
-    fun `replaces an anonymous session with the Google account's own uid, without linking`() =
+    fun `replaces an anonymous session with the Google account's own uid without linking`() =
         runTest {
             val existing = googleUser.copy(userId = UserId.of("google-user").getOrElse { error("valid fixture") })
             val port = FakeSessionPort(anonymousUser)
