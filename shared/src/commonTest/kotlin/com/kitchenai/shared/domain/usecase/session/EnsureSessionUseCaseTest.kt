@@ -3,6 +3,8 @@ package com.kitchenai.shared.domain.usecase.session
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.getOrElse
+import com.kitchenai.shared.domain.model.AppleIdToken
+import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
@@ -86,6 +88,13 @@ internal class FakeSessionPort(
         private set
     var linkWithGoogleCalls: Int = 0
         private set
+    var signInWithAppleResult: AppResult<Session.SignedIn> = AppResult.Success(anonymousUser)
+    var linkWithAppleResult: AppResult<Session.SignedIn> = AppResult.Success(anonymousUser)
+    var lastAppleNonce: AppleRawNonce? = null
+    var signInWithAppleCalls: Int = 0
+        private set
+    var linkWithAppleCalls: Int = 0
+        private set
     var signOutResult: AppResult<Unit> = AppResult.Success(Unit)
     var signInCalls: Int = 0
         private set
@@ -117,6 +126,28 @@ internal class FakeSessionPort(
         linkWithGoogleCalls++
         lastGoogleAccessToken = accessToken
         val result = linkWithGoogleResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
+
+    override suspend fun signInWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AppResult<Session.SignedIn> {
+        signInWithAppleCalls++
+        lastAppleNonce = rawNonce
+        val result = signInWithAppleResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
+
+    override suspend fun linkWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AppResult<Session.SignedIn> {
+        linkWithAppleCalls++
+        lastAppleNonce = rawNonce
+        val result = linkWithAppleResult
         if (result is AppResult.Success) state.value = result.data
         return result
     }

@@ -65,7 +65,11 @@ a personal team.
 
 ### Firebase project
 
-- *Authentication → Sign-in method*: **Anonymous** and **Google** both enabled.
+- *Authentication → Sign-in method*: **Anonymous**, **Google** and **Apple** enabled. Apple needs no
+  Services ID for the native iOS flow: the bundle id is enough (#251).
+- Sign in with Apple also needs the *Sign in with Apple* capability on the App ID in Apple Developer
+  (`iosApp/iosApp/iosApp.entitlements` asks for it). A personal team cannot sign that capability, so
+  scenario 12 needs a paid team in `TEAM_ID`; the simulator still runs without it, minus Apple sign-in.
 - The Android app registered in the project with the debug keystore's SHA-1 fingerprint added —
   the Google sheet fails without it. This is general Firebase behaviour, not something this
   repository checks.
@@ -179,7 +183,7 @@ signed in to this Firebase project (delete it from Authentication → Users firs
      both). After you pick an account the app comes back to the foreground. If the sheet opens but
      control never returns, check `GOOGLE_IOS_REVERSED_CLIENT_ID` first, then record it.
 3. Pick the never-used throwaway account.
-   - No "Switch to this Google account?" dialog appears.
+   - No "Switch to this account?" dialog appears.
    - The "Sign in with Google" button is replaced by a row with the account's Google name on the
      left and a "Sign out" button on the right. If Google returned no name the row reads "Signed
      in".
@@ -198,7 +202,7 @@ signed in to this Firebase project (delete it from Authentication → Users firs
    - Still exactly one `kitchens` document and one `shoppingLists` document for this uid.
 7. An account that already has data. Sign out, add one item as the new guest, then tap "Sign in
    with Google" and pick the **same** Google account again.
-   - A dialog "Switch to this Google account?" explains that the guest data stays behind, with
+   - A dialog "Switch to this account?" explains that the guest data stays behind, with
      "Stay as guest" (filled) and "Switch".
    - "Stay as guest": the dialog closes, no error appears, the row still offers "Sign in with
      Google", and the guest item is still on Shopping.
@@ -418,6 +422,25 @@ something to work from. Run on both platforms.*
      the line stays on the list.
 
 ---
+
+### 12. Sign in with Apple (iOS only)
+
+*iOS, from a fresh install (anonymous). Add one shopping item first. Use an Apple ID that has never
+signed in to this Firebase project; in Settings → Apple ID → Sign-In & Security → Sign in with Apple,
+stop using Apple ID for the app to reset it.*
+
+1. Profile tab.
+   - Apple's own black "Sign in with Apple" button (white in dark mode) sits above "Sign in with
+     Google", both full width and the same height.
+   - On Android the Apple button does not appear at all.
+2. Tap it and cancel Apple's sheet.
+   - A red "Something went wrong" line, the buttons enabled again, still a guest.
+3. Tap it again, share the name, and continue (hiding the email is fine).
+   - The account row shows the name Apple returned; the shopping item is still there (linked, same uid).
+   - *Authentication → Users*: the scenario's uid now lists the Apple provider; no new user.
+4. Sign out, add an item as the new guest, tap "Sign in with Apple" with the same Apple ID.
+   - The "Switch to this account?" dialog appears (the same dialog Google uses).
+   - "Switch" opens Apple's sheet once more, then shows the data from step 3, not the guest item.
 
 ## Results
 

@@ -26,12 +26,14 @@ data class ProfileUiState(
     val hasUnsavedChanges: Boolean = false,
     // True only for a non-anonymous Session.SignedIn: an anonymous session is drawn the same
     // way as a signed-out one, since neither has an account to show.
-    val signedInWithGoogle: Boolean = false,
-    // Google's own name, never an email or a photo: UserProfile carries nothing else from it.
+    val hasAccount: Boolean = false,
+    // The provider's own name, never an email or a photo: UserProfile carries nothing else from it.
     val displayName: String? = null,
     val isAuthenticating: Boolean = false,
     // The Google account already has a kitchen of its own: switching to it leaves the guest data behind (#250).
     val isConfirmingAccountSwitch: Boolean = false,
+    // Apple's refused link consumed its nonce: confirming has to show Apple's sheet again before switching.
+    val switchNeedsAppleSheet: Boolean = false,
     val error: ProfileError? = null,
 ) {
     /** A message belongs to an input only when the use case named that input. */

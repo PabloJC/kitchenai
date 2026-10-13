@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.AppleSignInButton
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.profile_sign_in_benefit
 import com.kitchenai.ui.resources.profile_sign_in_google
@@ -21,19 +22,20 @@ import com.kitchenai.ui.resources.profile_signed_in_fallback
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Signed out or anonymous: a "Sign in with Google" affordance. Signed in with Google: the name
- * the platform returned (or a generic label, never a blank one) and a way to sign out.
+ * Signed out or anonymous: the sign-in buttons, Apple's first where [onAppleSignIn] exists (iOS, guideline 4.8).
+ * Signed in: the name the provider returned (or a generic label, never a blank one) and a way to sign out.
  */
 @Composable
 fun AccountSection(
-    signedInWithGoogle: Boolean,
+    hasAccount: Boolean,
     displayName: String?,
     isAuthenticating: Boolean,
     onSignIn: () -> Unit,
+    onAppleSignIn: (() -> Unit)?,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (signedInWithGoogle) {
+    if (hasAccount) {
         SignedInRow(displayName, isAuthenticating, onSignOut, modifier)
     } else {
         // Says what signing in keeps: a guest deciding whether to sign in is deciding about their data.
@@ -41,6 +43,7 @@ fun AccountSection(
             modifier = modifier.fillMaxWidth().padding(horizontal = Dimens.large),
             verticalArrangement = Arrangement.spacedBy(Dimens.small),
         ) {
+            onAppleSignIn?.let { onClick -> AppleSignInButton(onClick = onClick, enabled = !isAuthenticating) }
             Button(onClick = onSignIn, enabled = !isAuthenticating, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(Res.string.profile_sign_in_google))
             }
