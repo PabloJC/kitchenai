@@ -80,31 +80,12 @@ private fun ProfileContent(
     onOpenKitchen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val launcher = rememberGoogleSignInLauncher()
-    val scope = rememberCoroutineScope()
-
-    // isAuthenticating alone lags a whole async window behind: it only flips once
-    // viewModel.signInWithGoogle() is called, which is after launcher.launch()'s platform
-    // credential sheet has already returned. This closes that window so a second tap during
-    // it cannot stack a second concurrent credential sheet.
-    var signInLaunching by remember { mutableStateOf(false) }
-
     // A Column with a weighted middle, not one LazyColumn top to bottom: TransparencyLine and
     // SaveRow stay fixed so the empty state has a bounded height to centre inside — matching
     // ShoppingScreen's own header/content/footer split — and Save never needs a scroll to reach.
     Column(modifier = modifier.fillMaxSize()) {
         Spacer(Modifier.height(Dimens.large))
-        AccountSection(
-            signedInWithGoogle = state.signedInWithGoogle,
-            displayName = state.displayName,
-            isAuthenticating = state.isAuthenticating || signInLaunching,
-            onSignIn = {
-                if (signInLaunching) return@AccountSection
-                signInLaunching = true
-                scope.launch { performGoogleSignIn(launcher, viewModel) { signInLaunching = false } }
-            },
-            onSignOut = viewModel::signOut,
-        )
+        AccountArea(state, viewModel)
         Spacer(Modifier.height(Dimens.medium))
         TransparencyLine()
         Spacer(Modifier.height(Dimens.medium))
@@ -151,6 +132,34 @@ private fun ProfileContent(
         )
         Spacer(Modifier.height(Dimens.large))
     }
+}
+
+/** The sign-in button or the signed-in row, the platform sheet behind it, and the switch question. */
+@Composable
+private fun AccountArea(
+    state: ProfileUiState,
+    viewModel: ProfileViewModel,
+) {
+    val launcher = rememberGoogleSignInLauncher()
+    val scope = rememberCoroutineScope()
+
+    // isAuthenticating alone lags a whole async window behind: it only flips once
+    // viewModel.signInWithGoogle() is called, which is after launcher.launch()'s platform
+    // credential sheet has already returned. This closes that window so a second tap during
+    // it cannot stack a second concurrent credential sheet.
+    var signInLaunching by remember { mutableStateOf(false) }
+
+    AccountSection(
+        signedInWithGoogle = state.signedInWithGoogle,
+        displayName = state.displayName,
+        isAuthenticating = state.isAuthenticating || signInLaunching,
+        onSignIn = {
+            if (signInLaunching) return@AccountSection
+            signInLaunching = true
+            scope.launch { performGoogleSignIn(launcher, viewModel) { signInLaunching = false } }
+        },
+        onSignOut = viewModel::signOut,
+    )
 
     if (state.isConfirmingAccountSwitch) {
         SwitchAccountDialog(onConfirm = viewModel::confirmAccountSwitch, onDismiss = viewModel::cancelAccountSwitch)
