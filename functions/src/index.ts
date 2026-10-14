@@ -125,7 +125,8 @@ export const deleteAccount = onCall(
   {
     region: process.env.FUNCTIONS_REGION ?? 'europe-southwest1',
     enforceAppCheck: true,
-    timeoutSeconds: 60,
+    // Above the app's 90 s wait: kitchens are deleted one after another, each recursively.
+    timeoutSeconds: 120,
     maxInstances: 5,
   },
   async (call) => {

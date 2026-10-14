@@ -55,7 +55,11 @@ function fakeDb(seed: Record<string, Record<string, unknown>>) {
     runTransaction: async <T>(body: (t: unknown) => Promise<T>) =>
       body({
         get: async (r: { path: string }) => ({ data: () => store.get(r.path) }),
-        set: (r: { path: string }, value: Record<string, unknown>) =>
+        // Firestore's merge is deep: a nested map absent from the write keeps its stored keys.
+        set: (r: { path: string }, value: Record<string, unknown>, options?: { merge?: boolean }) =>
+          store.set(r.path, options?.merge ? deepMerge(store.get(r.path) ?? {}, value) : value),
+        // update replaces each top-level field it names.
+        update: (r: { path: string }, value: Record<string, unknown>) =>
           store.set(r.path, { ...(store.get(r.path) ?? {}), ...value }),
         delete: (r: { path: string }) => store.delete(r.path),
       }),
@@ -63,6 +67,16 @@ function fakeDb(seed: Record<string, Record<string, unknown>>) {
       for (const path of [...store.keys()]) if (path === r.path || path.startsWith(`${r.path}/`)) store.delete(path);
     },
   };
+}
+
+function deepMerge(stored: Record<string, unknown>, value: Record<string, unknown>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...stored };
+  for (const [key, next] of Object.entries(value)) {
+    const previous = merged[key];
+    const bothMaps = [previous, next].every((v) => typeof v === 'object' && v !== null && !Array.isArray(v));
+    merged[key] = bothMaps ? deepMerge(previous as Record<string, unknown>, next as Record<string, unknown>) : next;
+  }
+  return merged;
 }
 
 function fakeAuth(failure?: { code: string }) {
@@ -81,7 +95,12 @@ const seed = (): Record<string, Record<string, unknown>> => ({
   'kitchens/solo': { ownerId: 'ana', memberIds: ['ana'], joinCode: 'solo-code' } satisfies KitchenDoc,
   'kitchens/solo/pantry/rice': { amount: 1 },
   'kitchenInvites/solo-code': { kitchenId: 'solo' },
-  'kitchens/shared': { ownerId: 'ana', memberIds: ['ana', 'bea'], joinCode: 'shared-code' } satisfies KitchenDoc,
+  'kitchens/shared': {
+    ownerId: 'ana',
+    memberIds: ['ana', 'bea'],
+    memberDisplayNames: { ana: 'Ana', bea: 'Bea' },
+    joinCode: 'shared-code',
+  } satisfies KitchenDoc,
   'kitchens/shared/pantry/salt': { amount: 1 },
   'kitchenInvites/shared-code': { kitchenId: 'shared' },
   'users/bea': { displayName: 'Bea' },
@@ -100,6 +119,8 @@ test('deletes the profile, the solo kitchen and the Auth user, and hands the sha
   assert.equal(db.store.has('kitchenInvites/solo-code'), false);
   assert.deepEqual((db.store.get('kitchens/shared') as KitchenDoc).memberIds, ['bea']);
   assert.equal((db.store.get('kitchens/shared') as KitchenDoc).ownerId, 'bea');
+  // The departing name is gone, not only the uid: a deep merge would have kept it.
+  assert.deepEqual((db.store.get('kitchens/shared') as KitchenDoc).memberDisplayNames, { bea: 'Bea' });
   assert.equal(db.store.has('kitchens/shared/pantry/salt'), true);
   assert.equal(db.store.has('kitchenInvites/shared-code'), true);
   assert.equal(db.store.has('users/bea'), true);

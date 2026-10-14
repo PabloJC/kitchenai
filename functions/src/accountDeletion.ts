@@ -85,7 +85,8 @@ async function applyPlan(db: Firestore, uid: string, ref: DocumentReference): Pr
   const plan = await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
     const decided = planKitchen(uid, snapshot.data() as KitchenDoc | undefined);
-    if (decided.kind === 'leave') transaction.set(ref, decided.update, { merge: true });
+    // update, not set with merge: merge would deep-merge memberDisplayNames and keep the departing name.
+    if (decided.kind === 'leave') transaction.update(ref, decided.update);
     if (decided.kind === 'delete' && decided.joinCode) {
       transaction.delete(db.collection('kitchenInvites').doc(decided.joinCode));
     }
