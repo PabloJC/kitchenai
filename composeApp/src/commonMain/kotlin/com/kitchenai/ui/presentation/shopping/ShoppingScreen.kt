@@ -44,7 +44,8 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
-import com.kitchenai.ui.designsystem.format.formatQuantity
+import com.kitchenai.ui.designsystem.format.decimalSeparatorFor
+import com.kitchenai.ui.designsystem.format.formatAmount
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
@@ -307,6 +308,7 @@ private fun EditAmountDialog(
 ) {
     var amount by remember { mutableStateOf(line.amount) }
     var unit by remember { mutableStateOf(line.unit) }
+    val separator = remember { decimalSeparatorFor(platformLanguageTags()) }
     val valid = amount?.let { it > 0.0 } == true
 
     AlertDialog(
@@ -320,7 +322,7 @@ private fun EditAmountDialog(
                     amount = typed
                     unit = units.firstOrNull { (ref, _) -> ref.term.value == unitId }?.first
                 },
-                initialAmount = line.amount?.let { held -> formatQuantity(held, null) }.orEmpty(),
+                initialAmount = line.amount?.let { held -> formatAmount(held, separator) }.orEmpty(),
                 initialUnitId = line.unit?.term?.value,
             )
         },

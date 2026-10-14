@@ -6,6 +6,7 @@ import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.resolve
+import com.kitchenai.ui.designsystem.format.decimalSeparatorFor
 
 /**
  * Turns catalogue identifiers into words over one snapshot of the catalogue.
@@ -27,6 +28,9 @@ class LabelResolver(
     private val termPlurals = terms.associate { term -> term.ref to term.pluralLabels }
     private val ingredientLabels = ingredients.associate { ingredient -> ingredient.id to ingredient.labels }
     private val fallbackTags = taxonomies.associate { taxonomy -> taxonomy.id to taxonomy.defaultLanguageTag }
+
+    /** Rides along with the labels because every quantity it labels is printed in the same locale. */
+    val decimalSeparator: Char = decimalSeparatorFor(languageTags)
 
     fun label(ref: TermRef): String? = termLabels[ref]?.resolve(languageTags, fallbackTags[ref.taxonomy])
 
