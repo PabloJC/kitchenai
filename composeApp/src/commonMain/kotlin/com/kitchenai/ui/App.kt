@@ -75,11 +75,16 @@ private fun PlaceholderScreen() {
     )
 }
 
-/** Recipe detail is reached from a suggestion, so it is not one of these. */
+/** Recipe detail and Kitchen are reached from a tab, so they live in its graph and are not tabs. */
 private val tabs =
     listOf(
         ShellDestination(Route.Pantry, Res.string.tab_pantry, Icons.Outlined.Kitchen),
         ShellDestination(Route.ShoppingList, Res.string.tab_shopping, Icons.Outlined.ShoppingCart),
-        ShellDestination(Route.Suggestions, Res.string.tab_ideas, Icons.AutoMirrored.Outlined.MenuBook),
-        ShellDestination(Route.Profile, Res.string.tab_profile, Icons.Outlined.Person),
+        ShellDestination(
+            Route.Suggestions,
+            Res.string.tab_ideas,
+            Icons.AutoMirrored.Outlined.MenuBook,
+            graph = Route.SuggestionsGraph,
+        ),
+        ShellDestination(Route.Profile, Res.string.tab_profile, Icons.Outlined.Person, graph = Route.ProfileGraph),
     )

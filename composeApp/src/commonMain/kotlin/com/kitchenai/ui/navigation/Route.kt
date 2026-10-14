@@ -5,6 +5,8 @@ import kotlinx.serialization.Serializable
 /**
  * Every destination in the app. The hierarchy stays one level deep on purpose: nesting is what
  * makes a sealed type expensive to read, both for the navigation serializer and for a reader.
+ * The `*Graph` routes are not screens: they wrap a tab with the screens opened from it, so the
+ * bar can keep that tab selected.
  */
 sealed interface Route {
     @Serializable
@@ -24,4 +26,10 @@ sealed interface Route {
 
     @Serializable
     data object Kitchen : Route
+
+    @Serializable
+    data object SuggestionsGraph : Route
+
+    @Serializable
+    data object ProfileGraph : Route
 }
