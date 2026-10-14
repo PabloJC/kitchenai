@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -80,9 +81,10 @@ import com.kitchenai.ui.resources.detail_ingredients
 import com.kitchenai.ui.resources.detail_missing
 import com.kitchenai.ui.resources.detail_optional_suffix
 import com.kitchenai.ui.resources.detail_save
-import com.kitchenai.ui.resources.detail_saved
 import com.kitchenai.ui.resources.detail_servings
 import com.kitchenai.ui.resources.detail_steps
+import com.kitchenai.ui.resources.detail_undo
+import com.kitchenai.ui.resources.detail_unsave
 import com.kitchenai.ui.resources.detail_unverifiable
 import com.kitchenai.ui.resources.detail_unverifiable_body
 import com.kitchenai.ui.resources.shopping_default_list
@@ -91,7 +93,9 @@ import com.kitchenai.ui.resources.snack_cooked
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_saved
+import com.kitchenai.ui.resources.snack_unsaved
 import com.kitchenai.ui.resources.suggestions_minutes
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -114,7 +118,7 @@ fun RecipeDetailScreen(
     LaunchedEffect(userId, recipeId) {
         viewModel.start(userId, recipeId, platformLanguageTags(), defaultListName)
     }
-    LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.announce(event) } }
+    LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.announce(event, viewModel::save) } }
     PublishTopBar(state, viewModel, detailTopBar)
 
     if (confirmingCook) {
@@ -173,16 +177,17 @@ private fun PublishTopBar(
     detailTopBar: DetailTopBarState,
 ) {
     val savedTint = MaterialTheme.colorScheme.primary
-    val favoriteLabel = stringResource(if (state.isSaved) Res.string.detail_saved else Res.string.detail_save)
+    val favoriteLabel = stringResource(if (state.isSaved) Res.string.detail_unsave else Res.string.detail_save)
     DisposableEffect(state.title, state.isSaved, state.isWorking) {
         detailTopBar.title = state.title.ifBlank { null }
         detailTopBar.action =
             TopBarAction(
                 icon = if (state.isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                 contentDescription = favoriteLabel,
-                enabled = !state.isWorking && !state.isSaved,
+                enabled = !state.isWorking,
                 tint = if (state.isSaved) savedTint else null,
-                onClick = viewModel::save,
+                onClick = if (state.isSaved) viewModel::unsave else viewModel::save,
+                checked = state.isSaved,
             )
         onDispose {}
     }
@@ -502,7 +507,17 @@ private fun CookDialog(
     )
 }
 
-private suspend fun SnackbarHostState.announce(event: RecipeDetailEvent) = showSnackbar(event.sentence().text())
+private suspend fun SnackbarHostState.announce(
+    event: RecipeDetailEvent,
+    onUndoUnsave: () -> Unit,
+) {
+    if (event != RecipeDetailEvent.Unsaved) {
+        showSnackbar(event.sentence().text())
+        return
+    }
+    val outcome = showSnackbar(message = event.sentence().text(), actionLabel = getString(Res.string.detail_undo))
+    if (outcome == SnackbarResult.ActionPerformed) onUndoUnsave()
+}
 
 /**
  * Separate from [announce] so the wording can be tested: there is no Compose test harness here,
@@ -522,5 +537,6 @@ internal fun RecipeDetailEvent.sentence(): UiText =
             )
         RecipeDetailEvent.Cooked -> UiText.of(Res.string.snack_cooked)
         RecipeDetailEvent.Saved -> UiText.of(Res.string.snack_saved)
+        RecipeDetailEvent.Unsaved -> UiText.of(Res.string.snack_unsaved)
         is RecipeDetailEvent.Failed -> message
     }

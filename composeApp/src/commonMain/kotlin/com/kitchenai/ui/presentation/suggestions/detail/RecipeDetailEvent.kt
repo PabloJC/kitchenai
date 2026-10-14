@@ -11,5 +11,8 @@ sealed interface RecipeDetailEvent {
 
     data object Saved : RecipeDetailEvent
 
+    /** Offers an undo, which saves the dish still on screen again. */
+    data object Unsaved : RecipeDetailEvent
+
     data class Failed(val message: UiText) : RecipeDetailEvent
 }

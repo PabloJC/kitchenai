@@ -5,6 +5,7 @@ import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.snack_added_count
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
+import com.kitchenai.ui.resources.snack_unsaved
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -33,5 +34,10 @@ class RecipeDetailSentenceTest {
         val refusal = UiText.Raw("You are missing ingredients for this")
 
         assertEquals(refusal, RecipeDetailEvent.Failed(refusal).sentence())
+    }
+
+    @Test
+    fun `removing a saved dish says so rather than repeating the saved sentence`() {
+        assertEquals(UiText.of(Res.string.snack_unsaved), RecipeDetailEvent.Unsaved.sentence())
     }
 }
