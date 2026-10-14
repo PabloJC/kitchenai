@@ -187,6 +187,7 @@ private fun PublishTopBar(
                 enabled = !state.isWorking,
                 tint = if (state.isSaved) savedTint else null,
                 onClick = if (state.isSaved) viewModel::unsave else viewModel::save,
+                checked = state.isSaved,
             )
         onDispose {}
     }

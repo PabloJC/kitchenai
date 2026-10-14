@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -67,15 +68,7 @@ fun AppShell(
                 },
                 actions = {
                     if (tab == null) {
-                        detailTopBar.action?.let { action ->
-                            IconButton(onClick = action.onClick, enabled = action.enabled) {
-                                Icon(
-                                    action.icon,
-                                    contentDescription = action.contentDescription,
-                                    tint = action.tint ?: LocalContentColor.current,
-                                )
-                            }
-                        }
+                        detailTopBar.action?.let { action -> TopBarActionButton(action) }
                     }
                 },
             )
@@ -106,5 +99,27 @@ private fun NavHostController.switchTo(route: Route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
+    }
+}
+
+@Composable
+private fun TopBarActionButton(action: TopBarAction) {
+    val icon: @Composable () -> Unit = {
+        Icon(
+            action.icon,
+            contentDescription = action.contentDescription,
+            tint = action.tint ?: LocalContentColor.current,
+        )
+    }
+    val checked = action.checked
+    if (checked == null) {
+        IconButton(onClick = action.onClick, enabled = action.enabled, content = icon)
+    } else {
+        IconToggleButton(
+            checked = checked,
+            onCheckedChange = { action.onClick() },
+            enabled = action.enabled,
+            content = icon,
+        )
     }
 }
