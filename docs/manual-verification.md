@@ -160,23 +160,26 @@ the backend can answer. Run every scenario on both platforms unless it says othe
 7. Kill the app and launch it again.
    - Same uid, same kitchen, still exactly one shopping list: nothing is created twice.
 
-### 2. Google sign-in: name, profile document, other screens after the uid swap
+### 2. Google sign-in: linking keeps the guest's data, an existing account asks before switching
 
-*Continue from scenario 1, still anonymous. Add one item first so there is something to lose:
-Shopping tab, field "Add an item", type a word, tap "Add".*
+*Continue from scenario 1, still anonymous. Add one item first so there is something to keep:
+Shopping tab, field "Add an item", type a word, tap "Add". Use a Google account that has never
+signed in to this Firebase project (delete it from Authentication → Users first if it has).*
 
 1. Cancel path first. Profile tab, tap "Sign in with Google" and dismiss the sheet without choosing
    an account.
    - The button is enabled again, a red line "Something went wrong" appears above the "Save"
      button, and the session is unchanged: still anonymous, same kitchen.
-2. Profile tab, tap "Sign in with Google" again.
+2. Under the button, a grey line reads "Keeps your pantry, list and recipes, and lets you use them
+   on other devices." Tap "Sign in with Google" again.
    - The platform's own Google sheet opens (Credential Manager on Android, the Google Sign-In view
      on iOS). While it is up, the button is disabled and a second tap does not stack a second sheet.
    - iOS only: the sheet needs the reversed client id registered as a URL scheme and the callback
      forwarded to `GIDSignIn.handle(url)` (Google's and KMPAuth's setup both require it; the app does
      both). After you pick an account the app comes back to the foreground. If the sheet opens but
      control never returns, check `GOOGLE_IOS_REVERSED_CLIENT_ID` first, then record it.
-3. Pick one of your throwaway accounts.
+3. Pick the never-used throwaway account.
+   - No "Switch to this Google account?" dialog appears.
    - The "Sign in with Google" button is replaced by a row with the account's Google name on the
      left and a "Sign out" button on the right. If Google returned no name the row reads "Signed
      in".
@@ -184,25 +187,24 @@ Shopping tab, field "Add an item", type a word, tap "Add".*
    - The screen never shows the "This account is not allowed to read its own data" message, not
      even for a moment.
 4. Check the other tabs.
-   - **Pantry** and **Shopping** both load, without an error state. They are empty: the previous
-     anonymous account's data is left behind by design, because Google sign-in swaps the Firebase
-     user instead of linking it (#186). If you chose an account that had signed in before, its
-     earlier data is what appears.
+   - **Pantry** and **Shopping** both load, without an error state, and still hold what you added
+     as a guest: the anonymous user was linked to Google, not swapped for it (#250).
    - **Ideas** loads without an error.
-   - On **Shopping**, add one item again ("Add an item", then "Add") so scenario 3 has something to
-     find after signing back in.
 5. Profile tab, "Manage your kitchen".
-   - A different join code from scenario 1, and one member ending in "(you)" and "Owner". The name
-     is the Google name once it has synced into the kitchen; if the plain label "You" shows instead,
-     wait a second and re-enter the screen, then record it.
+   - The same join code as in scenario 1, and one member ending in "(you)" and "Owner".
 6. Console.
-   - *Authentication → Users*: a user with the Google provider, a different uid from scenario 1.
-     The anonymous user is still there, now orphaned.
-   - `users/<newUid>`: `displayName` equals the Google name.
-   - `kitchens/<newKitchenId>`: `memberIds` is `[<newUid>]`, `memberDisplayNames` has the Google
-     name under `<newUid>`.
-   - Exactly one `shoppingLists` document under the new kitchen.
-7. Profile tab: tap a term chip in one of the constraint sections, then tap "Save".
+   - *Authentication → Users*: the uid from scenario 1, now with the Google provider. No new user.
+   - `users/<uid>`: `displayName` equals the Google name.
+   - Still exactly one `kitchens` document and one `shoppingLists` document for this uid.
+7. An account that already has data. Sign out, add one item as the new guest, then tap "Sign in
+   with Google" and pick the **same** Google account again.
+   - A dialog "Switch to this Google account?" explains that the guest data stays behind, with
+     "Stay as guest" (filled) and "Switch".
+   - "Stay as guest": the dialog closes, no error appears, the row still offers "Sign in with
+     Google", and the guest item is still on Shopping.
+   - Repeat and tap "Switch": the row shows the Google name and Pantry/Shopping show the data from
+     steps 1–6, not the guest item.
+8. Profile tab: tap a term chip in one of the constraint sections, then tap "Save".
    - The button reads "Saving" and then returns to a disabled "Save". No error text appears.
 
 ### 3. Sign-out: a fresh anonymous session, no permission errors
@@ -221,7 +223,7 @@ Shopping tab, field "Add an item", type a word, tap "Add".*
 4. Console.
    - *Authentication → Users*: a new anonymous user, a uid you have not seen yet.
    - A new `kitchens` document and a new `shoppingLists` document for it.
-5. Sign in again with the same Google account.
+5. Sign in again with the same Google account and tap "Switch" in the dialog.
    - The data from scenario 2 is back: the same kitchen and code as in scenario 2, and the
      shopping item you added there.
 

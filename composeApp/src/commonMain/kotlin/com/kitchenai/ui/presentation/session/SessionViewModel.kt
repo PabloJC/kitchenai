@@ -148,7 +148,7 @@ class SessionViewModel(
         return (kitchen.ensureDefaultList(kitchenId, labels) as? AppResult.Failure)?.error
     }
 
-    /** The uid can change after `Ready`: a Google sign-in swaps it (#186) and a sign-out clears it. */
+    /** The uid can change after `Ready`: a confirmed switch to an existing Google account (#250) or a sign-out. */
     private fun watchSessionChanges() {
         if (watchingSession) return
         watchingSession = true

@@ -80,7 +80,12 @@ internal class FakeSessionPort(
 
     var signInResult: AppResult<Session.SignedIn> = AppResult.Success(anonymousUser)
     var signInWithGoogleResult: AppResult<Session.SignedIn> = AppResult.Success(anonymousUser)
+    var linkWithGoogleResult: AppResult<Session.SignedIn> = AppResult.Success(anonymousUser)
     var lastGoogleAccessToken: GoogleAccessToken? = null
+    var signInWithGoogleCalls: Int = 0
+        private set
+    var linkWithGoogleCalls: Int = 0
+        private set
     var signOutResult: AppResult<Unit> = AppResult.Success(Unit)
     var signInCalls: Int = 0
         private set
@@ -98,8 +103,20 @@ internal class FakeSessionPort(
         idToken: GoogleIdToken,
         accessToken: GoogleAccessToken?,
     ): AppResult<Session.SignedIn> {
+        signInWithGoogleCalls++
         lastGoogleAccessToken = accessToken
         val result = signInWithGoogleResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
+
+    override suspend fun linkWithGoogle(
+        idToken: GoogleIdToken,
+        accessToken: GoogleAccessToken?,
+    ): AppResult<Session.SignedIn> {
+        linkWithGoogleCalls++
+        lastGoogleAccessToken = accessToken
+        val result = linkWithGoogleResult
         if (result is AppResult.Success) state.value = result.data
         return result
     }

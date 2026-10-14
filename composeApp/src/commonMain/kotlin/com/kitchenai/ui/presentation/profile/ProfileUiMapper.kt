@@ -28,6 +28,7 @@ internal fun uiState(
         signedInWithGoogle = account.session.isGoogleSignedIn(),
         displayName = profile?.displayName,
         isAuthenticating = account.authenticating,
+        isConfirmingAccountSwitch = account.confirmingSwitch,
         error = failure,
     )
 }

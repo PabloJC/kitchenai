@@ -6,8 +6,13 @@ import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import com.kitchenai.shared.domain.usecase.UseCase
+import kotlinx.coroutines.flow.first
 
-/** A thin pass-through: no idempotency check, since reaching this use case is itself a deliberate choice to sign in. */
+/**
+ * Links first: an anonymous user keeps their uid, and so their kitchen. A Google account that already
+ * has a uid comes back as `AppError.Conflict`; replacing the session is [SwitchToGoogleAccountUseCase]'s
+ * job, taken only once the user agreed to leave the guest data behind (#250).
+ */
 class SignInWithGoogleUseCase(
     private val session: SessionRepositoryContract,
 ) : UseCase<GoogleIdToken, Session.SignedIn> {
@@ -17,5 +22,12 @@ class SignInWithGoogleUseCase(
     suspend operator fun invoke(
         token: GoogleIdToken,
         accessToken: GoogleAccessToken?,
-    ): AppResult<Session.SignedIn> = session.signInWithGoogle(token, accessToken)
+    ): AppResult<Session.SignedIn> {
+        val current = session.observeSession().first()
+        return if (current is Session.SignedIn && current.isAnonymous) {
+            session.linkWithGoogle(token, accessToken)
+        } else {
+            session.signInWithGoogle(token, accessToken)
+        }
+    }
 }

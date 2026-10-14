@@ -26,6 +26,9 @@ sealed class AppError(open val cause: Throwable? = null) {
 
     data class Validation(val field: String, val reason: String) : AppError()
 
+    /** What the call would create already belongs to someone else, e.g. a Google account with its own uid. */
+    data class Conflict(override val cause: Throwable? = null) : AppError(cause)
+
     data class Unknown(override val cause: Throwable? = null) : AppError(cause)
 }
 

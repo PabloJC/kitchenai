@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +40,10 @@ import com.kitchenai.ui.resources.profile_no_vocabulary
 import com.kitchenai.ui.resources.profile_save
 import com.kitchenai.ui.resources.profile_saving
 import com.kitchenai.ui.resources.profile_sent_summary
+import com.kitchenai.ui.resources.profile_switch_body
+import com.kitchenai.ui.resources.profile_switch_cancel
+import com.kitchenai.ui.resources.profile_switch_confirm
+import com.kitchenai.ui.resources.profile_switch_title
 import com.kitchenai.ui.resources.profile_vocabulary_failed
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -75,31 +80,12 @@ private fun ProfileContent(
     onOpenKitchen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val launcher = rememberGoogleSignInLauncher()
-    val scope = rememberCoroutineScope()
-
-    // isAuthenticating alone lags a whole async window behind: it only flips once
-    // viewModel.signInWithGoogle() is called, which is after launcher.launch()'s platform
-    // credential sheet has already returned. This closes that window so a second tap during
-    // it cannot stack a second concurrent credential sheet.
-    var signInLaunching by remember { mutableStateOf(false) }
-
     // A Column with a weighted middle, not one LazyColumn top to bottom: TransparencyLine and
     // SaveRow stay fixed so the empty state has a bounded height to centre inside — matching
     // ShoppingScreen's own header/content/footer split — and Save never needs a scroll to reach.
     Column(modifier = modifier.fillMaxSize()) {
         Spacer(Modifier.height(Dimens.large))
-        AccountSection(
-            signedInWithGoogle = state.signedInWithGoogle,
-            displayName = state.displayName,
-            isAuthenticating = state.isAuthenticating || signInLaunching,
-            onSignIn = {
-                if (signInLaunching) return@AccountSection
-                signInLaunching = true
-                scope.launch { performGoogleSignIn(launcher, viewModel) { signInLaunching = false } }
-            },
-            onSignOut = viewModel::signOut,
-        )
+        AccountArea(state, viewModel)
         Spacer(Modifier.height(Dimens.medium))
         TransparencyLine()
         Spacer(Modifier.height(Dimens.medium))
@@ -146,6 +132,53 @@ private fun ProfileContent(
         )
         Spacer(Modifier.height(Dimens.large))
     }
+}
+
+/** The sign-in button or the signed-in row, the platform sheet behind it, and the switch question. */
+@Composable
+private fun AccountArea(
+    state: ProfileUiState,
+    viewModel: ProfileViewModel,
+) {
+    val launcher = rememberGoogleSignInLauncher()
+    val scope = rememberCoroutineScope()
+
+    // isAuthenticating alone lags a whole async window behind: it only flips once
+    // viewModel.signInWithGoogle() is called, which is after launcher.launch()'s platform
+    // credential sheet has already returned. This closes that window so a second tap during
+    // it cannot stack a second concurrent credential sheet.
+    var signInLaunching by remember { mutableStateOf(false) }
+
+    AccountSection(
+        signedInWithGoogle = state.signedInWithGoogle,
+        displayName = state.displayName,
+        isAuthenticating = state.isAuthenticating || signInLaunching,
+        onSignIn = {
+            if (signInLaunching) return@AccountSection
+            signInLaunching = true
+            scope.launch { performGoogleSignIn(launcher, viewModel) { signInLaunching = false } }
+        },
+        onSignOut = viewModel::signOut,
+    )
+
+    if (state.isConfirmingAccountSwitch) {
+        SwitchAccountDialog(onConfirm = viewModel::confirmAccountSwitch, onDismiss = viewModel::cancelAccountSwitch)
+    }
+}
+
+/** Switching leaves the guest data behind, so it is never the default: dismissing keeps the user a guest. */
+@Composable
+private fun SwitchAccountDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.profile_switch_title)) },
+        text = { Text(stringResource(Res.string.profile_switch_body)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(Res.string.profile_switch_confirm)) } },
+        dismissButton = { Button(onClick = onDismiss) { Text(stringResource(Res.string.profile_switch_cancel)) } },
+    )
 }
 
 /** [onFinished] always runs, cancelled or not, so a stuck sheet can never leave the button disabled forever. */

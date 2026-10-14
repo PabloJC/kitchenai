@@ -6,6 +6,7 @@
     <string name="error_unknown">Something went wrong</string>
     <string name="error_not_found">Cannot find %1$s</string>
     <string name="error_invalid_field">Invalid %1$s: %2$s</string>
+    <string name="error_conflict">That is already in use</string>
     <string name="error_unauthorized_suggestions">This app could not prove who it is, so suggestions are unavailable</string>
     <string name="error_missing_ingredients">You are missing ingredients for this</string>
     <string name="error_unauthorized_own_data">This account is not allowed to read its own data</string>
@@ -120,6 +121,11 @@
     <string name="profile_vocabulary_failed">The vocabulary could not be loaded, so there is nothing to choose from yet.</string>
     <string name="profile_sign_in_google">Sign in with Google</string>
     <string name="profile_sign_out">Sign out</string>
+    <string name="profile_sign_in_benefit">Keeps your pantry, list and recipes, and lets you use them on other devices.</string>
+    <string name="profile_switch_title">Switch to this Google account?</string>
+    <string name="profile_switch_body">This Google account already has its own kitchen. If you switch to it, what you added as a guest stays behind and will no longer be visible.</string>
+    <string name="profile_switch_confirm">Switch</string>
+    <string name="profile_switch_cancel">Stay as guest</string>
     <string name="profile_signed_in_fallback">Signed in</string>
     <string name="profile_kitchen_action">Manage your kitchen</string>
     <string name="kitchen_title">Kitchen</string>

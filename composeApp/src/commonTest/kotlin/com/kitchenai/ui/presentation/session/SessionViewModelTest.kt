@@ -693,6 +693,12 @@ internal class FakeSessionPort : SessionRepositoryContract {
     ): AppResult<Session.SignedIn> =
         signIn.also { result -> if (result is AppResult.Success) sessionChanges.value = result.data }
 
+    override suspend fun linkWithGoogle(
+        idToken: GoogleIdToken,
+        accessToken: GoogleAccessToken?,
+    ): AppResult<Session.SignedIn> =
+        signIn.also { result -> if (result is AppResult.Success) sessionChanges.value = result.data }
+
     override suspend fun signOut(): AppResult<Unit> {
         sessionChanges.value = Session.SignedOut
         return AppResult.Success(Unit)
