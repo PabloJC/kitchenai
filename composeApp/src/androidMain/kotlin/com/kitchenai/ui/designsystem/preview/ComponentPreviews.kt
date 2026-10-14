@@ -93,7 +93,7 @@ private fun SectionAndCoveragePreview() {
 @Composable
 private fun SwipeToDismissRowPreview() {
     PreviewSurface {
-        SwipeToDismissRow(onDismiss = {}) {
+        SwipeToDismissRow(onDismiss = {}, deleteLabel = "Delete") {
             Surface(modifier = Modifier.fillMaxWidth()) {
                 Text("Tomatoes", modifier = Modifier.padding(Dimens.large))
             }
