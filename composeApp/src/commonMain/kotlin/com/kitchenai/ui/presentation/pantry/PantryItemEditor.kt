@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +49,7 @@ import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.pantry_amount
 import com.kitchenai.ui.resources.pantry_clear
+import com.kitchenai.ui.resources.pantry_delete
 import com.kitchenai.ui.resources.pantry_done
 import com.kitchenai.ui.resources.pantry_expiry_in_1_month
 import com.kitchenai.ui.resources.pantry_expiry_in_1_week
@@ -76,6 +78,7 @@ fun PantryItemEditor(
     state: PantryUiState,
     onDismiss: () -> Unit,
     onSubmit: (PantryItemDraft) -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val editing = state.editing
@@ -130,13 +133,35 @@ fun PantryItemEditor(
             )
             ExpiryField(value = expiresAt, onChange = { picked -> expiresAt = picked })
 
-            val draft = draftOf(ingredient, query, amount, unit, location, expiresAt)
-            Button(
-                onClick = { draft?.let(onSubmit) },
-                enabled = draft != null,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(stringResource(Res.string.pantry_save)) }
+            EditorActions(
+                draft = draftOf(ingredient, query, amount, unit, location, expiresAt),
+                canDelete = editing != null,
+                onSubmit = onSubmit,
+                onDelete = onDelete,
+            )
         }
+    }
+}
+
+/** Save, and on an existing row a visible Delete: the swipe on the list is not for everyone. */
+@Composable
+private fun EditorActions(
+    draft: PantryItemDraft?,
+    canDelete: Boolean,
+    onSubmit: (PantryItemDraft) -> Unit,
+    onDelete: () -> Unit,
+) {
+    Button(
+        onClick = { draft?.let(onSubmit) },
+        enabled = draft != null,
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text(stringResource(Res.string.pantry_save)) }
+    if (canDelete) {
+        TextButton(
+            onClick = onDelete,
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(stringResource(Res.string.pantry_delete)) }
     }
 }
 

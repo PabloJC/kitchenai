@@ -100,6 +100,13 @@ class PantryViewModel(
         _state.update { current -> current.copy(editing = null, isEditorOpen = false) }
     }
 
+    /** The editor's own delete: the same removal and undo as a swipe, which not everyone can do. */
+    fun deleteEditing() {
+        val item = _state.value.editing ?: return
+        closeEditor()
+        remove(item)
+    }
+
     /**
      * Adds or overwrites, depending on the row the sheet was opened on. Neither write waits for
      * the network, which is what makes the list move while offline.

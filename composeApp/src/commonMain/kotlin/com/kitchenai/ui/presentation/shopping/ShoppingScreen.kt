@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -52,6 +53,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.not_in_catalogue
 import com.kitchenai.ui.resources.shopping_add_amount
 import com.kitchenai.ui.resources.shopping_amount
 import com.kitchenai.ui.resources.shopping_cancel
@@ -60,6 +62,7 @@ import com.kitchenai.ui.resources.shopping_clear_body
 import com.kitchenai.ui.resources.shopping_clear_title
 import com.kitchenai.ui.resources.shopping_cleared_count
 import com.kitchenai.ui.resources.shopping_default_list
+import com.kitchenai.ui.resources.shopping_delete
 import com.kitchenai.ui.resources.shopping_empty_body
 import com.kitchenai.ui.resources.shopping_empty_title
 import com.kitchenai.ui.resources.shopping_failed_body
@@ -135,6 +138,7 @@ fun ShoppingScreen(
         state = state,
         lineId = editingAmountOf,
         onSave = { id, amount, unit -> viewModel.setQuantity(id, amount, unit) },
+        onDelete = viewModel::remove,
         onClose = { editingAmountOf = null },
     )
 
@@ -245,10 +249,14 @@ private fun ShoppingItemRow(
     onEditAmount: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SwipeToDismissRow(onDismiss = onRemove, modifier = modifier) {
+    SwipeToDismissRow(
+        onDismiss = onRemove,
+        deleteLabel = stringResource(Res.string.shopping_delete),
+        modifier = modifier,
+    ) { deleteAction ->
         Row(
             modifier =
-                Modifier
+                deleteAction
                     .fillMaxWidth()
                     .heightIn(min = Dimens.touchTarget)
                     .toggleable(value = item.checked, role = Role.Checkbox, onValueChange = onCheck)
@@ -266,6 +274,13 @@ private fun ShoppingItemRow(
                     fontStyle = if (item.fromCatalogue) FontStyle.Normal else FontStyle.Italic,
                     textDecoration = if (item.checked) TextDecoration.LineThrough else null,
                 )
+                if (!item.fromCatalogue) {
+                    Text(
+                        text = stringResource(Res.string.not_in_catalogue),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             // Also the way to give a line an amount: without one it cannot move to the pantry.
@@ -285,6 +300,7 @@ private fun EditAmountHost(
     state: ShoppingUiState,
     lineId: String?,
     onSave: (ShoppingItemId, Double, TermRef?) -> Unit,
+    onDelete: (ShoppingItemId) -> Unit,
     onClose: () -> Unit,
 ) {
     val line = (state.unchecked + state.checked).firstOrNull { it.id.value == lineId } ?: return
@@ -295,6 +311,10 @@ private fun EditAmountHost(
             onClose()
             onSave(line.id, amount, unit)
         },
+        onDelete = {
+            onClose()
+            onDelete(line.id)
+        },
         onDismiss = onClose,
     )
 }
@@ -304,6 +324,7 @@ private fun EditAmountDialog(
     line: ShoppingItemUi,
     units: List<Pair<TermRef, String>>,
     onSave: (Double, TermRef?) -> Unit,
+    onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var amount by remember { mutableStateOf(line.amount) }
@@ -332,7 +353,17 @@ private fun EditAmountDialog(
                 enabled = valid,
             ) { Text(stringResource(Res.string.shopping_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.shopping_cancel)) } },
+        dismissButton = {
+            // Delete sits with Cancel, away from Save: the visible way to remove a line that a
+            // swipe offers only to those who can make one.
+            Row {
+                TextButton(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text(stringResource(Res.string.shopping_delete)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.shopping_cancel)) }
+            }
+        },
     )
 }
 

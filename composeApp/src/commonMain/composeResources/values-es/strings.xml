@@ -41,12 +41,14 @@
     <string name="pantry_add">Añadir</string>
     <string name="pantry_undo">Deshacer</string>
     <string name="pantry_removed">Eliminado</string>
+    <string name="pantry_delete">Eliminar</string>
     <string name="pantry_empty_title">La despensa está vacía</string>
     <string name="pantry_empty_body">Añade lo que ya tienes y las sugerencias empiezan a funcionar</string>
     <string name="pantry_section_expired">Caducado</string>
     <string name="pantry_section_soon">Consumir pronto</string>
     <string name="pantry_section_fresh">Fresco</string>
     <string name="pantry_section_undated">Sin fecha de caducidad</string>
+    <string name="not_in_catalogue">No está en el catálogo</string>
     <string name="pantry_expires_today">Caduca hoy</string>
     <string name="pantry_expires_tomorrow">Caduca mañana</string>
     <string name="pantry_expired_yesterday">Caducó ayer</string>
@@ -70,6 +72,7 @@
     <string name="shopping_clear">Vaciar</string>
     <string name="shopping_move_to_pantry">Mover a la despensa</string>
     <string name="shopping_cancel">Cancelar</string>
+    <string name="shopping_delete">Eliminar</string>
     <string name="shopping_clear_title">¿Vaciar lo que hay en el carro?</string>
     <string name="shopping_clear_body">Las líneas marcadas se eliminan de la lista en todos los dispositivos.</string>
     <string name="shopping_failed_title">La lista no se ha cargado</string>
@@ -99,6 +102,13 @@
     <string name="detail_candidate_prompt">En tu despensa como</string>
     <string name="detail_steps">Pasos</string>
     <string name="detail_servings">Raciones</string>
+    <string name="detail_servings_decrease">Menos raciones</string>
+    <string name="detail_servings_increase">Más raciones</string>
+    <plurals name="detail_servings_count">
+        <item quantity="one">%1$d ración</item>
+        <item quantity="other">%1$d raciones</item>
+    </plurals>
+    <string name="detail_step_spoken">Paso %1$d de %2$d: %3$s</string>
     <string name="detail_add_missing">Añadir lo que falta</string>
     <string name="detail_cook">Cocinar esto</string>
     <plurals name="detail_cook_missing_hint">
@@ -180,6 +190,7 @@
     <string name="kitchen_code_regenerated">Código nuevo listo</string>
     <string name="strength_prefer">Prefiero</string>
     <string name="strength_avoid">Evitar</string>
+    <string name="strength_change_to">Cambiar a %1$s</string>
     <string name="tab_pantry">Despensa</string>
     <string name="tab_shopping">Compra</string>
     <string name="tab_ideas">Ideas</string>

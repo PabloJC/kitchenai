@@ -44,12 +44,14 @@
     <string name="pantry_add">Add</string>
     <string name="pantry_undo">Undo</string>
     <string name="pantry_removed">Removed</string>
+    <string name="pantry_delete">Delete</string>
     <string name="pantry_empty_title">The pantry is empty</string>
     <string name="pantry_empty_body">Add what you already have and the suggestions start working</string>
     <string name="pantry_section_expired">Expired</string>
     <string name="pantry_section_soon">Use soon</string>
     <string name="pantry_section_fresh">Fresh</string>
     <string name="pantry_section_undated">No expiry date</string>
+    <string name="not_in_catalogue">Not in catalogue</string>
     <string name="pantry_expires_today">Expires today</string>
     <string name="pantry_expires_tomorrow">Expires tomorrow</string>
     <string name="pantry_expired_yesterday">Expired yesterday</string>
@@ -73,6 +75,7 @@
     <string name="shopping_clear">Clear</string>
     <string name="shopping_move_to_pantry">Move to pantry</string>
     <string name="shopping_cancel">Cancel</string>
+    <string name="shopping_delete">Delete</string>
     <string name="shopping_clear_title">Clear what is in the cart?</string>
     <string name="shopping_clear_body">The ticked lines are removed from the list on every device.</string>
     <string name="shopping_failed_title">The list did not load</string>
@@ -102,6 +105,13 @@
     <string name="detail_candidate_prompt">In your pantry as</string>
     <string name="detail_steps">Steps</string>
     <string name="detail_servings">Servings</string>
+    <string name="detail_servings_decrease">Decrease servings</string>
+    <string name="detail_servings_increase">Increase servings</string>
+    <plurals name="detail_servings_count">
+        <item quantity="one">%1$d serving</item>
+        <item quantity="other">%1$d servings</item>
+    </plurals>
+    <string name="detail_step_spoken">Step %1$d of %2$d: %3$s</string>
     <string name="detail_add_missing">Add missing</string>
     <string name="detail_cook">Cook this</string>
     <plurals name="detail_cook_missing_hint">
@@ -183,6 +193,7 @@
     <string name="kitchen_code_regenerated">New code ready</string>
     <string name="strength_prefer">Prefer</string>
     <string name="strength_avoid">Avoid</string>
+    <string name="strength_change_to">Change to %1$s</string>
     <string name="tab_pantry">Pantry</string>
     <string name="tab_shopping">Shopping</string>
     <string name="tab_ideas">Ideas</string>

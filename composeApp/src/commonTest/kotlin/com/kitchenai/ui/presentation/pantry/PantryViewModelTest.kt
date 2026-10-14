@@ -50,6 +50,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -274,6 +275,22 @@ class PantryViewModelTest {
                 assertEquals(itemId, removed.restore.id)
             }
             assertEquals(listOf(itemId), pantry.removed)
+        }
+
+    @Test
+    fun `deleting from the editor closes it and removes the row with an undo`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            val row = viewModel.state.value.items.single()
+            viewModel.openEditor(row)
+
+            viewModel.events.test {
+                viewModel.deleteEditing()
+                advanceUntilIdle()
+                assertEquals(itemId, (awaitItem() as PantryEvent.ItemRemoved).restore.id)
+            }
+            assertEquals(listOf(itemId), pantry.removed)
+            assertFalse(viewModel.state.value.isEditorOpen)
         }
 
     @Test

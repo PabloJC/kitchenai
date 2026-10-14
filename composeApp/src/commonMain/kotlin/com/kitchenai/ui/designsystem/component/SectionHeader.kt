@@ -8,6 +8,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.kitchenai.ui.designsystem.theme.Dimens
 
 /** [trailing] is a slot rather than a label plus a lambda: some headers carry a count, others a button. */
@@ -25,7 +27,8 @@ fun SectionHeader(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
+            // A heading, so TalkBack and VoiceOver can jump section to section.
+            modifier = Modifier.weight(1f).semantics { heading() },
         )
         trailing?.invoke()
     }

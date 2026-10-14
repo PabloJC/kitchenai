@@ -19,19 +19,26 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import com.kitchenai.ui.designsystem.theme.Dimens
 
 /**
  * The delete gesture shared by the pantry and the shopping list. Swiping only from the end
  * side: the start side is where a back gesture lives on both platforms.
  *
- * [onDismiss] fires once the swipe is confirmed; removing the item is the caller's job.
+ * [onDismiss] fires once the swipe is confirmed; removing the item is the caller's job. A swipe
+ * is out of reach for TalkBack, VoiceOver and Switch Access, so the same delete is also offered
+ * as an accessibility action named [deleteLabel]. [content] gets it as a modifier to put on its
+ * own focusable node: a screen reader lists only the actions of the node it lands on.
  */
 @Composable
 fun SwipeToDismissRow(
     onDismiss: () -> Unit,
+    deleteLabel: String,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
+    content: @Composable (deleteAction: Modifier) -> Unit,
 ) {
     val state = rememberSwipeToDismissBoxState()
     val dismiss by rememberUpdatedState(onDismiss)
@@ -65,6 +72,18 @@ fun SwipeToDismissRow(
             }
         },
         // Opaque: the reveal is drawn behind it all the time, so a transparent row would show it.
-        content = { Box(Modifier.background(MaterialTheme.colorScheme.background)) { content() } },
+        content = {
+            val deleteAction =
+                Modifier.semantics {
+                    customActions =
+                        listOf(
+                            CustomAccessibilityAction(deleteLabel) {
+                                dismiss()
+                                true
+                            },
+                        )
+                }
+            Box(Modifier.background(MaterialTheme.colorScheme.background)) { content(deleteAction) }
+        },
     )
 }

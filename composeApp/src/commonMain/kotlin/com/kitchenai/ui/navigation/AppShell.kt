@@ -16,6 +16,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -54,7 +56,10 @@ fun AppShell(
                     // A tab keeps its own label; a screen with no tab — recipe detail, today —
                     // gets to say what its title is instead of settling for a generic one.
                     val title = if (tab == null) detailTopBar.title else null
-                    Text(title ?: stringResource(tab?.label ?: Res.string.detail_title))
+                    Text(
+                        title ?: stringResource(tab?.label ?: Res.string.detail_title),
+                        modifier = Modifier.semantics { heading() },
+                    )
                 },
                 navigationIcon = {
                     // Only a screen opened from a tab needs a way out: every tab is reached by
