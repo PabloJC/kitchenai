@@ -124,8 +124,8 @@
     <string name="profile_sign_in_google">Sign in with Google</string>
     <string name="profile_sign_out">Sign out</string>
     <string name="profile_sign_in_benefit">Keeps your pantry, list and recipes, and lets you use them on other devices.</string>
-    <string name="profile_switch_title">Switch to this Google account?</string>
-    <string name="profile_switch_body">This Google account already has its own kitchen. If you switch to it, what you added as a guest stays behind and will no longer be visible.</string>
+    <string name="profile_switch_title">Switch to this account?</string>
+    <string name="profile_switch_body">This account already has its own kitchen. If you switch to it, what you added as a guest stays behind and will no longer be visible.</string>
     <string name="profile_switch_confirm">Switch</string>
     <string name="profile_switch_cancel">Stay as guest</string>
     <string name="profile_signed_in_fallback">Signed in</string>

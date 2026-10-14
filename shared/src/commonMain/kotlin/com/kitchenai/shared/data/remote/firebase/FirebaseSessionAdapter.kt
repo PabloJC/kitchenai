@@ -3,12 +3,17 @@ package com.kitchenai.shared.data.remote.firebase
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.DispatcherProvider
+import com.kitchenai.shared.domain.model.AppleIdToken
+import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.port.SessionRepositoryContract
+import dev.gitlive.firebase.auth.AuthCredential
 import dev.gitlive.firebase.auth.FirebaseAuth
+import dev.gitlive.firebase.auth.FirebaseUser
 import dev.gitlive.firebase.auth.GoogleAuthProvider
+import dev.gitlive.firebase.auth.OAuthProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -58,46 +63,53 @@ class FirebaseSessionAdapter(
     override suspend fun signInWithGoogle(
         idToken: GoogleIdToken,
         accessToken: GoogleAccessToken?,
-    ): AppResult<Session.SignedIn> {
-        val signedIn =
-            firestoreCall(dispatchers) {
-                auth.signInWithCredential(GoogleAuthProvider.credential(idToken.value, accessToken?.value)).user
-            }
-
-        return when (signedIn) {
-            is AppResult.Failure -> signedIn
-            is AppResult.Success ->
-                when (val session = signedIn.data.toSession()) {
-                    is Session.SignedIn -> AppResult.Success(session)
-                    Session.SignedOut -> AppResult.Failure(AppError.Unknown(MISSING_USER))
-                }
-        }
-    }
+    ): AppResult<Session.SignedIn> = signIn { GoogleAuthProvider.credential(idToken.value, accessToken?.value) }
 
     override suspend fun linkWithGoogle(
         idToken: GoogleIdToken,
         accessToken: GoogleAccessToken?,
-    ): AppResult<Session.SignedIn> {
-        val linkedUser =
-            firestoreCall(dispatchers) {
-                val user = auth.currentUser ?: throw MISSING_USER
-                user.linkWithCredential(GoogleAuthProvider.credential(idToken.value, accessToken?.value)).user
-            }
+    ): AppResult<Session.SignedIn> = link { GoogleAuthProvider.credential(idToken.value, accessToken?.value) }
 
-        return when (linkedUser) {
-            is AppResult.Failure -> linkedUser
+    override suspend fun signInWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AppResult<Session.SignedIn> = signIn { appleCredential(idToken, rawNonce) }
+
+    override suspend fun linkWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AppResult<Session.SignedIn> = link { appleCredential(idToken, rawNonce) }
+
+    // The credential is built inside the call: the iOS factory can throw, and only firestoreCall maps that.
+    private suspend fun signIn(credential: () -> AuthCredential): AppResult<Session.SignedIn> =
+        firestoreCall(dispatchers) { auth.signInWithCredential(credential()).user }.toSignedIn()
+
+    private suspend fun link(credential: () -> AuthCredential): AppResult<Session.SignedIn> =
+        firestoreCall(dispatchers) {
+            val user = auth.currentUser ?: throw MISSING_USER
+            user.linkWithCredential(credential()).user
+        }.toSignedIn().also { result -> if (result is AppResult.Success) linked.tryEmit(result.data) }
+
+    private fun AppResult<FirebaseUser?>.toSignedIn(): AppResult<Session.SignedIn> =
+        when (this) {
+            is AppResult.Failure -> this
             is AppResult.Success ->
-                when (val session = linkedUser.data.toSession()) {
-                    is Session.SignedIn -> AppResult.Success(session).also { linked.tryEmit(session) }
+                when (val session = data.toSession()) {
+                    is Session.SignedIn -> AppResult.Success(session)
                     Session.SignedOut -> AppResult.Failure(AppError.Unknown(MISSING_USER))
                 }
         }
-    }
+
+    private fun appleCredential(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AuthCredential = OAuthProvider.credential(APPLE_PROVIDER, idToken = idToken.value, rawNonce = rawNonce.value)
 
     override suspend fun signOut(): AppResult<Unit> = firestoreCall(dispatchers) { auth.signOut() }
 
     private companion object {
         // Asserting non-null here would trade a handled failure for a crash.
         val MISSING_USER = IllegalStateException("Sign-in returned no user")
+        const val APPLE_PROVIDER = "apple.com"
     }
 }

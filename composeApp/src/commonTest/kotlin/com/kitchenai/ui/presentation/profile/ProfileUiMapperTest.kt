@@ -55,7 +55,7 @@ class ProfileUiMapperTest {
 
         val state = accountUiState(account)
 
-        assertEquals(false, state.signedInWithGoogle)
+        assertEquals(false, state.hasAccount)
     }
 
     @Test
@@ -64,7 +64,7 @@ class ProfileUiMapperTest {
 
         val state = accountUiState(account)
 
-        assertEquals(false, state.signedInWithGoogle)
+        assertEquals(false, state.hasAccount)
     }
 
     @Test
@@ -74,7 +74,7 @@ class ProfileUiMapperTest {
 
         val state = accountUiState(account, draft)
 
-        assertEquals(true, state.signedInWithGoogle)
+        assertEquals(true, state.hasAccount)
         assertEquals("Ada", state.displayName)
     }
 
