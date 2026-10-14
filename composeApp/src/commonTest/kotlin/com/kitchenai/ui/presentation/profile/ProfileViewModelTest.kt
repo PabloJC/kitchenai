@@ -2,6 +2,8 @@ package com.kitchenai.ui.presentation.profile
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.AppleIdToken
+import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
@@ -24,8 +26,10 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
+import com.kitchenai.shared.domain.usecase.session.SignInWithAppleUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithGoogleUseCase
 import com.kitchenai.shared.domain.usecase.session.SignOutUseCase
+import com.kitchenai.shared.domain.usecase.session.SwitchToAppleAccountUseCase
 import com.kitchenai.shared.domain.usecase.session.SwitchToGoogleAccountUseCase
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.PendingDisplayName
@@ -329,7 +333,7 @@ class ProfileViewModelTest {
             assertEquals(1, sessions.linkCalls)
             assertEquals(0, sessions.signInWithGoogleCalls)
             assertEquals(PendingDisplayName.Entry("Ada Lovelace", userId), pendingName.current.value)
-            assertEquals(true, viewModel.state.value.signedInWithGoogle)
+            assertEquals(true, viewModel.state.value.hasAccount)
             assertEquals(false, viewModel.state.value.isConfirmingAccountSwitch)
         }
 
@@ -343,7 +347,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             assertEquals(true, viewModel.state.value.isConfirmingAccountSwitch)
-            assertEquals(false, viewModel.state.value.signedInWithGoogle)
+            assertEquals(false, viewModel.state.value.hasAccount)
             assertEquals(false, viewModel.state.value.isAuthenticating)
             assertNull(viewModel.state.value.generalError)
             assertNull(pendingName.current.value)
@@ -385,6 +389,70 @@ class ProfileViewModelTest {
             assertEquals(GoogleAccessToken("access-token"), sessions.lastAccessToken)
             assertEquals(false, viewModel.state.value.isConfirmingAccountSwitch)
             assertEquals(PendingDisplayName.Entry("Ada Lovelace", googleUserId), pendingName.current.value)
+        }
+
+    @Test
+    fun `a guest who signs in with Apple is linked and gets the name Apple returned`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+
+            viewModel.signInWithApple(AppleIdToken("apple-token"), AppleRawNonce("nonce"), "Ada Lovelace")
+            advanceUntilIdle()
+
+            assertEquals(1, sessions.linkWithAppleCalls)
+            assertEquals(AppleRawNonce("nonce"), sessions.lastAppleNonce)
+            assertEquals(PendingDisplayName.Entry("Ada Lovelace", userId), pendingName.current.value)
+            assertEquals(true, viewModel.state.value.hasAccount)
+        }
+
+    @Test
+    fun `an Apple ID with its own kitchen asks and confirming needs Apple's sheet again`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.linkWithAppleResult = AppResult.Failure(AppError.Conflict())
+
+            viewModel.signInWithApple(AppleIdToken("apple-token"), AppleRawNonce("nonce"), null)
+            advanceUntilIdle()
+            // The consumed nonce cannot be replayed, so the plain confirm does nothing for Apple.
+            viewModel.confirmAccountSwitch()
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.state.value.isConfirmingAccountSwitch)
+            assertEquals(true, viewModel.state.value.switchNeedsAppleSheet)
+            assertEquals(0, sessions.signInWithAppleCalls)
+            assertNull(viewModel.state.value.generalError)
+        }
+
+    @Test
+    fun `the confirmed Apple switch signs in with the fresh token and binds the name to that uid`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            val appleUserId = (UserId.of("user-apple") as AppResult.Success).data
+            sessions.linkWithAppleResult = AppResult.Failure(AppError.Conflict())
+            sessions.signInWithAppleResult = AppResult.Success(Session.SignedIn(appleUserId, isAnonymous = false))
+            viewModel.signInWithApple(AppleIdToken("apple-token"), AppleRawNonce("nonce-1"), null)
+            advanceUntilIdle()
+
+            viewModel.switchToAppleAccount(AppleIdToken("apple-token-2"), AppleRawNonce("nonce-2"), "Ada Lovelace")
+            advanceUntilIdle()
+
+            assertEquals(1, sessions.signInWithAppleCalls)
+            assertEquals(AppleRawNonce("nonce-2"), sessions.lastAppleNonce)
+            assertEquals(false, viewModel.state.value.isConfirmingAccountSwitch)
+            assertEquals(PendingDisplayName.Entry("Ada Lovelace", appleUserId), pendingName.current.value)
+        }
+
+    @Test
+    fun `a Google conflict does not need Apple's sheet`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.linkWithGoogleResult = AppResult.Failure(AppError.Conflict())
+
+            viewModel.signInWithGoogle(GoogleIdToken("id-token"), null)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.state.value.isConfirmingAccountSwitch)
+            assertEquals(false, viewModel.state.value.switchNeedsAppleSheet)
         }
 
     @Test
@@ -476,7 +544,7 @@ class ProfileViewModelTest {
             viewModel.signInWithGoogle(GoogleIdToken("id-token"), "Ada Lovelace")
             advanceUntilIdle()
 
-            assertEquals(false, viewModel.state.value.signedInWithGoogle)
+            assertEquals(false, viewModel.state.value.hasAccount)
             assertEquals(before.displayName, viewModel.state.value.displayName)
             assertEquals(before.sections, viewModel.state.value.sections)
             assertEquals(0, profiles.saveCount)
@@ -523,7 +591,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             assertEquals(freshUserId, profiles.observedUserIds.last())
-            assertEquals(false, viewModel.state.value.signedInWithGoogle)
+            assertEquals(false, viewModel.state.value.hasAccount)
         }
 
     /** The raw session stream runs ahead of SessionViewModel's setup: only start() may move the listener. */
@@ -537,7 +605,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             assertEquals(listOf(userId), profiles.observedUserIds)
-            assertEquals(true, viewModel.state.value.signedInWithGoogle)
+            assertEquals(true, viewModel.state.value.hasAccount)
         }
 
     private suspend fun TestScope.ready(vararg sizes: Pair<String, Int>): ProfileViewModel {
@@ -591,6 +659,8 @@ class ProfileViewModelTest {
                     observeSession = ObserveSessionUseCase(sessions),
                     signInWithGoogle = SignInWithGoogleUseCase(sessions),
                     switchToGoogleAccount = SwitchToGoogleAccountUseCase(sessions),
+                    signInWithApple = SignInWithAppleUseCase(sessions),
+                    switchToAppleAccount = SwitchToAppleAccountUseCase(sessions),
                     signOut = SignOutUseCase(sessions),
                     pendingDisplayName = pendingName,
                 ),
@@ -698,6 +768,13 @@ private class FakeSessionPort(
     var lastAccessToken: GoogleAccessToken? = null
     var signInWithGoogleCalls = 0
     var linkCalls = 0
+    var signInWithAppleResult: AppResult<Session.SignedIn> =
+        AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
+    var linkWithAppleResult: AppResult<Session.SignedIn> =
+        AppResult.Success(Session.SignedIn(userId, isAnonymous = false))
+    var lastAppleNonce: AppleRawNonce? = null
+    var signInWithAppleCalls = 0
+    var linkWithAppleCalls = 0
 
     override fun observeSession(): Flow<Session> = state
 
@@ -726,6 +803,28 @@ private class FakeSessionPort(
         linkCalls++
         lastAccessToken = accessToken
         val result = linkWithGoogleResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
+
+    override suspend fun signInWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AppResult<Session.SignedIn> {
+        signInWithAppleCalls++
+        lastAppleNonce = rawNonce
+        val result = signInWithAppleResult
+        if (result is AppResult.Success) state.value = result.data
+        return result
+    }
+
+    override suspend fun linkWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AppResult<Session.SignedIn> {
+        linkWithAppleCalls++
+        lastAppleNonce = rawNonce
+        val result = linkWithAppleResult
         if (result is AppResult.Success) state.value = result.data
         return result
     }

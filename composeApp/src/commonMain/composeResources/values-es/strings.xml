@@ -135,8 +135,8 @@
     <string name="profile_sign_in_google">Iniciar sesión con Google</string>
     <string name="profile_sign_out">Cerrar sesión</string>
     <string name="profile_sign_in_benefit">Conserva tu despensa, tu lista y tus recetas, y te permite usarlas en otros dispositivos.</string>
-    <string name="profile_switch_title">¿Cambiar a esta cuenta de Google?</string>
-    <string name="profile_switch_body">Esta cuenta de Google ya tiene su propia cocina. Si cambias a ella, lo que añadiste como invitado se queda atrás y dejará de verse.</string>
+    <string name="profile_switch_title">¿Cambiar a esta cuenta?</string>
+    <string name="profile_switch_body">Esta cuenta ya tiene su propia cocina. Si cambias a ella, lo que añadiste como invitado se queda atrás y dejará de verse.</string>
     <string name="profile_switch_confirm">Cambiar</string>
     <string name="profile_switch_cancel">Seguir como invitado</string>
     <string name="profile_signed_in_fallback">Sesión iniciada</string>

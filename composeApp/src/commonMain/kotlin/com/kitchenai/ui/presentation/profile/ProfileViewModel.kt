@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.AppleIdToken
+import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
@@ -48,11 +50,10 @@ class ProfileViewModel(
     private val saving = MutableStateFlow(false)
     private val session = MutableStateFlow<Session?>(null)
     private val authenticating = MutableStateFlow(false)
-    private val confirmingSwitch = MutableStateFlow(false)
-    private val account = combine(session, authenticating, confirmingSwitch, ::AccountState)
 
-    // Held only while the switch dialog is open: a refused link is answered by the user, not retried here.
-    private var pendingSwitch: PendingSwitch? = null
+    // Set only while the switch dialog is open: a refused link is answered by the user, not retried here.
+    private val pendingSwitch = MutableStateFlow<PendingSwitch?>(null)
+    private val account = combine(session, authenticating, pendingSwitch, ::AccountState)
 
     // One per source, each cleared by its own stream recovering, so one source never silences another.
     private val profileFailure = MutableStateFlow<ProfileError?>(null)
@@ -114,36 +115,54 @@ class ProfileViewModel(
         displayName: String?,
         accessToken: GoogleAccessToken? = null,
     ) = authenticate(displayName) {
-        when (val result = accountDelegate.signInWithGoogle(token, accessToken)) {
-            is AppResult.Failure ->
-                if (result.error is AppError.Conflict) {
-                    accountDelegate.pendingDisplayName.dropUnbound()
-                    pendingSwitch = PendingSwitch(token, accessToken, displayName)
-                    confirmingSwitch.value = true
-                    AppResult.Success(null)
-                } else {
-                    result
-                }
-            is AppResult.Success -> result
+        accountDelegate.signInWithGoogle(token, accessToken).askOnConflict {
+            PendingSwitch(displayName) { accountDelegate.switchToGoogleAccount(token, accessToken) }
         }
     }
 
-    /** The user agreed to leave the guest data behind; the same Google tokens sign in to the existing account. */
+    /** [signInWithGoogle] for Apple. Apple sends the name only on an Apple ID's first authorisation. */
+    fun signInWithApple(
+        token: AppleIdToken,
+        rawNonce: AppleRawNonce,
+        displayName: String?,
+    ) = authenticate(displayName) {
+        // No retry kept: the refused link consumed the nonce, so a switch needs a fresh token from the sheet.
+        accountDelegate.signInWithApple(token, rawNonce).askOnConflict { PendingSwitch(displayName, retry = null) }
+    }
+
+    /** The user agreed to leave the guest data behind; Google's tokens are reused to sign in to that account. */
     fun confirmAccountSwitch() {
-        val switch = pendingSwitch ?: return
-        pendingSwitch = null
-        confirmingSwitch.value = false
-        authenticate(switch.displayName) { accountDelegate.switchToGoogleAccount(switch.token, switch.accessToken) }
+        val switch = pendingSwitch.value ?: return
+        val retry = switch.retry ?: return
+        pendingSwitch.value = null
+        authenticate(switch.displayName, retry)
+    }
+
+    /** The confirmed Apple switch, with the token the screen fetched again from Apple's sheet. */
+    fun switchToAppleAccount(
+        token: AppleIdToken,
+        rawNonce: AppleRawNonce,
+        displayName: String?,
+    ) {
+        pendingSwitch.value = null
+        authenticate(displayName) { accountDelegate.switchToAppleAccount(token, rawNonce) }
     }
 
     /** Staying a guest changes nothing: the anonymous uid and everything under it are untouched. */
     fun cancelAccountSwitch() {
-        pendingSwitch = null
-        confirmingSwitch.value = false
+        pendingSwitch.value = null
     }
 
-    /** A cancelled or failed platform sheet never reaches a use case but still owes the user a reason. */
-    fun onGoogleSignInFailed(error: AppError) {
+    /** A refused link opens the switch dialog instead of failing; a success with no session tells [authenticate]. */
+    private fun AppResult<Session.SignedIn>.askOnConflict(switch: () -> PendingSwitch): AppResult<Session.SignedIn?> {
+        if (this !is AppResult.Failure || error !is AppError.Conflict) return this
+        accountDelegate.pendingDisplayName.dropUnbound()
+        pendingSwitch.value = switch()
+        return AppResult.Success(null)
+    }
+
+    /** A cancelled or failed Google or Apple sheet never reaches a use case but still owes the user a reason. */
+    fun onSignInSheetFailed(error: AppError) {
         writeFailure.value = error.toProfileError()
     }
 
@@ -281,14 +300,16 @@ internal data class ProfileDraft(
 internal data class AccountState(
     val session: Session?,
     val authenticating: Boolean,
-    val confirmingSwitch: Boolean = false,
+    val pendingSwitch: PendingSwitch? = null,
 )
 
-/** The refused link's tokens, kept so a confirmed switch does not open the Google sheet a second time. */
-private class PendingSwitch(
-    val token: GoogleIdToken,
-    val accessToken: GoogleAccessToken?,
+/**
+ * A refused link waiting for the user's answer. [retry] reuses Google's tokens so its sheet does not open
+ * twice; null means Apple, whose sheet must be shown again for a fresh nonce.
+ */
+internal class PendingSwitch(
     val displayName: String?,
+    val retry: (suspend () -> AppResult<Session.SignedIn>)?,
 )
 
 /** The catalogue as the screen needs it: what exists, what is in it, and what failed to load. */

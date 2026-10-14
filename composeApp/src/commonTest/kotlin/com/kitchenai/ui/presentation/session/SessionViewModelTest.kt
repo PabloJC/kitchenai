@@ -3,6 +3,8 @@ package com.kitchenai.ui.presentation.session
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.AppleIdToken
+import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.KitchenId
@@ -696,6 +698,18 @@ internal class FakeSessionPort : SessionRepositoryContract {
     override suspend fun linkWithGoogle(
         idToken: GoogleIdToken,
         accessToken: GoogleAccessToken?,
+    ): AppResult<Session.SignedIn> =
+        signIn.also { result -> if (result is AppResult.Success) sessionChanges.value = result.data }
+
+    override suspend fun signInWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AppResult<Session.SignedIn> =
+        signIn.also { result -> if (result is AppResult.Success) sessionChanges.value = result.data }
+
+    override suspend fun linkWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
     ): AppResult<Session.SignedIn> =
         signIn.also { result -> if (result is AppResult.Success) sessionChanges.value = result.data }
 

@@ -2,8 +2,10 @@ package com.kitchenai.shared.di
 
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
+import com.kitchenai.shared.domain.usecase.session.SignInWithAppleUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithGoogleUseCase
 import com.kitchenai.shared.domain.usecase.session.SignOutUseCase
+import com.kitchenai.shared.domain.usecase.session.SwitchToAppleAccountUseCase
 import com.kitchenai.shared.domain.usecase.session.SwitchToGoogleAccountUseCase
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -15,5 +17,7 @@ val sessionModule: Module =
         factory { EnsureSessionUseCase(get()) }
         factory { SignInWithGoogleUseCase(get()) }
         factory { SwitchToGoogleAccountUseCase(get()) }
+        factory { SignInWithAppleUseCase(get()) }
+        factory { SwitchToAppleAccountUseCase(get()) }
         factory { SignOutUseCase(get()) }
     }

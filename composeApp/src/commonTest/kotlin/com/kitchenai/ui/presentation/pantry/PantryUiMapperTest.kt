@@ -59,6 +59,13 @@ class PantryUiMapperTest {
     }
 
     @Test
+    fun `a spanish reader sees a decimal comma`() {
+        val resolver = LabelResolver(languageTags = listOf("es-ES"))
+
+        assertEquals("0,75", pantryItem(quantity = Quantity(0.75, null)).toUi(resolver, now).quantityLabel)
+    }
+
+    @Test
     fun `a miss in the catalogue falls back to the identifier`() {
         val item = pantryItem(quantity = Quantity(200.0, null))
 

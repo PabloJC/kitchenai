@@ -25,16 +25,17 @@ internal fun uiState(
         isLoading = draft == null,
         isSaving = saving,
         hasUnsavedChanges = draft?.edited == true,
-        signedInWithGoogle = account.session.isGoogleSignedIn(),
+        hasAccount = account.session.hasAccount(),
         displayName = profile?.displayName,
         isAuthenticating = account.authenticating,
-        isConfirmingAccountSwitch = account.confirmingSwitch,
+        isConfirmingAccountSwitch = account.pendingSwitch != null,
+        switchNeedsAppleSheet = account.pendingSwitch?.let { switch -> switch.retry == null } == true,
         error = failure,
     )
 }
 
 /** Anonymous and signed-out both show the same "sign in" affordance, so only this case is true. */
-private fun Session?.isGoogleSignedIn(): Boolean = this is Session.SignedIn && !isAnonymous
+private fun Session?.hasAccount(): Boolean = this is Session.SignedIn && !isAnonymous
 
 /**
  * One section per taxonomy the catalogue published, in its order. A label that resolves to

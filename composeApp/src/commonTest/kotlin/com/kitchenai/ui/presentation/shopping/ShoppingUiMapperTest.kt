@@ -47,6 +47,13 @@ class ShoppingUiMapperTest {
     }
 
     @Test
+    fun `a spanish reader sees a decimal comma`() {
+        val resolver = LabelResolver(languageTags = listOf("es-ES"))
+
+        assertEquals("1,5", item(quantity = Quantity(1.5, null)).toUi(resolver).quantity)
+    }
+
+    @Test
     fun `a free-text line has no catalogue label`() {
         val item = item(freeText = "Toothpaste")
 

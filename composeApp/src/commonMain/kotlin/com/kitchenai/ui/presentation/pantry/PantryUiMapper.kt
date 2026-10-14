@@ -43,7 +43,7 @@ internal fun PantryItem.toUi(
         freeText = freeText,
         // A free-text holding names itself; only a catalogue one needs the resolver at all.
         name = freeText ?: ingredient?.let { known -> resolver.label(known) ?: known.value }.orEmpty(),
-        quantityLabel = formatQuantity(quantity.amount, unitLabel),
+        quantityLabel = formatQuantity(quantity.amount, unitLabel, resolver.decimalSeparator),
         amount = quantity.amount,
         unit = quantity.unit,
         location = location,

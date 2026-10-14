@@ -24,12 +24,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.AppleIdToken
+import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.AppleSignInLauncher
 import com.kitchenai.ui.platform.GoogleSignInLauncher
+import com.kitchenai.ui.platform.rememberAppleSignInLauncher
 import com.kitchenai.ui.platform.rememberGoogleSignInLauncher
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
@@ -134,13 +138,14 @@ private fun ProfileContent(
     }
 }
 
-/** The sign-in button or the signed-in row, the platform sheet behind it, and the switch question. */
+/** The sign-in buttons or the signed-in row, the platform sheets behind them, and the switch question. */
 @Composable
 private fun AccountArea(
     state: ProfileUiState,
     viewModel: ProfileViewModel,
 ) {
     val launcher = rememberGoogleSignInLauncher()
+    val appleLauncher = rememberAppleSignInLauncher()
     val scope = rememberCoroutineScope()
 
     // isAuthenticating alone lags a whole async window behind: it only flips once
@@ -149,8 +154,16 @@ private fun AccountArea(
     // it cannot stack a second concurrent credential sheet.
     var signInLaunching by remember { mutableStateOf(false) }
 
+    // The first Apple sign-in and a confirmed Apple switch both open the sheet, behind the same guard.
+    val launchApple: ((AppleIdToken, AppleRawNonce, String?) -> Unit) -> Unit = { onToken ->
+        if (appleLauncher != null && !signInLaunching) {
+            signInLaunching = true
+            scope.launch { performAppleSignIn(appleLauncher, viewModel, onToken) { signInLaunching = false } }
+        }
+    }
+
     AccountSection(
-        signedInWithGoogle = state.signedInWithGoogle,
+        hasAccount = state.hasAccount,
         displayName = state.displayName,
         isAuthenticating = state.isAuthenticating || signInLaunching,
         onSignIn = {
@@ -158,11 +171,23 @@ private fun AccountArea(
             signInLaunching = true
             scope.launch { performGoogleSignIn(launcher, viewModel) { signInLaunching = false } }
         },
+        onAppleSignIn = appleLauncher?.let { { launchApple(viewModel::signInWithApple) } },
         onSignOut = viewModel::signOut,
     )
 
     if (state.isConfirmingAccountSwitch) {
-        SwitchAccountDialog(onConfirm = viewModel::confirmAccountSwitch, onDismiss = viewModel::cancelAccountSwitch)
+        SwitchAccountDialog(
+            onConfirm = {
+                // Apple's nonce went with the refused link, so its sheet answers again before the switch.
+                if (state.switchNeedsAppleSheet) {
+                    viewModel.cancelAccountSwitch()
+                    launchApple(viewModel::switchToAppleAccount)
+                } else {
+                    viewModel.confirmAccountSwitch()
+                }
+            },
+            onDismiss = viewModel::cancelAccountSwitch,
+        )
     }
 }
 
@@ -191,7 +216,24 @@ private suspend fun performGoogleSignIn(
         when (val result = launcher.launch()) {
             is AppResult.Success ->
                 viewModel.signInWithGoogle(result.data.token, result.data.displayName, result.data.accessToken)
-            is AppResult.Failure -> viewModel.onGoogleSignInFailed(result.error)
+            is AppResult.Failure -> viewModel.onSignInSheetFailed(result.error)
+        }
+    } finally {
+        onFinished()
+    }
+}
+
+/** [performGoogleSignIn] for Apple; [onToken] is the first sign-in or the confirmed switch. */
+private suspend fun performAppleSignIn(
+    launcher: AppleSignInLauncher,
+    viewModel: ProfileViewModel,
+    onToken: (AppleIdToken, AppleRawNonce, String?) -> Unit,
+    onFinished: () -> Unit,
+) {
+    try {
+        when (val result = launcher.launch()) {
+            is AppResult.Success -> onToken(result.data.token, result.data.rawNonce, result.data.displayName)
+            is AppResult.Failure -> viewModel.onSignInSheetFailed(result.error)
         }
     } finally {
         onFinished()
