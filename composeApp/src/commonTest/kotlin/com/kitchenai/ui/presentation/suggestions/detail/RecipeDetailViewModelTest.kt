@@ -30,6 +30,8 @@ import com.kitchenai.shared.domain.usecase.recipe.CookRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
+import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
+import com.kitchenai.shared.domain.usecase.recipe.RemoveSavedRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SaveRecipeUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
@@ -247,7 +249,7 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
-    fun `saving reports itself once and disables the button`() =
+    fun `saving keeps the dish and fills the heart`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort(catalogue = listOf(dish))
             val viewModel = started(pantry = emptyList(), recipePort = recipes)
@@ -258,6 +260,55 @@ class RecipeDetailViewModelTest {
 
             assertEquals(listOf(dish.id), recipes.saved.map { it.id })
             assertTrue(viewModel.state.value.isSaved)
+        }
+
+    @Test
+    fun `a dish already kept opens with the heart filled`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort(catalogue = listOf(dish))
+            recipes.saveRecipe(defaultKitchenId, dish)
+            val viewModel = started(pantry = emptyList(), recipePort = recipes)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.isSaved)
+        }
+
+    @Test
+    fun `unsaving removes the dish and offers an undo that keeps it again`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort(catalogue = listOf(dish))
+            recipes.saveRecipe(defaultKitchenId, dish)
+            val viewModel = started(pantry = emptyList(), recipePort = recipes)
+            advanceUntilIdle()
+            val seen = mutableListOf<RecipeDetailEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            viewModel.unsave()
+            advanceUntilIdle()
+            assertTrue(recipes.saved.isEmpty())
+            assertFalse(viewModel.state.value.isSaved)
+
+            viewModel.save()
+            advanceUntilIdle()
+            collector.cancel()
+
+            assertEquals(listOf(dish.id), recipes.saved.map { it.id })
+            assertTrue(viewModel.state.value.isSaved)
+            assertEquals(listOf(RecipeDetailEvent.Unsaved, RecipeDetailEvent.Saved), seen)
+        }
+
+    @Test
+    fun `a dish removed elsewhere empties the heart here`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort(catalogue = listOf(dish))
+            recipes.saveRecipe(defaultKitchenId, dish)
+            val viewModel = started(pantry = emptyList(), recipePort = recipes)
+            advanceUntilIdle()
+
+            recipes.removeSavedRecipe(defaultKitchenId, dish.id)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.isSaved)
         }
 
     @Test
@@ -561,10 +612,12 @@ class RecipeDetailViewModelTest {
                 taxonomies = ObserveTaxonomiesUseCase(taxonomies),
                 taxonomy = ObserveTaxonomyUseCase(taxonomies),
                 pantry = ObservePantryUseCase(pantryPort),
+                saved = ObserveSavedRecipesUseCase(recipePort),
             )
         val writes =
             RecipeDetailWritesDelegate(
                 save = SaveRecipeUseCase(recipePort),
+                unsave = RemoveSavedRecipeUseCase(recipePort),
                 cook =
                     CookRecipeUseCase(
                         recipePort,

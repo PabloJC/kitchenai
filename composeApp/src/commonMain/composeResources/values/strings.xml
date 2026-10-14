@@ -31,6 +31,7 @@
     </plurals>
     <string name="snack_cooked">Taken out of your pantry</string>
     <string name="snack_saved">Saved</string>
+    <string name="snack_unsaved">Removed from saved</string>
 
     <!-- Screens -->
     <string name="pantry_search">Search the catalogue</string>
@@ -93,7 +94,8 @@
         <item quantity="other">Missing %1$d ingredients to cook this</item>
     </plurals>
     <string name="detail_save">Save</string>
-    <string name="detail_saved">Saved</string>
+    <string name="detail_unsave">Remove from saved</string>
+    <string name="detail_undo">Undo</string>
     <string name="detail_cook_title">Cook this?</string>
     <string name="detail_cook_body">These ingredients will be subtracted from your pantry. This cannot be undone.</string>
     <string name="detail_cook_confirm">Cook it</string>

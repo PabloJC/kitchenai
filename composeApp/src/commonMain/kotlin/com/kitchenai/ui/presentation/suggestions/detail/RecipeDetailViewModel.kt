@@ -121,6 +121,11 @@ class RecipeDetailViewModel(
                 if (changed) refreshMatchOnPantryChange()
             }
         }
+        viewModelScope.launch {
+            kitchenId.filterNotNull().flatMapLatest(reads.saved::invoke).collect { kept ->
+                internalState.update { it.copy(isSaved = kept.any { saved -> saved.id == id }) }
+            }
+        }
         watchVocabulary()
         watchKitchen(userId, recipeId)
     }
@@ -205,6 +210,13 @@ class RecipeDetailViewModel(
         act { kitchen ->
             val held = recipe.value ?: return@act null
             writes.save(kitchen, held).map { RecipeDetailEvent.Saved }
+        }
+
+    /** Removing twice is not an error (the use case is idempotent), so a stale heart cannot fail here. */
+    fun unsave() =
+        act { kitchen ->
+            val recipeId = id ?: return@act null
+            writes.unsave(kitchen, recipeId).map { RecipeDetailEvent.Unsaved }
         }
 
     // Both writes hand over the recipe in hand rather than its id, for the same reason the read
@@ -376,7 +388,12 @@ class RecipeDetailViewModel(
                     announce(RecipeDetailEvent.Failed(message))
                 }
                 is AppResult.Success -> {
-                    if (outcome.data is RecipeDetailEvent.Saved) internalState.update { it.copy(isSaved = true) }
+                    // Ahead of the saved-recipes listener, which confirms it a moment later.
+                    when (outcome.data) {
+                        RecipeDetailEvent.Saved -> internalState.update { it.copy(isSaved = true) }
+                        RecipeDetailEvent.Unsaved -> internalState.update { it.copy(isSaved = false) }
+                        else -> Unit
+                    }
                     announce(outcome.data)
                 }
             }

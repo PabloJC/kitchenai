@@ -28,6 +28,7 @@
     </plurals>
     <string name="snack_cooked">Descontado de tu despensa</string>
     <string name="snack_saved">Guardado</string>
+    <string name="snack_unsaved">Quitada de guardadas</string>
 
     <!-- Screens -->
     <string name="pantry_search">Buscar en el catálogo</string>
@@ -90,7 +91,8 @@
         <item quantity="other">Faltan %1$d ingredientes para cocinar esto</item>
     </plurals>
     <string name="detail_save">Guardar</string>
-    <string name="detail_saved">Guardado</string>
+    <string name="detail_unsave">Quitar de guardadas</string>
+    <string name="detail_undo">Deshacer</string>
     <string name="detail_cook_title">¿Cocinar esto?</string>
     <string name="detail_cook_body">Estos ingredientes se descontarán de tu despensa. Esto no se puede deshacer.</string>
     <string name="detail_cook_confirm">Cocinarlo</string>
