@@ -253,10 +253,10 @@ private fun ShoppingItemRow(
         onDismiss = onRemove,
         deleteLabel = stringResource(Res.string.shopping_delete),
         modifier = modifier,
-    ) {
+    ) { deleteAction ->
         Row(
             modifier =
-                Modifier
+                deleteAction
                     .fillMaxWidth()
                     .heightIn(min = Dimens.touchTarget)
                     .toggleable(value = item.checked, role = Role.Checkbox, onValueChange = onCheck)

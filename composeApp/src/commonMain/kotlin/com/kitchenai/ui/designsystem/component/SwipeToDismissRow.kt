@@ -30,14 +30,15 @@ import com.kitchenai.ui.designsystem.theme.Dimens
  *
  * [onDismiss] fires once the swipe is confirmed; removing the item is the caller's job. A swipe
  * is out of reach for TalkBack, VoiceOver and Switch Access, so the same delete is also offered
- * as an accessibility action named [deleteLabel].
+ * as an accessibility action named [deleteLabel]. [content] gets it as a modifier to put on its
+ * own focusable node: a screen reader lists only the actions of the node it lands on.
  */
 @Composable
 fun SwipeToDismissRow(
     onDismiss: () -> Unit,
     deleteLabel: String,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
+    content: @Composable (deleteAction: Modifier) -> Unit,
 ) {
     val state = rememberSwipeToDismissBoxState()
     val dismiss by rememberUpdatedState(onDismiss)
@@ -49,16 +50,7 @@ fun SwipeToDismissRow(
 
     SwipeToDismissBox(
         state = state,
-        modifier =
-            modifier.semantics {
-                customActions =
-                    listOf(
-                        CustomAccessibilityAction(deleteLabel) {
-                            dismiss()
-                            true
-                        },
-                    )
-            },
+        modifier = modifier,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
             // Trailing-aligned rather than centred: the swipe is fixed end-to-start, so this is
@@ -80,6 +72,18 @@ fun SwipeToDismissRow(
             }
         },
         // Opaque: the reveal is drawn behind it all the time, so a transparent row would show it.
-        content = { Box(Modifier.background(MaterialTheme.colorScheme.background)) { content() } },
+        content = {
+            val deleteAction =
+                Modifier.semantics {
+                    customActions =
+                        listOf(
+                            CustomAccessibilityAction(deleteLabel) {
+                                dismiss()
+                                true
+                            },
+                        )
+                }
+            Box(Modifier.background(MaterialTheme.colorScheme.background)) { content(deleteAction) }
+        },
     )
 }

@@ -165,7 +165,10 @@ private fun PantryRow(
         } else {
             null
         }
-    SwipeToDismissRow(onDismiss = { onRemove(item) }, deleteLabel = stringResource(Res.string.pantry_delete)) {
+    SwipeToDismissRow(
+        onDismiss = { onRemove(item) },
+        deleteLabel = stringResource(Res.string.pantry_delete),
+    ) { deleteAction ->
         ListItem(
             overlineContent = freeTextMarker,
             headlineContent = {
@@ -183,7 +186,7 @@ private fun PantryRow(
                 }
             },
             trailingContent = { item.locationLabel?.let { label -> Text(label) } },
-            modifier = Modifier.clickable { onEdit(item) },
+            modifier = deleteAction.clickable { onEdit(item) },
         )
     }
 }
