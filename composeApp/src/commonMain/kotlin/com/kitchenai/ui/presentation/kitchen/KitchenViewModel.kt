@@ -10,10 +10,15 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.kitchen_member_unnamed
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -39,6 +44,10 @@ class KitchenViewModel(
     private val joinCodeInput = MutableStateFlow("")
     private val busy = MutableStateFlow(false)
     private val writeFailure = MutableStateFlow<UiText?>(null)
+    private val confirming = MutableStateFlow<KitchenConfirmation?>(null)
+
+    private val eventChannel = Channel<KitchenEvent>(Channel.BUFFERED)
+    val events: Flow<KitchenEvent> = eventChannel.receiveAsFlow()
 
     // Only read here: the session stays the single writer of the profile, this just names the joiner.
     private var profileName: String? = null
@@ -47,9 +56,10 @@ class KitchenViewModel(
     private var userId: UserId? = null
 
     private val kitchenState = combine(kitchen, answered, listenerFailure, ::KitchenListenerState)
+    private val writeState = combine(busy, writeFailure, confirming, ::WriteState)
 
     val state: StateFlow<KitchenUiState> =
-        combine(kitchenState, joinCodeInput, busy, writeFailure, ::project)
+        combine(kitchenState, joinCodeInput, writeState, ::project)
             .stateIn(viewModelScope, SharingStarted.Eagerly, KitchenUiState())
 
     /** Idempotent: a configuration change composes the screen again, not a second listener. */
@@ -76,6 +86,41 @@ class KitchenViewModel(
         joinCodeInput.value = text
     }
 
+    /** With no kitchen to leave behind there is nothing to warn about, so the join runs at once. */
+    fun requestJoin() {
+        if (joinCodeInput.value.isBlank()) return
+        if (kitchen.value == null) join() else confirming.value = KitchenConfirmation.Join
+    }
+
+    fun requestLeave() {
+        confirming.value = KitchenConfirmation.Leave
+    }
+
+    fun requestRemoveMember(memberId: UserId) {
+        val name = state.value.kitchen?.members?.firstOrNull { it.id == memberId }?.name ?: return
+        confirming.value = KitchenConfirmation.RemoveMember(memberId, name)
+    }
+
+    fun requestRegenerateJoinCode() {
+        confirming.value = KitchenConfirmation.RegenerateCode
+    }
+
+    /** Runs what was asked about; the request methods above are the only way anything gets here. */
+    fun confirm() {
+        val asked = confirming.value ?: return
+        confirming.value = null
+        when (asked) {
+            KitchenConfirmation.Leave -> leave()
+            is KitchenConfirmation.RemoveMember -> removeMember(asked.memberId, asked.name)
+            KitchenConfirmation.Join -> join()
+            KitchenConfirmation.RegenerateCode -> regenerateJoinCode()
+        }
+    }
+
+    fun dismissConfirmation() {
+        confirming.value = null
+    }
+
     fun join() {
         val uid = userId ?: return
         val raw = joinCodeInput.value
@@ -83,7 +128,7 @@ class KitchenViewModel(
         when (val code = KitchenJoinCode.normalised(raw)) {
             is AppResult.Failure -> writeFailure.value = code.error.describeKitchenError()
             is AppResult.Success ->
-                write(describeError = AppError::describeJoinError, onSuccess = { joinCodeInput.value = "" }) {
+                write(describeError = AppError::describeJoinError, onSuccess = ::onJoined) {
                     writes.join(uid, displayName = profileName, code.data)
                 }
         }
@@ -91,17 +136,29 @@ class KitchenViewModel(
 
     fun leave() {
         val uid = userId ?: return
-        write { writes.leave(uid) }
+        write(onSuccess = { announce(KitchenEvent.Left) }) { writes.leave(uid) }
     }
 
-    fun removeMember(memberId: UserId) {
+    fun removeMember(
+        memberId: UserId,
+        name: UiText = UiText.of(Res.string.kitchen_member_unnamed),
+    ) {
         val uid = userId ?: return
-        write { writes.removeMember(uid, memberId) }
+        write(onSuccess = { announce(KitchenEvent.MemberRemoved(name)) }) { writes.removeMember(uid, memberId) }
     }
 
     fun regenerateJoinCode() {
         val uid = userId ?: return
-        write { writes.regenerateJoinCode(uid) }
+        write(onSuccess = { announce(KitchenEvent.CodeRegenerated) }) { writes.regenerateJoinCode(uid) }
+    }
+
+    private fun onJoined() {
+        joinCodeInput.value = ""
+        announce(KitchenEvent.Joined)
+    }
+
+    private fun announce(event: KitchenEvent) {
+        eventChannel.trySend(event)
     }
 
     /**
@@ -142,19 +199,26 @@ class KitchenViewModel(
     private fun project(
         kitchenState: KitchenListenerState,
         joinCodeInput: String,
-        busy: Boolean,
-        writeFailure: UiText?,
+        writeState: WriteState,
     ): KitchenUiState =
         KitchenUiState(
             isLoading = !kitchenState.answered,
             kitchen = kitchenState.kitchen?.let { loaded -> userId?.let { uid -> loaded.toUi(uid) } },
             joinCodeInput = joinCodeInput,
-            isBusy = busy,
+            isBusy = writeState.busy,
             // The write just attempted speaks first: a stale listener banner must not hide why
             // the action the user just took was refused.
-            error = writeFailure ?: kitchenState.listenerFailure,
+            error = writeState.failure ?: kitchenState.listenerFailure,
+            confirming = writeState.confirming,
         )
 }
+
+/** What the screen's own writes add on top of the listener: in flight, refused, or waiting for a yes. */
+private data class WriteState(
+    val busy: Boolean,
+    val failure: UiText?,
+    val confirming: KitchenConfirmation?,
+)
 
 /** The three parts of what the kitchen listener has produced so far, combined once rather than three times. */
 private data class KitchenListenerState(

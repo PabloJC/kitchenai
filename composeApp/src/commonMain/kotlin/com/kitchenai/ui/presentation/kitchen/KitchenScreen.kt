@@ -3,22 +3,29 @@ package com.kitchenai.ui.presentation.kitchen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -32,14 +39,29 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.kitchen_cancel
+import com.kitchenai.ui.resources.kitchen_code_regenerated
+import com.kitchenai.ui.resources.kitchen_confirm_join_body
+import com.kitchenai.ui.resources.kitchen_confirm_join_title
+import com.kitchenai.ui.resources.kitchen_confirm_leave
+import com.kitchenai.ui.resources.kitchen_confirm_leave_body
+import com.kitchenai.ui.resources.kitchen_confirm_leave_title
+import com.kitchenai.ui.resources.kitchen_confirm_regenerate_body
+import com.kitchenai.ui.resources.kitchen_confirm_regenerate_title
+import com.kitchenai.ui.resources.kitchen_confirm_remove_body
+import com.kitchenai.ui.resources.kitchen_confirm_remove_title
 import com.kitchenai.ui.resources.kitchen_copy
 import com.kitchenai.ui.resources.kitchen_empty_body
 import com.kitchenai.ui.resources.kitchen_empty_title
 import com.kitchenai.ui.resources.kitchen_join_action
 import com.kitchenai.ui.resources.kitchen_join_label
 import com.kitchenai.ui.resources.kitchen_join_placeholder
+import com.kitchenai.ui.resources.kitchen_joined
 import com.kitchenai.ui.resources.kitchen_leave_action
+import com.kitchenai.ui.resources.kitchen_left
+import com.kitchenai.ui.resources.kitchen_member_removed
 import com.kitchenai.ui.resources.kitchen_members_title
 import com.kitchenai.ui.resources.kitchen_owner
 import com.kitchenai.ui.resources.kitchen_regenerate_action
@@ -63,16 +85,103 @@ fun KitchenScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val title = stringResource(Res.string.kitchen_title)
+    val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(userId) { viewModel.start(userId) }
+    LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.showSnackbar(event.sentence().text()) } }
     PublishTitle(title, detailTopBar)
 
-    if (state.isLoading) {
-        LoadingState(modifier)
-    } else {
-        KitchenContent(state = state, viewModel = viewModel, modifier = modifier)
+    // The insets are AppShell's; this Scaffold is here for the snackbar alone.
+    Scaffold(
+        modifier = modifier,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbar) },
+    ) { padding ->
+        if (state.isLoading) {
+            LoadingState(Modifier.padding(padding))
+        } else {
+            KitchenContent(state = state, viewModel = viewModel, modifier = Modifier.padding(padding))
+        }
+    }
+
+    state.confirming?.let { asked ->
+        ConfirmDialog(asked, onConfirm = viewModel::confirm, onDismiss = viewModel::dismissConfirmation)
     }
 }
+
+/** Leave and remove are drawn as destructive; joining and a new code are serious but not losses of data. */
+@Composable
+private fun ConfirmDialog(
+    asked: KitchenConfirmation,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val wording = asked.wording()
+    val destructive = asked is KitchenConfirmation.Leave || asked is KitchenConfirmation.RemoveMember
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(wording.title) },
+        text = { Text(wording.body) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors =
+                    if (destructive) {
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        )
+                    } else {
+                        ButtonDefaults.buttonColors()
+                    },
+            ) { Text(wording.confirm) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.kitchen_cancel)) } },
+    )
+}
+
+private class ConfirmWording(
+    val title: String,
+    val body: String,
+    val confirm: String,
+)
+
+@Composable
+private fun KitchenConfirmation.wording(): ConfirmWording =
+    when (this) {
+        KitchenConfirmation.Leave ->
+            ConfirmWording(
+                stringResource(Res.string.kitchen_confirm_leave_title),
+                stringResource(Res.string.kitchen_confirm_leave_body),
+                stringResource(Res.string.kitchen_confirm_leave),
+            )
+        is KitchenConfirmation.RemoveMember ->
+            ConfirmWording(
+                stringResource(Res.string.kitchen_confirm_remove_title, name.resolve()),
+                stringResource(Res.string.kitchen_confirm_remove_body),
+                stringResource(Res.string.kitchen_remove_action),
+            )
+        KitchenConfirmation.Join ->
+            ConfirmWording(
+                stringResource(Res.string.kitchen_confirm_join_title),
+                stringResource(Res.string.kitchen_confirm_join_body),
+                stringResource(Res.string.kitchen_join_action),
+            )
+        KitchenConfirmation.RegenerateCode ->
+            ConfirmWording(
+                stringResource(Res.string.kitchen_confirm_regenerate_title),
+                stringResource(Res.string.kitchen_confirm_regenerate_body),
+                stringResource(Res.string.kitchen_regenerate_action),
+            )
+    }
+
+internal fun KitchenEvent.sentence(): UiText =
+    when (this) {
+        KitchenEvent.Left -> UiText.of(Res.string.kitchen_left)
+        is KitchenEvent.MemberRemoved -> UiText.Joined(Res.string.kitchen_member_removed, listOf(name))
+        KitchenEvent.Joined -> UiText.of(Res.string.kitchen_joined)
+        KitchenEvent.CodeRegenerated -> UiText.of(Res.string.kitchen_code_regenerated)
+    }
 
 /** AppShell owns the one top bar every non-tab screen shares; this hands the title back on exit. */
 @Composable
@@ -100,9 +209,9 @@ private fun KitchenContent(
 
         val kitchen = state.kitchen
         if (kitchen != null) {
-            JoinCodeSection(kitchen, isBusy = state.isBusy, onRegenerate = viewModel::regenerateJoinCode)
-            MembersSection(kitchen, isBusy = state.isBusy, onRemove = viewModel::removeMember)
-            LeaveSection(kitchen, isBusy = state.isBusy, onLeave = viewModel::leave)
+            JoinCodeSection(kitchen, isBusy = state.isBusy, onRegenerate = viewModel::requestRegenerateJoinCode)
+            MembersSection(kitchen, isBusy = state.isBusy, onRemove = viewModel::requestRemoveMember)
+            LeaveSection(kitchen, isBusy = state.isBusy, onLeave = viewModel::requestLeave)
         } else {
             EmptyState(
                 title = stringResource(Res.string.kitchen_empty_title),
@@ -114,7 +223,7 @@ private fun KitchenContent(
             value = state.joinCodeInput,
             isBusy = state.isBusy,
             onChange = viewModel::onJoinCodeInputChange,
-            onJoin = viewModel::join,
+            onJoin = viewModel::requestJoin,
         )
     }
 }
