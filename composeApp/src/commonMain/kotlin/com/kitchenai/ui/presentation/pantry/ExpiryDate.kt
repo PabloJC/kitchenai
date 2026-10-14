@@ -29,14 +29,24 @@ internal fun endOfDay(
     zone: TimeZone,
 ): Instant = date.plus(1, DateTimeUnit.DAY).atStartOfDayIn(zone) - 1.milliseconds
 
-/** The calendar date the stored instant falls on, read in [zone]. */
-internal fun Instant.expiryDate(zone: TimeZone): LocalDate = toLocalDateTime(zone).date
+/**
+ * The calendar date a stored expiry stands for, read in [zone]. A value exactly at UTC midnight
+ * was written before end-of-day storage and means its UTC date; [endOfDay] never lands there,
+ * since no zone offset has a millisecond part.
+ */
+internal fun Instant.expiryDate(zone: TimeZone): LocalDate =
+    if (toEpochMilliseconds() % MILLIS_PER_DAY == 0L) dateIn(TimeZone.UTC) else dateIn(zone)
+
+/** The date this instant falls on in [zone], with no reading of how it was stored. */
+private fun Instant.dateIn(zone: TimeZone): LocalDate = toLocalDateTime(zone).date
+
+private const val MILLIS_PER_DAY = 86_400_000L
 
 /** The date picker answers with UTC midnight of the chosen day; that day is what the user meant. */
 internal fun expiryFromPicker(
     millis: Long,
     zone: TimeZone,
-): Instant = endOfDay(Instant.fromEpochMilliseconds(millis).expiryDate(TimeZone.UTC), zone)
+): Instant = endOfDay(Instant.fromEpochMilliseconds(millis).dateIn(TimeZone.UTC), zone)
 
 /** The inverse of [expiryFromPicker], to open the picker on the stored day. */
 internal fun Instant.toPickerMillis(zone: TimeZone): Long =
@@ -48,14 +58,14 @@ internal fun expiryIn(
     unit: DateTimeUnit.DateBased,
     now: Instant,
     zone: TimeZone,
-): Instant = endOfDay(now.expiryDate(zone).plus(count, unit), zone)
+): Instant = endOfDay(now.dateIn(zone).plus(count, unit), zone)
 
 /** Counted in calendar days, not hours: tomorrow is tomorrow whether it is 9 am or 11 pm now. */
 internal fun daysUntilExpiry(
     expiresAt: Instant,
     now: Instant,
     zone: TimeZone,
-): Int = now.expiryDate(zone).daysUntil(expiresAt.expiryDate(zone))
+): Int = now.dateIn(zone).daysUntil(expiresAt.expiryDate(zone))
 
 /**
  * The pantry's grouping by calendar day rather than by instant, so the section always agrees

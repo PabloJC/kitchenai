@@ -68,6 +68,16 @@ class ExpiryDateTest {
     }
 
     @Test
+    fun `a date stored as UTC midnight still reads as its own day in New York`() {
+        // UTC midnight is 8 pm the evening before there: read as an instant it would say yesterday.
+        val legacy = day.atStartOfDayIn(TimeZone.UTC)
+        val morning = LocalDateTime(2026, 10, 14, 10, 0).toInstant(newYork)
+
+        assertEquals(day, legacy.expiryDate(newYork))
+        assertEquals(0, daysUntilExpiry(legacy, morning, newYork))
+    }
+
+    @Test
     fun `soon covers today and the next two days only`() {
         assertEquals(Freshness.ExpiringSoon(3), freshnessIn(2))
         assertEquals(Freshness.Fresh, freshnessIn(3))
