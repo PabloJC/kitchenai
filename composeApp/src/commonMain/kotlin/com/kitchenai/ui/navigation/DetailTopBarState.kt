@@ -24,4 +24,6 @@ data class TopBarAction(
     val enabled: Boolean,
     val tint: Color?,
     val onClick: () -> Unit,
+    /** Set for an on/off action, so TalkBack and VoiceOver announce its state and not just its label. */
+    val checked: Boolean? = null,
 )

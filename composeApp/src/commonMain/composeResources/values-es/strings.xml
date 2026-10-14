@@ -29,6 +29,7 @@
     </plurals>
     <string name="snack_cooked">Descontado de tu despensa</string>
     <string name="snack_saved">Guardado</string>
+    <string name="snack_unsaved">Quitada de guardadas</string>
 
     <!-- Screens -->
     <string name="pantry_search">Buscar en el catálogo</string>
@@ -91,7 +92,8 @@
         <item quantity="other">Faltan %1$d ingredientes para cocinar esto</item>
     </plurals>
     <string name="detail_save">Guardar</string>
-    <string name="detail_saved">Guardado</string>
+    <string name="detail_unsave">Quitar de guardadas</string>
+    <string name="detail_undo">Deshacer</string>
     <string name="detail_cook_title">¿Cocinar esto?</string>
     <string name="detail_cook_body">Estos ingredientes se descontarán de tu despensa. Esto no se puede deshacer.</string>
     <string name="detail_cook_confirm">Cocinarlo</string>
@@ -148,6 +150,20 @@
     <string name="kitchen_invalid_code">Ese código no corresponde a ninguna cocina</string>
     <string name="kitchen_empty_title">Todavía no hay cocina</string>
     <string name="kitchen_empty_body">Únete a una con un código abajo, y sus miembros aparecerán aquí.</string>
+    <string name="kitchen_cancel">Cancelar</string>
+    <string name="kitchen_confirm_leave_title">¿Salir de esta cocina?</string>
+    <string name="kitchen_confirm_leave_body">Dejarás de ver su despensa, su lista de la compra y sus recetas guardadas, y tendrás una cocina propia vacía.</string>
+    <string name="kitchen_confirm_leave">Salir</string>
+    <string name="kitchen_confirm_remove_title">¿Eliminar a %1$s de la cocina?</string>
+    <string name="kitchen_confirm_remove_body">Dejará de ver su despensa, su lista de la compra y sus recetas guardadas, y no podrá volver a unirse con el código.</string>
+    <string name="kitchen_confirm_join_title">¿Unirte a esta cocina?</string>
+    <string name="kitchen_confirm_join_body">Saldrás de tu cocina actual y dejarás de ver su despensa, su lista de la compra y sus recetas guardadas.</string>
+    <string name="kitchen_confirm_regenerate_title">¿Crear un código nuevo?</string>
+    <string name="kitchen_confirm_regenerate_body">El código actual deja de funcionar al momento. Quien lo tenga necesitará el nuevo.</string>
+    <string name="kitchen_left">Has salido de la cocina</string>
+    <string name="kitchen_member_removed">%1$s ya no está en la cocina</string>
+    <string name="kitchen_joined">Te has unido a la cocina</string>
+    <string name="kitchen_code_regenerated">Código nuevo listo</string>
     <string name="strength_prefer">Prefiero</string>
     <string name="strength_avoid">Evitar</string>
     <string name="tab_pantry">Despensa</string>

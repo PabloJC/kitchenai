@@ -7,10 +7,11 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
+import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 
 /**
  * What the detail screen reads: the dish, how it stands against the pantry, and the names for
- * its lines. Grouped so the constructor states two roles rather than listing seven use cases.
+ * its lines. Grouped so the constructor states two roles rather than listing eight use cases.
  */
 class RecipeDetailReadsDelegate(
     val recipe: GetRecipeByIdUseCase,
@@ -26,4 +27,6 @@ class RecipeDetailReadsDelegate(
      * unverifiable line needs the holdings themselves, not what they already failed to verify.
      */
     val pantry: ObservePantryUseCase,
+    /** Whether this dish is already kept: the heart has to show it on arrival, not only after a tap here. */
+    val saved: ObserveSavedRecipesUseCase,
 )
