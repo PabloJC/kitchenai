@@ -40,7 +40,6 @@
     <string name="pantry_save">Save</string>
     <string name="pantry_done">Done</string>
     <string name="pantry_clear">Clear</string>
-    <string name="pantry_expiry">Expiry date</string>
     <string name="pantry_no_expiry">No expiry date</string>
     <string name="pantry_add">Add</string>
     <string name="pantry_undo">Undo</string>
@@ -51,6 +50,21 @@
     <string name="pantry_section_soon">Use soon</string>
     <string name="pantry_section_fresh">Fresh</string>
     <string name="pantry_section_undated">No expiry date</string>
+    <string name="pantry_expires_today">Expires today</string>
+    <string name="pantry_expires_tomorrow">Expires tomorrow</string>
+    <string name="pantry_expired_yesterday">Expired yesterday</string>
+    <plurals name="pantry_expires_in_days">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+    <plurals name="pantry_expired_days_ago">
+        <item quantity="one">Expired %1$d day ago</item>
+        <item quantity="other">Expired %1$d days ago</item>
+    </plurals>
+    <string name="pantry_expiry_in_3_days">+3 days</string>
+    <string name="pantry_expiry_in_1_week">+1 week</string>
+    <string name="pantry_expiry_in_1_month">+1 month</string>
+    <string name="pantry_expiry_pick">Pick a date</string>
     <string name="shopping_add_field">Add an item</string>
     <string name="shopping_add">Add</string>
     <string name="shopping_default_list">Shopping list</string>

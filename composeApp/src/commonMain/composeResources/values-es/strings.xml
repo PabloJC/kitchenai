@@ -37,7 +37,6 @@
     <string name="pantry_save">Guardar</string>
     <string name="pantry_done">Hecho</string>
     <string name="pantry_clear">Borrar</string>
-    <string name="pantry_expiry">Fecha de caducidad</string>
     <string name="pantry_no_expiry">Sin fecha de caducidad</string>
     <string name="pantry_add">Añadir</string>
     <string name="pantry_undo">Deshacer</string>
@@ -48,6 +47,21 @@
     <string name="pantry_section_soon">Consumir pronto</string>
     <string name="pantry_section_fresh">Fresco</string>
     <string name="pantry_section_undated">Sin fecha de caducidad</string>
+    <string name="pantry_expires_today">Caduca hoy</string>
+    <string name="pantry_expires_tomorrow">Caduca mañana</string>
+    <string name="pantry_expired_yesterday">Caducó ayer</string>
+    <plurals name="pantry_expires_in_days">
+        <item quantity="one">Queda %1$d día</item>
+        <item quantity="other">Quedan %1$d días</item>
+    </plurals>
+    <plurals name="pantry_expired_days_ago">
+        <item quantity="one">Caducó hace %1$d día</item>
+        <item quantity="other">Caducó hace %1$d días</item>
+    </plurals>
+    <string name="pantry_expiry_in_3_days">+3 días</string>
+    <string name="pantry_expiry_in_1_week">+1 semana</string>
+    <string name="pantry_expiry_in_1_month">+1 mes</string>
+    <string name="pantry_expiry_pick">Elegir fecha</string>
     <string name="shopping_add_field">Añadir un artículo</string>
     <string name="shopping_add">Añadir</string>
     <string name="shopping_default_list">Lista de la compra</string>

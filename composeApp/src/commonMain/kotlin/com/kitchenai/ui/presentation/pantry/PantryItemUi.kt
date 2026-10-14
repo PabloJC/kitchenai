@@ -4,6 +4,7 @@ import com.kitchenai.shared.domain.model.Freshness
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.ui.presentation.common.UiText
 import kotlin.time.Instant
 
 /**
@@ -26,4 +27,6 @@ data class PantryItemUi(
     val locationLabel: String?,
     val expiresAt: Instant?,
     val freshness: Freshness,
+    /** "Expires tomorrow", "Expired 2 days ago"; null when the item has no date. */
+    val expiryLabel: UiText? = null,
 )
