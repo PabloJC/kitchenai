@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.Freshness
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItem
@@ -13,8 +14,15 @@ import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.LabelResolver
+import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.nameOf
 import com.kitchenai.ui.presentation.common.wordFor
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.pantry_expires_tomorrow
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
@@ -172,10 +180,31 @@ class PantryUiMapperTest {
         label: String,
     ): Term = Term(ref, mapOf("en" to label), null, 0)
 
+    @Test
+    fun `a dated row carries its label and the section that agrees with it`() {
+        val madrid = TimeZone.of("Europe/Madrid")
+        val expiresAt = endOfDay(LocalDate(2026, 10, 15), madrid)
+        val today = LocalDateTime(2026, 10, 14, 9, 0).toInstant(madrid)
+
+        val ui = pantryItem(quantity = Quantity(1.0), expiresAt = expiresAt).toUi(LabelResolver(), today, madrid)
+
+        assertEquals(UiText.of(Res.string.pantry_expires_tomorrow), ui.expiryLabel)
+        assertEquals(Freshness.ExpiringSoon(2), ui.freshness)
+    }
+
+    @Test
+    fun `an undated row has no label`() {
+        val ui = pantryItem(quantity = Quantity(1.0)).toUi(LabelResolver(), now, TimeZone.UTC)
+
+        assertEquals(null, ui.expiryLabel)
+        assertEquals(Freshness.Unknown, ui.freshness)
+    }
+
     private fun pantryItem(
         quantity: Quantity,
         location: TermRef? = null,
         freeText: String? = null,
+        expiresAt: Instant? = null,
     ): PantryItem =
         PantryItem(
             id = PantryItemId.of("item-1").value(),
@@ -183,7 +212,7 @@ class PantryUiMapperTest {
             freeText = freeText,
             quantity = quantity,
             location = location,
-            expiresAt = null,
+            expiresAt = expiresAt,
             updatedAt = now,
         )
 

@@ -8,18 +8,11 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
-import com.kitchenai.shared.domain.model.freshnessAt
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.wordFor
-import kotlin.time.Duration.Companion.days
+import kotlinx.datetime.TimeZone
 import kotlin.time.Instant
-
-/**
- * How long before its expiry date a holding counts as urgent. A product setting rather than a
- * domain rule, which is why `freshnessAt` takes it instead of knowing it.
- */
-internal val ExpiringSoonWindow = 3.days
 
 internal fun PantryItemUi.applied(
     draft: PantryItemDraft,
@@ -40,8 +33,10 @@ internal fun PantryItemUi.applied(
 internal fun PantryItem.toUi(
     resolver: LabelResolver,
     now: Instant,
+    zone: TimeZone = TimeZone.currentSystemDefault(),
 ): PantryItemUi {
     val unitLabel = quantity.unit?.let { unit -> resolver.wordFor(unit, quantity.amount) }
+    val daysLeft = expiresAt?.let { date -> daysUntilExpiry(date, now, zone) }
     return PantryItemUi(
         id = id,
         ingredient = ingredient,
@@ -54,7 +49,8 @@ internal fun PantryItem.toUi(
         location = location,
         locationLabel = location?.let { place -> resolver.wordFor(place) },
         expiresAt = expiresAt,
-        freshness = freshnessAt(now, ExpiringSoonWindow),
+        freshness = freshnessIn(daysLeft),
+        expiryLabel = daysLeft?.let(::expiryLabel),
     )
 }
 

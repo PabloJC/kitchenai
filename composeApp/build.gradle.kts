@@ -51,6 +51,7 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
+            implementation(libs.kotlinx.datetime)
         }
         androidMain.dependencies {
             // The @Preview annotation only, not the tooling runtime: Compose Multiplatform

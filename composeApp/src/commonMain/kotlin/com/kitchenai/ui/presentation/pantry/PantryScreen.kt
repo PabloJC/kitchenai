@@ -1,6 +1,8 @@
 package com.kitchenai.ui.presentation.pantry
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -11,6 +13,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -20,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +35,8 @@ import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
+import com.kitchenai.ui.designsystem.component.Tag
+import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
@@ -132,7 +138,9 @@ private fun PantryList(
                 // at most one error item here, so a fixed key is exact rather than a workaround.
                 if (error != null) item(key = "pantry-error") { ErrorState(message = error.resolve()) }
                 sections.forEach { (title, rows) ->
-                    item(key = title) { SectionHeader(title = title) }
+                    item(key = title) {
+                        SectionHeader(title = title, trailing = { SectionCount(rows.size) })
+                    }
                     items(rows, key = { row -> row.id.value }) { row ->
                         PantryRow(item = row, onEdit = onEdit, onRemove = onRemove)
                     }
@@ -154,11 +162,44 @@ private fun PantryRow(
                 // pantry matcher can reason about; this one is neither.
                 Text(item.name, fontStyle = if (item.ingredient != null) FontStyle.Normal else FontStyle.Italic)
             },
-            supportingContent = { Text(item.quantityLabel) },
+            supportingContent = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.small),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(item.quantityLabel)
+                    item.expiryLabel?.let { label -> ExpiryTag(label.resolve(), item.freshness) }
+                }
+            },
             trailingContent = { item.locationLabel?.let { label -> Text(label) } },
             modifier = Modifier.clickable { onEdit(item) },
         )
     }
+}
+
+@Composable
+private fun SectionCount(count: Int) {
+    Text(
+        text = count.toString(),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** Coloured by urgency so the eye finds what to use first without reading every row. */
+@Composable
+private fun ExpiryTag(
+    label: String,
+    freshness: Freshness,
+) {
+    val colors = MaterialTheme.colorScheme
+    val (container, content) =
+        when (freshness) {
+            Freshness.Expired -> colors.errorContainer to colors.onErrorContainer
+            is Freshness.ExpiringSoon -> colors.tertiaryContainer to colors.onTertiaryContainer
+            Freshness.Fresh, Freshness.Unknown -> colors.surfaceVariant to colors.onSurfaceVariant
+        }
+    Tag(label = label, containerColor = container, contentColor = content)
 }
 
 private suspend fun SnackbarHostState.announce(
