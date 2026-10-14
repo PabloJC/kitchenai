@@ -39,6 +39,28 @@ class DeleteAccountUseCaseTest {
             assertSame(error, result.error)
             assertEquals(signedIn, session.observeSession().first())
         }
+
+    @Test
+    fun `a failed local sign-out is reported and a retry completes it`() =
+        runTest {
+            val error = AppError.Unknown(IllegalStateException("sign-out"))
+            val account = FakeAccountPort(AppResult.Success(Unit))
+            val session =
+                FakeSessionPort(anonymousUser.copy(isAnonymous = false)).apply {
+                    signOutResult = AppResult.Failure(error)
+                }
+            val deleteAccount = DeleteAccountUseCase(account, session)
+
+            val first = deleteAccount(NoParams)
+            assertTrue(first is AppResult.Failure)
+            assertSame(error, first.error)
+
+            // The server steps are idempotent, so asking again repeats them and then signs out.
+            session.signOutResult = AppResult.Success(Unit)
+            assertEquals(AppResult.Success(Unit), deleteAccount(NoParams))
+            assertEquals(2, account.calls)
+            assertEquals(Session.SignedOut, session.observeSession().first())
+        }
 }
 
 private class FakeAccountPort(
