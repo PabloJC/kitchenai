@@ -65,4 +65,42 @@ class QuantityTextTest {
     fun `internal whitespace is rejected`() {
         assertNull(parseAmount("1 5"))
     }
+
+    @Test
+    fun `a whole amount keeps no fraction`() {
+        assertEquals("2 pieces", formatQuantity(2.0, "pieces"))
+    }
+
+    @Test
+    fun `a scaled amount is rounded to two decimals`() {
+        // 100 g scaled to one of three servings.
+        assertEquals("33.33 g", formatQuantity(100.0 / 3, "g"))
+    }
+
+    @Test
+    fun `trailing zeros after rounding are dropped`() {
+        assertEquals("1.5", formatAmount(1.499999))
+        assertEquals("2", formatAmount(1.999))
+    }
+
+    @Test
+    fun `a decimal comma replaces the dot`() {
+        assertEquals("33,33 g", formatQuantity(100.0 / 3, "g", ','))
+        assertEquals("1,5", formatAmount(1.5, ','))
+    }
+
+    @Test
+    fun `a missing unit leaves the amount alone`() {
+        assertEquals("0.25", formatQuantity(0.25, null))
+    }
+
+    @Test
+    fun `an amount too small to show two decimals of rounds to zero`() {
+        assertEquals("0", formatAmount(0.004))
+    }
+
+    @Test
+    fun `what the field shows parses back to the same amount`() {
+        assertEquals(1.5, parseAmount(formatAmount(1.5, ',')))
+    }
 }

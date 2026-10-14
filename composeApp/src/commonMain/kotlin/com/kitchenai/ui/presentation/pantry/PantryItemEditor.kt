@@ -39,7 +39,10 @@ import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.TermChip
+import com.kitchenai.ui.designsystem.format.decimalSeparatorFor
+import com.kitchenai.ui.designsystem.format.formatAmount
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.pantry_amount
 import com.kitchenai.ui.resources.pantry_clear
@@ -74,6 +77,7 @@ fun PantryItemEditor(
     var unit by remember(editing) { mutableStateOf(editing?.unit) }
     var location by remember(editing) { mutableStateOf(editing?.location) }
     var expiresAt by remember(editing) { mutableStateOf(editing?.expiresAt) }
+    val separator = remember { decimalSeparatorFor(platformLanguageTags()) }
 
     // Fully expanded from the start and scrollable: partially expanded, Save sat below the fold.
     ModalBottomSheet(
@@ -108,7 +112,7 @@ fun PantryItemEditor(
                     amount = typed
                     unit = state.units.firstOrNull { (ref, _) -> ref.term.value == unitId }?.first
                 },
-                initialAmount = editing?.amount?.toString().orEmpty(),
+                initialAmount = editing?.amount?.let { held -> formatAmount(held, separator) }.orEmpty(),
                 initialUnitId = (editing?.unit ?: state.units.firstOrNull()?.first)?.term?.value,
             )
             LocationChips(
