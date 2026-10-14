@@ -40,3 +40,6 @@ package-lock.json
 
 # Compiled output of the Cloud Function; the deploy builds it from source.
 functions/lib/
+
+# Merge and patch leftovers.
+*.orig
