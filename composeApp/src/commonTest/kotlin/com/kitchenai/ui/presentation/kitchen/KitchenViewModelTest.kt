@@ -20,12 +20,15 @@ import com.kitchenai.ui.presentation.common.kitchen
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.kitchen_invalid_code
+import com.kitchenai.ui.resources.kitchen_member_unnamed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -295,6 +298,131 @@ class KitchenViewModelTest {
 
             assertEquals(1, kitchens.regenerateCount)
         }
+
+    @Test
+    fun `leaving asks first and nothing reaches the port until confirmed`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = other, memberIds = setOf(other, self)))
+            val viewModel = viewModel(kitchens)
+            val events = collectEvents(viewModel)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.requestLeave()
+            advanceUntilIdle()
+            assertEquals(KitchenConfirmation.Leave, viewModel.state.value.confirming)
+            assertEquals(0, kitchens.leaveCount)
+
+            viewModel.confirm()
+            advanceUntilIdle()
+            assertEquals(1, kitchens.leaveCount)
+            assertNull(viewModel.state.value.confirming)
+            assertEquals(listOf<KitchenEvent>(KitchenEvent.Left), events)
+        }
+
+    @Test
+    fun `cancelling a confirmation changes nothing`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self, other)))
+            val viewModel = viewModel(kitchens)
+            val events = collectEvents(viewModel)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.requestRegenerateJoinCode()
+            viewModel.dismissConfirmation()
+            viewModel.confirm()
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.confirming)
+            assertEquals(0, kitchens.regenerateCount)
+            assertEquals(emptyList(), events)
+        }
+
+    @Test
+    fun `removing a member names them in the question and in the outcome`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self, other)))
+            val viewModel = viewModel(kitchens)
+            val events = collectEvents(viewModel)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.requestRemoveMember(other)
+            advanceUntilIdle()
+            val asked = viewModel.state.value.confirming as KitchenConfirmation.RemoveMember
+            assertEquals(other, asked.memberId)
+            assertEquals(UiText.of(Res.string.kitchen_member_unnamed), asked.name)
+            assertEquals(emptyList(), kitchens.removedMembers)
+
+            viewModel.confirm()
+            advanceUntilIdle()
+            assertEquals(listOf(other), kitchens.removedMembers)
+            assertEquals(listOf<KitchenEvent>(KitchenEvent.MemberRemoved(asked.name)), events)
+        }
+
+    @Test
+    fun `joining from a kitchen asks first because the current one is left behind`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = other, memberIds = setOf(other, self)))
+            kitchens.joinResult = AppResult.Success(kitchen(ownerId = other, joinCode = "new-code"))
+            val viewModel = viewModel(kitchens)
+            val events = collectEvents(viewModel)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.onJoinCodeInputChange("new-code")
+            viewModel.requestJoin()
+            advanceUntilIdle()
+            assertEquals(KitchenConfirmation.Join, viewModel.state.value.confirming)
+            assertEquals(emptyList(), kitchens.joinCalls)
+
+            viewModel.confirm()
+            advanceUntilIdle()
+            assertEquals(listOf(joinCode("new-code")), kitchens.joinCalls)
+            assertEquals(listOf<KitchenEvent>(KitchenEvent.Joined), events)
+        }
+
+    @Test
+    fun `joining with no kitchen to leave runs at once`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = null)
+            kitchens.joinResult = AppResult.Success(kitchen(ownerId = other, joinCode = "new-code"))
+            val viewModel = viewModel(kitchens)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.onJoinCodeInputChange("new-code")
+            viewModel.requestJoin()
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.confirming)
+            assertEquals(listOf(joinCode("new-code")), kitchens.joinCalls)
+        }
+
+    @Test
+    fun `a confirmed action the port refuses reports why and announces nothing`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = other, memberIds = setOf(other, self)))
+            kitchens.leaveResult = AppResult.Failure(AppError.Network())
+            val viewModel = viewModel(kitchens)
+            val events = collectEvents(viewModel)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.requestLeave()
+            viewModel.confirm()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.error != null)
+            assertEquals(emptyList(), events)
+        }
+
+    private fun TestScope.collectEvents(viewModel: KitchenViewModel): List<KitchenEvent> {
+        val events = mutableListOf<KitchenEvent>()
+        backgroundScope.launch { viewModel.events.collect { event -> events += event } }
+        return events
+    }
 
     private fun viewModel(
         kitchens: FakeKitchenPort,

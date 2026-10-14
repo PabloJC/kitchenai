@@ -257,8 +257,9 @@ different accounts) if you want names in the member list; anonymous works for ev
    typing it in upper case on B.
 2. Device B: Profile, "Manage your kitchen". Type A's code into the field "Enter a join code".
    - "Join" becomes enabled as soon as the field is not blank.
-3. Tap "Join".
-   - The field empties.
+3. Tap "Join". B already has a solo kitchen, so a dialog "Join this kitchen?" says the current one
+   will no longer be visible (#253). "Cancel" changes nothing; tap "Join" in the dialog.
+   - The field empties and a snackbar reads "You joined the kitchen".
    - B's screen now shows A's code under "Your join code" and two members: A first, with the
      supporting text "Owner", then B ending in "(you)".
    - B has **no** "New code" button and **no** "Remove" button. "Leave this kitchen" is enabled.
@@ -289,10 +290,12 @@ different accounts) if you want names in the member list; anonymous works for ev
 1. Device A (owner, two members): look at the bottom of the Kitchen screen.
    - A muted line "As the owner, you cannot leave while others are still in this kitchen. Remove
      them first." sits above "Leave this kitchen", and the button is **disabled**.
-2. Device A: in "Join a kitchen", enter any code and tap "Join".
+2. Device A: in "Join a kitchen", enter any code, tap "Join" and confirm in the dialog.
    - The same sentence appears as the error, since joining another kitchen would first leave this
      one. A is still in its kitchen afterwards.
 3. Device B (member): tap "Leave this kitchen".
+   - A dialog "Leave this kitchen?" opens, its "Leave" button in red. "Cancel" first: nothing
+     changes. Tap it again and confirm with "Leave"; a snackbar reads "You left the kitchen".
    - B's screen may show the empty state "No kitchen yet" for a moment, then settles on a new solo
      kitchen: a different join code, B as the only member and "Owner", with no restart. The session
      provisions the replacement.
@@ -303,7 +306,7 @@ different accounts) if you want names in the member list; anonymous works for ev
      away, since A is alone again.
 5. Console: `memberIds` no longer holds B and `memberDisplayNames` has no entry for B.
    `removedMemberIds` is **not** extended by a voluntary leave.
-6. Device A (now a solo owner): tap "Leave this kitchen".
+6. Device A (now a solo owner): tap "Leave this kitchen" and confirm.
    - It works. A's screen may show "No kitchen yet" for a moment, then a new solo kitchen with a
      different code.
    - Console: the old kitchen document remains, with an empty `memberIds`; no member can reach it
@@ -314,13 +317,15 @@ different accounts) if you want names in the member list; anonymous works for ev
 *Rebuild the sharing from scenario 5 with fresh accounts if needed: A owns, B has joined.*
 
 1. Device A: Members, B's row, tap "Remove".
-   - B's row disappears from A's list.
+   - A dialog names B ("Remove <name> from the kitchen?", or "Kitchen member" if B has no name) and
+     says B cannot rejoin with the code; its "Remove" button is red. Confirm.
+   - B's row disappears from A's list and a snackbar confirms it.
 2. Device B.
    - Live, the Kitchen screen changes to "No kitchen yet" and then to a new solo kitchen of its own,
      without a restart.
 3. Console.
    - `memberIds` no longer holds B; `removedMemberIds` now holds B's uid, and only B's.
-4. Device B: in "Join a kitchen", type A's **current** code (still valid) and tap "Join".
+4. Device B: in "Join a kitchen", type A's **current** code (still valid), tap "Join" and confirm.
    - The join is refused with a red line. The expected message is "This account is not allowed to
      do that"; if another appears, record it verbatim.
    - B does not appear in A's member list, and the Console `memberIds` is unchanged.
@@ -331,7 +336,8 @@ different accounts) if you want names in the member list; anonymous works for ev
 this kitchen).*
 
 1. Device A: note the code, then tap "New code" next to "Your join code".
-   - The displayed code changes immediately, with no error.
+   - A dialog "Make a new code?" says the current code stops working. Confirm with "New code".
+   - The displayed code changes immediately, with no error, and a snackbar reads "New code ready".
 2. Console.
    - `kitchens/<kitchenId>.joinCode` equals the new code.
    - `kitchenInvites/<oldCode>` is **gone** and `kitchenInvites/<newCode>` exists.
