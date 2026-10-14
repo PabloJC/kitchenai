@@ -13,6 +13,10 @@ kitchen and everything in it stay. `observeSession()` re-emits the same uid with
 (the adapter emits it itself, as Firebase's auth-state listener does not fire on a link), and
 `follow` treats it as no change.
 
+Sign in with Apple (iOS only, #251) follows the same rule. The one difference is the switch: a
+refused Apple link has spent its nonce, so confirming opens Apple's sheet again for a fresh token,
+where Google's switch reuses the tokens it already has.
+
 The uid can still change after `Ready`: when the Google account already has a uid of its own the
 link fails with `AppError.Conflict`, the profile asks, and only a confirmed switch signs in to that
 uid and leaves the guest one behind. Signing out clears it. The ViewModel follows

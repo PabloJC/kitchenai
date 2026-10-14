@@ -65,7 +65,11 @@ a personal team.
 
 ### Firebase project
 
-- *Authentication → Sign-in method*: **Anonymous** and **Google** both enabled.
+- *Authentication → Sign-in method*: **Anonymous**, **Google** and **Apple** enabled. Apple needs no
+  Services ID for the native iOS flow: the bundle id is enough (#251).
+- Sign in with Apple also needs the *Sign in with Apple* capability on the App ID in Apple Developer
+  (`iosApp/iosApp/iosApp.entitlements` asks for it). A personal team cannot sign that capability, so
+  scenario 12 needs a paid team in `TEAM_ID`; the simulator still runs without it, minus Apple sign-in.
 - The Android app registered in the project with the debug keystore's SHA-1 fingerprint added —
   the Google sheet fails without it. This is general Firebase behaviour, not something this
   repository checks.
@@ -179,7 +183,7 @@ signed in to this Firebase project (delete it from Authentication → Users firs
      both). After you pick an account the app comes back to the foreground. If the sheet opens but
      control never returns, check `GOOGLE_IOS_REVERSED_CLIENT_ID` first, then record it.
 3. Pick the never-used throwaway account.
-   - No "Switch to this Google account?" dialog appears.
+   - No "Switch to this account?" dialog appears.
    - The "Sign in with Google" button is replaced by a row with the account's Google name on the
      left and a "Sign out" button on the right. If Google returned no name the row reads "Signed
      in".
@@ -198,7 +202,7 @@ signed in to this Firebase project (delete it from Authentication → Users firs
    - Still exactly one `kitchens` document and one `shoppingLists` document for this uid.
 7. An account that already has data. Sign out, add one item as the new guest, then tap "Sign in
    with Google" and pick the **same** Google account again.
-   - A dialog "Switch to this Google account?" explains that the guest data stays behind, with
+   - A dialog "Switch to this account?" explains that the guest data stays behind, with
      "Stay as guest" (filled) and "Switch".
    - "Stay as guest": the dialog closes, no error appears, the row still offers "Sign in with
      Google", and the guest item is still on Shopping.
@@ -440,6 +444,25 @@ something to work from. Run on both platforms.*
 
 ---
 
+### 12. Sign in with Apple (iOS only)
+
+*iOS, from a fresh install (anonymous). Add one shopping item first. Use an Apple ID that has never
+signed in to this Firebase project; in Settings → Apple ID → Sign-In & Security → Sign in with Apple,
+stop using Apple ID for the app to reset it.*
+
+1. Profile tab.
+   - Apple's own black "Sign in with Apple" button (white in dark mode) sits above "Sign in with
+     Google", both full width and the same height.
+   - On Android the Apple button does not appear at all.
+2. Tap it and cancel Apple's sheet.
+   - A red "Something went wrong" line, the buttons enabled again, still a guest.
+3. Tap it again, share the name, and continue (hiding the email is fine).
+   - The account row shows the name Apple returned; the shopping item is still there (linked, same uid).
+   - *Authentication → Users*: the scenario's uid now lists the Apple provider; no new user.
+4. Sign out, add an item as the new guest, tap "Sign in with Apple" with the same Apple ID.
+   - The "Switch to this account?" dialog appears (the same dialog Google uses).
+   - "Switch" opens Apple's sheet once more, then shows the data from step 3, not the guest item.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -453,10 +476,10 @@ Do not edit the scenarios to match a result: open an issue.
 | 2. Google sign-in | fail | fail | 2026-10-13 | Both runs used a personal Google account rather than a throwaway, on an API 36 emulator and an iPhone 17 Pro simulator, device language Spanish. **Android:** steps 2, 3, 5 and 6 as expected: the sheet opened, the row showed the Google name and "Cerrar sesión" with no email or photo, the kitchen showed "(tú)" and "Propietario" with a new join code, and the console had a Google-provider user, `users/<uid>` with the name, a kitchen with `memberIds` of one and the name in `memberDisplayNames`, and one `shoppingLists` document. Step 4 failed: the Pantry tab showed "Esta cuenta no tiene permiso para leer sus propios datos" with the anonymous user's rows (#240, fixed in #241); on a build with the fix, signing out and in again left Pantry and Shopping empty with no error. The Ideas tab showed "La app no ha podido demostrar quién es", the App Check message, because this install's debug token was not registered. Steps 1 and 7 not run. **iOS:** step 1: dismissing the sheet showed the red "Algo ha ido mal" and the button was enabled again, still anonymous. Step 2: the sheet opened after the system prompt and the app came back to the foreground, so the URL scheme works. Step 3 failed: the session stayed anonymous with "Algo ha ido mal" and no request reached Firebase Auth (#242, fixed in #243); on a build with the fix the row showed the Google name and "Cerrar sesión" with no email or photo. Steps 4 to 7 not run on iOS. |
 | 3. Sign-out |  |  |  |  |
 | 4. Failed account switch, retry |  |  |  |  |
-| 5. Two accounts: join and shared data | pass | pass | 2026-10-13 | Not two Google accounts: the owner was a Google account on an API 36 emulator, the member an anonymous user on an iPhone 17 Pro simulator; device language Spanish. Steps 1 to 3 and 5 as expected: B typed A's code, the field emptied, B's screen showed A's code, "Pablo Jiménez" with "Propietario", then "Tú" with the supporting text "Miembro de la cocina", with no "Nuevo código" and no "Eliminar" and "Salir de esta cocina" enabled; the Android screen listed the same three rows with the member as "Miembro de la cocina" and no raw id. Step 6: a line added by the owner appeared on the iOS member, and ticking it there moved it to "En el carro" on the Android device within a few seconds. Step 7: only `memberIds` of the shared kitchen was read (two members). Steps 4 (live on A), 8 and the case-insensitive typing of step 1 were not run, and B's earlier solo kitchen was not inspected. Two earlier tries on iOS ended in "Ese código no corresponde a ninguna cocina": the simulator's text input had dropped a character of the code; typed in chunks and checked, the join worked. |
-| 6. Leaving | fail |  | 2026-10-13 | Android: step 1 as expected: the owner with another member saw "Como propietario, no puedes salir mientras haya otras personas en esta cocina. Elimínalas primero." above "Salir de esta cocina" (the button was not tapped). Step 3 failed: after a member left, the Kitchen screen stayed on "Todavía no hay cocina" and the Pantry tab on "No se encuentra kitchen" for over 30 s, until the app was restarted, although a replacement solo kitchen had been created within about 100 ms (#246, fixed in #247). On a build with the fix, joining a kitchen by code and leaving it settled on a new solo kitchen with a new code and an empty Pantry with no banner and no restart. The owner's row disappearing live (step 4), the console checks (step 5) and the solo owner leaving (step 6) were not run, nor step 2. iOS: a voluntary leave was not run. |
-| 7. Remove member, no rejoin | pass | fail | 2026-10-13 | Android was the owner: "Eliminar" on the member's row removed it and the owner's "Salir de esta cocina" was no longer blocked (step 1). iOS was the removed member: step 2 failed, its Kitchen screen went to "Todavía no hay cocina" live but stayed there until the screen was re-entered, when a new solo kitchen appeared (the same defect as scenario 6, #246, fixed in #247). Step 4 as expected: typing the owner's current code gave "Esta cuenta no tiene permiso para hacer eso", and the member did not appear in the owner's list. The console checks of step 3 and the unchanged `memberIds` of step 4 were not read. |
-| 8. Regenerate join code | pass |  | 2026-10-13 | Android as the owner: "Nuevo código" changed the displayed code immediately with no error (step 1); in the console `joinCode` equalled the new code, `kitchenInvites/<oldCode>` was gone and `kitchenInvites/<newCode>` existed (step 2). Steps 3 and 4 (a spare account joining with the old and the new code) were not run. iOS did not play the owner. |
+| 5. Two accounts: join and shared data |  |  |  |  |
+| 6. Leaving |  |  |  |  |
+| 7. Remove member, no rejoin |  |  |  |  |
+| 8. Regenerate join code |  |  |  |  |
 | 9. Recipe photos by dish type |  |  | 2026-10-09 | Partial, so the platform cells stay empty. On both platforms a generated suggestion showed a bundled photograph on its card and the same one in the detail header, loaded and not stretched; two dish types seen on iOS (grilled, rice dish), one on Android. Steps 1 (pull to generate), 4 and the three-dish-type check of step 5 were not run: the existing generated set was reused. |
 | 10. Missing `dish-types` tag |  |  |  |  |
 | 11. Hand-typed shopping amount | pass | blocked | 2026-10-12 | Android (API 36 emulator, device language Spanish), not scripted to the letter: step 2 used "Harina de trigo" with `500` g instead of `2` kg and the line showed "500 g" with the amount field empty again; step 6 gave a line `2` of the unit "unidad" instead of `500` g, which moved to the pantry and showed there as "2 unidades". Step 7's message was seen first, with two ticked lines and no amount: "No se ha movido nada: 2 líneas no tienen cantidad. Toca Añadir cantidad para ponerla." Step 4's message followed: "1 movido a la despensa, 1 no tiene cantidad y se queda en la lista". Step 5: "Guardar" was disabled with the field empty. With the keyboard open the name field, the chip suggestion, the amount field and "Añadir" were all visible above it. Steps 1 and 5 checked the keyboard on Android only. iOS: the soft keyboard could not be shown in the simulator (it takes the Mac's hardware keyboard and toggling it needs accessibility permission), so the keyboard checks are blocked; the two-row add field and the rows were seen, steps 2 to 7 were not run. |

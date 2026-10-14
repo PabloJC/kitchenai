@@ -1,6 +1,8 @@
 package com.kitchenai.shared.domain.port
 
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.AppleIdToken
+import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
 import com.kitchenai.shared.domain.model.Session
@@ -29,6 +31,18 @@ interface SessionRepositoryContract {
     suspend fun linkWithGoogle(
         idToken: GoogleIdToken,
         accessToken: GoogleAccessToken? = null,
+    ): AppResult<Session.SignedIn>
+
+    /** [signInWithGoogle] for Sign in with Apple. */
+    suspend fun signInWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
+    ): AppResult<Session.SignedIn>
+
+    /** [linkWithGoogle] for Sign in with Apple. A refused link consumes the nonce: a switch needs a fresh token. */
+    suspend fun linkWithApple(
+        idToken: AppleIdToken,
+        rawNonce: AppleRawNonce,
     ): AppResult<Session.SignedIn>
 
     suspend fun signOut(): AppResult<Unit>
