@@ -28,9 +28,9 @@ import com.kitchenai.ui.resources.nav_back
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The frame every tab is drawn inside. Recipe detail is reached from a tab and is not one, so
- * it never appears in [destinations] — that absence is what tells this bar to draw a back
- * arrow instead of relying on the caller to say so.
+ * The frame every tab is drawn inside. Recipe detail and Kitchen are reached from a tab and are
+ * not one: their tab stays selected below, and being off the tab's own screen is what tells this
+ * bar to draw a back arrow instead of relying on the caller to say so.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +42,9 @@ fun AppShell(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val entry by navController.currentBackStackEntryAsState()
-    val tab = destinations.firstOrNull { entry.isOn(it.route) }
+    val selected = destinations.firstOrNull { destination -> entry.isIn(destination.graph) }
+    // The tab whose own screen is showing; null on a screen opened from it.
+    val tab = selected?.takeIf { destination -> entry.isAt(destination.route) }
 
     Scaffold(
         modifier = modifier,
@@ -55,8 +57,8 @@ fun AppShell(
                     Text(title ?: stringResource(tab?.label ?: Res.string.detail_title))
                 },
                 navigationIcon = {
-                    // Only the routes absent from destinations need a way out: every tab is
-                    // reached by tapping the bar below, never by going back into it.
+                    // Only a screen opened from a tab needs a way out: every tab is reached by
+                    // tapping the bar below, never by going back into it.
                     if (tab == null) {
                         IconButton(onClick = navController::navigateUp) {
                             Icon(
@@ -77,8 +79,14 @@ fun AppShell(
             NavigationBar {
                 destinations.forEach { destination ->
                     NavigationBarItem(
-                        selected = entry.isOn(destination.route),
-                        onClick = { navController.switchTo(destination.route) },
+                        selected = destination == selected,
+                        onClick = {
+                            if (destination == selected) {
+                                navController.popBackStack(destination.route::class, inclusive = false)
+                            } else {
+                                navController.switchTo(destination.graph)
+                            }
+                        },
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(stringResource(destination.label)) },
                     )
@@ -90,8 +98,10 @@ fun AppShell(
 }
 
 /** The hierarchy, not the leaf: a tab stays selected while its own sub-destinations are open. */
-private fun NavBackStackEntry?.isOn(route: Route): Boolean =
-    this?.destination?.hierarchy?.any { destination -> destination.hasRoute(route::class) } == true
+private fun NavBackStackEntry?.isIn(graph: Route): Boolean =
+    this?.destination?.hierarchy?.any { destination -> destination.hasRoute(graph::class) } == true
+
+private fun NavBackStackEntry?.isAt(route: Route): Boolean = this?.destination?.hasRoute(route::class) == true
 
 /** One entry per tab, each tab keeping the stack it had: tapping a tab twice must not stack it twice. */
 private fun NavHostController.switchTo(route: Route) {
