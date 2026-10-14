@@ -481,6 +481,24 @@ the smoke script.
 
 ---
 
+## Account deletion (#252)
+
+Both stores require that a user who can create an account can delete it from inside the app. The
+profile's "Delete account" calls the `deleteAccount` callable (`functions/src/accountDeletion.ts`),
+which:
+- deletes the kitchens the account was alone in, with their subcollections and invite;
+- leaves shared kitchens to the other members, handing ownership to the next member if needed;
+- deletes `users/{uid}`, then the Auth user.
+
+`agentUsage` counters are left to their TTL. Outside the repository:
+
+- Deploy the function with the others (`firebase deploy --only functions`), in the documented order;
+  until it is deployed the button fails with "Something went wrong".
+- Google Play also wants a **web** way to request deletion, declared in the Data safety form. A page
+  or form that reaches the owner is enough; it is not built here.
+
+---
+
 ## Known debt
 
 - Restrict the iOS API key in Google Cloud Console to the app's bundle id.

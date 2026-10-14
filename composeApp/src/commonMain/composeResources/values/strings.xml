@@ -142,6 +142,11 @@
     <string name="profile_switch_body">This account already has its own kitchen. If you switch to it, what you added as a guest stays behind and will no longer be visible.</string>
     <string name="profile_switch_confirm">Switch</string>
     <string name="profile_switch_cancel">Stay as guest</string>
+    <string name="profile_delete_account">Delete account</string>
+    <string name="profile_delete_title">Delete your account?</string>
+    <string name="profile_delete_body">Your profile and preferences are deleted. A kitchen only you use is deleted with its pantry, lists and saved recipes. A kitchen you share stays for the others, and if you own it, the next member becomes its owner. This cannot be undone.</string>
+    <string name="profile_delete_confirm">Delete</string>
+    <string name="profile_delete_cancel">Cancel</string>
     <string name="profile_signed_in_fallback">Signed in</string>
     <string name="profile_kitchen_action">Manage your kitchen</string>
     <string name="kitchen_title">Kitchen</string>

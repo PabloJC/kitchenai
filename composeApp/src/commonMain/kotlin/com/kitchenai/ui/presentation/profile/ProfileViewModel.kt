@@ -199,6 +199,18 @@ class ProfileViewModel(
         }
     }
 
+    /** Deleted on the server, then signed out: the session starts again as a guest and rebuilds every screen. */
+    fun deleteAccount() {
+        if (authenticating.value) return
+        authenticating.value = true
+        writeFailure.value = null
+        viewModelScope.launch {
+            val result = accountDelegate.deleteAccount(NoParams)
+            if (result is AppResult.Failure) writeFailure.value = result.error.toProfileError()
+            authenticating.value = false
+        }
+    }
+
     /** The account changed identity, not just its data: the previous uid's draft is another profile's. */
     private fun switchActiveUser(userId: UserId) {
         if (activeUserId.value == userId) return

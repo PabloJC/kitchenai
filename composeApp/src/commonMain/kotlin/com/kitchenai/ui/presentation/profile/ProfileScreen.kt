@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +40,11 @@ import com.kitchenai.ui.platform.rememberGoogleSignInLauncher
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.profile_delete_account
+import com.kitchenai.ui.resources.profile_delete_body
+import com.kitchenai.ui.resources.profile_delete_cancel
+import com.kitchenai.ui.resources.profile_delete_confirm
+import com.kitchenai.ui.resources.profile_delete_title
 import com.kitchenai.ui.resources.profile_kitchen_action
 import com.kitchenai.ui.resources.profile_no_preferences
 import com.kitchenai.ui.resources.profile_no_vocabulary
@@ -174,6 +181,7 @@ private fun AccountArea(
         onAppleSignIn = appleLauncher?.let { { launchApple(viewModel::signInWithApple) } },
         onSignOut = viewModel::signOut,
     )
+    if (state.hasAccount) DeleteAccountAction(enabled = !state.isAuthenticating, onDelete = viewModel::deleteAccount)
 
     if (state.isConfirmingAccountSwitch) {
         SwitchAccountDialog(
@@ -187,6 +195,45 @@ private fun AccountArea(
                 }
             },
             onDismiss = viewModel::cancelAccountSwitch,
+        )
+    }
+}
+
+/** Destructive and final, so it sits apart from Sign out, in the error colour, and always asks first. */
+@Composable
+private fun DeleteAccountAction(
+    enabled: Boolean,
+    onDelete: () -> Unit,
+) {
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    TextButton(
+        onClick = { confirming = true },
+        enabled = enabled,
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        modifier = Modifier.padding(horizontal = Dimens.large),
+    ) { Text(stringResource(Res.string.profile_delete_account)) }
+
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text(stringResource(Res.string.profile_delete_title)) },
+            text = { Text(stringResource(Res.string.profile_delete_body)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirming = false
+                        onDelete()
+                    },
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
+                ) { Text(stringResource(Res.string.profile_delete_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirming = false }) { Text(stringResource(Res.string.profile_delete_cancel)) }
+            },
         )
     }
 }

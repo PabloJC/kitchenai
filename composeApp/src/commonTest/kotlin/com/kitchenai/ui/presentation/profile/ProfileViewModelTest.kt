@@ -16,6 +16,7 @@ import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
+import com.kitchenai.shared.domain.port.AccountRepositoryContract
 import com.kitchenai.shared.domain.port.SessionRepositoryContract
 import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
@@ -25,6 +26,7 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
+import com.kitchenai.shared.domain.usecase.session.DeleteAccountUseCase
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithAppleUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithGoogleUseCase
@@ -64,6 +66,7 @@ class ProfileViewModelTest {
     private val profiles = FakeUserProfilePort()
     private val catalogue = FakeTaxonomyPort()
     private val sessions = FakeSessionPort(Session.SignedIn(userId, isAnonymous = true))
+    private val accounts = FakeAccountPort()
     private val pendingName = PendingDisplayName()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
@@ -456,6 +459,36 @@ class ProfileViewModelTest {
         }
 
     @Test
+    fun `deleting the account reaches the server and then signs out`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            sessions.emit(Session.SignedIn(userId, isAnonymous = false))
+
+            viewModel.deleteAccount()
+            advanceUntilIdle()
+
+            assertEquals(1, accounts.calls)
+            assertEquals(Session.SignedOut, sessions.observeSession().first())
+            assertNull(viewModel.state.value.generalError)
+            assertEquals(false, viewModel.state.value.isAuthenticating)
+        }
+
+    @Test
+    fun `a deletion the server refuses is shown and the session stays`() =
+        runTest(dispatcher) {
+            val viewModel = ready("t-1" to 1)
+            val signedIn = Session.SignedIn(userId, isAnonymous = false)
+            sessions.emit(signedIn)
+            accounts.result = AppResult.Failure(AppError.Network())
+
+            viewModel.deleteAccount()
+            advanceUntilIdle()
+
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
+            assertEquals(signedIn, sessions.observeSession().first())
+        }
+
+    @Test
     fun `a switch that fails is shown and drops the name it offered`() =
         runTest(dispatcher) {
             val viewModel = ready("t-1" to 1)
@@ -662,6 +695,7 @@ class ProfileViewModelTest {
                     signInWithApple = SignInWithAppleUseCase(sessions),
                     switchToAppleAccount = SwitchToAppleAccountUseCase(sessions),
                     signOut = SignOutUseCase(sessions),
+                    deleteAccount = DeleteAccountUseCase(accounts, sessions),
                     pendingDisplayName = pendingName,
                 ),
         )
@@ -752,6 +786,16 @@ private class FakeTaxonomyPort : TaxonomyRepositoryContract {
     override suspend fun getTaxonomies(): AppResult<List<Taxonomy>> = AppResult.Success(published)
 
     override suspend fun getTerms(id: TaxonomyId): AppResult<List<Term>> = AppResult.Success(termsOf(id).value)
+}
+
+private class FakeAccountPort : AccountRepositoryContract {
+    var result: AppResult<Unit> = AppResult.Success(Unit)
+    var calls = 0
+
+    override suspend fun deleteAccount(): AppResult<Unit> {
+        calls++
+        return result
+    }
 }
 
 /** Stateful on purpose: a sign-in or sign-out has to be visible on the same stream [observeSession] exposes. */

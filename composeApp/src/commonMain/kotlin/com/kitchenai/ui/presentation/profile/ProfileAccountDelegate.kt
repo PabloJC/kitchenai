@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.profile
 
+import com.kitchenai.shared.domain.usecase.session.DeleteAccountUseCase
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithAppleUseCase
 import com.kitchenai.shared.domain.usecase.session.SignInWithGoogleUseCase
@@ -16,5 +17,6 @@ class ProfileAccountDelegate(
     val signInWithApple: SignInWithAppleUseCase,
     val switchToAppleAccount: SwitchToAppleAccountUseCase,
     val signOut: SignOutUseCase,
+    val deleteAccount: DeleteAccountUseCase,
     val pendingDisplayName: PendingDisplayName,
 )

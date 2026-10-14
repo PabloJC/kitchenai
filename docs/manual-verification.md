@@ -448,6 +448,21 @@ stop using Apple ID for the app to reset it.*
    - The "Switch to this account?" dialog appears (the same dialog Google uses).
    - "Switch" opens Apple's sheet once more, then shows the data from step 3, not the guest item.
 
+### 13. Deleting an account
+
+*Signed in with a throwaway Google account, as owner of a kitchen with one item in the pantry. For the
+shared case, a second device joined to that kitchen (scenario 5).*
+
+1. Profile tab: a red "Delete account" button sits under the account row. It is absent for a guest.
+2. Tap it, then "Cancel": nothing changes.
+3. Tap it, then "Delete".
+   - The app comes back as a fresh guest: empty pantry and list, the profile offers sign-in again.
+   - *Authentication → Users*: the account is gone. `users/<uid>` is gone.
+   - Alone in the kitchen: `kitchens/<id>`, its `pantry`/`shoppingLists`/`savedRecipes` and its
+     `kitchenInvites/<code>` are gone.
+   - Shared kitchen: it is still there for the second device, which now shows itself as "Owner".
+4. Airplane mode, then "Delete": "No connection" under the button and the account is untouched.
+
 ### 14. The bottom bar keeps a sub-screen's tab selected
 
 *Run on both platforms.*
@@ -482,4 +497,5 @@ Do not edit the scenarios to match a result: open an issue.
 | 9. Recipe photos by dish type |  |  | 2026-10-09 | Partial, so the platform cells stay empty. On both platforms a generated suggestion showed a bundled photograph on its card and the same one in the detail header, loaded and not stretched; two dish types seen on iOS (grilled, rice dish), one on Android. Steps 1 (pull to generate), 4 and the three-dish-type check of step 5 were not run: the existing generated set was reused. |
 | 10. Missing `dish-types` tag |  |  |  |  |
 | 11. Hand-typed shopping amount | pass | blocked | 2026-10-12 | Android (API 36 emulator, device language Spanish), not scripted to the letter: step 2 used "Harina de trigo" with `500` g instead of `2` kg and the line showed "500 g" with the amount field empty again; step 6 gave a line `2` of the unit "unidad" instead of `500` g, which moved to the pantry and showed there as "2 unidades". Step 7's message was seen first, with two ticked lines and no amount: "No se ha movido nada: 2 líneas no tienen cantidad. Toca Añadir cantidad para ponerla." Step 4's message followed: "1 movido a la despensa, 1 no tiene cantidad y se queda en la lista". Step 5: "Guardar" was disabled with the field empty. With the keyboard open the name field, the chip suggestion, the amount field and "Añadir" were all visible above it. Steps 1 and 5 checked the keyboard on Android only. iOS: the soft keyboard could not be shown in the simulator (it takes the Mac's hardware keyboard and toggling it needs accessibility permission), so the keyboard checks are blocked; the two-row add field and the rows were seen, steps 2 to 7 were not run. |
+| 13. Deleting an account |  |  |  |  |
 | 14. Bottom bar on a sub-screen |  |  |  |  |

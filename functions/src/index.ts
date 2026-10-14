@@ -1,8 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
+import { deleteAccount as deleteAccountData } from './accountDeletion.js';
 import { writeCatalogueEntry } from './catalogueAdmin.js';
 import { loadCatalogue, resolve, toReadable } from './catalogue.js';
 import { BadRequest, parseRequest, SCHEMA_VERSION } from './contract.js';
@@ -111,6 +113,26 @@ export const writeCatalogue = onCall(
   async (call) => {
     const result = await writeCatalogueEntry(db, call);
     logger.info('catalogue entry written', result);
+    return result;
+  },
+);
+
+/**
+ * In-app account deletion, which both stores require (#252). App Check on, like every call the app
+ * makes: only the signed-in owner of an account can reach this, and only for their own uid.
+ */
+export const deleteAccount = onCall(
+  {
+    region: process.env.FUNCTIONS_REGION ?? 'europe-southwest1',
+    enforceAppCheck: true,
+    // Above the app's 90 s wait: kitchens are deleted one after another, each recursively.
+    timeoutSeconds: 120,
+    maxInstances: 5,
+  },
+  async (call) => {
+    const result = await deleteAccountData(db, getAuth(), call);
+    // Counts only: the uid is the user's identifier and stays out of the logs.
+    logger.info('account deleted', result);
     return result;
   },
 );
