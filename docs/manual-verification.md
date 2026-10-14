@@ -448,6 +448,29 @@ stop using Apple ID for the app to reset it.*
    - The "Switch to this account?" dialog appears (the same dialog Google uses).
    - "Switch" opens Apple's sheet once more, then shows the data from step 3, not the guest item.
 
+### 15. Screen readers and large text reach every action
+
+*Run with TalkBack on Android and VoiceOver on iOS, then once more with the system font at 200%.*
+
+1. Pantry tab, with at least one item from the catalogue and one typed by hand.
+   - Moving by headings lands on each section header ("Use soon", "Fresh"…).
+   - The hand-typed row reads "Not in catalogue" before its name.
+   - On a row, the actions menu (TalkBack: actions; VoiceOver: swipe up or down) offers "Delete",
+     and choosing it removes the row and offers "Undo".
+2. Open a row's editor.
+   - A red "Delete" button below "Save" removes the item and closes the sheet.
+3. Shopping tab: the same checks as step 1 on a line. Open a line's amount dialog.
+   - "Delete" sits next to "Cancel" and removes the line.
+4. Open a recipe.
+   - The servings buttons read "Decrease servings, button" and "Increase servings, button"; the
+     count between them reads "4 servings", and is read again after a tap.
+   - Each step reads as one item: "Step 2 of 6: …".
+5. Profile: select a dietary term so it shows "Prefer".
+   - The chip reads its state ("Prefer"), and its actions offer "Change to Avoid". Choosing it
+     turns the marker to "Avoid".
+6. With the font at 200%, repeat steps 1 to 4 by sight.
+   - No label is cut off and every button stays reachable by scrolling.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -468,3 +491,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 9. Recipe photos by dish type |  |  | 2026-10-09 | Partial, so the platform cells stay empty. On both platforms a generated suggestion showed a bundled photograph on its card and the same one in the detail header, loaded and not stretched; two dish types seen on iOS (grilled, rice dish), one on Android. Steps 1 (pull to generate), 4 and the three-dish-type check of step 5 were not run: the existing generated set was reused. |
 | 10. Missing `dish-types` tag |  |  |  |  |
 | 11. Hand-typed shopping amount | pass | blocked | 2026-10-12 | Android (API 36 emulator, device language Spanish), not scripted to the letter: step 2 used "Harina de trigo" with `500` g instead of `2` kg and the line showed "500 g" with the amount field empty again; step 6 gave a line `2` of the unit "unidad" instead of `500` g, which moved to the pantry and showed there as "2 unidades". Step 7's message was seen first, with two ticked lines and no amount: "No se ha movido nada: 2 líneas no tienen cantidad. Toca Añadir cantidad para ponerla." Step 4's message followed: "1 movido a la despensa, 1 no tiene cantidad y se queda en la lista". Step 5: "Guardar" was disabled with the field empty. With the keyboard open the name field, the chip suggestion, the amount field and "Añadir" were all visible above it. Steps 1 and 5 checked the keyboard on Android only. iOS: the soft keyboard could not be shown in the simulator (it takes the Mac's hardware keyboard and toggling it needs accessibility permission), so the keyboard checks are blocked; the two-row add field and the rows were seen, steps 2 to 7 were not run. |
+| 15. Screen readers and large text |  |  |  |  |

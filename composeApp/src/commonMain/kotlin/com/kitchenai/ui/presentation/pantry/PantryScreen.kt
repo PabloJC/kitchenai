@@ -41,7 +41,9 @@ import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.not_in_catalogue
 import com.kitchenai.ui.resources.pantry_add
+import com.kitchenai.ui.resources.pantry_delete
 import com.kitchenai.ui.resources.pantry_empty_body
 import com.kitchenai.ui.resources.pantry_empty_title
 import com.kitchenai.ui.resources.pantry_removed
@@ -102,6 +104,7 @@ fun PantryScreen(
             state = state,
             onDismiss = viewModel::closeEditor,
             onSubmit = viewModel::save,
+            onDelete = viewModel::deleteEditing,
         )
     }
 }
@@ -155,8 +158,16 @@ private fun PantryRow(
     onEdit: (PantryItemUi) -> Unit,
     onRemove: (PantryItemUi) -> Unit,
 ) {
-    SwipeToDismissRow(onDismiss = { onRemove(item) }) {
+    // Italics alone tell the two kinds of row apart only to someone who can see them.
+    val freeTextMarker: (@Composable () -> Unit)? =
+        if (item.ingredient == null) {
+            { Text(stringResource(Res.string.not_in_catalogue)) }
+        } else {
+            null
+        }
+    SwipeToDismissRow(onDismiss = { onRemove(item) }, deleteLabel = stringResource(Res.string.pantry_delete)) {
         ListItem(
+            overlineContent = freeTextMarker,
             headlineContent = {
                 // Set apart from a catalogue row, which is the row that merges and that the
                 // pantry matcher can reason about; this one is neither.

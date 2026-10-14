@@ -2,7 +2,6 @@ package com.kitchenai.ui.presentation.suggestions.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +19,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -30,6 +31,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -51,6 +53,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.RecipeId
@@ -82,6 +90,10 @@ import com.kitchenai.ui.resources.detail_missing
 import com.kitchenai.ui.resources.detail_optional_suffix
 import com.kitchenai.ui.resources.detail_save
 import com.kitchenai.ui.resources.detail_servings
+import com.kitchenai.ui.resources.detail_servings_count
+import com.kitchenai.ui.resources.detail_servings_decrease
+import com.kitchenai.ui.resources.detail_servings_increase
+import com.kitchenai.ui.resources.detail_step_spoken
 import com.kitchenai.ui.resources.detail_steps
 import com.kitchenai.ui.resources.detail_undo
 import com.kitchenai.ui.resources.detail_unsave
@@ -96,6 +108,7 @@ import com.kitchenai.ui.resources.snack_saved
 import com.kitchenai.ui.resources.snack_unsaved
 import com.kitchenai.ui.resources.suggestions_minutes
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -247,38 +260,42 @@ private fun ServingsStepper(
             horizontalArrangement = Arrangement.spacedBy(Dimens.small),
         ) {
             Text(stringResource(Res.string.detail_servings), style = MaterialTheme.typography.labelSmall)
-            StepperButton("-", enabled = state.servings > 1 && !state.isWorking) {
-                viewModel.setServings(state.servings - 1)
-            }
-            Text(state.servings.toString(), style = MaterialTheme.typography.titleMedium)
-            StepperButton("+", enabled = !state.isWorking) { viewModel.setServings(state.servings + 1) }
+            StepperButton(
+                Icons.Outlined.Remove,
+                stringResource(Res.string.detail_servings_decrease),
+                enabled = state.servings > 1 && !state.isWorking,
+            ) { viewModel.setServings(state.servings - 1) }
+            val servingsSpoken = pluralStringResource(Res.plurals.detail_servings_count, state.servings, state.servings)
+            Text(
+                state.servings.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                // Read as "4 servings", and re-read when a tap changes it.
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = servingsSpoken
+                        liveRegion = LiveRegionMode.Polite
+                    },
+            )
+            StepperButton(
+                Icons.Outlined.Add,
+                stringResource(Res.string.detail_servings_increase),
+                enabled = !state.isWorking,
+            ) { viewModel.setServings(state.servings + 1) }
         }
     }
 }
 
+/** An icon button rather than a drawn "-" / "+": it carries the button role and a spoken name. */
 @Composable
 private fun StepperButton(
+    icon: ImageVector,
     label: String,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    // The full 48dp touch target, even though the design's own circle reads smaller: below that
-    // size the tap is unreliable on a phone held in one hand, and this is the button someone
-    // taps repeatedly while their hands are full of food.
-    Box(
-        modifier =
-            Modifier
-                .size(Dimens.touchTarget)
-                .clip(CircleShape)
-                .let { if (enabled) it.clickable(onClick = onClick) else it },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
-        )
-    }
+    // IconButton keeps the 48dp touch target: this is the button someone taps repeatedly while
+    // their hands are full of food.
+    IconButton(onClick = onClick, enabled = enabled) { Icon(icon, contentDescription = label) }
 }
 
 @Composable
@@ -400,7 +417,7 @@ private fun StepsCard(steps: List<String>) {
                     },
                 verticalArrangement = Arrangement.spacedBy(Dimens.medium),
             ) {
-                steps.forEachIndexed { index, step -> StepRow(index + 1, step, isFirst = index == 0) }
+                steps.forEachIndexed { index, step -> StepRow(index + 1, steps.size, step, isFirst = index == 0) }
             }
         }
     }
@@ -409,6 +426,7 @@ private fun StepsCard(steps: List<String>) {
 @Composable
 private fun StepRow(
     number: Int,
+    total: Int,
     step: String,
     isFirst: Boolean,
 ) {
@@ -417,7 +435,12 @@ private fun StepRow(
     val onFill = if (isFirst) colors.onPrimaryContainer else colors.onSurfaceVariant
     var circle = Modifier.size(Dimens.huge).clip(CircleShape).background(fill)
     if (!isFirst) circle = circle.border(DividerDefaults.Thickness, colors.outlineVariant, CircleShape)
-    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.medium)) {
+    val spoken = stringResource(Res.string.detail_step_spoken, number, total, step)
+    // One node per step: the number in its circle and the text would otherwise be read apart.
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Dimens.medium),
+        modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
+    ) {
         Box(modifier = circle, contentAlignment = Alignment.Center) {
             Text(number.toString(), style = MaterialTheme.typography.titleMedium, color = onFill)
         }

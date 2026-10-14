@@ -19,17 +19,23 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import com.kitchenai.ui.designsystem.theme.Dimens
 
 /**
  * The delete gesture shared by the pantry and the shopping list. Swiping only from the end
  * side: the start side is where a back gesture lives on both platforms.
  *
- * [onDismiss] fires once the swipe is confirmed; removing the item is the caller's job.
+ * [onDismiss] fires once the swipe is confirmed; removing the item is the caller's job. A swipe
+ * is out of reach for TalkBack, VoiceOver and Switch Access, so the same delete is also offered
+ * as an accessibility action named [deleteLabel].
  */
 @Composable
 fun SwipeToDismissRow(
     onDismiss: () -> Unit,
+    deleteLabel: String,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -43,7 +49,16 @@ fun SwipeToDismissRow(
 
     SwipeToDismissBox(
         state = state,
-        modifier = modifier,
+        modifier =
+            modifier.semantics {
+                customActions =
+                    listOf(
+                        CustomAccessibilityAction(deleteLabel) {
+                            dismiss()
+                            true
+                        },
+                    )
+            },
         enableDismissFromStartToEnd = false,
         backgroundContent = {
             // Trailing-aligned rather than centred: the swipe is fixed end-to-start, so this is

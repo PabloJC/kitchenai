@@ -15,6 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.designsystem.component.SectionHeader
@@ -23,6 +28,7 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.strength_avoid
+import com.kitchenai.ui.resources.strength_change_to
 import com.kitchenai.ui.resources.strength_prefer
 import org.jetbrains.compose.resources.stringResource
 
@@ -67,16 +73,34 @@ private fun ConstraintChip(
     onToggle: (TermRef) -> Unit,
     onCycleStrength: (TermRef) -> Unit,
 ) {
+    val strength = chip.strength
     val marker: (@Composable () -> Unit)? =
-        chip.strength?.let { strength ->
-            { StrengthMarker(strength = strength, onCycle = { onCycleStrength(chip.term) }) }
+        strength?.let { held ->
+            { StrengthMarker(strength = held, onCycle = { onCycleStrength(chip.term) }) }
         }
+    // The marker is a second target inside the chip, which a screen reader lands on as one node:
+    // the chip itself carries the strength as its state and the cycle as a named action.
+    val strengthLabel = strength?.label()
+    val cycleLabel = strength?.next()?.let { next -> stringResource(Res.string.strength_change_to, next.label()) }
 
     TermChip(
         label = chip.label,
         selected = chip.selected,
         onToggle = { onToggle(chip.term) },
         trailing = marker,
+        modifier =
+            Modifier.semantics {
+                if (strengthLabel != null) stateDescription = strengthLabel
+                if (cycleLabel != null) {
+                    customActions =
+                        listOf(
+                            CustomAccessibilityAction(cycleLabel) {
+                                onCycleStrength(chip.term)
+                                true
+                            },
+                        )
+                }
+            },
     )
 }
 
@@ -100,7 +124,11 @@ private fun StrengthMarker(
             Modifier
                 .fillMaxHeight()
                 .defaultMinSize(minWidth = Dimens.touchTarget, minHeight = Dimens.touchTarget)
-                .clickable(onClick = onCycle),
+                .clickable(
+                    onClickLabel = stringResource(Res.string.strength_change_to, strength.next().label()),
+                    role = Role.Button,
+                    onClick = onCycle,
+                ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
