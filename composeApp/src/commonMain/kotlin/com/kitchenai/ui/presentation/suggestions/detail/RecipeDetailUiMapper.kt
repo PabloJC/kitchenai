@@ -15,7 +15,11 @@ internal fun RecipeIngredient.toUi(
         name = freeText ?: ingredient?.let { resolver.label(it) ?: it.value }.orEmpty(),
         quantity =
             quantity?.let { held ->
-                formatQuantity(held.amount, held.unit?.let { unit -> resolver.label(unit, held.amount) })
+                formatQuantity(
+                    held.amount,
+                    held.unit?.let { unit -> resolver.label(unit, held.amount) },
+                    resolver.decimalSeparator,
+                )
             },
         optional = optional,
         // A free-text holding names itself, the same rule the pantry row already follows.

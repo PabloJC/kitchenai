@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.toRoute
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.RecipeId
@@ -40,19 +41,25 @@ fun KitchenAiNavHost(
     ) {
         composable<Route.Pantry> { PantryScreen(userId) }
         composable<Route.ShoppingList> { ShoppingScreen(userId) }
-        composable<Route.Suggestions> {
-            SuggestionsScreen(userId, onOpen = { id -> navController.navigate(Route.RecipeDetail(id.value)) })
-        }
-        composable<Route.RecipeDetail> { entry ->
-            // The id survives as a String and is validated here: a route argument is text, and
-            // a malformed one must not become an identifier the domain trusts.
-            val raw = entry.toRoute<Route.RecipeDetail>().recipeId
-            when (val id = RecipeId.of(raw)) {
-                is AppResult.Success -> RecipeDetailScreen(userId, id.data, detailTopBar)
-                is AppResult.Failure -> placeholder(userId)
+        navigation<Route.SuggestionsGraph>(startDestination = Route.Suggestions) {
+            composable<Route.Suggestions> {
+                SuggestionsScreen(userId, onOpen = { id -> navController.navigate(Route.RecipeDetail(id.value)) })
+            }
+            composable<Route.RecipeDetail> { entry ->
+                // The id survives as a String and is validated here: a route argument is text, and
+                // a malformed one must not become an identifier the domain trusts.
+                val raw = entry.toRoute<Route.RecipeDetail>().recipeId
+                when (val id = RecipeId.of(raw)) {
+                    is AppResult.Success -> RecipeDetailScreen(userId, id.data, detailTopBar)
+                    is AppResult.Failure -> placeholder(userId)
+                }
             }
         }
-        composable<Route.Profile> { ProfileScreen(userId, onOpenKitchen = { navController.navigate(Route.Kitchen) }) }
-        composable<Route.Kitchen> { KitchenScreen(userId, detailTopBar) }
+        navigation<Route.ProfileGraph>(startDestination = Route.Profile) {
+            composable<Route.Profile> {
+                ProfileScreen(userId, onOpenKitchen = { navController.navigate(Route.Kitchen) })
+            }
+            composable<Route.Kitchen> { KitchenScreen(userId, detailTopBar) }
+        }
     }
 }

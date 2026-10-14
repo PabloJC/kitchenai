@@ -49,6 +49,13 @@ class RecipeDetailUiMapperTest {
     }
 
     @Test
+    fun `a scaled amount reads two decimals with the reader's separator`() {
+        val resolver = LabelResolver(languageTags = listOf("es-ES"))
+
+        assertEquals("33,33", line(freeText = "x", quantity = Quantity(100.0 / 3, null)).toUi(resolver).quantity)
+    }
+
+    @Test
     fun `a free-text line keeps its own wording`() {
         val ui = line(freeText = "Pinch of salt").toUi(LabelResolver())
 
