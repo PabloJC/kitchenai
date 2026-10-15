@@ -93,11 +93,11 @@ class PantryViewModel(
     }
 
     fun openEditor(item: PantryItemUi?) {
-        _state.update { current -> current.copy(editing = item, isEditorOpen = true) }
+        _state.update { current -> current.copy(editing = item, isEditorOpen = true, lastAdded = null) }
     }
 
     fun closeEditor() {
-        _state.update { current -> current.copy(editing = null, isEditorOpen = false) }
+        _state.update { current -> current.copy(editing = null, isEditorOpen = false, lastAdded = null) }
     }
 
     /** The editor's own delete: the same removal and undo as a swipe, which not everyone can do. */
@@ -115,6 +115,32 @@ class PantryViewModel(
         val kitchen = kitchenId.value ?: return
         val editing = _state.value.editing
         closeEditor()
+        write(kitchen, editing, draft)
+    }
+
+    /**
+     * [save] for a weekly shop: the sheet stays open on an empty form and names what was just
+     * added, so fifteen items are fifteen forms and not fifteen sheets.
+     */
+    fun saveAndAddAnother(draft: PantryItemDraft) {
+        val kitchen = kitchenId.value ?: return
+        val editing = _state.value.editing
+        _state.update { current ->
+            current.copy(
+                editing = null,
+                isEditorOpen = true,
+                editorRevision = current.editorRevision + 1,
+                lastAdded = current.displayNameOf(draft),
+            )
+        }
+        write(kitchen, editing, draft)
+    }
+
+    private fun write(
+        kitchen: KitchenId,
+        editing: PantryItemUi?,
+        draft: PantryItemDraft,
+    ) {
         viewModelScope.launch {
             val quantity = Quantity(draft.amount, draft.unit)
             val result =
@@ -123,6 +149,8 @@ class PantryViewModel(
                 } else {
                     writes.update(kitchen, editing.applied(draft, writes.time.now()))
                 }
+            // A confirmation for a write that was refused would be a lie.
+            if (result is AppResult.Failure) _state.update { current -> current.copy(lastAdded = null) }
             result.reportFailure()
         }
     }
@@ -255,6 +283,10 @@ class PantryViewModel(
         // A stable order, so the banner does not flicker between two broken listeners.
         val message = Source.entries.firstNotNullOfOrNull { source -> projection.errors[source] }
         val now = writes.time.now()
+        val options =
+            ingredients.map { ingredient ->
+                IngredientOption(ingredient.id, resolver.nameOf(ingredient), ingredient.defaultUnit)
+            }
         _state.update { current ->
             current.copy(
                 items = items.orEmpty().map { item -> item.toUi(resolver, now) },
@@ -264,7 +296,8 @@ class PantryViewModel(
                 isLoading =
                     items == null && Source.PANTRY !in projection.errors && Source.KITCHEN !in projection.errors,
                 error = message,
-                ingredients = ingredients.map { ingredient -> ingredient.id to resolver.nameOf(ingredient) },
+                ingredients = options,
+                recent = items.orEmpty().recentOptions(options),
                 units = terms.optionsIn(taxonomies.of(TaxonomyPurpose.UNITS) + ingredients.unitTaxonomies(), resolver),
                 locations =
                     terms.optionsIn(
