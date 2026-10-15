@@ -19,7 +19,14 @@ data class SuggestionsUiState(
     val hasGenerated: Boolean = false,
     val error: UiText? = null,
     val options: SuggestionOptionsUi = SuggestionOptionsUi(),
-)
+    /** What the results on screen were generated with; null until a run lands. */
+    val appliedOptions: SuggestionOptionsUi? = null,
+    /** The card whose missing ingredients are being written to the list, so a second tap is ignored. */
+    val addingMissingFor: RecipeId? = null,
+) {
+    /** Never auto-runs: each run costs a model call, so a changed filter only offers one. */
+    val optionsChanged: Boolean get() = appliedOptions != null && appliedOptions != options
+}
 
 /**
  * One card. Every word here is already resolved; the screen looks no label up. [tagRefs] is the
@@ -40,7 +47,12 @@ data class SuggestionUi(
     val provenance: ProvenanceUi?,
     /** Unresolved, unlike everything above: `RecipeImage` reads it itself, the screen does not. */
     val tagRefs: List<TermRef> = emptyList(),
-)
+) {
+    val shownMissing: List<String> get() = missing.take(MAX_SHOWN_MISSING)
+    val hiddenMissingCount: Int get() = missing.size - shownMissing.size
+}
+
+private const val MAX_SHOWN_MISSING = 3
 
 /**
  * Who wrote a suggestion, as the response reported it. Both halves, not a boolean: support

@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.suggestions.list
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,11 +11,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.outlined.AddShoppingCart
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -27,7 +33,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
@@ -42,27 +51,37 @@ import com.kitchenai.ui.designsystem.component.SkeletonBar
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
-import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.shopping_default_list
+import com.kitchenai.ui.resources.snack_added_count
+import com.kitchenai.ui.resources.snack_counts_joined
+import com.kitchenai.ui.resources.snack_not_needed_count
+import com.kitchenai.ui.resources.suggestions_add_missing
 import com.kitchenai.ui.resources.suggestions_check_manually
 import com.kitchenai.ui.resources.suggestions_coverage_count
-import com.kitchenai.ui.resources.suggestions_empty_body
+import com.kitchenai.ui.resources.suggestions_empty_body_action
 import com.kitchenai.ui.resources.suggestions_empty_title
 import com.kitchenai.ui.resources.suggestions_generated
 import com.kitchenai.ui.resources.suggestions_minutes
 import com.kitchenai.ui.resources.suggestions_missing
-import com.kitchenai.ui.resources.suggestions_nothing_body
+import com.kitchenai.ui.resources.suggestions_missing_more
+import com.kitchenai.ui.resources.suggestions_new_ideas
+import com.kitchenai.ui.resources.suggestions_nothing_body_action
 import com.kitchenai.ui.resources.suggestions_nothing_title
 import com.kitchenai.ui.resources.suggestions_only_pantry
 import com.kitchenai.ui.resources.suggestions_quick
 import com.kitchenai.ui.resources.suggestions_saved_title
-import com.kitchenai.ui.resources.suggestions_working
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val QUICK_MINUTES = 30
 private const val SKELETON_CARDS = 3
+
+// Room under the list for the floating button, so it never hides the last card's content.
+private val FAB_CLEARANCE = 88.dp
 
 @Composable
 fun SuggestionsScreen(
@@ -73,12 +92,11 @@ fun SuggestionsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val defaultListName = stringResource(Res.string.shopping_default_list)
 
-    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags()) }
+    LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { event ->
-            if (event is SuggestionsEvent.Failed) snackbar.showSnackbar(event.message.text())
-        }
+        viewModel.events.collect { event -> snackbar.showSnackbar(event.sentence().text()) }
     }
 
     // The insets are AppShell's; a second round here would open a gap between the toolbar and
@@ -87,34 +105,73 @@ fun SuggestionsScreen(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
+        floatingActionButton = { NewIdeasButton(enabled = !state.isGenerating, onClick = viewModel::generate) },
     ) { padding ->
         Column(
-            modifier = Modifier.padding(padding).padding(Dimens.large),
+            modifier = Modifier.padding(padding).padding(horizontal = Dimens.large).padding(top = Dimens.large),
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
             Options(state, viewModel)
-            state.error?.let { message -> Text(message.resolve(), color = MaterialTheme.colorScheme.error) }
-            Results(state, onOpen, onRefresh = viewModel::generate)
+            if (state.optionsChanged && !state.isGenerating) FiltersChangedBanner(onUpdate = viewModel::generate)
+            if (state.isGenerating) GeneratingStrip(onCancel = viewModel::cancelGeneration)
+            state.error?.let { message -> SuggestionsErrorCard(message, onRetry = viewModel::generate) }
+            Results(state, onOpen, onAddMissing = viewModel::addMissingToList, onRefresh = viewModel::generate)
         }
     }
 }
+
+/** Always on screen. Mid-run it only looks disabled: the run is stopped from the strip's Cancel. */
+@Composable
+private fun NewIdeasButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    ExtendedFloatingActionButton(
+        onClick = { if (enabled) onClick() },
+        modifier = if (enabled) Modifier else Modifier.semantics { disabled() },
+        containerColor = if (enabled) colors.primaryContainer else colors.surfaceContainerHighest,
+        contentColor = if (enabled) colors.onPrimaryContainer else colors.onSurfaceVariant,
+        icon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null) },
+        text = { Text(stringResource(Res.string.suggestions_new_ideas)) },
+    )
+}
+
+/** Separate from the collector so the wording can be tested: there is no Compose harness here. */
+internal fun SuggestionsEvent.sentence(): UiText =
+    when (this) {
+        is SuggestionsEvent.AddedToList ->
+            UiText.Joined(
+                Res.string.snack_counts_joined,
+                listOf(
+                    UiText.Plural(Res.plurals.snack_added_count, added),
+                    UiText.Plural(Res.plurals.snack_not_needed_count, skipped),
+                ),
+            )
+        is SuggestionsEvent.Failed -> message
+    }
 
 @Composable
 private fun Options(
     state: SuggestionsUiState,
     viewModel: SuggestionsViewModel,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.small)) {
-        FilterChip(
-            selected = state.options.useOnlyPantry,
-            onClick = { viewModel.setUseOnlyPantry(!state.options.useOnlyPantry) },
-            label = { Text(stringResource(Res.string.suggestions_only_pantry)) },
-        )
-        FilterChip(
-            selected = state.options.maxMinutes != null,
-            onClick = { viewModel.setMaxMinutes(if (state.options.maxMinutes == null) QUICK_MINUTES else null) },
-            label = { Text(stringResource(Res.string.suggestions_quick)) },
-        )
+    // Scrolls: at large font sizes or in a longer language the second chip no longer fits.
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(Dimens.small)) {
+        item {
+            FilterChip(
+                selected = state.options.useOnlyPantry,
+                onClick = { viewModel.setUseOnlyPantry(!state.options.useOnlyPantry) },
+                label = { Text(stringResource(Res.string.suggestions_only_pantry)) },
+            )
+        }
+        item {
+            FilterChip(
+                selected = state.options.maxMinutes != null,
+                onClick = { viewModel.setMaxMinutes(if (state.options.maxMinutes == null) QUICK_MINUTES else null) },
+                label = { Text(stringResource(Res.string.suggestions_quick)) },
+            )
+        }
     }
 }
 
@@ -122,22 +179,28 @@ private fun Options(
 private fun Results(
     state: SuggestionsUiState,
     onOpen: (RecipeId) -> Unit,
+    onAddMissing: (RecipeId) -> Unit,
     onRefresh: () -> Unit,
 ) {
-    // Pulling down calls the same generate() the button does, guarded the same way: a pull
-    // while one is already in flight is a no-op rather than a second run.
+    // Pulling down is the secondary trigger for the button's own generate(), guarded the same
+    // way. The strip above shows progress, so the pull indicator is not held open for it.
     PullToRefreshBox(
-        isRefreshing = state.isGenerating,
+        isRefreshing = false,
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(Dimens.medium),
+            contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+        ) {
             when {
                 // Before isGenerating: a stored set from the last launch stays on screen while a
                 // new one runs behind it, rather than being hidden by a skeleton for the better
                 // part of a minute.
                 state.suggestions.isNotEmpty() ->
-                    items(state.suggestions, key = { it.id.value }) { suggestion -> SuggestionCard(suggestion, onOpen) }
+                    items(state.suggestions, key = { it.id.value }) { suggestion ->
+                        SuggestionCard(suggestion, onOpen, onAddMissing, state.addingMissingFor != null)
+                    }
                 // A skeleton rather than a spinner: the call takes the better part of a minute,
                 // and a blank screen for that long reads as a hang rather than as work.
                 state.isGenerating -> item { Skeleton() }
@@ -146,7 +209,7 @@ private fun Results(
                     item {
                         EmptyState(
                             title = stringResource(Res.string.suggestions_nothing_title),
-                            body = stringResource(Res.string.suggestions_nothing_body),
+                            body = stringResource(Res.string.suggestions_nothing_body_action),
                             modifier = emptyResultModifier(state),
                         )
                     }
@@ -154,7 +217,7 @@ private fun Results(
                     item {
                         EmptyState(
                             title = stringResource(Res.string.suggestions_empty_title),
-                            body = stringResource(Res.string.suggestions_empty_body),
+                            body = stringResource(Res.string.suggestions_empty_body_action),
                             modifier = emptyResultModifier(state),
                         )
                     }
@@ -168,7 +231,7 @@ private fun Results(
                 items(
                     state.savedRecipes,
                     key = { "saved-${it.id.value}" },
-                ) { suggestion -> SuggestionCard(suggestion, onOpen) }
+                ) { suggestion -> SuggestionCard(suggestion, onOpen, onAddMissing, state.addingMissingFor != null) }
             }
         }
     }
@@ -186,7 +249,6 @@ private fun LazyItemScope.emptyResultModifier(state: SuggestionsUiState): Modifi
 @Composable
 private fun Skeleton() {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
-        Text(stringResource(Res.string.suggestions_working), style = MaterialTheme.typography.bodyMedium)
         repeat(SKELETON_CARDS) { SkeletonCard() }
     }
 }
@@ -217,6 +279,8 @@ private fun SkeletonCard() {
 private fun SuggestionCard(
     suggestion: SuggestionUi,
     onOpen: (RecipeId) -> Unit,
+    onAddMissing: (RecipeId) -> Unit,
+    addingMissing: Boolean,
 ) {
     // The whole card opens the recipe: a dedicated "Open" button repeated what tapping the card
     // already does everywhere else in the app.
@@ -261,14 +325,18 @@ private fun SuggestionCard(
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                SuggestionCoverage(suggestion)
+                SuggestionCoverage(suggestion, onAddMissing, addingMissing)
             }
         }
     }
 }
 
 @Composable
-private fun SuggestionCoverage(suggestion: SuggestionUi) {
+private fun SuggestionCoverage(
+    suggestion: SuggestionUi,
+    onAddMissing: (RecipeId) -> Unit,
+    addingMissing: Boolean,
+) {
     CoverageBar(fraction = suggestion.coverage) {
         Text(
             stringResource(Res.string.suggestions_coverage_count, suggestion.heldCount, suggestion.totalCount),
@@ -276,10 +344,19 @@ private fun SuggestionCoverage(suggestion: SuggestionUi) {
         )
     }
     if (suggestion.missing.isNotEmpty()) {
-        Text(
-            stringResource(Res.string.suggestions_missing, suggestion.missing.joinToString()),
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                missingSentence(suggestion),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = { onAddMissing(suggestion.id) }, enabled = !addingMissing) {
+                Icon(
+                    Icons.Outlined.AddShoppingCart,
+                    contentDescription = stringResource(Res.string.suggestions_add_missing),
+                )
+            }
+        }
     }
     // Its own line, its own wording. Folding these into "missing" would claim the pantry knows
     // something it does not.
@@ -290,4 +367,13 @@ private fun SuggestionCoverage(suggestion: SuggestionUi) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** At most three names, then a count: a long comma-joined line buried the card's other facts. */
+@Composable
+private fun missingSentence(suggestion: SuggestionUi): String {
+    val shown = stringResource(Res.string.suggestions_missing, suggestion.shownMissing.joinToString())
+    val hidden = suggestion.hiddenMissingCount
+    if (hidden == 0) return shown
+    return "$shown ${pluralStringResource(Res.plurals.suggestions_missing_more, hidden, hidden)}"
 }

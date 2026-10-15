@@ -201,4 +201,18 @@
     <string name="placeholder_title">Nothing here yet</string>
     <string name="placeholder_body">This screen is on its way</string>
     <string name="session_retry">Try again</string>
+
+    <!-- Suggestions actions (#263) -->
+    <string name="suggestions_new_ideas">New ideas</string>
+    <string name="suggestions_filters_changed">Filters changed</string>
+    <string name="suggestions_update_ideas">Update ideas</string>
+    <string name="suggestions_cancel">Cancel</string>
+    <string name="suggestions_retry">Try again</string>
+    <string name="suggestions_add_missing">Add missing to list</string>
+    <plurals name="suggestions_missing_more">
+        <item quantity="one">+%1$d more</item>
+        <item quantity="other">+%1$d more</item>
+    </plurals>
+    <string name="suggestions_empty_body_action">Tap New ideas to get dishes built from what your pantry already holds</string>
+    <string name="suggestions_nothing_body_action">Add a few things to your pantry, then tap New ideas to try again</string>
 </resources>
