@@ -323,7 +323,7 @@ different accounts) if you want names in the member list; anonymous works for ev
 *Rebuild the sharing from scenario 5 with fresh accounts if needed: A owns, B has joined.*
 
 1. Device A: Members, B's row, tap "Remove".
-   - A dialog names B ("Remove <name> from the kitchen?", or "Kitchen member" if B has no name) and
+   - A dialog names B ("Remove <name>?", or "Kitchen member" if B has no name) and
      says B cannot rejoin with the code; its "Remove" button is red. Confirm.
    - B's row disappears from A's list and a snackbar confirms it.
 2. Device B.
