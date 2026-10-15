@@ -14,6 +14,8 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_invalid_input
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -129,13 +131,13 @@ class ProfileUiMapperTest {
     }
 
     @Test
-    fun `a validation error carries its field and the domain's own wording`() {
+    fun `a validation error carries its field and the generic sentence instead of the domain's wording`() {
         val error = AppError.Validation("household.servings", "must be positive")
 
         val result = error.toProfileError()
 
         assertEquals("household.servings", result.field)
-        assertEquals(UiText.Raw("must be positive"), result.message)
+        assertEquals(UiText.of(Res.string.error_invalid_input), result.message)
     }
 
     @Test

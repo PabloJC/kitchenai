@@ -37,6 +37,7 @@ import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.PendingDisplayName
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_invalid_input
 import com.kitchenai.ui.resources.error_no_connection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -240,6 +241,41 @@ class ProfileViewModelTest {
             assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error?.message)
         }
 
+    @Test
+    fun `retrying after the profile failed to load opens its listener again and clears the error`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId)
+            advanceUntilIdle()
+            profiles.errors.emit(AppError.Network())
+            advanceUntilIdle()
+            assertTrue(viewModel.state.value.canRetry)
+
+            viewModel.retry()
+            advanceUntilIdle()
+            assertNull(viewModel.state.value.error)
+            assertEquals(2, profiles.observedUserIds.size)
+
+            profiles.profiles.emit(profile())
+            advanceUntilIdle()
+            assertFalse(viewModel.state.value.isLoading)
+        }
+
+    @Test
+    fun `a refused save is not retryable because tapping save again is the retry`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId)
+            publish("t-1" to 1)
+            profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
+            advanceUntilIdle()
+
+            viewModel.save()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.canRetry)
+        }
+
     /** Started and fed: the catalogue published, the profile delivered and every listener running. */
     @Test
     fun `a refused save is shown even while a listener banner is still up`() =
@@ -259,7 +295,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             // The refusal is what the user just caused, so it is what they are told.
-            assertEquals(UiText.Raw("references an unknown taxonomy"), viewModel.state.value.generalError)
+            assertEquals(UiText.of(Res.string.error_invalid_input), viewModel.state.value.generalError)
         }
 
     @Test
@@ -671,7 +707,7 @@ class ProfileViewModelTest {
             viewModel.save()
             advanceUntilIdle()
 
-            assertEquals(UiText.Raw("references an unknown taxonomy"), viewModel.state.value.generalError)
+            assertEquals(UiText.of(Res.string.error_invalid_input), viewModel.state.value.generalError)
         }
 
     private fun viewModel(): ProfileViewModel =

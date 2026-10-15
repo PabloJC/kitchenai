@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.RecipeImage
 import com.kitchenai.ui.designsystem.component.Tag
@@ -99,6 +100,7 @@ import com.kitchenai.ui.resources.detail_undo
 import com.kitchenai.ui.resources.detail_unsave
 import com.kitchenai.ui.resources.detail_unverifiable
 import com.kitchenai.ui.resources.detail_unverifiable_body
+import com.kitchenai.ui.resources.error_retry
 import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.snack_added_count
 import com.kitchenai.ui.resources.snack_cooked
@@ -128,6 +130,9 @@ fun RecipeDetailScreen(
     // LaunchedEffect block is a coroutine and not composition.
     val defaultListName = stringResource(Res.string.shopping_default_list)
 
+    // Nothing to show but the failure: the header and the cards would draw an empty dish around it.
+    val loadFailed = state.error != null && state.title.isEmpty()
+
     LaunchedEffect(userId, recipeId) {
         viewModel.start(userId, recipeId, platformLanguageTags(), defaultListName)
     }
@@ -152,7 +157,7 @@ fun RecipeDetailScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         // Pinned rather than the scroll's last row, so both actions are reachable without
         // scrolling past the steps.
-        bottomBar = { if (!state.isLoading) Actions(state, viewModel) { confirmingCook = true } },
+        bottomBar = { if (!state.isLoading && !loadFailed) Actions(state, viewModel) { confirmingCook = true } },
     ) { padding ->
         if (state.isLoading) {
             LoadingState(Modifier.padding(padding))
@@ -162,19 +167,27 @@ fun RecipeDetailScreen(
             modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Dimens.large),
         ) {
-            Header(state, viewModel)
+            if (!loadFailed) Header(state, viewModel)
             state.error?.let { message ->
-                Text(
-                    message.resolve(),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = Dimens.large),
+                ErrorBanner(
+                    message = message.resolve(),
+                    modifier =
+                        Modifier.padding(
+                            start = Dimens.large,
+                            top = if (loadFailed) Dimens.large else Dimens.none,
+                            end = Dimens.large,
+                        ),
+                    retryLabel = stringResource(Res.string.error_retry),
+                    onRetry = viewModel::retry,
                 )
             }
-            IngredientsCard(state)
-            if (state.unverifiable.isNotEmpty()) {
-                UnverifiableCard(state.unverifiable, viewModel::confirmCandidate)
+            if (!loadFailed) {
+                IngredientsCard(state)
+                if (state.unverifiable.isNotEmpty()) {
+                    UnverifiableCard(state.unverifiable, viewModel::confirmCandidate)
+                }
+                StepsCard(state.steps)
             }
-            StepsCard(state.steps)
         }
     }
 }

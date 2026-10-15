@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.suggestions.detail
 
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
@@ -19,6 +20,7 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
+import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase
@@ -48,6 +50,7 @@ import com.kitchenai.ui.presentation.common.defaultKitchenId
 import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_missing_ingredients
+import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_not_found
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +67,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -450,8 +454,25 @@ class RecipeDetailViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.isLoading)
-            assertEquals(UiText.of(Res.string.error_not_found, "recipe"), viewModel.state.value.error)
+            assertEquals(UiText.of(Res.string.error_not_found), viewModel.state.value.error)
             assertTrue(viewModel.state.value.held.isEmpty())
+        }
+
+    @Test
+    fun `retrying a recipe that failed to load reads it again and clears the error`() =
+        runTest(dispatcher) {
+            val port = FailingRecipePort(FakeRecipePort(catalogue = listOf(dish)), AppError.Network())
+            val viewModel = started(pantry = emptyList(), recipePort = port)
+            advanceUntilIdle()
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
+            assertEquals("", viewModel.state.value.title)
+
+            port.error = null
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.error)
+            assertEquals("Dish", viewModel.state.value.title)
         }
 
     @Test
@@ -599,7 +620,7 @@ class RecipeDetailViewModelTest {
     private fun started(
         pantry: List<PantryItem>,
         pantryPort: PantryRepositoryContract = FakePantryPort(pantry),
-        recipePort: FakeRecipePort = FakeRecipePort(catalogue = listOf(dish)),
+        recipePort: RecipeRepositoryContract = FakeRecipePort(catalogue = listOf(dish)),
         recipeId: RecipeId = dish.id,
     ): RecipeDetailViewModel {
         val time = TimeProvider { now }
@@ -667,3 +688,12 @@ class RecipeDetailViewModelTest {
 }
 
 private fun <T> AppResult<T>.orFail(): T = (this as AppResult.Success).data
+
+/** Refuses every read of one recipe while [error] is set, then answers like the port it wraps. */
+private class FailingRecipePort(
+    private val real: RecipeRepositoryContract,
+    var error: AppError?,
+) : RecipeRepositoryContract by real {
+    override suspend fun getRecipe(recipeId: RecipeId): AppResult<Recipe> =
+        error?.let { AppResult.Failure(it) } ?: real.getRecipe(recipeId)
+}

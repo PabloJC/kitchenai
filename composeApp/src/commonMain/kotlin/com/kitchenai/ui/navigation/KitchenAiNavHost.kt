@@ -15,23 +15,19 @@ import com.kitchenai.ui.presentation.pantry.PantryScreen
 import com.kitchenai.ui.presentation.profile.ProfileScreen
 import com.kitchenai.ui.presentation.shopping.ShoppingScreen
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailScreen
+import com.kitchenai.ui.presentation.suggestions.detail.RecipeUnavailableScreen
 import com.kitchenai.ui.presentation.suggestions.list.SuggestionsScreen
 
 /**
  * The whole graph. [userId] travels as a parameter rather than in a singleton: a uid kept in
  * mutable global state outlives the session it belongs to, and each screen takes it as an
  * argument.
- *
- * [placeholder] takes the same argument every real screen will take and stands in until each
- * screen issue replaces its own entry below, which is why every entry is one line: those
- * merges have to stay one-line merges.
  */
 @Composable
 fun KitchenAiNavHost(
     navController: NavHostController,
     userId: UserId,
     detailTopBar: DetailTopBarState,
-    placeholder: @Composable (UserId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     NavHost(
@@ -51,7 +47,7 @@ fun KitchenAiNavHost(
                 val raw = entry.toRoute<Route.RecipeDetail>().recipeId
                 when (val id = RecipeId.of(raw)) {
                     is AppResult.Success -> RecipeDetailScreen(userId, id.data, detailTopBar)
-                    is AppResult.Failure -> placeholder(userId)
+                    is AppResult.Failure -> RecipeUnavailableScreen(onBack = navController::navigateUp)
                 }
             }
         }

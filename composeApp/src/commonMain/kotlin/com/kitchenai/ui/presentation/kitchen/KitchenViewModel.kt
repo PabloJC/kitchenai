@@ -12,6 +12,7 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.kitchen_member_unnamed
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +55,7 @@ class KitchenViewModel(
 
     private var started = false
     private var userId: UserId? = null
+    private var kitchenListener: Job? = null
 
     private val kitchenState = combine(kitchen, answered, listenerFailure, ::KitchenListenerState)
     private val writeState = combine(busy, writeFailure, confirming, ::WriteState)
@@ -67,19 +69,34 @@ class KitchenViewModel(
         if (started) return
         started = true
         this.userId = userId
-        viewModelScope.launch {
-            observeKitchen(userId).collect { loaded ->
-                kitchen.value = loaded
-                answered.value = true
-                listenerFailure.value = null
-            }
-        }
-        viewModelScope.launch {
-            observeKitchen.errors(userId).collect { error -> onKitchenError(error) }
-        }
+        watchKitchen(userId)
         viewModelScope.launch {
             observeProfile(userId).collect { profile -> profileName = profile.displayName?.takeIf { it.isNotBlank() } }
         }
+    }
+
+    /** Re-subscribes the kitchen listener after it failed; the last good kitchen stays on screen meanwhile. */
+    fun retry() {
+        val uid = userId ?: return
+        listenerFailure.value = null
+        // Back to loading rather than "no kitchen yet": nothing has answered the new listener.
+        if (kitchen.value == null) answered.value = false
+        kitchenListener?.cancel()
+        watchKitchen(uid)
+    }
+
+    private fun watchKitchen(userId: UserId) {
+        kitchenListener =
+            viewModelScope.launch {
+                launch {
+                    observeKitchen(userId).collect { loaded ->
+                        kitchen.value = loaded
+                        answered.value = true
+                        listenerFailure.value = null
+                    }
+                }
+                launch { observeKitchen.errors(userId).collect { error -> onKitchenError(error) } }
+            }
     }
 
     fun onJoinCodeInputChange(text: String) {
@@ -209,6 +226,8 @@ class KitchenViewModel(
             // The write just attempted speaks first: a stale listener banner must not hide why
             // the action the user just took was refused.
             error = writeState.failure ?: kitchenState.listenerFailure,
+            // Only the listener can be reopened; a refused write is answered by tapping its action again.
+            canRetry = writeState.failure == null && kitchenState.listenerFailure != null,
             confirming = writeState.confirming,
         )
 }

@@ -1,5 +1,7 @@
 package com.kitchenai.ui.di
 
+import com.kitchenai.ui.platform.NetworkMonitor
+import com.kitchenai.ui.platform.platformNetworkMonitor
 import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -17,4 +19,5 @@ val GOOGLE_WEB_CLIENT_ID = named("googleWebClientId")
 fun platformModule(googleWebClientId: String): Module =
     module {
         single(GOOGLE_WEB_CLIENT_ID) { googleWebClientId }
+        single<NetworkMonitor> { platformNetworkMonitor() }
     }

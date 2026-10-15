@@ -3,7 +3,7 @@ package com.kitchenai.ui.presentation.common
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_conflict
-import com.kitchenai.ui.resources.error_invalid_field
+import com.kitchenai.ui.resources.error_invalid_input
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_not_found
 import com.kitchenai.ui.resources.error_timeout
@@ -29,16 +29,17 @@ class AppErrorUiMapperTest {
     }
 
     @Test
-    fun `not found carries the resource it was missing from`() {
-        val expected = UiText.of(Res.string.error_not_found, "recipe")
-        assertEquals(expected, AppError.NotFound("recipe").describe(UNAUTHORIZED))
+    fun `not found never names the internal resource it was missing from`() {
+        val described = AppError.NotFound("recipe").describe(UNAUTHORIZED)
+
+        assertEquals(UiText.of(Res.string.error_not_found), described)
     }
 
     @Test
-    fun `validation reads the field and the reason by default`() {
+    fun `validation reads as a generic sentence without the field or the reason`() {
         val error = AppError.Validation("field-1", "reason-1")
 
-        assertEquals(UiText.of(Res.string.error_invalid_field, "field-1", "reason-1"), error.describe(UNAUTHORIZED))
+        assertEquals(UiText.of(Res.string.error_invalid_input), error.describe(UNAUTHORIZED))
     }
 
     @Test
@@ -48,6 +49,13 @@ class AppErrorUiMapperTest {
         val described = error.describe(UNAUTHORIZED) { UiText.Raw(it.reason) }
 
         assertEquals(UiText.Raw("reason-1"), described)
+    }
+
+    @Test
+    fun `a screen that has nothing to say about a validation failure falls back to the generic sentence`() {
+        val error = AppError.Validation("field-1", "reason-1")
+
+        assertEquals(UiText.of(Res.string.error_invalid_input), error.describe(UNAUTHORIZED) { null })
     }
 
     @Test

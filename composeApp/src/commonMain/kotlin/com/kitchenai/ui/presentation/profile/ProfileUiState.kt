@@ -45,12 +45,19 @@ data class ProfileUiState(
      * the alternative is dropping it and telling the user nothing.
      */
     val generalError: UiText? get() = error?.takeIf { it.field !in BOUND_FIELDS }?.message
+
+    /** Only a listener that failed can be reopened; a refused write is answered by tapping Save again. */
+    val canRetry: Boolean get() = error?.isRetryable == true
 }
 
-/** [field] is null when the failure belongs to the screen rather than to one of its inputs. */
+/**
+ * [field] is null when the failure belongs to the screen rather than to one of its inputs.
+ * [isRetryable] marks a listener failure, which the screen answers with a Retry.
+ */
 data class ProfileError(
     val field: String?,
     val message: UiText,
+    val isRetryable: Boolean = false,
 )
 
 /**

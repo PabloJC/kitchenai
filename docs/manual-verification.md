@@ -500,6 +500,24 @@ shared case, a second device joined to that kitchen (scenario 5).*
 6. With the font at 200%, repeat steps 1 to 4 by sight.
    - No label is cut off and every button stays reachable by scrolling.
 
+### 16. Errors say what to do, and offline is announced
+
+*Run on both platforms, device language Spanish and then English.*
+
+1. With the app open on any tab, turn on airplane mode.
+   - Within about two seconds a slim "Sin conexión. Tus cambios se sincronizarán al volver a
+     conectarte." strip appears under the top bar, on every tab and on a recipe or the kitchen.
+2. Turn airplane mode off.
+   - The strip disappears within about two seconds.
+3. Profile tab, then the kitchen screen, with airplane mode on and the app freshly installed (no
+   cached data).
+   - If a screen shows a load failure, it reads as a sentence with something to do ("Comprueba tu conexión e inténtalo
+     de nuevo."), never an identifier, a field name or an English reason, and offers "Inténtalo de
+     nuevo". Turning airplane mode off and tapping it loads the screen.
+4. Open a recipe that has never been loaded, with airplane mode on.
+   - If it fails to load, the banner offers "Inténtalo de nuevo"; after reconnecting, tapping it
+     shows the recipe.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -523,3 +541,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 13. Deleting an account |  |  |  |  |
 | 14. Bottom bar on a sub-screen |  |  |  |  |
 | 15. Screen readers and large text |  |  |  |  |
+| 16. Errors and offline banner |  |  |  |  |

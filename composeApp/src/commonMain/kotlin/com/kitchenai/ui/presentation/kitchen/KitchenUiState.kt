@@ -14,6 +14,8 @@ data class KitchenUiState(
     val joinCodeInput: String = "",
     val isBusy: Boolean = false,
     val error: UiText? = null,
+    // The error came from the kitchen listener, so re-subscribing is the way out of it.
+    val canRetry: Boolean = false,
     // The membership change asked about; nothing runs until the user confirms it.
     val confirming: KitchenConfirmation? = null,
 )

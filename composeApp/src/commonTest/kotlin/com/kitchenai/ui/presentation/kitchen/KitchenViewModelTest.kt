@@ -18,6 +18,7 @@ import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.kitchen
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.kitchen_invalid_code
 import com.kitchenai.ui.resources.kitchen_member_unnamed
@@ -37,6 +38,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -416,6 +418,43 @@ class KitchenViewModelTest {
 
             assertTrue(viewModel.state.value.error != null)
             assertEquals(emptyList(), events)
+        }
+
+    @Test
+    fun `retrying after the listener failed reopens it and clears the banner`() =
+        runTest(dispatcher) {
+            val own = kitchen(ownerId = self, memberIds = setOf(self))
+            val kitchens = FakeKitchenPort(initial = own, readError = AppError.Network())
+            val viewModel = viewModel(kitchens)
+            viewModel.start(self)
+            advanceUntilIdle()
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
+            assertTrue(viewModel.state.value.canRetry)
+            assertNull(viewModel.state.value.kitchen)
+
+            kitchens.readError = null
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.error)
+            assertFalse(viewModel.state.value.canRetry)
+            assertEquals(self, viewModel.state.value.kitchen?.members?.single()?.id)
+        }
+
+    @Test
+    fun `a refused write is not retryable because the user repeats the action instead`() =
+        runTest(dispatcher) {
+            val kitchens = FakeKitchenPort(initial = kitchen(ownerId = other, memberIds = setOf(other, self)))
+            kitchens.leaveResult = AppResult.Failure(AppError.Network())
+            val viewModel = viewModel(kitchens)
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.leave()
+            advanceUntilIdle()
+
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
+            assertFalse(viewModel.state.value.canRetry)
         }
 
     private fun TestScope.collectEvents(viewModel: KitchenViewModel): List<KitchenEvent> {

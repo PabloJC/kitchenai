@@ -1,17 +1,16 @@
 <resources>
     <!-- Errors. Named per screen where the screens disagree on purpose: the same AppError
          means something different depending on what the reader was trying to do. -->
-    <string name="error_no_connection">No connection</string>
-    <string name="error_timeout">That took too long. Try again.</string>
-    <string name="error_unknown">Something went wrong</string>
-    <string name="error_not_found">Cannot find %1$s</string>
-    <string name="error_invalid_field">Invalid %1$s: %2$s</string>
-    <string name="error_conflict">That is already in use</string>
-    <string name="error_unauthorized_suggestions">This app could not prove who it is, so suggestions are unavailable</string>
-    <string name="error_missing_ingredients">You are missing ingredients for this</string>
-    <string name="error_unauthorized_own_data">This account is not allowed to read its own data</string>
-    <string name="error_unauthorized_list">This account is not allowed to read this list</string>
-    <string name="error_unauthorized_action">This account is not allowed to do that</string>
+    <string name="error_no_connection">You\'re offline. Check your connection and try again.</string>
+    <string name="error_timeout">That took too long. Check your connection and try again.</string>
+    <string name="error_unknown">Something went wrong on our side. Try again in a moment.</string>
+    <string name="error_not_found">We couldn\'t find that. It may have been removed, so go back and try again.</string>
+    <string name="error_conflict">That is already in use. Try a different one.</string>
+    <string name="error_unauthorized_suggestions">Ideas aren\'t available right now. Try again in a moment.</string>
+    <string name="error_missing_ingredients">You are missing ingredients for this. Add them to your list first.</string>
+    <string name="error_unauthorized_own_data">We couldn\'t open your data. Try again in a moment.</string>
+    <string name="error_unauthorized_list">We couldn\'t open this list. Try again in a moment.</string>
+    <string name="error_unauthorized_action">We couldn\'t do that. Try again in a moment.</string>
     <!-- Each count agrees with its own noun, so a two-count sentence is two plurals joined. -->
     <string name="snack_counts_joined">%1$s, %2$s</string>
     <plurals name="snack_added_count">
@@ -79,7 +78,7 @@
     <string name="shopping_clear_title">Clear what is in the cart?</string>
     <string name="shopping_clear_body">The ticked lines are removed from the list on every device.</string>
     <string name="shopping_failed_title">The list did not load</string>
-    <string name="shopping_failed_body">Check the message above and try again</string>
+    <string name="shopping_failed_body">Check your connection and try again.</string>
     <string name="shopping_empty_title">Nothing to buy</string>
     <string name="shopping_empty_body">Add what you need and tick it off as you go.</string>
     <plurals name="shopping_cleared_count">
@@ -143,7 +142,7 @@
     <string name="profile_saving">Saving</string>
     <string name="profile_no_preferences">No preferences to show</string>
     <string name="profile_no_vocabulary">This catalogue has no vocabulary in it yet.</string>
-    <string name="profile_vocabulary_failed">The vocabulary could not be loaded, so there is nothing to choose from yet.</string>
+    <string name="profile_vocabulary_failed">We couldn\'t load the options. Check your connection and try again.</string>
     <string name="profile_sign_in_google">Sign in with Google</string>
     <string name="profile_sign_out">Sign out</string>
     <string name="profile_sign_in_benefit">Keeps your pantry, list and recipes, and lets you use them on other devices.</string>
@@ -197,10 +196,14 @@
     <string name="tab_shopping">Shopping</string>
     <string name="tab_ideas">Ideas</string>
     <string name="tab_profile">Profile</string>
-    <string name="placeholder_title">Nothing here yet</string>
-    <string name="placeholder_body">This screen is on its way</string>
     <string name="session_retry">Try again</string>
 
+    <!-- Error recovery and connectivity (#269) -->
+    <string name="error_retry">Try again</string>
+    <string name="error_invalid_input">That value is not valid. Check it and try again.</string>
+    <string name="error_recipe_unavailable_title">This recipe is no longer available</string>
+    <string name="error_recipe_unavailable_body">Go back to your ideas and choose another one.</string>
+    <string name="network_offline_banner">Offline. Your changes will sync when you reconnect.</string>
     <!-- Shopping check-off flow -->
     <string name="shopping_removed">%1$s removed</string>
     <plurals name="shopping_move_count">

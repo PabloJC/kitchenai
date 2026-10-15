@@ -1,15 +1,14 @@
 <resources>
-    <string name="error_no_connection">Sin conexión</string>
-    <string name="error_timeout">Ha tardado demasiado. Inténtalo otra vez.</string>
-    <string name="error_unknown">Algo ha ido mal</string>
-    <string name="error_not_found">No se encuentra %1$s</string>
-    <string name="error_invalid_field">%1$s no es válido: %2$s</string>
-    <string name="error_conflict">Eso ya está en uso</string>
-    <string name="error_unauthorized_suggestions">La app no ha podido demostrar quién es, así que no hay sugerencias</string>
-    <string name="error_missing_ingredients">Te faltan ingredientes para esto</string>
-    <string name="error_unauthorized_own_data">Esta cuenta no tiene permiso para leer sus propios datos</string>
-    <string name="error_unauthorized_list">Esta cuenta no tiene permiso para leer esta lista</string>
-    <string name="error_unauthorized_action">Esta cuenta no tiene permiso para hacer eso</string>
+    <string name="error_no_connection">No tienes conexión. Comprueba tu conexión e inténtalo de nuevo.</string>
+    <string name="error_timeout">Ha tardado demasiado. Comprueba tu conexión e inténtalo de nuevo.</string>
+    <string name="error_unknown">Algo ha ido mal por nuestra parte. Inténtalo de nuevo en un momento.</string>
+    <string name="error_not_found">No hemos encontrado eso. Puede que se haya eliminado, así que vuelve atrás e inténtalo de nuevo.</string>
+    <string name="error_conflict">Eso ya está en uso. Prueba con otro.</string>
+    <string name="error_unauthorized_suggestions">Las ideas no están disponibles ahora mismo. Inténtalo de nuevo en un momento.</string>
+    <string name="error_missing_ingredients">Te faltan ingredientes para esto. Añádelos primero a tu lista.</string>
+    <string name="error_unauthorized_own_data">No hemos podido abrir tus datos. Inténtalo de nuevo en un momento.</string>
+    <string name="error_unauthorized_list">No hemos podido abrir esta lista. Inténtalo de nuevo en un momento.</string>
+    <string name="error_unauthorized_action">No hemos podido hacer eso. Inténtalo de nuevo en un momento.</string>
     <string name="snack_counts_joined">%1$s, %2$s</string>
     <plurals name="snack_added_count">
         <item quantity="one">%1$d añadido</item>
@@ -76,7 +75,7 @@
     <string name="shopping_clear_title">¿Vaciar lo que hay en el carro?</string>
     <string name="shopping_clear_body">Las líneas marcadas se eliminan de la lista en todos los dispositivos.</string>
     <string name="shopping_failed_title">La lista no se ha cargado</string>
-    <string name="shopping_failed_body">Mira el mensaje de arriba e inténtalo otra vez</string>
+    <string name="shopping_failed_body">Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="shopping_empty_title">Nada que comprar</string>
     <string name="shopping_empty_body">Añade lo que necesites y ve marcándolo.</string>
     <plurals name="shopping_cleared_count">
@@ -140,7 +139,7 @@
     <string name="profile_saving">Guardando</string>
     <string name="profile_no_preferences">No hay preferencias que mostrar</string>
     <string name="profile_no_vocabulary">Este catálogo todavía no tiene vocabulario.</string>
-    <string name="profile_vocabulary_failed">No se ha podido cargar el vocabulario, así que todavía no hay nada que elegir.</string>
+    <string name="profile_vocabulary_failed">No hemos podido cargar las opciones. Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="profile_sign_in_google">Iniciar sesión con Google</string>
     <string name="profile_sign_out">Cerrar sesión</string>
     <string name="profile_sign_in_benefit">Conserva tu despensa, tu lista y tus recetas, y te permite usarlas en otros dispositivos.</string>
@@ -194,9 +193,12 @@
     <string name="tab_shopping">Compra</string>
     <string name="tab_ideas">Ideas</string>
     <string name="tab_profile">Perfil</string>
-    <string name="placeholder_title">Aquí todavía no hay nada</string>
-    <string name="placeholder_body">Esta pantalla está de camino</string>
     <string name="session_retry">Inténtalo otra vez</string>
+    <string name="error_retry">Inténtalo de nuevo</string>
+    <string name="error_invalid_input">Ese valor no es válido. Revísalo e inténtalo de nuevo.</string>
+    <string name="error_recipe_unavailable_title">Esta receta ya no está disponible</string>
+    <string name="error_recipe_unavailable_body">Vuelve a las ideas y elige otra.</string>
+    <string name="network_offline_banner">Sin conexión. Tus cambios se sincronizarán al volver a conectarte.</string>
 
     <!-- Shopping check-off flow -->
     <string name="shopping_removed">%1$s eliminado</string>
