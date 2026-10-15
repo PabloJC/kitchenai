@@ -199,6 +199,19 @@
     <string name="placeholder_body">Esta pantalla está de camino</string>
     <string name="session_retry">Inténtalo otra vez</string>
 
+    <!-- Acciones de sugerencias (#263) -->
+    <string name="suggestions_new_ideas">Nuevas ideas</string>
+    <string name="suggestions_filters_changed">Los filtros han cambiado</string>
+    <string name="suggestions_update_ideas">Actualizar ideas</string>
+    <string name="suggestions_cancel">Cancelar</string>
+    <string name="suggestions_retry">Inténtalo otra vez</string>
+    <string name="suggestions_add_missing">Añadir lo que falta a la lista</string>
+    <plurals name="suggestions_missing_more">
+        <item quantity="one">+%1$d más</item>
+        <item quantity="other">+%1$d más</item>
+    </plurals>
+    <string name="suggestions_empty_body_action">Toca Nuevas ideas para pedir platos hechos con lo que ya hay en tu despensa</string>
+    <string name="suggestions_nothing_body_action">Añade algunas cosas a tu despensa y toca Nuevas ideas para volver a intentarlo</string>
     <string name="pantry_editor_title_add">Añadir a la despensa</string>
     <string name="pantry_editor_title_edit">Editar %1$s</string>
     <string name="pantry_editor_recent">Recientes</string>
