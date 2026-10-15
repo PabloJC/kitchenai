@@ -1,5 +1,6 @@
 package com.kitchenai.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -10,21 +11,23 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
-import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.OfflineBanner
 import com.kitchenai.ui.designsystem.theme.KitchenAiTheme
 import com.kitchenai.ui.navigation.AppShell
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.KitchenAiNavHost
 import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.navigation.ShellDestination
+import com.kitchenai.ui.presentation.common.ConnectivityViewModel
 import com.kitchenai.ui.presentation.session.SessionGate
 import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.placeholder_body
-import com.kitchenai.ui.resources.placeholder_title
+import com.kitchenai.ui.resources.network_offline_banner
 import com.kitchenai.ui.resources.session_retry
 import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.tab_ideas
@@ -32,6 +35,7 @@ import com.kitchenai.ui.resources.tab_pantry
 import com.kitchenai.ui.resources.tab_profile
 import com.kitchenai.ui.resources.tab_shopping
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
 
 /** The composition root, and the only place in the shell that holds wording. */
 @Composable
@@ -46,33 +50,30 @@ fun App() {
                 key(userId) {
                     val navController = rememberNavController()
                     val detailTopBar = remember { DetailTopBarState() }
+                    val connectivity by koinViewModel<ConnectivityViewModel>().state.collectAsStateWithLifecycle()
                     AppShell(
                         navController = navController,
                         destinations = tabs,
                         detailTopBar = detailTopBar,
                     ) { padding ->
-                        KitchenAiNavHost(
-                            navController = navController,
-                            userId = userId,
-                            detailTopBar = detailTopBar,
-                            placeholder = { _ -> PlaceholderScreen() },
-                            // Consumed so the screens' own imePadding() subtracts the bar it already sits above.
-                            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
-                        )
+                        // Consumed so the screens' own imePadding() subtracts the bar it already sits above.
+                        Column(Modifier.padding(padding).consumeWindowInsets(padding)) {
+                            OfflineBanner(
+                                visible = !connectivity.isOnline,
+                                message = stringResource(Res.string.network_offline_banner),
+                            )
+                            KitchenAiNavHost(
+                                navController = navController,
+                                userId = userId,
+                                detailTopBar = detailTopBar,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }
         }
     }
-}
-
-/** Stands in for a screen that has not landed yet; it goes away one entry at a time. */
-@Composable
-private fun PlaceholderScreen() {
-    EmptyState(
-        title = stringResource(Res.string.placeholder_title),
-        body = stringResource(Res.string.placeholder_body),
-    )
 }
 
 /** Recipe detail and Kitchen are reached from a tab, so they live in its graph and are not tabs. */

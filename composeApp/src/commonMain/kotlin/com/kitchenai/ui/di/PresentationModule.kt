@@ -1,6 +1,7 @@
 package com.kitchenai.ui.di
 
 import com.kitchenai.shared.di.initKoin
+import com.kitchenai.ui.presentation.common.ConnectivityViewModel
 import com.kitchenai.ui.presentation.common.PendingDisplayName
 import com.kitchenai.ui.presentation.session.SessionKitchenDelegate
 import com.kitchenai.ui.presentation.session.SessionViewModel
@@ -13,6 +14,7 @@ import org.koin.dsl.module
 val presentationModule: Module =
     module {
         single { PendingDisplayName() }
+        viewModel { ConnectivityViewModel(get()) }
         factory { SessionKitchenDelegate(get(), get(), get()) }
         viewModel { SessionViewModel(get(), get(), get(), get(), get(), get(), get()) }
         includes(kitchenPresentationModule)

@@ -66,6 +66,8 @@ class ProfileViewModel(
         }
 
     private var started = false
+    private var profileListener: Job? = null
+    private var catalogueListener: Job? = null
     private var termListeners: Job? = null
 
     // Which uid the profile listener follows; start() is handed a new one after a switch to another account (#250).
@@ -81,6 +83,19 @@ class ProfileViewModel(
         started = true
         activeUserId.value = userId
         watchSession()
+        watchProfile()
+        watchCatalogue()
+    }
+
+    /** Re-subscribes the profile and catalogue listeners after one failed; drafted edits survive it. */
+    fun retry() {
+        if (!started) return
+        profileFailure.value = null
+        catalogueFailure.value = null
+        catalogue.update { state -> state.copy(answered = state.answered && !state.failed, failed = false) }
+        termListeners?.cancel()
+        profileListener?.cancel()
+        catalogueListener?.cancel()
         watchProfile()
         watchCatalogue()
     }
@@ -239,14 +254,15 @@ class ProfileViewModel(
 
     /** [collectLatest] tears down the previous uid's listeners before opening the new one's. */
     private fun watchProfile() {
-        viewModelScope.launch {
-            activeUserId.filterNotNull().collectLatest { userId ->
-                coroutineScope {
-                    launch { observeUserProfile(userId).collect { loaded -> onProfile(loaded) } }
-                    launch { observeUserProfile.errors(userId).collect { error -> onProfileError(error) } }
+        profileListener =
+            viewModelScope.launch {
+                activeUserId.filterNotNull().collectLatest { userId ->
+                    coroutineScope {
+                        launch { observeUserProfile(userId).collect { loaded -> onProfile(loaded) } }
+                        launch { observeUserProfile.errors(userId).collect { error -> onProfileError(error) } }
+                    }
                 }
             }
-        }
     }
 
     /** Unsaved edits survive a remote update, but the name is not editable here, so the remote one wins. */
@@ -263,19 +279,20 @@ class ProfileViewModel(
 
     // SessionViewModel is the only writer of a missing users/{uid} and applies any pending display name.
     private fun onProfileError(error: AppError) {
-        profileFailure.value = error.toProfileError()
+        profileFailure.value = error.toProfileError(isRetryable = true)
     }
 
     private fun watchCatalogue() {
-        viewModelScope.launch {
-            observeTaxonomies().collect { loaded -> onTaxonomies(loaded) }
-        }
-        viewModelScope.launch {
-            observeTaxonomies.errors().collect { error ->
-                catalogue.update { state -> state.copy(answered = true, failed = true) }
-                catalogueFailure.value = error.toProfileError()
+        catalogueListener =
+            viewModelScope.launch {
+                launch { observeTaxonomies().collect { loaded -> onTaxonomies(loaded) } }
+                launch {
+                    observeTaxonomies.errors().collect { error ->
+                        catalogue.update { state -> state.copy(answered = true, failed = true) }
+                        catalogueFailure.value = error.toProfileError(isRetryable = true)
+                    }
+                }
             }
-        }
     }
 
     private fun onTaxonomies(loaded: List<Taxonomy>) {

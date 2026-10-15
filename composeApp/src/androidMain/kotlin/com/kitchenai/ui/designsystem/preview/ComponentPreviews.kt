@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.QuantityField
@@ -31,8 +32,13 @@ private fun StatesPreview() {
     PreviewSurface {
         Column(verticalArrangement = Arrangement.spacedBy(Dimens.large)) {
             ErrorState(
-                message = "No connection to Firebase",
-                retryLabel = "Retry",
+                message = "You're offline. Check your connection and try again.",
+                retryLabel = "Try again",
+                onRetry = {},
+            )
+            ErrorBanner(
+                message = "We couldn't load your list. Try again in a moment.",
+                retryLabel = "Try again",
                 onRetry = {},
             )
             EmptyState(

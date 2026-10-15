@@ -33,6 +33,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.theme.Dimens
@@ -41,6 +42,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_retry
 import com.kitchenai.ui.resources.kitchen_cancel
 import com.kitchenai.ui.resources.kitchen_code_regenerated
 import com.kitchenai.ui.resources.kitchen_confirm_join_body
@@ -205,14 +207,21 @@ private fun KitchenContent(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.large),
     ) {
-        state.error?.let { message -> ErrorBanner(message) }
+        state.error?.let { message ->
+            ErrorBanner(
+                message = message.resolve(),
+                retryLabel = stringResource(Res.string.error_retry),
+                onRetry = if (state.canRetry) viewModel::retry else null,
+            )
+        }
 
         val kitchen = state.kitchen
         if (kitchen != null) {
             JoinCodeSection(kitchen, isBusy = state.isBusy, onRegenerate = viewModel::requestRegenerateJoinCode)
             MembersSection(kitchen, isBusy = state.isBusy, onRemove = viewModel::requestRemoveMember)
             LeaveSection(kitchen, isBusy = state.isBusy, onLeave = viewModel::requestLeave)
-        } else {
+        } else if (!state.canRetry) {
+            // A failed listener says nothing about membership, so "no kitchen yet" would be a guess.
             EmptyState(
                 title = stringResource(Res.string.kitchen_empty_title),
                 body = stringResource(Res.string.kitchen_empty_body),
@@ -297,7 +306,7 @@ private fun LeaveSection(
     onLeave: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
-        kitchen.leaveDisabledReason?.let { reason -> ErrorBanner(reason, isError = false) }
+        kitchen.leaveDisabledReason?.let { reason -> LeaveNote(reason) }
         OutlinedButton(onClick = onLeave, enabled = kitchen.canLeave && !isBusy, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(Res.string.kitchen_leave_action))
         }
@@ -332,16 +341,13 @@ private fun JoinField(
     }
 }
 
-/** Above the content rather than replacing it: a stale kitchen still on screen is still useful. */
+/** Why Leave is disabled: an explanation, not a failure, so it is not drawn as an error. */
 @Composable
-private fun ErrorBanner(
-    message: UiText,
-    isError: Boolean = true,
-) {
+private fun LeaveNote(reason: UiText) {
     Text(
-        text = message.resolve(),
+        text = reason.resolve(),
         style = MaterialTheme.typography.bodyMedium,
-        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth(),
     )
 }

@@ -5,7 +5,6 @@ import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.model.resolve
 import com.kitchenai.ui.presentation.common.LabelResolver
-import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_own_data
@@ -74,12 +73,10 @@ internal fun sections(
 }
 
 /**
- * [AppError.Validation.reason] alone, not "Invalid `<field>`: `<reason>`": this one renders under
- * the input it names, so repeating the field there would say the same thing twice. It is Raw
- * because the domain wrote it — there is no key for a sentence this module did not author.
+ * [AppError.Validation.field] anchors the message under the input it names; the wording is never the
+ * domain's. [isRetryable] is for a listener that failed, which [ProfileViewModel.retry] can reopen.
  */
-internal fun AppError.toProfileError(): ProfileError {
+internal fun AppError.toProfileError(isRetryable: Boolean = false): ProfileError {
     val field = (this as? AppError.Validation)?.field
-    val message = describe(Res.string.error_unauthorized_own_data, validation = { error -> UiText.Raw(error.reason) })
-    return ProfileError(field, message)
+    return ProfileError(field, describe(Res.string.error_unauthorized_own_data), isRetryable)
 }

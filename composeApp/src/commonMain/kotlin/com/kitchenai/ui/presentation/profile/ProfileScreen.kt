@@ -30,6 +30,7 @@ import com.kitchenai.shared.domain.model.AppleIdToken
 import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.theme.Dimens
@@ -40,6 +41,7 @@ import com.kitchenai.ui.platform.rememberGoogleSignInLauncher
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_retry
 import com.kitchenai.ui.resources.profile_delete_account
 import com.kitchenai.ui.resources.profile_delete_body
 import com.kitchenai.ui.resources.profile_delete_cancel
@@ -80,7 +82,13 @@ fun ProfileScreen(
         !state.isLoading ->
             ProfileContent(state = state, viewModel = viewModel, onOpenKitchen = onOpenKitchen, modifier = modifier)
         error == null -> LoadingState(modifier)
-        else -> ErrorState(message = error.message.resolve(), modifier = modifier)
+        else ->
+            ErrorState(
+                message = error.message.resolve(),
+                modifier = modifier,
+                retryLabel = stringResource(Res.string.error_retry),
+                onRetry = viewModel::retry,
+            )
     }
 }
 
@@ -117,6 +125,8 @@ private fun ProfileContent(
                         stringResource(Res.string.profile_no_vocabulary)
                     },
                 modifier = Modifier.weight(1f),
+                actionLabel = if (state.hasCatalogueFailed) stringResource(Res.string.error_retry) else null,
+                onAction = if (state.hasCatalogueFailed) viewModel::retry else null,
             )
         } else {
             LazyColumn(
@@ -139,6 +149,7 @@ private fun ProfileContent(
             isSaving = state.isSaving,
             hasUnsavedChanges = state.hasUnsavedChanges,
             message = state.generalError,
+            onRetry = if (state.canRetry) viewModel::retry else null,
             onSave = viewModel::save,
         )
         Spacer(Modifier.height(Dimens.large))
@@ -307,13 +318,16 @@ private fun SaveRow(
     isSaving: Boolean,
     hasUnsavedChanges: Boolean,
     message: UiText?,
+    onRetry: (() -> Unit)?,
     onSave: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),
     ) {
-        message?.let { text -> FieldMessage(text) }
+        message?.let { text ->
+            ErrorBanner(text.resolve(), retryLabel = stringResource(Res.string.error_retry), onRetry = onRetry)
+        }
         // Disabled rather than always tappable: with nothing changed, a tap was a silent no-op
         // write — this both signals "nothing pending" and stops that write from firing.
         Button(

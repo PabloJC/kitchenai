@@ -8,7 +8,7 @@ import com.kitchenai.shared.domain.model.KitchenJoinCode
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.error_invalid_field
+import com.kitchenai.ui.resources.error_invalid_input
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.kitchen_invalid_code
 import com.kitchenai.ui.resources.kitchen_leave_disabled_owner
@@ -146,11 +146,10 @@ class KitchenUiMapperTest {
     }
 
     @Test
-    fun `a validation error for an unrelated field keeps the generic invalid-field wording`() {
+    fun `a validation error for an unrelated field takes the generic sentence without the field or reason`() {
         val error = AppError.Validation("joinCode", "must not be blank")
-        val expected = UiText.of(Res.string.error_invalid_field, "joinCode", "must not be blank")
 
-        assertEquals(expected, error.describeKitchenError())
+        assertEquals(UiText.of(Res.string.error_invalid_input), error.describeKitchenError())
     }
 
     private fun userId(raw: String): UserId = (UserId.of(raw) as AppResult.Success).data

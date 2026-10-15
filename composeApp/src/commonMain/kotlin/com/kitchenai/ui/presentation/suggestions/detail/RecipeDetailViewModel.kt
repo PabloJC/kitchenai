@@ -87,6 +87,8 @@ class RecipeDetailViewModel(
     private var listLabels: Map<String, String> = emptyMap()
     private var languageTags: List<String> = emptyList()
     private var started = false
+    private var userId: UserId? = null
+    private var kitchenListener: Job? = null
 
     // The kitchen a user belongs to can change while this screen is open (joining another one),
     // so it is a listener like the pantry itself, not a value captured once at start().
@@ -99,6 +101,7 @@ class RecipeDetailViewModel(
         defaultListName: String,
     ) {
         id = recipeId
+        this.userId = userId
         this.languageTags = languageTags
         // Only used if this screen is the one that creates the list. It should not be — the
         // session gate creates it first — but a list named by whoever got there first is worse
@@ -138,15 +141,33 @@ class RecipeDetailViewModel(
         userId: UserId,
         recipeId: RecipeId,
     ) {
-        viewModelScope.launch {
-            observeKitchen(userId).collect { kitchen ->
-                val firstKitchen = kitchenId.value == null
-                kitchenId.value = kitchen.id
-                if (firstKitchen) load(kitchen.id, recipeId, servings = null) else refreshMatch(kitchen.id)
+        kitchenListener =
+            viewModelScope.launch {
+                launch {
+                    observeKitchen(userId).collect { kitchen ->
+                        val firstKitchen = kitchenId.value == null
+                        kitchenId.value = kitchen.id
+                        if (firstKitchen) load(kitchen.id, recipeId, servings = null) else refreshMatch(kitchen.id)
+                    }
+                }
+                launch { observeKitchen.errors(userId).collect { error -> failed(error) } }
             }
-        }
-        viewModelScope.launch {
-            observeKitchen.errors(userId).collect { error -> failed(error) }
+    }
+
+    /**
+     * Asks again for what failed to load: the recipe when the kitchen is known, otherwise the kitchen
+     * listener itself. A failed re-match keeps the servings the person chose.
+     */
+    fun retry() {
+        val recipeId = id ?: return
+        internalState.update { it.copy(isLoading = recipe.value == null, error = null) }
+        val kitchen = kitchenId.value
+        if (kitchen != null) {
+            load(kitchen, recipeId, servings = internalState.value.servings.takeIf { recipe.value != null })
+        } else {
+            val uid = userId ?: return
+            kitchenListener?.cancel()
+            watchKitchen(uid, recipeId)
         }
     }
 
