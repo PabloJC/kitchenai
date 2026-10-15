@@ -78,3 +78,27 @@ internal fun List<PantryItem>.termTaxonomies(): Set<TaxonomyId> =
 
 internal fun List<PantryItem>.locationTaxonomies(): Set<TaxonomyId> =
     mapNotNullTo(mutableSetOf()) { item -> item.location?.taxonomy }
+
+/** Rows the sheet's "Recent" shortcut offers. */
+internal const val RECENT_LIMIT = 8
+
+/**
+ * The catalogue ingredients the pantry changed last. Derived from the rows themselves: an item
+ * that was removed leaves nothing behind to rank, so only what is still held can be recent.
+ */
+internal fun List<PantryItem>.recentOptions(
+    options: List<IngredientOption>,
+    limit: Int = RECENT_LIMIT,
+): List<IngredientOption> {
+    val byId = options.associateBy { option -> option.id }
+    return sortedByDescending { item -> item.updatedAt }
+        .mapNotNull { item -> item.ingredient?.let(byId::get) }
+        .distinct()
+        .take(limit)
+}
+
+/** What a draft is called in a confirmation: the catalogue's word, or what the user typed. */
+internal fun PantryUiState.displayNameOf(draft: PantryItemDraft): String =
+    draft.freeText
+        ?: draft.ingredient?.let { id -> ingredients.firstOrNull { option -> option.id == id }?.label ?: id.value }
+            .orEmpty()
