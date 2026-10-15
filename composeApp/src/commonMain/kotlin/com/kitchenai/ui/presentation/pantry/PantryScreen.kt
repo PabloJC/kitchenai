@@ -104,6 +104,7 @@ fun PantryScreen(
             state = state,
             onDismiss = viewModel::closeEditor,
             onSubmit = viewModel::save,
+            onSubmitAndAddAnother = viewModel::saveAndAddAnother,
             onDelete = viewModel::deleteEditing,
         )
     }

@@ -78,7 +78,6 @@
     <string name="shopping_failed_body">Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="shopping_empty_title">Nada que comprar</string>
     <string name="shopping_empty_body">Añade lo que necesites y ve marcándolo.</string>
-    <string name="shopping_removed_suffix">eliminado</string>
     <plurals name="shopping_cleared_count">
         <item quantity="one">%1$d línea vaciada</item>
         <item quantity="other">%1$d líneas vaciadas</item>
@@ -200,4 +199,40 @@
     <string name="error_recipe_unavailable_title">Esta receta ya no está disponible</string>
     <string name="error_recipe_unavailable_body">Vuelve a las ideas y elige otra.</string>
     <string name="network_offline_banner">Sin conexión. Tus cambios se sincronizarán al volver a conectarte.</string>
+
+    <!-- Shopping check-off flow -->
+    <string name="shopping_removed">%1$s eliminado</string>
+    <plurals name="shopping_move_count">
+        <item quantity="one">Mover %1$d a la despensa</item>
+        <item quantity="other">Mover %1$d a la despensa</item>
+    </plurals>
+    <plurals name="shopping_need_amount_count">
+        <item quantity="one">%1$d necesita una cantidad</item>
+        <item quantity="other">%1$d necesitan una cantidad</item>
+    </plurals>
+    <string name="shopping_all_in_cart_title">Todo está en el carro</string>
+    <string name="shopping_all_in_cart_body">Muévelo a la despensa para que las sugerencias estén al día.</string>
+    <string name="shopping_view_pantry">Ver despensa</string>
+    <!-- Acciones de sugerencias (#263) -->
+    <string name="suggestions_new_ideas">Nuevas ideas</string>
+    <string name="suggestions_filters_changed">Los filtros han cambiado</string>
+    <string name="suggestions_update_ideas">Actualizar ideas</string>
+    <string name="suggestions_cancel">Cancelar</string>
+    <string name="suggestions_retry">Inténtalo otra vez</string>
+    <string name="suggestions_add_missing">Añadir lo que falta a la lista</string>
+    <plurals name="suggestions_missing_more">
+        <item quantity="one">+%1$d más</item>
+        <item quantity="other">+%1$d más</item>
+    </plurals>
+    <string name="suggestions_empty_body_action">Toca Nuevas ideas para pedir platos hechos con lo que ya hay en tu despensa</string>
+    <string name="suggestions_nothing_body_action">Añade algunas cosas a tu despensa y toca Nuevas ideas para volver a intentarlo</string>
+    <string name="pantry_editor_title_add">Añadir a la despensa</string>
+    <string name="pantry_editor_title_edit">Editar %1$s</string>
+    <string name="pantry_editor_recent">Recientes</string>
+    <string name="pantry_editor_free_text_hint">No está en el catálogo: se guardará tal como lo escribes</string>
+    <string name="pantry_editor_clear_search">Borrar búsqueda</string>
+    <string name="pantry_editor_amount_malformed">Introduce un número</string>
+    <string name="pantry_editor_unit">Unidad</string>
+    <string name="pantry_editor_save_and_add">Guardar y añadir otro</string>
+    <string name="pantry_editor_added">Añadido: %1$s</string>
 </resources>

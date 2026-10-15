@@ -7,7 +7,7 @@ import com.kitchenai.ui.presentation.common.UiText
 
 /**
  * What the shopping screen shows. Two lists rather than one with a flag: the screen draws two
- * sections, and the split is the ordering of the item stream made explicit.
+ * sections. A just-ticked line stays in [unchecked] until its settle delay ends, ticked in place.
  *
  * The records below are the parts of this one state and change together, which is why they
  * share a file.
@@ -23,7 +23,17 @@ data class ShoppingUiState(
     // The list never arrived, which is a different screen from a list that arrived empty.
     val failedToLoad: Boolean = false,
     val error: UiText? = null,
-)
+) {
+    // A line just ticked still sits in `unchecked` for a moment, so the ticked set spans both lists.
+    private val ticked: List<ShoppingItemUi> get() = unchecked.filter(ShoppingItemUi::checked) + checked
+
+    val tickedCount: Int get() = ticked.size
+
+    /** Only a line with an amount can move to the pantry. */
+    val movableCount: Int get() = ticked.count { line -> line.amount != null }
+
+    val ticksMissingAmount: List<ShoppingItemUi> get() = ticked.filter { line -> line.amount == null }
+}
 
 /**
  * One rendered line. [fromCatalogue] is not decoration: a catalogue line merges with itself when

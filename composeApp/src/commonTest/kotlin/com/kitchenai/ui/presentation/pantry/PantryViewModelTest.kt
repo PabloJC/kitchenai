@@ -327,6 +327,116 @@ class PantryViewModelTest {
         }
 
     @Test
+    fun `the catalogue options carry the default unit that fills an empty amount`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+
+            val option = viewModel.state.value.ingredients.single()
+            assertEquals(IngredientOption(ingredientId, INGREDIENT_LABEL, unitRef), option)
+        }
+
+    @Test
+    fun `recent lists what the pantry touched last and nothing the catalogue lacks`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId, languageTags)
+            catalogue.emit(listOf(ingredient, otherIngredient))
+            taxonomies.terms.emit(listOf(unitTerm, locationTerm))
+            pantry.items.emit(
+                listOf(
+                    item,
+                    item.copy(
+                        id = PantryItemId.of("item-3").value(),
+                        ingredient = otherIngredient.id,
+                        updatedAt = Instant.fromEpochSeconds(10),
+                    ),
+                    item.copy(
+                        id = PantryItemId.of("item-4").value(),
+                        ingredient = IngredientId.of("unknown").value(),
+                        updatedAt = Instant.fromEpochSeconds(20),
+                    ),
+                    item.copy(id = PantryItemId.of("item-5").value(), ingredient = null, freeText = "bread"),
+                ),
+            )
+            advanceUntilIdle()
+
+            assertEquals(listOf(otherIngredient.id, ingredientId), viewModel.state.value.recent.map { it.id })
+        }
+
+    @Test
+    fun `save and add another keeps the sheet open on an empty form and names what was added`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.openEditor(null)
+
+            viewModel.saveAndAddAnother(PantryItemDraft(ingredientId, null, 1.0, unitRef, null, null))
+            advanceUntilIdle()
+
+            val state = viewModel.state.value
+            assertTrue(state.isEditorOpen)
+            assertNull(state.editing)
+            assertEquals(1, state.editorRevision)
+            assertEquals(INGREDIENT_LABEL, state.lastAdded)
+            assertEquals(ingredientId, pantry.upserted.single().ingredient)
+        }
+
+    @Test
+    fun `five items in a row never close the sheet`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.openEditor(null)
+
+            repeat(5) { index ->
+                viewModel.saveAndAddAnother(PantryItemDraft(null, "item $index", 1.0, null, null, null))
+                advanceUntilIdle()
+                assertTrue(viewModel.state.value.isEditorOpen)
+            }
+
+            assertEquals(5, viewModel.state.value.editorRevision)
+            assertEquals(5, pantry.upserted.size)
+        }
+
+    @Test
+    fun `a free text item is named as typed in the confirmation`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.openEditor(null)
+
+            viewModel.saveAndAddAnother(PantryItemDraft(null, "the good bread", 1.0, null, null, null))
+
+            assertEquals("the good bread", viewModel.state.value.lastAdded)
+        }
+
+    @Test
+    fun `a refused write takes the confirmation back`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            pantry.upsertResult = AppResult.Failure(AppError.Unauthorized())
+            viewModel.openEditor(null)
+
+            viewModel.events.test {
+                viewModel.saveAndAddAnother(PantryItemDraft(ingredientId, null, 1.0, unitRef, null, null))
+                advanceUntilIdle()
+                assertEquals(PantryEvent.SaveFailed(UNAUTHORIZED_MESSAGE), awaitItem())
+            }
+            assertNull(viewModel.state.value.lastAdded)
+        }
+
+    @Test
+    fun `closing the sheet forgets the confirmation`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.openEditor(null)
+            viewModel.saveAndAddAnother(PantryItemDraft(ingredientId, null, 1.0, unitRef, null, null))
+            advanceUntilIdle()
+
+            viewModel.closeEditor()
+
+            assertNull(viewModel.state.value.lastAdded)
+            assertFalse(viewModel.state.value.isEditorOpen)
+        }
+
+    @Test
     fun `the listeners are subscribed once however often the screen is composed`() =
         runTest(dispatcher) {
             val viewModel = loadedViewModel()
@@ -390,6 +500,14 @@ private val ingredient =
         id = ingredientId,
         labels = mapOf("aa" to INGREDIENT_LABEL),
         defaultUnit = unitRef,
+        tags = emptyList(),
+    )
+
+private val otherIngredient =
+    Ingredient(
+        id = IngredientId.of("ingredient-2").value(),
+        labels = mapOf("aa" to "other-label"),
+        defaultUnit = null,
         tags = emptyList(),
     )
 

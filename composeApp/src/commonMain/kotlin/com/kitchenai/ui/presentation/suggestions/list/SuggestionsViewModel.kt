@@ -7,23 +7,22 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Recipe
+import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
-import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
-import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.error_unauthorized_suggestions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,11 +50,9 @@ class SuggestionsViewModel(
     private val suggestRecipes: SuggestRecipesUseCase,
     private val getStoredSuggestions: GetStoredSuggestionsUseCase,
     private val storeSuggestions: StoreSuggestionsUseCase,
-    private val observeIngredients: ObserveIngredientsUseCase,
-    private val observeSavedRecipes: ObserveSavedRecipesUseCase,
     private val matchRecipe: MatchRecipeAgainstPantryUseCase,
-    private val observePantry: ObservePantryUseCase,
-    private val observeKitchen: ObserveKitchenUseCase,
+    private val reads: SuggestionsReadsDelegate,
+    private val writes: SuggestionsWritesDelegate,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(SuggestionsUiState())
     val state: StateFlow<SuggestionsUiState> = internalState.asStateFlow()
@@ -73,6 +70,7 @@ class SuggestionsViewModel(
     private var currentSaved: List<RecipeSuggestion> = emptyList()
     private var user: UserId? = null
     private var languageTags: List<String> = emptyList()
+    private var listLabels: Map<String, String> = emptyMap()
     private var started = false
 
     // The kitchen a user belongs to can change while this screen is open (joining another one),
@@ -88,13 +86,17 @@ class SuggestionsViewModel(
     fun start(
         userId: UserId,
         languageTags: List<String>,
+        defaultListName: String,
     ) {
         user = userId
         this.languageTags = languageTags
+        // Only used if this screen is the one that creates the list, which the session gate
+        // normally does first.
+        listLabels = languageTags.take(1).associateWith { defaultListName }
         if (started) return
         started = true
         viewModelScope.launch {
-            observeIngredients().collect { loaded ->
+            reads.ingredients().collect { loaded ->
                 ingredients.value = loaded
                 // The stored set can be on screen already, showing catalogue ids where the
                 // resolver had nothing yet: a local read is near-instant and does not wait for
@@ -103,10 +105,10 @@ class SuggestionsViewModel(
             }
         }
         viewModelScope.launch {
-            observeKitchen(userId).collect { kitchen -> kitchenId.value = kitchen.id }
+            reads.kitchen(userId).collect { kitchen -> kitchenId.value = kitchen.id }
         }
         viewModelScope.launch {
-            observeKitchen.errors(userId).collect { error ->
+            reads.kitchen.errors(userId).collect { error ->
                 internalState.update { it.copy(error = error.describe(Res.string.error_unauthorized_suggestions)) }
             }
         }
@@ -115,14 +117,14 @@ class SuggestionsViewModel(
             // recipe's coverage is recomputed on a pantry change too, not only when the saved
             // list itself does.
             kitchenId.filterNotNull().flatMapLatest { id ->
-                combine(observeSavedRecipes(id), observePantry(id)) { recipes, _ -> id to recipes }
+                combine(reads.savedRecipes(id), reads.pantry(id)) { recipes, _ -> id to recipes }
             }.collect { (id, recipes) -> matchSaved(id, recipes) }
         }
         viewModelScope.launch {
             // The stamped match is a snapshot of the pantry at generation time. distinctUntilChanged
             // keeps a snapshot that re-emits unchanged holdings from costing a pass of reads.
             kitchenId.filterNotNull().flatMapLatest { id ->
-                observePantry(id).distinctUntilChanged().map { id }
+                reads.pantry(id).distinctUntilChanged().map { id }
             }.collectLatest { id -> rematchGenerated(id) }
         }
         viewModelScope.launch {
@@ -157,22 +159,54 @@ class SuggestionsViewModel(
         val userId = user ?: return
         val kitchen = kitchenId.value ?: return
         if (internalState.value.isGenerating) return
+        // The options this run is sent with, so an edit made while it is in flight still reads
+        // as a change once it lands.
+        val sent = internalState.value.options
         internalState.update { it.copy(isGenerating = true, error = null) }
         generation.value =
             viewModelScope.launch {
-                when (
-                    val answered =
-                        suggestRecipes(
-                            userId,
-                            kitchen,
-                            languageTags,
-                            internalState.value.options.toDomain(),
-                        )
-                ) {
+                val answered = suggestRecipes(userId, kitchen, languageTags, sent.toDomain())
+                // A data source that maps a cancellation to an AppError must not turn it into a failure.
+                ensureActive()
+                when (answered) {
                     is AppResult.Failure -> fail(answered.error)
-                    is AppResult.Success -> generated(kitchen, answered.data)
+                    is AppResult.Success -> generated(kitchen, answered.data, sent)
                 }
             }
+    }
+
+    /** Stops the in-flight run; what was on screen before it is still there, since only a landing replaces it. */
+    fun cancelGeneration() {
+        if (!internalState.value.isGenerating) return
+        generation.value?.cancel()
+        internalState.update { it.copy(isGenerating = false) }
+    }
+
+    /**
+     * Hands over the recipe in hand rather than its id: a generated dish is in no repository, so
+     * re-reading it would fail. A second tap while one is writing is ignored.
+     */
+    fun addMissingToList(id: RecipeId) {
+        val kitchen = kitchenId.value ?: return
+        if (internalState.value.addingMissingFor != null) return
+        val recipe = (current + currentSaved).firstOrNull { it.recipe.id == id }?.recipe ?: return
+        internalState.update { it.copy(addingMissingFor = id) }
+        viewModelScope.launch {
+            val outcome =
+                when (val list = writes.defaultList(kitchen, listLabels)) {
+                    is AppResult.Failure -> list
+                    is AppResult.Success -> writes.addMissing(kitchen, list.data, recipe, recipe.servings)
+                }
+            internalState.update { it.copy(addingMissingFor = null) }
+            when (outcome) {
+                is AppResult.Failure ->
+                    eventChannel.send(
+                        SuggestionsEvent.Failed(outcome.error.describe(Res.string.error_unauthorized_action)),
+                    )
+                is AppResult.Success ->
+                    eventChannel.send(SuggestionsEvent.AddedToList(outcome.data.added, outcome.data.skipped))
+            }
+        }
     }
 
     private fun editOptions(block: (SuggestionOptionsUi) -> SuggestionOptionsUi) =
@@ -189,6 +223,7 @@ class SuggestionsViewModel(
     private suspend fun generated(
         kitchenId: KitchenId,
         suggestions: List<RecipeSuggestion>,
+        sent: SuggestionOptionsUi,
     ) {
         // The write's own failure does not undo a run the user already sees the result of: it
         // only costs the next launch its head start.
@@ -196,7 +231,9 @@ class SuggestionsViewModel(
         // The pantry may have changed during the minute-long call, and its emission found the
         // previous list on screen. A stamped match is only as fresh as the model call's start.
         render(withFreshMatch(kitchenId, suggestions))
-        internalState.update { it.copy(isGenerating = false, hasGenerated = true, error = null) }
+        internalState.update {
+            it.copy(isGenerating = false, hasGenerated = true, error = null, appliedOptions = sent)
+        }
     }
 
     private fun render(suggestions: List<RecipeSuggestion>) {
@@ -266,11 +303,9 @@ class SuggestionsViewModel(
         }
     }
 
-    private suspend fun fail(error: AppError) {
+    private fun fail(error: AppError) {
         val message = error.describe(Res.string.error_unauthorized_suggestions)
-        // Both: the banner survives a rotation, the event does not, and a failure the user
-        // scrolled past still has to be findable.
+        // State only: the retry card stays on screen until the next run, so an event would repeat it.
         internalState.update { it.copy(isGenerating = false, hasGenerated = true, error = message) }
-        eventChannel.send(SuggestionsEvent.Failed(message))
     }
 }
