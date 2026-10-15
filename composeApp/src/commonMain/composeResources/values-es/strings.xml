@@ -178,7 +178,7 @@
     <string name="kitchen_confirm_leave_title">¿Salir de esta cocina?</string>
     <string name="kitchen_confirm_leave_body">Dejarás de ver su despensa, su lista de la compra y sus recetas guardadas, y tendrás una cocina propia vacía.</string>
     <string name="kitchen_confirm_leave">Salir</string>
-    <string name="kitchen_confirm_remove_title">¿Eliminar a %1$s de la cocina?</string>
+    <string name="kitchen_confirm_remove_title">¿Eliminar a %1$s?</string>
     <string name="kitchen_confirm_remove_body">Dejará de ver su despensa, su lista de la compra y sus recetas guardadas, y no podrá volver a unirse con el código.</string>
     <string name="kitchen_confirm_join_title">¿Unirte a esta cocina?</string>
     <string name="kitchen_confirm_join_body">Saldrás de tu cocina actual y dejarás de ver su despensa, su lista de la compra y sus recetas guardadas.</string>

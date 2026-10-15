@@ -181,7 +181,7 @@
     <string name="kitchen_confirm_leave_title">Leave this kitchen?</string>
     <string name="kitchen_confirm_leave_body">You will stop seeing its pantry, shopping list and saved recipes, and get an empty kitchen of your own.</string>
     <string name="kitchen_confirm_leave">Leave</string>
-    <string name="kitchen_confirm_remove_title">Remove %1$s from the kitchen?</string>
+    <string name="kitchen_confirm_remove_title">Remove %1$s?</string>
     <string name="kitchen_confirm_remove_body">They will stop seeing its pantry, shopping list and saved recipes, and cannot rejoin with the code.</string>
     <string name="kitchen_confirm_join_title">Join this kitchen?</string>
     <string name="kitchen_confirm_join_body">You will leave your current kitchen, and its pantry, shopping list and saved recipes will no longer be visible to you.</string>
