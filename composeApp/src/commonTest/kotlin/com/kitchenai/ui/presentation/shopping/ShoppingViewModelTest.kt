@@ -44,8 +44,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -102,6 +104,135 @@ class ShoppingViewModelTest {
             // The write is out; the state still renders what the listener last sent.
             assertEquals(listOf("item-1"), viewModel.state.value.unchecked.map { it.id.value })
             assertTrue(viewModel.state.value.checked.isEmpty())
+        }
+
+    @Test
+    fun `a ticked line keeps its row until the settle delay ends and then drops to the cart`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1"), line("item-2"), line("item-3")))
+            advanceUntilIdle()
+
+            viewModel.setChecked(itemId("item-2"), checked = true)
+            items.emit(listOf(line("item-1"), line("item-2", checked = true), line("item-3")))
+            advanceTimeBy(SETTLE_MILLIS - 1)
+            runCurrent()
+
+            val settling = viewModel.state.value
+            // The stream sorts a ticked line last; the row must not follow it before the delay ends.
+            assertEquals(listOf("item-1", "item-2", "item-3"), settling.unchecked.map { it.id.value })
+            assertEquals(true, settling.unchecked[1].checked)
+            assertTrue(settling.checked.isEmpty())
+
+            advanceTimeBy(2)
+            runCurrent()
+
+            val settled = viewModel.state.value
+            assertEquals(listOf("item-1", "item-3"), settled.unchecked.map { it.id.value })
+            assertEquals(listOf("item-2"), settled.checked.map { it.id.value })
+        }
+
+    @Test
+    fun `unticking a settling line puts it back at once and it never drops`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+
+            viewModel.setChecked(itemId("item-1"), checked = true)
+            items.emit(listOf(line("item-1", checked = true)))
+            advanceTimeBy(SETTLE_MILLIS / 2)
+            viewModel.setChecked(itemId("item-1"), checked = false)
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+
+            val state = viewModel.state.value
+            assertEquals(listOf("item-1"), state.unchecked.map { it.id.value })
+            assertEquals(false, state.unchecked.single().checked)
+            assertTrue(state.checked.isEmpty())
+        }
+
+    @Test
+    fun `ticking again restarts the delay instead of keeping the first one`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+
+            viewModel.setChecked(itemId("item-1"), checked = true)
+            items.emit(listOf(line("item-1", checked = true)))
+            advanceTimeBy(SETTLE_MILLIS - 100)
+            viewModel.setChecked(itemId("item-1"), checked = false)
+            items.emit(listOf(line("item-1")))
+            runCurrent()
+            viewModel.setChecked(itemId("item-1"), checked = true)
+            items.emit(listOf(line("item-1", checked = true)))
+            // Past the first delay but inside the second one.
+            advanceTimeBy(200)
+            runCurrent()
+
+            assertEquals(listOf("item-1"), viewModel.state.value.unchecked.map { it.id.value })
+
+            advanceTimeBy(SETTLE_MILLIS)
+            runCurrent()
+
+            assertTrue(viewModel.state.value.unchecked.isEmpty())
+            assertEquals(listOf("item-1"), viewModel.state.value.checked.map { it.id.value })
+        }
+
+    @Test
+    fun `a line ticked on another device goes straight to the cart`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1", checked = true)))
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.unchecked.isEmpty())
+            assertEquals(listOf("item-1"), viewModel.state.value.checked.map { it.id.value })
+        }
+
+    @Test
+    fun `the ticked counts span lines still settling and lines in the cart`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(
+                listOf(
+                    line("item-1", quantity = Quantity(200.0, gram)),
+                    line("item-2", checked = true, quantity = Quantity(1.0, gram)),
+                    line("item-3", checked = true),
+                ),
+            )
+            advanceUntilIdle()
+            assertEquals(2, viewModel.state.value.tickedCount)
+            assertEquals(1, viewModel.state.value.movableCount)
+            assertEquals(listOf("item-3"), viewModel.state.value.ticksMissingAmount.map { it.id.value })
+
+            viewModel.setChecked(itemId("item-1"), checked = true)
+            items.emit(
+                listOf(
+                    line("item-1", checked = true, quantity = Quantity(200.0, gram)),
+                    line("item-2", checked = true, quantity = Quantity(1.0, gram)),
+                    line("item-3", checked = true),
+                ),
+            )
+            advanceTimeBy(1)
+            runCurrent()
+
+            // item-1 is still in "To buy" for the delay, and still counts as ticked.
+            assertEquals(3, viewModel.state.value.tickedCount)
+            assertEquals(2, viewModel.state.value.movableCount)
+        }
+
+    @Test
+    fun `nothing ticked means nothing to move`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+
+            assertEquals(0, viewModel.state.value.tickedCount)
+            assertEquals(0, viewModel.state.value.movableCount)
+            assertTrue(viewModel.state.value.ticksMissingAmount.isEmpty())
         }
 
     @Test

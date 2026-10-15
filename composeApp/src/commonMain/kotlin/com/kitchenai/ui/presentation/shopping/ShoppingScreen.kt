@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
@@ -18,6 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -33,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +59,8 @@ import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.not_in_catalogue
 import com.kitchenai.ui.resources.shopping_add_amount
+import com.kitchenai.ui.resources.shopping_all_in_cart_body
+import com.kitchenai.ui.resources.shopping_all_in_cart_title
 import com.kitchenai.ui.resources.shopping_amount
 import com.kitchenai.ui.resources.shopping_cancel
 import com.kitchenai.ui.resources.shopping_clear
@@ -68,12 +74,12 @@ import com.kitchenai.ui.resources.shopping_empty_title
 import com.kitchenai.ui.resources.shopping_failed_body
 import com.kitchenai.ui.resources.shopping_failed_title
 import com.kitchenai.ui.resources.shopping_in_cart
-import com.kitchenai.ui.resources.shopping_move_to_pantry
 import com.kitchenai.ui.resources.shopping_nothing_moved_no_amount
-import com.kitchenai.ui.resources.shopping_removed_suffix
+import com.kitchenai.ui.resources.shopping_removed
 import com.kitchenai.ui.resources.shopping_save
 import com.kitchenai.ui.resources.shopping_to_buy
 import com.kitchenai.ui.resources.shopping_undo
+import com.kitchenai.ui.resources.shopping_view_pantry
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_left_no_amount_count
 import com.kitchenai.ui.resources.snack_moved_count
@@ -84,11 +90,14 @@ import org.koin.compose.viewmodel.koinViewModel
 /**
  * The list as it is used: one hand, bad signal, a phone at chest height. Nothing here waits for a
  * round trip — every gesture writes and the stream redraws whatever comes back.
+ *
+ * [onViewPantry] adds a "View pantry" action to the snackbar after a move; without it there is none.
  */
 @Composable
 fun ShoppingScreen(
     userId: UserId,
     modifier: Modifier = Modifier,
+    onViewPantry: (() -> Unit)? = null,
     viewModel: ShoppingViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -100,7 +109,7 @@ fun ShoppingScreen(
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     LaunchedEffect(Unit) {
-        viewModel.events.collect { event -> snackbar.announce(event, viewModel::undoRemove) }
+        viewModel.events.collect { event -> snackbar.announce(event, viewModel::undoRemove, onViewPantry) }
     }
 
     // The insets are AppShell's; a second round here would open a gap between the toolbar and
@@ -119,9 +128,17 @@ fun ShoppingScreen(
                 onCheck = viewModel::setChecked,
                 onRemove = viewModel::remove,
                 onEditAmount = { id -> editingAmountOf = id.value },
-                onClearChecked = { confirmingClear = true },
-                onMoveToPantry = viewModel::moveCheckedToPantry,
             )
+
+            if (state.tickedCount > 0) {
+                ShoppingCheckoutBar(
+                    movableCount = state.movableCount,
+                    missingAmountCount = state.ticksMissingAmount.size,
+                    onMoveToPantry = viewModel::moveCheckedToPantry,
+                    onFixAmounts = { state.ticksMissingAmount.firstOrNull()?.let { editingAmountOf = it.id.value } },
+                    onClear = { confirmingClear = true },
+                )
+            }
 
             ShoppingAddField(
                 draft = state.draft,
@@ -160,8 +177,6 @@ private fun ColumnScope.ShoppingBody(
     onCheck: (ShoppingItemId, Boolean) -> Unit,
     onRemove: (ShoppingItemId) -> Unit,
     onEditAmount: (ShoppingItemId) -> Unit,
-    onClearChecked: () -> Unit,
-    onMoveToPantry: () -> Unit,
 ) {
     when {
         state.isLoading -> LoadingState(Modifier.weight(1f))
@@ -186,8 +201,6 @@ private fun ColumnScope.ShoppingBody(
                 onCheck = onCheck,
                 onRemove = onRemove,
                 onEditAmount = onEditAmount,
-                onClearChecked = onClearChecked,
-                onMoveToPantry = onMoveToPantry,
                 modifier = Modifier.weight(1f),
             )
     }
@@ -199,44 +212,70 @@ private fun ShoppingItems(
     onCheck: (ShoppingItemId, Boolean) -> Unit,
     onRemove: (ShoppingItemId) -> Unit,
     onEditAmount: (ShoppingItemId) -> Unit,
-    onClearChecked: () -> Unit,
-    onMoveToPantry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
-        item { SectionHeader(title = stringResource(Res.string.shopping_to_buy)) }
-        items(state.unchecked, key = { line -> line.id.value }) { line ->
-            ShoppingItemRow(
-                item = line,
-                onCheck = { checked -> onCheck(line.id, checked) },
-                onRemove = { onRemove(line.id) },
-                onEditAmount = { onEditAmount(line.id) },
-            )
+        // Every item animates its placement: a row that vanishes from under the thumb is a mis-tap.
+        if (state.unchecked.isEmpty()) {
+            item(key = ALL_IN_CART_KEY) { AllInCart(Modifier.animateItem()) }
+        } else {
+            item(key = TO_BUY_KEY) {
+                SectionHeader(title = stringResource(Res.string.shopping_to_buy), modifier = Modifier.animateItem())
+            }
+            items(state.unchecked, key = { line -> line.id.value }) { line ->
+                ShoppingRow(line, onCheck, onRemove, onEditAmount)
+            }
         }
 
         if (state.checked.isNotEmpty()) {
-            item {
-                SectionHeader(
-                    title = stringResource(Res.string.shopping_in_cart),
-                    trailing = {
-                        Row {
-                            TextButton(onClick = onMoveToPantry) {
-                                Text(stringResource(Res.string.shopping_move_to_pantry))
-                            }
-                            TextButton(onClick = onClearChecked) { Text(stringResource(Res.string.shopping_clear)) }
-                        }
-                    },
-                )
+            item(key = IN_CART_KEY) {
+                SectionHeader(title = stringResource(Res.string.shopping_in_cart), modifier = Modifier.animateItem())
             }
             items(state.checked, key = { line -> line.id.value }) { line ->
-                ShoppingItemRow(
-                    item = line,
-                    onCheck = { checked -> onCheck(line.id, checked) },
-                    onRemove = { onRemove(line.id) },
-                    onEditAmount = { onEditAmount(line.id) },
-                )
+                ShoppingRow(line, onCheck, onRemove, onEditAmount)
             }
         }
+    }
+}
+
+// Not valid line ids: the section items share the list's key space with the lines.
+private const val TO_BUY_KEY = "section:to-buy"
+private const val IN_CART_KEY = "section:in-cart"
+private const val ALL_IN_CART_KEY = "section:all-in-cart"
+
+@Composable
+private fun LazyItemScope.ShoppingRow(
+    line: ShoppingItemUi,
+    onCheck: (ShoppingItemId, Boolean) -> Unit,
+    onRemove: (ShoppingItemId) -> Unit,
+    onEditAmount: (ShoppingItemId) -> Unit,
+) {
+    ShoppingItemRow(
+        item = line,
+        onCheck = { checked -> onCheck(line.id, checked) },
+        onRemove = { onRemove(line.id) },
+        onEditAmount = { onEditAmount(line.id) },
+        modifier = Modifier.animateItem(),
+    )
+}
+
+/** Stands where "To buy" was, so the list does not end under an empty header. */
+@Composable
+private fun AllInCart(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = Dimens.large, vertical = Dimens.extraLarge),
+        verticalArrangement = Arrangement.spacedBy(Dimens.extraSmall),
+    ) {
+        Text(
+            text = stringResource(Res.string.shopping_all_in_cart_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(
+            text = stringResource(Res.string.shopping_all_in_cart_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -396,21 +435,38 @@ private fun ErrorBanner(message: UiText) {
 private suspend fun SnackbarHostState.announce(
     event: ShoppingEvent,
     onUndo: (ShoppingItem) -> Unit,
+    onViewPantry: (() -> Unit)?,
 ) {
     when (event) {
         is ShoppingEvent.ItemRemoved -> {
             val undone =
                 showSnackbar(
-                    "${event.label} ${getString(Res.string.shopping_removed_suffix)}",
+                    event.sentence().text(),
                     getString(Res.string.shopping_undo),
                 ) == SnackbarResult.ActionPerformed
             if (undone) onUndo(event.restore)
         }
 
         is ShoppingEvent.CheckedCleared -> showSnackbar(event.sentence().text())
-        is ShoppingEvent.MovedToPantry -> showSnackbar(event.sentence().text())
+        is ShoppingEvent.MovedToPantry -> {
+            // Nothing moved means nothing to look at in the pantry.
+            val action = if (event.moved > 0) onViewPantry else null
+            if (action == null) {
+                showSnackbar(event.sentence().text())
+            } else {
+                val result =
+                    showSnackbar(
+                        message = event.sentence().text(),
+                        actionLabel = getString(Res.string.shopping_view_pantry),
+                        duration = SnackbarDuration.Long,
+                    )
+                if (result == SnackbarResult.ActionPerformed) action()
+            }
+        }
     }
 }
+
+internal fun ShoppingEvent.ItemRemoved.sentence(): UiText = UiText.of(Res.string.shopping_removed, label)
 
 /**
  * Both counts agree with their own noun, so the wording is a plural per count rather than one string.

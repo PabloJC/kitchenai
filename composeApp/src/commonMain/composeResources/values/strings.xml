@@ -82,7 +82,6 @@
     <string name="shopping_failed_body">Check the message above and try again</string>
     <string name="shopping_empty_title">Nothing to buy</string>
     <string name="shopping_empty_body">Add what you need and tick it off as you go.</string>
-    <string name="shopping_removed_suffix">removed</string>
     <plurals name="shopping_cleared_count">
         <item quantity="one">%1$d line cleared</item>
         <item quantity="other">%1$d lines cleared</item>
@@ -202,6 +201,19 @@
     <string name="placeholder_body">This screen is on its way</string>
     <string name="session_retry">Try again</string>
 
+    <!-- Shopping check-off flow -->
+    <string name="shopping_removed">%1$s removed</string>
+    <plurals name="shopping_move_count">
+        <item quantity="one">Move %1$d to pantry</item>
+        <item quantity="other">Move %1$d to pantry</item>
+    </plurals>
+    <plurals name="shopping_need_amount_count">
+        <item quantity="one">%1$d needs an amount</item>
+        <item quantity="other">%1$d need an amount</item>
+    </plurals>
+    <string name="shopping_all_in_cart_title">Everything is in the cart</string>
+    <string name="shopping_all_in_cart_body">Move it to the pantry to keep your suggestions up to date.</string>
+    <string name="shopping_view_pantry">View pantry</string>
     <!-- Suggestions actions (#263) -->
     <string name="suggestions_new_ideas">New ideas</string>
     <string name="suggestions_filters_changed">Filters changed</string>
