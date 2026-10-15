@@ -214,4 +214,26 @@
     <string name="shopping_all_in_cart_title">Everything is in the cart</string>
     <string name="shopping_all_in_cart_body">Move it to the pantry to keep your suggestions up to date.</string>
     <string name="shopping_view_pantry">View pantry</string>
+    <!-- Suggestions actions (#263) -->
+    <string name="suggestions_new_ideas">New ideas</string>
+    <string name="suggestions_filters_changed">Filters changed</string>
+    <string name="suggestions_update_ideas">Update ideas</string>
+    <string name="suggestions_cancel">Cancel</string>
+    <string name="suggestions_retry">Try again</string>
+    <string name="suggestions_add_missing">Add missing to list</string>
+    <plurals name="suggestions_missing_more">
+        <item quantity="one">+%1$d more</item>
+        <item quantity="other">+%1$d more</item>
+    </plurals>
+    <string name="suggestions_empty_body_action">Tap New ideas to get dishes built from what your pantry already holds</string>
+    <string name="suggestions_nothing_body_action">Add a few things to your pantry, then tap New ideas to try again</string>
+    <string name="pantry_editor_title_add">Add to pantry</string>
+    <string name="pantry_editor_title_edit">Edit %1$s</string>
+    <string name="pantry_editor_recent">Recent</string>
+    <string name="pantry_editor_free_text_hint">Not in the catalogue: it will be saved as typed</string>
+    <string name="pantry_editor_clear_search">Clear search</string>
+    <string name="pantry_editor_amount_malformed">Enter a number</string>
+    <string name="pantry_editor_unit">Unit</string>
+    <string name="pantry_editor_save_and_add">Save and add another</string>
+    <string name="pantry_editor_added">Added %1$s</string>
 </resources>

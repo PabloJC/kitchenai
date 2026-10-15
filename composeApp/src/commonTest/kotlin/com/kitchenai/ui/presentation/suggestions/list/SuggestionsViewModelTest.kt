@@ -21,6 +21,7 @@ import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
+import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
@@ -33,10 +34,14 @@ import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCas
 import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
+import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
+import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.FlakyPantryPort
 import com.kitchenai.ui.presentation.common.UiText
@@ -46,6 +51,7 @@ import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_timeout
+import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.error_unauthorized_suggestions
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +59,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -63,6 +71,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -178,7 +187,7 @@ class SuggestionsViewModelTest {
             advanceUntilIdle()
 
             // The screen is composed again, as it would be on a tab switch back.
-            viewModel.start(UserId.of("user-1").orFail(), listOf("en"))
+            viewModel.start(UserId.of("user-1").orFail(), listOf("en"), "List")
             advanceUntilIdle()
 
             assertEquals(1, agent.calls)
@@ -506,6 +515,238 @@ class SuggestionsViewModelTest {
             assertTrue(viewModel.state.value.suggestions.single().missing.isEmpty())
         }
 
+    @Test
+    fun `filters read as unchanged until a run has landed`() =
+        runTest(dispatcher) {
+            agent.gate = CompletableDeferred()
+            val viewModel = started()
+            dispatcher.scheduler.runCurrent()
+
+            viewModel.setUseOnlyPantry(true)
+
+            // Nothing on screen was generated with other options, so there is nothing to update.
+            assertFalse(viewModel.state.value.optionsChanged)
+        }
+
+    @Test
+    fun `changing a filter after a run offers an update and does not call the model`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
+            val viewModel = started()
+            advanceUntilIdle()
+            assertFalse(viewModel.state.value.optionsChanged)
+
+            viewModel.setUseOnlyPantry(true)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.optionsChanged)
+            assertEquals(1, agent.calls)
+        }
+
+    @Test
+    fun `updating with the new filters regenerates with them and clears the offer`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
+            val viewModel = started()
+            advanceUntilIdle()
+            viewModel.setMaxMinutes(30)
+            assertTrue(viewModel.state.value.optionsChanged)
+
+            viewModel.generate()
+            advanceUntilIdle()
+
+            assertEquals(30, agent.lastOptions?.maxMinutes)
+            assertFalse(viewModel.state.value.optionsChanged)
+        }
+
+    @Test
+    fun `a filter edited while a run is in flight still reads as changed once it lands`() =
+        runTest(dispatcher) {
+            agent.gate = CompletableDeferred()
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
+            val viewModel = started()
+            dispatcher.scheduler.runCurrent()
+
+            viewModel.setUseOnlyPantry(true)
+            agent.gate?.complete(Unit)
+            advanceUntilIdle()
+
+            // The run was sent without the filter, so what is on screen does not honour it.
+            assertTrue(viewModel.state.value.optionsChanged)
+        }
+
+    @Test
+    fun `cancelling a run keeps the previous results and shows no later answer`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort(stored = listOf(dish("recipe-1")))
+            agent.gate = CompletableDeferred()
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-2")))
+            val viewModel = started(recipes = recipes)
+            dispatcher.scheduler.runCurrent()
+            assertTrue(viewModel.state.value.isGenerating)
+
+            viewModel.cancelGeneration()
+            agent.gate?.complete(Unit)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.isGenerating)
+            // The late answer never lands: the stored set is what is on screen.
+            assertEquals(listOf("recipe-1"), viewModel.state.value.suggestions.map { it.id.value })
+            assertNull(viewModel.state.value.error)
+        }
+
+    @Test
+    fun `a failure that arrives after a cancel is not shown`() =
+        runTest(dispatcher) {
+            agent.gate = CompletableDeferred()
+            agent.answer = AppResult.Failure(AppError.Network())
+            val viewModel = started()
+            dispatcher.scheduler.runCurrent()
+
+            viewModel.cancelGeneration()
+            agent.gate?.complete(Unit)
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.error)
+            assertFalse(viewModel.state.value.isGenerating)
+        }
+
+    @Test
+    fun `a run can be started again after a cancel`() =
+        runTest(dispatcher) {
+            agent.gate = CompletableDeferred()
+            val viewModel = started()
+            dispatcher.scheduler.runCurrent()
+            viewModel.cancelGeneration()
+            advanceUntilIdle()
+
+            agent.gate = null
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
+            viewModel.generate()
+            advanceUntilIdle()
+
+            assertEquals(2, agent.calls)
+            assertEquals(listOf("recipe-1"), viewModel.state.value.suggestions.map { it.id.value })
+        }
+
+    @Test
+    fun `cancelling with nothing in flight does nothing`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
+            val viewModel = started()
+            advanceUntilIdle()
+            val before = viewModel.state.value
+
+            viewModel.cancelGeneration()
+
+            assertEquals(before, viewModel.state.value)
+        }
+
+    @Test
+    fun `a failed run offers a retry that runs again`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Failure(AppError.Network())
+            val viewModel = started()
+            advanceUntilIdle()
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
+
+            agent.answer = AppResult.Success(listOf(suggestion("recipe-1")))
+            viewModel.generate()
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.error)
+            assertEquals(2, agent.calls)
+        }
+
+    @Test
+    fun `a card lists three missing ingredients and counts the rest`() {
+        val ui = suggestionUi(missing = listOf("a", "b", "c", "d", "e"))
+
+        assertEquals(listOf("a", "b", "c"), ui.shownMissing)
+        assertEquals(2, ui.hiddenMissingCount)
+    }
+
+    @Test
+    fun `a card with three or fewer missing ingredients hides none`() {
+        val ui = suggestionUi(missing = listOf("a", "b", "c"))
+
+        assertEquals(listOf("a", "b", "c"), ui.shownMissing)
+        assertEquals(0, ui.hiddenMissingCount)
+    }
+
+    @Test
+    fun `adding a card's missing ingredients writes them to the list and says how many`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(listOf(shortOfRice()))
+            val viewModel = started()
+            advanceUntilIdle()
+            val seen = mutableListOf<SuggestionsEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            viewModel.addMissingToList(RecipeId.of("recipe-1").orFail())
+            advanceUntilIdle()
+            collector.cancel()
+
+            assertEquals(SuggestionsEvent.AddedToList(added = 1, skipped = 0), seen.single())
+            assertEquals(1, items.upserts.single().size)
+            assertNull(viewModel.state.value.addingMissingFor)
+        }
+
+    @Test
+    fun `a saved recipe's missing ingredients can be added too`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort()
+            recipes.saveRecipe(defaultKitchenId, shortOfRice().recipe)
+            agent.answer = AppResult.Success(emptyList())
+            val viewModel = started(recipes = recipes)
+            advanceUntilIdle()
+
+            viewModel.addMissingToList(RecipeId.of("recipe-1").orFail())
+            advanceUntilIdle()
+
+            assertEquals(1, items.upserts.single().size)
+        }
+
+    @Test
+    fun `a write that fails says so instead of claiming it added`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(listOf(shortOfRice()))
+            items.upsertResult = AppResult.Failure(AppError.Unauthorized())
+            val viewModel = started()
+            advanceUntilIdle()
+            val seen = mutableListOf<SuggestionsEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            viewModel.addMissingToList(RecipeId.of("recipe-1").orFail())
+            advanceUntilIdle()
+            collector.cancel()
+
+            val expected = UiText.of(Res.string.error_unauthorized_action)
+            assertEquals(SuggestionsEvent.Failed(expected), seen.single())
+            assertNull(viewModel.state.value.addingMissingFor)
+        }
+
+    @Test
+    fun `adding for a card that is not on screen writes nothing`() =
+        runTest(dispatcher) {
+            agent.answer = AppResult.Success(listOf(shortOfRice()))
+            val viewModel = started()
+            advanceUntilIdle()
+
+            viewModel.addMissingToList(RecipeId.of("somewhere-else").orFail())
+            advanceUntilIdle()
+
+            assertTrue(items.upserts.isEmpty())
+        }
+
+    @Test
+    fun `the added-to-list sentence agrees each count with its noun`() {
+        val sentence = SuggestionsEvent.AddedToList(added = 2, skipped = 1).sentence()
+
+        val joined = sentence as UiText.Joined
+        assertEquals(listOf(2, 1), joined.parts.map { (it as UiText.Plural).quantity })
+    }
+
     private fun riceHolding(): PantryItem =
         PantryItem(
             id = PantryItemId.of("item-1").orFail(),
@@ -518,6 +759,8 @@ class SuggestionsViewModelTest {
         )
 
     private val kitchens = FakeKitchenPort()
+    private val items = FakeShoppingItemPort()
+    private val lists = FakeShoppingListPort()
 
     private fun started(
         recipes: FakeRecipePort = FakeRecipePort(),
@@ -541,12 +784,36 @@ class SuggestionsViewModelTest {
                     noUnits(),
                 ),
             storeSuggestions = StoreSuggestionsUseCase(recipes),
-            observeIngredients = ObserveIngredientsUseCase(catalogue),
-            observeSavedRecipes = ObserveSavedRecipesUseCase(recipes),
             matchRecipe = MatchRecipeAgainstPantryUseCase(recipes, pantryPort, TimeProvider { now }, noUnits()),
-            observePantry = ObservePantryUseCase(pantryPort),
-            observeKitchen = ObserveKitchenUseCase(kitchens),
-        ).also { it.start(UserId.of("user-1").orFail(), languageTags) }
+            reads =
+                SuggestionsReadsDelegate(
+                    ingredients = ObserveIngredientsUseCase(catalogue),
+                    savedRecipes = ObserveSavedRecipesUseCase(recipes),
+                    pantry = ObservePantryUseCase(pantryPort),
+                    kitchen = ObserveKitchenUseCase(kitchens),
+                ),
+            writes =
+                SuggestionsWritesDelegate(
+                    addMissing =
+                        AddMissingIngredientsToShoppingListUseCase(
+                            recipes,
+                            pantryPort,
+                            items,
+                            catalogue,
+                            sequentialIds(),
+                            TimeProvider { now },
+                            noUnits(),
+                        ),
+                    defaultList =
+                        EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, TimeProvider { now }),
+                ),
+        ).also { it.start(UserId.of("user-1").orFail(), languageTags, "List") }
+    }
+
+    /** Distinct ids: a constant one would fold two drafted lines into a single item. */
+    private fun sequentialIds(): IdGenerator {
+        var next = 0
+        return IdGenerator { "shopping-${++next}" }
     }
 }
 
@@ -647,3 +914,17 @@ private fun suggestion(
 }
 
 private fun <T> AppResult<T>.orFail(): T = (this as AppResult.Success).data
+
+private fun suggestionUi(missing: List<String>): SuggestionUi =
+    SuggestionUi(
+        id = RecipeId.of("recipe-1").orFail(),
+        title = "Dish",
+        summary = null,
+        totalMinutes = null,
+        coverage = 0f,
+        heldCount = 0,
+        totalCount = missing.size,
+        missing = missing,
+        unverifiable = emptyList(),
+        provenance = null,
+    )
