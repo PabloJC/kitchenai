@@ -22,8 +22,10 @@ import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.presentation.common.wordFor
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_list
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -90,6 +92,11 @@ class ShoppingViewModel(
     private val catalogueError = MutableStateFlow<UiText?>(null)
     private val itemsAnswered = MutableStateFlow(false)
 
+    // Lines ticked a moment ago, with the row they held: they stay there in "To buy" until the
+    // delay ends, because the stream itself already sorts a ticked line to the bottom.
+    private val settling = MutableStateFlow<Map<ShoppingItemId, Int>>(emptyMap())
+    private val settleJobs = mutableMapOf<ShoppingItemId, Job>()
+
     // User-owned, so they belong to the screen rather than to a listener.
     private val draft = MutableStateFlow(ShoppingDraftUi())
     private val listName = MutableStateFlow("")
@@ -106,7 +113,7 @@ class ShoppingViewModel(
                 isLoading = !answered,
                 failedToLoad = error != null && loaded == null,
             )
-        }
+        }.combine(settling) { loaded, settled -> loaded.copy(settling = settled) }
 
     /**
      * Derived, never assembled: four collectors used to each call a render() that read five
@@ -194,7 +201,21 @@ class ShoppingViewModel(
         itemId: ShoppingItemId,
         checked: Boolean,
     ) {
-        edit { kitchen, list -> writes.setChecked(kitchen, list, itemId, checked) }
+        val row = settling.value[itemId] ?: state.value.unchecked.indexOfFirst { it.id == itemId }
+        val dispatched = edit { kitchen, list -> writes.setChecked(kitchen, list, itemId, checked) }
+        if (!dispatched) return
+        settleJobs.remove(itemId)?.cancel()
+        if (!checked || row < 0) {
+            settling.value = settling.value - itemId
+            return
+        }
+        settling.value = settling.value + (itemId to row)
+        settleJobs[itemId] =
+            viewModelScope.launch {
+                delay(SETTLE_MILLIS)
+                settling.value = settling.value - itemId
+                settleJobs.remove(itemId)
+            }
     }
 
     /** Replaces the quantity of a line, which is what lets a line typed by hand reach the pantry. */
@@ -345,8 +366,8 @@ class ShoppingViewModel(
     ): ShoppingUiState =
         ShoppingUiState(
             listName = listName,
-            unchecked = lines.lines.filterNot(ShoppingItemUi::checked),
-            checked = lines.lines.filter(ShoppingItemUi::checked),
+            unchecked = lines.lines.filterNot(ShoppingItemUi::checked).withSettling(lines),
+            checked = lines.lines.filter { line -> line.checked && line.id !in lines.settling },
             draft = draft,
             units = lines.units,
             isLoading = lines.isLoading,
@@ -399,6 +420,9 @@ sealed interface ShoppingEvent {
 
 private const val SUGGESTION_LIMIT = 6
 
+/** How long a ticked line stays in place before it drops to the cart: long enough to see it land. */
+internal const val SETTLE_MILLIS = 600L
+
 /** What the item listener has produced so far, as one value rather than four fields. */
 private data class LinesState(
     val lines: List<ShoppingItemUi> = emptyList(),
@@ -406,4 +430,13 @@ private data class LinesState(
     val error: UiText? = null,
     val isLoading: Boolean = true,
     val failedToLoad: Boolean = false,
+    val settling: Map<ShoppingItemId, Int> = emptyMap(),
 )
+
+/** Puts the just-ticked lines back at the row they held, in the order they held it. */
+private fun List<ShoppingItemUi>.withSettling(lines: LinesState): List<ShoppingItemUi> {
+    val held = lines.lines.filter { line -> line.checked && line.id in lines.settling }
+    return held.sortedBy { line -> lines.settling.getValue(line.id) }.fold(this) { rows, line ->
+        rows.toMutableList().apply { add(lines.settling.getValue(line.id).coerceIn(0, rows.size), line) }
+    }
+}
