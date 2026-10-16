@@ -53,7 +53,7 @@ class ConsumePantryItemsUseCase(
      * A consumption in another unit is converted into the holding's, which keeps its own unit.
      */
     @Suppress("ReturnCount")
-    private fun apply(
+    internal fun apply(
         held: List<PantryItem>,
         consumptions: List<Pair<PantryItemId, Quantity>>,
         converter: UnitConverter,
@@ -81,7 +81,8 @@ class ConsumePantryItemsUseCase(
         return AppResult.Success(touched.values.toList())
     }
 
-    private suspend fun write(
+    /** Writes holdings [apply] returned; one at zero is removed rather than kept empty. */
+    internal suspend fun write(
         kitchenId: KitchenId,
         touched: List<PantryItem>,
     ): AppResult<Unit> {

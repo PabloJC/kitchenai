@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.map
+import com.kitchenai.shared.domain.model.CookPlan
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
@@ -254,13 +255,45 @@ class RecipeDetailViewModel(
             }
         }
 
-    fun cook() =
-        // A cook refused for missing ingredients is not a failure to apologise for: it is the
-        // answer, and the screen already lists which ones.
+    /** Opens the confirmation with what a cook would subtract right now; nothing is written yet. */
+    fun reviewCook() =
+        act { kitchen ->
+            val held = recipe.value ?: return@act null
+            when (val plan = writes.planCook(kitchen, held, internalState.value.servings)) {
+                is AppResult.Failure -> plan
+                is AppResult.Success -> {
+                    val resolver = resolver()
+                    val review =
+                        CookReviewUi(
+                            deductions = plan.data.deductions.map { it.toUi(resolver) },
+                            missing =
+                                plan.data.missing
+                                    .filter { !it.ingredient.optional }
+                                    .map { it.ingredient.toUi(resolver).name },
+                        )
+                    internalState.update { it.copy(cookReview = review) }
+                    null
+                }
+            }
+        }
+
+    fun dismissCookReview() = internalState.update { it.copy(cookReview = null) }
+
+    /**
+     * Goes ahead without the missing lines only when the screen said so: a pantry that lost a
+     * holding since the review is refused rather than cooked "anyway" behind the reader's back.
+     */
+    fun cook() {
+        val anyway = internalState.value.cooksAnyway
+        internalState.update { it.copy(cookReview = null) }
         act(validation = { UiText.of(Res.string.error_missing_ingredients) }) { kitchen ->
             val held = recipe.value ?: return@act null
-            writes.cook(kitchen, held, internalState.value.servings).map { RecipeDetailEvent.Cooked }
+            writes.cook(kitchen, held, internalState.value.servings, anyway).map { RecipeDetailEvent.Cooked(it) }
         }
+    }
+
+    fun undoCook(cooked: CookPlan) =
+        act { kitchen -> writes.undoCook(kitchen, cooked).map { RecipeDetailEvent.CookUndone } }
 
     /**
      * One match at a time, whoever asked for it. A slower earlier read landing last would put
@@ -357,15 +390,7 @@ class RecipeDetailViewModel(
         match: PantryMatch?,
         servings: Int = internalState.value.servings,
     ) {
-        // All four, as the pantry screen passes them: without the tags there is no language to
-        // resolve into, and every lookup misses and renders its identifier instead.
-        val resolver =
-            LabelResolver(
-                terms = vocabulary.value,
-                ingredients = names.value,
-                taxonomies = vocabularies.value,
-                languageTags = languageTags,
-            )
+        val resolver = resolver()
         val candidates = PantryCandidateMatcher.candidatesFor(match?.unverifiable.orEmpty(), pantry.value)
         internalState.update { current ->
             current.copy(
@@ -421,6 +446,16 @@ class RecipeDetailViewModel(
             internalState.update { it.copy(isWorking = false) }
         }
     }
+
+    // All four, as the pantry screen passes them: without the tags there is no language to
+    // resolve into, and every lookup misses and renders its identifier instead.
+    private fun resolver(): LabelResolver =
+        LabelResolver(
+            terms = vocabulary.value,
+            ingredients = names.value,
+            taxonomies = vocabularies.value,
+            languageTags = languageTags,
+        )
 
     private suspend fun announce(event: RecipeDetailEvent) = eventChannel.send(event)
 

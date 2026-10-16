@@ -17,7 +17,7 @@ val suggestionsPresentationModule: Module =
         factory { SuggestionsWritesDelegate(get(), get(), get(), get()) }
         viewModel { SuggestionsViewModel(get(), get(), get(), get(), get(), get()) }
         factory { RecipeDetailReadsDelegate(get(), get(), get(), get(), get(), get(), get(), get()) }
-        factory { RecipeDetailWritesDelegate(get(), get(), get(), get(), get()) }
+        factory { RecipeDetailWritesDelegate(get(), get(), get(), get(), get(), get(), get()) }
         viewModel { RecipeDetailViewModel(get(), get(), get()) }
         viewModel { CookingModeViewModel() }
     }

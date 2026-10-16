@@ -541,7 +541,27 @@ shared case, a second device joined to that kitchen (scenario 5).*
 7. Open cooking mode again on a recipe with nothing missing and tap "Hecho" on the last step.
    - "¿Has terminado?" offers "Descontar de la despensa" and "Ahora no"; the first returns to
      recipe detail with "Descontado de tu despensa" and the pantry reduced, the second returns with the
-     pantry untouched. With something missing, "Hecho" just returns.
+     pantry untouched.
+
+### 18. The cook confirmation lists what it takes, and a cook can be undone
+
+*Run on both platforms, device language Spanish.*
+
+1. Open a recipe the pantry fully covers and tap "Cocinar esto".
+   - The dialog lists each pantry row it changes, with the amount taken and what is left
+     ("quedan 300 g") or "se acaba" when it empties the row. Cancelar closes it and the pantry is
+     unchanged.
+2. Tap "Cocinarlo".
+   - The snackbar "Descontado de tu despensa" offers "Deshacer". The pantry shows the reduced rows.
+3. Tap "Deshacer" before the snackbar goes away.
+   - "Devuelto a tu despensa"; the pantry is back to step 1, including a row that was emptied.
+4. Open a recipe with one required ingredient missing.
+   - The button reads "Cocinar igualmente" and the line under it says what is missing. The dialog
+     lists the rows it takes from and, below, "Falta y se deja fuera: …"; confirming subtracts only
+     those rows.
+5. On a recipe with something missing, tap "Añadir lo que falta".
+   - The snackbar counts what was added and what is "ya en tu despensa u opcional", and
+     offers "Ver", which opens the Shopping tab.
 
 ## Results
 
@@ -568,3 +588,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 15. Screen readers and large text |  |  |  |  |
 | 16. Errors and offline banner |  |  |  |  |
 | 17. Cooking mode |  |  |  |  |
+| 18. Cook confirmation and undo |  |  |  |  |

@@ -18,8 +18,8 @@
         <item quantity="other">%1$d added</item>
     </plurals>
     <plurals name="snack_not_needed_count">
-        <item quantity="one">%1$d not needed</item>
-        <item quantity="other">%1$d not needed</item>
+        <item quantity="one">%1$d already in your pantry or optional</item>
+        <item quantity="other">%1$d already in your pantry or optional</item>
     </plurals>
     <plurals name="snack_moved_count">
         <item quantity="one">%1$d moved to the pantry</item>
@@ -122,15 +122,21 @@
     <string name="detail_add_missing">Add missing</string>
     <string name="detail_cook">Cook this</string>
     <plurals name="detail_cook_missing_hint">
-        <item quantity="one">Missing %1$d ingredient to cook this</item>
-        <item quantity="other">Missing %1$d ingredients to cook this</item>
+        <item quantity="one">%1$d ingredient missing: cooking anyway uses only what you have</item>
+        <item quantity="other">%1$d ingredients missing: cooking anyway uses only what you have</item>
     </plurals>
     <string name="detail_save">Save</string>
     <string name="detail_unsave">Remove from saved</string>
     <string name="detail_undo">Undo</string>
     <string name="detail_cook_title">Cook this?</string>
-    <string name="detail_cook_body">These ingredients will be subtracted from your pantry. This cannot be undone.</string>
     <string name="detail_cook_confirm">Cook it</string>
+    <string name="detail_cook_anyway">Cook anyway</string>
+    <string name="detail_cook_nothing_held">Nothing in your pantry covers this recipe, so nothing will be subtracted.</string>
+    <string name="detail_cook_deduction_left">%1$s left</string>
+    <string name="detail_cook_deduction_used_up">used up</string>
+    <string name="detail_cook_missing_untouched">Missing, and left out: %1$s</string>
+    <string name="detail_view_list">View</string>
+    <string name="snack_cook_undone">Put back in your pantry</string>
     <string name="detail_start_cooking">Start cooking</string>
     <string name="cooking_step_counter">Step %1$d of %2$d</string>
     <string name="cooking_previous">Previous</string>
@@ -144,7 +150,7 @@
     <string name="cooking_timer_stop">Stop timer</string>
     <string name="cooking_timer_dismiss">Dismiss</string>
     <string name="cooking_finish_title">Done cooking?</string>
-    <string name="cooking_finish_body">Subtract the ingredients you used from your pantry? This cannot be undone.</string>
+    <string name="cooking_finish_body">Subtract the ingredients you used from your pantry? You can undo it right after.</string>
     <string name="cooking_finish_confirm">Subtract from pantry</string>
     <string name="cooking_finish_skip">Not now</string>
     <string name="cooking_no_steps">This recipe has no steps to follow.</string>

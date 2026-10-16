@@ -118,10 +118,8 @@ class CookRecipeUseCaseTest {
             val useCase =
                 CookRecipeUseCase(
                     FakeRecipeRepositoryContract(),
-                    pantry,
+                    planCook(pantry, noUnits()),
                     ConsumePantryItemsUseCase(pantry, TimeProvider { now }, noUnits()),
-                    TimeProvider { now },
-                    noUnits(),
                 )
 
             assertTrue(useCase(kitchen, dish.id, servings = 2) is AppResult.Failure)
@@ -138,6 +136,49 @@ class CookRecipeUseCaseTest {
             assertTrue(cook(dish, pantry)(kitchen, dish.id, servings = 2) is AppResult.Failure)
         }
 
+    @Test
+    fun `cooking anyway subtracts only what is held and leaves the missing line alone`() =
+        runTest {
+            val dish =
+                dishOf(
+                    recipeIngredient("ing-1", quantity = Quantity(200.0, unit)),
+                    recipeIngredient("ing-2", quantity = Quantity(1.0, unit)),
+                )
+            val pantry = pantryOf(someOfIngredientOne)
+
+            val result = cook(dish, pantry)(kitchen, dish.id, servings = 2, anyway = true)
+
+            val cooked = (result as AppResult.Success).data
+            assertEquals(Quantity(300.0, unit), pantry.quantityOf("item-1"))
+            assertEquals(listOf("ing-2"), cooked.missing.map { it.ingredient.ingredient?.value })
+            assertEquals(Quantity(200.0, unit), cooked.deductions.single().taken)
+        }
+
+    @Test
+    fun `cooking anyway with nothing held writes nothing`() =
+        runTest {
+            val dish = dishOf(recipeIngredient("ing-2", quantity = Quantity(1.0, unit)))
+            val pantry = pantryOf(someOfIngredientOne)
+
+            val result = cook(dish, pantry)(kitchen, dish.id, servings = 2, anyway = true)
+
+            assertTrue((result as AppResult.Success).data.deductions.isEmpty())
+            assertEquals(0, pantry.upsertAllCalls)
+        }
+
+    @Test
+    fun `a cook returns each holding before and after so it can be undone`() =
+        runTest {
+            val dish = dishOf(recipeIngredient("ing-1", quantity = Quantity(200.0, unit)))
+            val pantry = pantryOf(someOfIngredientOne)
+
+            val cooked = (cook(dish, pantry)(kitchen, dish.id, servings = 2) as AppResult.Success).data
+
+            val deduction = cooked.deductions.single()
+            assertEquals(someOfIngredientOne, deduction.before)
+            assertEquals(Quantity(300.0, unit), deduction.after.quantity)
+        }
+
     // Two servings, so that asking for four is a doubling and not the recipe as it stands.
     private fun dishOf(vararg lines: RecipeIngredient): Recipe = recipe(servings = 2, ingredients = lines.toList())
 
@@ -151,6 +192,15 @@ class CookRecipeUseCaseTest {
     ): CookRecipeUseCase =
         CookRecipeUseCase(
             FakeRecipeRepositoryContract(catalogue = listOf(dish)),
+            planCook(pantry, units),
+            ConsumePantryItemsUseCase(pantry, TimeProvider { now }, units),
+        )
+
+    private fun planCook(
+        pantry: FakePantryRepositoryContract,
+        units: GetUnitConverterUseCase,
+    ): PlanCookUseCase =
+        PlanCookUseCase(
             pantry,
             ConsumePantryItemsUseCase(pantry, TimeProvider { now }, units),
             TimeProvider { now },

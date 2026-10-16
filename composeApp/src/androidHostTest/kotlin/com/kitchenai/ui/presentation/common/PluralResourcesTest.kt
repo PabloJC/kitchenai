@@ -37,18 +37,30 @@ class PluralResourcesTest {
         assertEquals("4 no tienen cantidad y se quedan en la lista", spanish.form("snack_left_no_amount_count", 4))
         assertEquals("1 añadido", spanish.form("snack_added_count", 1))
         assertEquals("4 añadidos", spanish.form("snack_added_count", 4))
-        assertEquals("1 que no hace falta", spanish.form("snack_not_needed_count", 1))
-        assertEquals("4 que no hacen falta", spanish.form("snack_not_needed_count", 4))
+        assertEquals("1 ya en tu despensa u opcional", spanish.form("snack_not_needed_count", 1))
+        assertEquals("4 ya en tu despensa u opcionales", spanish.form("snack_not_needed_count", 4))
         assertEquals("1 línea vaciada", spanish.form("shopping_cleared_count", 1))
         assertEquals("3 líneas vaciadas", spanish.form("shopping_cleared_count", 3))
     }
 
     @Test
     fun `the cook hint agrees with the count in both locales`() {
-        assertEquals("Falta 1 ingrediente para cocinar esto", spanish.form("detail_cook_missing_hint", 1))
-        assertEquals("Faltan 3 ingredientes para cocinar esto", spanish.form("detail_cook_missing_hint", 3))
-        assertEquals("Missing 1 ingredient to cook this", english.form("detail_cook_missing_hint", 1))
-        assertEquals("Missing 3 ingredients to cook this", english.form("detail_cook_missing_hint", 3))
+        assertEquals(
+            "Falta 1 ingrediente: si cocinas igualmente, solo se usa lo que tienes",
+            spanish.form("detail_cook_missing_hint", 1),
+        )
+        assertEquals(
+            "Faltan 3 ingredientes: si cocinas igualmente, solo se usa lo que tienes",
+            spanish.form("detail_cook_missing_hint", 3),
+        )
+        assertEquals(
+            "1 ingredient missing: cooking anyway uses only what you have",
+            english.form("detail_cook_missing_hint", 1),
+        )
+        assertEquals(
+            "3 ingredients missing: cooking anyway uses only what you have",
+            english.form("detail_cook_missing_hint", 3),
+        )
     }
 
     @Test
