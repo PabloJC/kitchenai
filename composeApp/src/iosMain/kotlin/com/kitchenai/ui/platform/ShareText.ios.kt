@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIViewController
+import platform.UIKit.popoverPresentationController
 
 /**
  * Presented from the top-most controller: one already showing (a dialog's host) would refuse a
