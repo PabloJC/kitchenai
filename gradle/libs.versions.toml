@@ -10,6 +10,7 @@ androidCompileSdk   = "36"
 androidMinSdk       = "26"
 androidTargetSdk    = "36"
 androidxActivity    = "1.13.0"
+androidxSplashscreen = "1.0.1"
 androidxLifecycle   = "2.11.0-beta01"
 androidxNavigation  = "2.9.2"
 androidxCredentials = "1.6.0"
@@ -78,6 +79,7 @@ kotlinx-datetime           = { module = "org.jetbrains.kotlinx:kotlinx-datetime"
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 androidx-activity-compose   = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
+androidx-core-splashscreen   = { module = "androidx.core:core-splashscreen", version.ref = "androidxSplashscreen" }
 androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
 androidx-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
 

@@ -8,7 +8,10 @@
     <application
         android:name=".KitchenAiApplication"
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="KitchenAI"
+        android:localeConfig="@xml/locales_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.KitchenAI">
 
@@ -18,7 +21,7 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.KitchenAI">
+            android:theme="@style/Theme.KitchenAI.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

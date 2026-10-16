@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The iOS icon's blue, so both platforms show the same mark. -->
+    <color name="ic_launcher_background">#FF346DF1</color>
+    <!-- The Compose theme's surface in each mode, so the window is never a different colour first. -->
+    <color name="window_background">#FFFAF9F8</color>
+</resources>
