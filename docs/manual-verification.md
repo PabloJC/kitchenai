@@ -518,6 +518,31 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - If it fails to load, the banner offers "Inténtalo de nuevo"; after reconnecting, tapping it
      shows the recipe.
 
+### 17. Cooking mode keeps the screen on and times a step
+
+*Run on both platforms, device language Spanish; set the system screen timeout to 30 seconds first.*
+
+1. Open a recipe whose steps include a time ("10 minutos"), set the servings to 4 and tap
+   "Empezar a cocinar".
+   - The first step fills the screen in large type under "Paso 1 de N", with "Anterior" (disabled)
+     and "Siguiente" at the bottom. Swiping and the buttons both move between steps.
+2. Leave the phone untouched for two minutes.
+   - The screen neither dims nor locks.
+3. Tap "Ingredientes", tick two lines and close the sheet.
+   - The amounts are the ones recipe detail showed for 4 servings; the ticked lines are struck
+     through, and the button reads "2 de N listos".
+4. On the step with a time, tap "Temporizador de 10:00", then move to another step.
+   - The strip "Temporizador del paso X" counts down above the step, on every page.
+5. Start a short one instead (a "30 segundos" step, or wait out the timer) and lock nothing.
+   - At 0:00 the phone vibrates, the strip reads "Paso X: se acabó el tiempo" and a snackbar says
+     the same; "Cerrar" removes it.
+6. Go back to recipe detail, then leave the phone for two minutes.
+   - The normal timeout is back: the screen dims and locks.
+7. Open cooking mode again on a recipe with nothing missing and tap "Hecho" on the last step.
+   - "¿Has terminado?" offers "Descontar de la despensa" and "Ahora no"; the first returns to
+     recipe detail with "Descontado de tu despensa" and the pantry reduced, the second returns with the
+     pantry untouched. With something missing, "Hecho" just returns.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -542,3 +567,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 14. Bottom bar on a sub-screen |  |  |  |  |
 | 15. Screen readers and large text |  |  |  |  |
 | 16. Errors and offline banner |  |  |  |  |
+| 17. Cooking mode |  |  |  |  |

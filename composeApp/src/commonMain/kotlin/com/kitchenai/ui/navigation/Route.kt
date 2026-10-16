@@ -21,6 +21,10 @@ sealed interface Route {
     @Serializable
     data class RecipeDetail(val recipeId: String) : Route
 
+    /** Always opened over [RecipeDetail], whose ViewModel it shares. */
+    @Serializable
+    data class CookingMode(val recipeId: String) : Route
+
     @Serializable
     data object Profile : Route
 
