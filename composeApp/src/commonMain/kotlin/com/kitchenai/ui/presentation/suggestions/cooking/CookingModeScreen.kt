@@ -190,7 +190,10 @@ private fun CookingEffects(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { done ->
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-            snackbar.showSnackbar(getString(Res.string.cooking_timer_done, done.step), duration = SnackbarDuration.Long)
+            // Launched: the snackbar suspends for its whole duration, and the next buzz must not wait on it.
+            launch {
+                snackbar.showSnackbar(getString(Res.string.cooking_timer_done, done.step), duration = SnackbarDuration.Long)
+            }
         }
     }
 }
