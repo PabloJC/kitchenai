@@ -42,7 +42,7 @@ import kotlin.time.Instant
 
 /** The screen's real use cases over fake ports, shared by the ViewModel test classes. */
 @OptIn(ExperimentalCoroutinesApi::class)
-abstract class SuggestionsViewModelHarness {
+open class SuggestionsViewModelHarness {
     protected val dispatcher = StandardTestDispatcher()
     protected val now = Instant.fromEpochSeconds(0)
     protected val catalogue = FakeIngredientPort()
