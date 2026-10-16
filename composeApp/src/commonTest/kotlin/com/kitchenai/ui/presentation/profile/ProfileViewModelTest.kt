@@ -201,14 +201,15 @@ class ProfileViewModelTest {
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
             val term = termRef("tx-1", "tm-1")
-            profiles.gate = CompletableDeferred()
+            val inFlight = CompletableDeferred<Unit>()
+            profiles.gate = inFlight
             profiles.failNext = AppError.Network()
 
             viewModel.setStrength(term, ConstraintStrength.PREFER)
             advanceTimeBy(700.milliseconds)
             // The first write is in flight when the second change lands.
             viewModel.setStrength(term, ConstraintStrength.AVOID)
-            profiles.gate?.complete(Unit)
+            inFlight.complete(Unit)
             advanceUntilIdle()
 
             assertNull(viewModel.state.value.error)
