@@ -147,6 +147,24 @@ class RecipeDetailViewModelTest : RecipeDetailViewModelHarness() {
         }
 
     @Test
+    fun `the heart toggles between saving and unsaving from what is on screen`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort(catalogue = listOf(dish))
+            val viewModel = started(pantry = emptyList(), recipePort = recipes)
+            advanceUntilIdle()
+
+            viewModel.toggleSaved()
+            advanceUntilIdle()
+            assertEquals(listOf(dish.id), recipes.saved.map { it.id })
+            assertTrue(viewModel.state.value.isSaved)
+
+            viewModel.toggleSaved()
+            advanceUntilIdle()
+            assertTrue(recipes.saved.isEmpty())
+            assertFalse(viewModel.state.value.isSaved)
+        }
+
+    @Test
     fun `a dish already kept opens with the heart filled`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort(catalogue = listOf(dish))
