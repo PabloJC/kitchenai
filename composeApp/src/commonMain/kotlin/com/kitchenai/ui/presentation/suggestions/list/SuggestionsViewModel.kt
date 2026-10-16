@@ -332,9 +332,15 @@ class SuggestionsViewModel(
         }
     }
 
-    /** Recomputed whenever the saved list or the search changes, so the two never disagree. */
-    private fun SuggestionsUiState.withVisibleSaved(): SuggestionsUiState =
-        copy(visibleSaved = savedRecipes.searchedFor(savedQuery).cookableFirst())
+    /**
+     * Recomputed whenever the saved list or the search changes, so the two never disagree. A
+     * query only applies while its field is on screen: an unsave that takes the list back under
+     * the threshold hides the field, and a filter nobody can see or clear would hide recipes.
+     */
+    private fun SuggestionsUiState.withVisibleSaved(): SuggestionsUiState {
+        val query = if (offersSavedSearch) savedQuery else ""
+        return copy(savedQuery = query, visibleSaved = savedRecipes.searchedFor(query).cookableFirst())
+    }
 
     private fun fail(error: AppError) {
         val message = error.describe(Res.string.error_unauthorized_suggestions)

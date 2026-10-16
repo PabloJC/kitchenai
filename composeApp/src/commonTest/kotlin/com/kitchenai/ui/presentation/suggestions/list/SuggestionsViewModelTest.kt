@@ -701,6 +701,8 @@ class SuggestionsViewModelTest {
             val recipes = FakeRecipePort()
             recipes.saveRecipe(defaultKitchenId, dish("recipe-1").copy(title = "Lentil stew"))
             recipes.saveRecipe(defaultKitchenId, dish("recipe-2").copy(title = "Tomato soup"))
+            // Past the threshold, so the search field is offered at all.
+            (3..9).forEach { n -> recipes.saveRecipe(defaultKitchenId, dish("recipe-$n").copy(title = "Other $n")) }
             agent.answer = AppResult.Success(emptyList())
             val viewModel = started(recipes = recipes)
             advanceUntilIdle()
@@ -711,9 +713,28 @@ class SuggestionsViewModelTest {
             assertEquals(listOf("recipe-2"), viewModel.state.value.visibleSaved.map { it.id.value })
 
             viewModel.searchSaved("")
-            assertEquals(2, viewModel.state.value.visibleSaved.size)
+            assertEquals(9, viewModel.state.value.visibleSaved.size)
             viewModel.showSaved(false)
             assertFalse(viewModel.state.value.showingSaved)
+        }
+
+    @Test
+    fun `a search stops filtering once its field is no longer offered`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort()
+            (1..9).forEach { n -> recipes.saveRecipe(defaultKitchenId, dish("recipe-$n").copy(title = "Dish $n")) }
+            agent.answer = AppResult.Success(emptyList())
+            val viewModel = started(recipes = recipes)
+            advanceUntilIdle()
+            viewModel.searchSaved("Dish 9")
+            assertEquals(listOf("recipe-9"), viewModel.state.value.visibleSaved.map { it.id.value })
+
+            // Eight left: the field goes away, and so must the filter it held.
+            viewModel.unsave(RecipeId.of("recipe-9").orFail())
+            advanceUntilIdle()
+
+            assertEquals("", viewModel.state.value.savedQuery)
+            assertEquals(8, viewModel.state.value.visibleSaved.size)
         }
 
     @Test

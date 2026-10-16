@@ -35,6 +35,7 @@ import com.kitchenai.ui.resources.suggestions_coverage_count
 import com.kitchenai.ui.resources.suggestions_minutes
 import com.kitchenai.ui.resources.suggestions_saved_empty_body
 import com.kitchenai.ui.resources.suggestions_saved_empty_title
+import com.kitchenai.ui.resources.suggestions_saved_no_matches
 import com.kitchenai.ui.resources.suggestions_saved_search
 import org.jetbrains.compose.resources.stringResource
 
@@ -71,6 +72,13 @@ internal fun SavedRecipesView(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        if (state.visibleSaved.isEmpty()) {
+            Text(
+                stringResource(Res.string.suggestions_saved_no_matches, state.savedQuery.trim()),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            return@Column
         }
         LazyVerticalGrid(
             columns = GridCells.Adaptive(SAVED_CARD_MIN_WIDTH),
