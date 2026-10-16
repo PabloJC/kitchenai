@@ -2,52 +2,19 @@ package com.kitchenai.ui.presentation.suggestions.list
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.domain.agent.AgentOrchestrator
-import com.kitchenai.shared.domain.agent.SuggestionOptions
 import com.kitchenai.shared.domain.model.AgentId
-import com.kitchenai.shared.domain.model.HouseholdContext
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.KitchenId
-import com.kitchenai.shared.domain.model.MissingIngredient
-import com.kitchenai.shared.domain.model.PantryItem
-import com.kitchenai.shared.domain.model.PantryItemId
-import com.kitchenai.shared.domain.model.PantryMatch
-import com.kitchenai.shared.domain.model.Quantity
-import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
-import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.model.RecipeSource
-import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.PantryRepositoryContract
-import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
-import com.kitchenai.shared.domain.service.UnitConverter
-import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
-import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
-import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
-import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
-import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
-import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
-import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
-import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
-import com.kitchenai.ui.presentation.common.FakeIngredientPort
-import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
-import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
-import com.kitchenai.ui.presentation.common.FakeShoppingListPort
-import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.FlakyPantryPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.defaultKitchenId
 import com.kitchenai.ui.presentation.common.kitchen
-import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_timeout
@@ -56,12 +23,8 @@ import com.kitchenai.ui.resources.error_unauthorized_suggestions
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -76,23 +39,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class SuggestionsViewModelTest {
-    private val dispatcher = StandardTestDispatcher()
-    private val now = Instant.fromEpochSeconds(0)
-    private val catalogue = FakeIngredientPort()
-    private val agent = RecordingOrchestrator()
-    private val profile =
-        UserProfile(
-            userId = UserId.of("user-1").orFail(),
-            displayName = null,
-            languageTags = listOf("en"),
-            household = HouseholdContext(servings = 2),
-            constraints = emptyList(),
-            preferences = emptyList(),
-            avoidedIngredients = emptyList(),
-            updatedAt = kotlin.time.Instant.fromEpochSeconds(0),
-        )
-
+class SuggestionsViewModelTest : SuggestionsViewModelHarness() {
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
@@ -746,174 +693,12 @@ class SuggestionsViewModelTest {
         val joined = sentence as UiText.Joined
         assertEquals(listOf(2, 1), joined.parts.map { (it as UiText.Plural).quantity })
     }
-
-    private fun riceHolding(): PantryItem =
-        PantryItem(
-            id = PantryItemId.of("item-1").orFail(),
-            ingredient = IngredientId.of("rice").orFail(),
-            freeText = null,
-            quantity = Quantity(1.0),
-            location = null,
-            expiresAt = null,
-            updatedAt = now,
-        )
-
-    private val kitchens = FakeKitchenPort()
-    private val items = FakeShoppingItemPort()
-    private val lists = FakeShoppingListPort()
-
-    private fun started(
-        recipes: FakeRecipePort = FakeRecipePort(),
-        languageTags: List<String> = listOf("en"),
-        pantryPort: PantryRepositoryContract = FakePantryPort(),
-    ): SuggestionsViewModel {
-        return SuggestionsViewModel(
-            suggestRecipes =
-                SuggestRecipesUseCase(
-                    StubProfilePort(profile),
-                    pantryPort,
-                    agent,
-                    noUnits(),
-                    FakeTaxonomyPort(),
-                ),
-            getStoredSuggestions =
-                GetStoredSuggestionsUseCase(
-                    recipes,
-                    pantryPort,
-                    TimeProvider { now },
-                    noUnits(),
-                ),
-            storeSuggestions = StoreSuggestionsUseCase(recipes),
-            matchRecipe = MatchRecipeAgainstPantryUseCase(recipes, pantryPort, TimeProvider { now }, noUnits()),
-            reads =
-                SuggestionsReadsDelegate(
-                    ingredients = ObserveIngredientsUseCase(catalogue),
-                    savedRecipes = ObserveSavedRecipesUseCase(recipes),
-                    pantry = ObservePantryUseCase(pantryPort),
-                    kitchen = ObserveKitchenUseCase(kitchens),
-                ),
-            writes =
-                SuggestionsWritesDelegate(
-                    addMissing =
-                        AddMissingIngredientsToShoppingListUseCase(
-                            recipes,
-                            pantryPort,
-                            items,
-                            catalogue,
-                            sequentialIds(),
-                            TimeProvider { now },
-                            noUnits(),
-                        ),
-                    defaultList =
-                        EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, TimeProvider { now }),
-                ),
-        ).also { it.start(UserId.of("user-1").orFail(), languageTags, "List") }
-    }
-
-    /** Distinct ids: a constant one would fold two drafted lines into a single item. */
-    private fun sequentialIds(): IdGenerator {
-        var next = 0
-        return IdGenerator { "shopping-${++next}" }
-    }
 }
 
 private fun ingredient(
     id: String,
     labels: Map<String, String>,
 ): Ingredient = Ingredient(IngredientId.of(id).orFail(), labels, null, emptyList())
-
-/** A dish whose one line is a catalogue ingredient the pantry does not cover. */
-private fun shortOfRice(): RecipeSuggestion {
-    val line = RecipeIngredient(IngredientId.of("rice").orFail(), null, null, false)
-    val recipe =
-        Recipe(
-            id = RecipeId.of("recipe-1").orFail(),
-            title = "Dish",
-            summary = null,
-            servings = 2,
-            totalMinutes = 20,
-            ingredients = listOf(line),
-            steps = listOf("Step"),
-            tags = emptyList(),
-            source = RecipeSource.Catalogue,
-        )
-    return RecipeSuggestion(
-        recipe = recipe,
-        match = PantryMatch(recipe.id, emptyList(), listOf(MissingIngredient(line, null)), emptyList()),
-        source = RecipeSource.Catalogue,
-    )
-}
-
-/**
- * The real use case over fake ports, so the wiring it does is exercised too. The orchestrator
- * is what counts calls, because the number of times a model is asked is the assertion this
- * screen exists to make. [gate], when set, is awaited before answering — how a stored set is
- * shown to still be up while a run has not landed yet is proven.
- */
-private class RecordingOrchestrator : AgentOrchestrator {
-    var answer: AppResult<List<RecipeSuggestion>> = AppResult.Success(emptyList())
-    var gate: CompletableDeferred<Unit>? = null
-    var calls = 0
-        private set
-    var lastOptions: SuggestionOptions? = null
-        private set
-    var lastLanguageTags: List<String>? = null
-        private set
-
-    override suspend fun suggest(
-        profile: UserProfile,
-        pantry: List<PantryItem>,
-        options: SuggestionOptions,
-        languageTags: List<String>,
-        units: UnitConverter,
-    ): AppResult<List<RecipeSuggestion>> {
-        calls++
-        lastOptions = options
-        lastLanguageTags = languageTags
-        gate?.await()
-        return answer
-    }
-}
-
-private class StubProfilePort(private val profile: UserProfile) : UserProfileRepositoryContract {
-    override fun observeProfile(userId: UserId): Flow<UserProfile> = flowOf(profile)
-
-    override fun profileErrors(userId: UserId): Flow<AppError> = emptyFlow()
-
-    override suspend fun getProfile(userId: UserId): AppResult<UserProfile> = AppResult.Success(profile)
-
-    override suspend fun save(profile: UserProfile): AppResult<Unit> = AppResult.Success(Unit)
-}
-
-private fun dish(
-    id: String,
-    source: RecipeSource = RecipeSource.Catalogue,
-): Recipe = suggestion(id, source).recipe
-
-private fun suggestion(
-    id: String,
-    source: RecipeSource = RecipeSource.Catalogue,
-): RecipeSuggestion {
-    val recipe =
-        Recipe(
-            id = RecipeId.of(id).orFail(),
-            title = "Dish",
-            summary = null,
-            servings = 2,
-            totalMinutes = 20,
-            ingredients = listOf(RecipeIngredient(null, "salt", null, false)),
-            steps = listOf("Step"),
-            tags = emptyList(),
-            source = source,
-        )
-    return RecipeSuggestion(
-        recipe = recipe,
-        match = PantryMatch(recipe.id, emptyList(), emptyList(), recipe.ingredients),
-        source = source,
-    )
-}
-
-private fun <T> AppResult<T>.orFail(): T = (this as AppResult.Success).data
 
 private fun suggestionUi(missing: List<String>): SuggestionUi =
     SuggestionUi(

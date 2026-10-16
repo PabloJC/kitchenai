@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -23,8 +22,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -38,6 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.CoverageBar
@@ -46,7 +51,6 @@ import com.kitchenai.ui.designsystem.component.RecipeImage
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
 import com.kitchenai.ui.designsystem.component.SKELETON_SUMMARY_WIDTH
 import com.kitchenai.ui.designsystem.component.SKELETON_TITLE_WIDTH
-import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SkeletonBar
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
@@ -54,10 +58,12 @@ import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.detail_undo
 import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.snack_added_count
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
+import com.kitchenai.ui.resources.snack_unsaved
 import com.kitchenai.ui.resources.suggestions_add_missing
 import com.kitchenai.ui.resources.suggestions_check_manually
 import com.kitchenai.ui.resources.suggestions_coverage_count
@@ -72,7 +78,10 @@ import com.kitchenai.ui.resources.suggestions_nothing_body_action
 import com.kitchenai.ui.resources.suggestions_nothing_title
 import com.kitchenai.ui.resources.suggestions_only_pantry
 import com.kitchenai.ui.resources.suggestions_quick
-import com.kitchenai.ui.resources.suggestions_saved_title
+import com.kitchenai.ui.resources.suggestions_view_ideas
+import com.kitchenai.ui.resources.suggestions_view_saved
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -96,7 +105,8 @@ fun SuggestionsScreen(
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { event -> snackbar.showSnackbar(event.sentence().text()) }
+        // Launched apart so the collector keeps draining while an Undo waits; the host still shows them in order.
+        viewModel.events.collect { event -> launch { snackbar.announce(event, viewModel::undoUnsave) } }
     }
 
     // The insets are AppShell's; a second round here would open a gap between the toolbar and
@@ -105,19 +115,71 @@ fun SuggestionsScreen(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = { NewIdeasButton(enabled = !state.isGenerating, onClick = viewModel::generate) },
+        floatingActionButton = {
+            // Generating is the ideas view's action; on the saved view it would add to a list not shown.
+            if (!state.showingSaved) NewIdeasButton(enabled = !state.isGenerating, onClick = viewModel::generate)
+        },
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).padding(horizontal = Dimens.large).padding(top = Dimens.large),
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
-            Options(state, viewModel)
-            if (state.optionsChanged && !state.isGenerating) FiltersChangedBanner(onUpdate = viewModel::generate)
-            if (state.isGenerating) GeneratingStrip(onCancel = viewModel::cancelGeneration)
-            state.error?.let { message -> SuggestionsErrorCard(message, onRetry = viewModel::generate) }
-            Results(state, onOpen, onAddMissing = viewModel::addMissingToList, onRefresh = viewModel::generate)
+            ViewSwitch(
+                showingSaved = state.showingSaved,
+                savedCount = state.savedRecipes.size,
+                onShowSaved = viewModel::showSaved,
+            )
+            if (state.showingSaved) {
+                SavedRecipesView(state, onOpen, onUnsave = viewModel::unsave, onSearch = viewModel::searchSaved)
+            } else {
+                Options(state, viewModel)
+                if (state.optionsChanged && !state.isGenerating) FiltersChangedBanner(onUpdate = viewModel::generate)
+                if (state.isGenerating) GeneratingStrip(onCancel = viewModel::cancelGeneration)
+                state.error?.let { message -> SuggestionsErrorCard(message, onRetry = viewModel::generate) }
+                Results(state, onOpen, onAddMissing = viewModel::addMissingToList, onRefresh = viewModel::generate)
+            }
         }
     }
+}
+
+/** Ideas and saved recipes one tap apart, with the count so the kept ones are never out of sight. */
+@Composable
+private fun ViewSwitch(
+    showingSaved: Boolean,
+    savedCount: Int,
+    onShowSaved: (Boolean) -> Unit,
+) {
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        SegmentedButton(
+            selected = !showingSaved,
+            onClick = { onShowSaved(false) },
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+        ) { Text(stringResource(Res.string.suggestions_view_ideas)) }
+        SegmentedButton(
+            selected = showingSaved,
+            onClick = { onShowSaved(true) },
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+        ) { Text(stringResource(Res.string.suggestions_view_saved, savedCount)) }
+    }
+}
+
+/** An unsave offers Undo, which saves the same recipe again; everything else is one sentence. */
+private suspend fun SnackbarHostState.announce(
+    event: SuggestionsEvent,
+    onUndoUnsave: (Recipe) -> Unit,
+) {
+    if (event !is SuggestionsEvent.Unsaved) {
+        showSnackbar(event.sentence().text())
+        return
+    }
+    // Bounded: with an action, Material's default is Indefinite and the Undo would never go away.
+    val outcome =
+        showSnackbar(
+            message = event.sentence().text(),
+            actionLabel = getString(Res.string.detail_undo),
+            duration = SnackbarDuration.Long,
+        )
+    if (outcome == SnackbarResult.ActionPerformed) onUndoUnsave(event.restore)
 }
 
 /** Always on screen. Mid-run it only looks disabled: the run is stopped from the strip's Cancel. */
@@ -149,6 +211,7 @@ internal fun SuggestionsEvent.sentence(): UiText =
                 ),
             )
         is SuggestionsEvent.Failed -> message
+        is SuggestionsEvent.Unsaved -> UiText.of(Res.string.snack_unsaved)
     }
 
 @Composable
@@ -210,7 +273,7 @@ private fun Results(
                         EmptyState(
                             title = stringResource(Res.string.suggestions_nothing_title),
                             body = stringResource(Res.string.suggestions_nothing_body_action),
-                            modifier = emptyResultModifier(state),
+                            modifier = Modifier.fillParentMaxSize(),
                         )
                     }
                 !state.hasGenerated ->
@@ -218,33 +281,14 @@ private fun Results(
                         EmptyState(
                             title = stringResource(Res.string.suggestions_empty_title),
                             body = stringResource(Res.string.suggestions_empty_body_action),
-                            modifier = emptyResultModifier(state),
+                            modifier = Modifier.fillParentMaxSize(),
                         )
                     }
                 else -> Unit
             }
-            // Always last: a save is a standing choice the user made on some earlier visit, not
-            // this session's answer, so it never competes with what was just generated for the
-            // top of the list.
-            if (state.savedRecipes.isNotEmpty()) {
-                item { SectionHeader(title = stringResource(Res.string.suggestions_saved_title)) }
-                items(
-                    state.savedRecipes,
-                    key = { "saved-${it.id.value}" },
-                ) { suggestion -> SuggestionCard(suggestion, onOpen, onAddMissing, state.addingMissingFor != null) }
-            }
         }
     }
 }
-
-/**
- * Fills the viewport to centre in only when nothing follows it: with saved recipes below, that
- * space is theirs, not a message that already said its piece. A function rather than a `val`
- * hoisted above the `when` — [LazyItemScope.fillParentMaxSize] needs the item's own scope, which
- * only exists inside `item { }`.
- */
-private fun LazyItemScope.emptyResultModifier(state: SuggestionsUiState): Modifier =
-    if (state.savedRecipes.isEmpty()) Modifier.fillParentMaxSize() else Modifier
 
 @Composable
 private fun Skeleton() {

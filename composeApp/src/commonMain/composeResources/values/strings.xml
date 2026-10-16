@@ -141,7 +141,12 @@
     <string name="suggestions_nothing_body">Add a few things to your pantry, then pull down to try again</string>
     <string name="suggestions_working">Reading your pantry and thinking of dishes. This takes a moment.</string>
     <string name="suggestions_generated">Generated</string>
-    <string name="suggestions_saved_title">Saved recipes</string>
+    <string name="suggestions_view_ideas">Ideas</string>
+    <string name="suggestions_view_saved">Saved (%1$d)</string>
+    <string name="suggestions_saved_empty_title">No saved recipes yet</string>
+    <string name="suggestions_saved_empty_body">Tap ♡ on a recipe to keep it here.</string>
+    <string name="suggestions_saved_search">Search saved recipes</string>
+    <string name="suggestions_saved_no_matches">Nothing saved matches “%1$s”</string>
     <string name="suggestions_missing">Missing: %1$s</string>
     <string name="suggestions_minutes">%1$d min</string>
     <string name="suggestions_coverage_count">%1$d of %2$d ingredients</string>
