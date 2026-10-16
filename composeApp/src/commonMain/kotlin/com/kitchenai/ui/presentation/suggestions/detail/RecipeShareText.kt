@@ -1,14 +1,5 @@
 package com.kitchenai.ui.presentation.suggestions.detail
 
-/** The headings and words a shared recipe needs, resolved by the screen in the reader's language. */
-data class ShareLabels(
-    val servings: String,
-    val minutes: String?,
-    val ingredients: String,
-    val steps: String,
-    val optionalSuffix: String,
-)
-
 /**
  * The recipe as plain text, amounts at the servings on screen. Every line in one list: the
  * pantry buckets are this phone's business, not the reader's on the other end.
