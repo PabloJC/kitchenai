@@ -1,7 +1,11 @@
 package com.kitchenai.shared.di
 
+import com.kitchenai.shared.data.local.AppearanceLocalDataSource
+import com.kitchenai.shared.data.local.platformPreferenceStore
+import com.kitchenai.shared.data.repository.AppearanceRepository
 import com.kitchenai.shared.data.repository.FirestoreTaxonomyRepository
 import com.kitchenai.shared.data.repository.FirestoreUserProfileRepository
+import com.kitchenai.shared.domain.port.AppearanceRepositoryContract
 import com.kitchenai.shared.domain.port.TaxonomyRepositoryContract
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import org.koin.core.module.Module
@@ -17,4 +21,6 @@ val profileDataModule: Module =
     module {
         single<UserProfileRepositoryContract> { FirestoreUserProfileRepository(get(), get()) }
         single<TaxonomyRepositoryContract> { FirestoreTaxonomyRepository(get(), get()) }
+        single { AppearanceLocalDataSource(platformPreferenceStore()) }
+        single<AppearanceRepositoryContract> { AppearanceRepository(get(), get()) }
     }

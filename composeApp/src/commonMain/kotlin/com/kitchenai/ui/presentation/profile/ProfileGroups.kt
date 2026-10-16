@@ -1,0 +1,106 @@
+package com.kitchenai.ui.presentation.profile
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import com.kitchenai.shared.domain.model.Appearance
+import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.rememberAppVersion
+import com.kitchenai.ui.presentation.common.AppearanceUiState
+import com.kitchenai.ui.presentation.common.resolve
+import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.appearance_dark
+import com.kitchenai.ui.resources.appearance_light
+import com.kitchenai.ui.resources.appearance_system
+import com.kitchenai.ui.resources.profile_kitchen_body
+import com.kitchenai.ui.resources.profile_kitchen_title
+import com.kitchenai.ui.resources.profile_version
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
+
+/** A group's name, in the primary colour like the platforms' settings, and a heading for screen readers. */
+@Composable
+internal fun GroupTitle(title: StringResource) {
+    Text(
+        text = stringResource(title),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = Dimens.large, end = Dimens.large, top = Dimens.extraLarge)
+                .semantics { heading() },
+    )
+}
+
+/** Sharing a kitchen is a feature, not a footnote: a full row leading to it rather than a text link. */
+@Composable
+internal fun KitchenRow(onOpen: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(Res.string.profile_kitchen_title)) },
+        supportingContent = { Text(stringResource(Res.string.profile_kitchen_body)) },
+        leadingContent = { Icon(Icons.Outlined.Groups, contentDescription = null) },
+        trailingContent = { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null) },
+        modifier = Modifier.clickable(role = Role.Button, onClick = onOpen),
+    )
+}
+
+/** Kept on this device: the system's own choice by default, forced light or dark when asked. */
+@Composable
+internal fun AppearanceChooser(
+    state: AppearanceUiState,
+    onChoose: (Appearance) -> Unit,
+) {
+    val options = Appearance.entries
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, option ->
+                SegmentedButton(
+                    selected = state.appearance == option,
+                    onClick = { onChoose(option) },
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                ) { Text(stringResource(option.label())) }
+            }
+        }
+        state.error?.let { message ->
+            Text(
+                message.resolve(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = Dimens.small),
+            )
+        }
+    }
+}
+
+@Composable
+internal fun VersionRow() {
+    val version = rememberAppVersion() ?: return
+    ListItem(
+        headlineContent = { Text(stringResource(Res.string.profile_version)) },
+        supportingContent = { Text(version) },
+    )
+}
+
+private fun Appearance.label(): StringResource =
+    when (this) {
+        Appearance.SYSTEM -> Res.string.appearance_system
+        Appearance.LIGHT -> Res.string.appearance_light
+        Appearance.DARK -> Res.string.appearance_dark
+    }

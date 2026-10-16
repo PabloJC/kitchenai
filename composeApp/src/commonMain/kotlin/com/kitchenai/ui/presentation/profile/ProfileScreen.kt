@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -29,6 +30,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.Appearance
 import com.kitchenai.shared.domain.model.AppleIdToken
 import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.TermRef
@@ -42,6 +44,8 @@ import com.kitchenai.ui.platform.AppleSignInLauncher
 import com.kitchenai.ui.platform.GoogleSignInLauncher
 import com.kitchenai.ui.platform.rememberAppleSignInLauncher
 import com.kitchenai.ui.platform.rememberGoogleSignInLauncher
+import com.kitchenai.ui.presentation.common.AppearanceUiState
+import com.kitchenai.ui.presentation.common.AppearanceViewModel
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
@@ -51,7 +55,12 @@ import com.kitchenai.ui.resources.profile_delete_body
 import com.kitchenai.ui.resources.profile_delete_cancel
 import com.kitchenai.ui.resources.profile_delete_confirm
 import com.kitchenai.ui.resources.profile_delete_title
-import com.kitchenai.ui.resources.profile_kitchen_action
+import com.kitchenai.ui.resources.profile_group_about
+import com.kitchenai.ui.resources.profile_group_account
+import com.kitchenai.ui.resources.profile_group_appearance
+import com.kitchenai.ui.resources.profile_group_food
+import com.kitchenai.ui.resources.profile_group_household
+import com.kitchenai.ui.resources.profile_group_privacy
 import com.kitchenai.ui.resources.profile_no_preferences
 import com.kitchenai.ui.resources.profile_no_vocabulary
 import com.kitchenai.ui.resources.profile_saved
@@ -76,15 +85,24 @@ fun ProfileScreen(
     onOpenKitchen: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = koinViewModel(),
+    appearanceViewModel: AppearanceViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val appearance by appearanceViewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(userId) { viewModel.start(userId) }
 
     val error = state.error
     when {
         !state.isLoading ->
-            ProfileContent(state = state, viewModel = viewModel, onOpenKitchen = onOpenKitchen, modifier = modifier)
+            ProfileContent(
+                state = state,
+                viewModel = viewModel,
+                appearance = appearance,
+                onAppearance = appearanceViewModel::choose,
+                onOpenKitchen = onOpenKitchen,
+                modifier = modifier,
+            )
         error == null -> LoadingState(modifier)
         else ->
             ErrorState(
@@ -96,47 +114,38 @@ fun ProfileScreen(
     }
 }
 
+/**
+ * Grouped like the platforms' own settings: Account, Household, Food preferences, Appearance,
+ * Privacy, About. One scroll for all of them, with the save status pinned below it.
+ */
 @Composable
 private fun ProfileContent(
     state: ProfileUiState,
     viewModel: ProfileViewModel,
+    appearance: AppearanceUiState,
+    onAppearance: (Appearance) -> Unit,
     onOpenKitchen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // A Column with a weighted middle, not one LazyColumn top to bottom: TransparencyLine and
-    // SaveRow stay fixed so the empty state has a bounded height to centre inside — matching
-    // ShoppingScreen's own header/content/footer split — and Save never needs a scroll to reach.
+    var choosing by remember { mutableStateOf<TermRef?>(null) }
     Column(modifier = modifier.fillMaxSize()) {
-        Spacer(Modifier.height(Dimens.large))
-        AccountArea(state, viewModel)
-        Spacer(Modifier.height(Dimens.medium))
-        TransparencyLine()
-        Spacer(Modifier.height(Dimens.medium))
-        // Account and kitchen are both "about me" screens; kitchen membership has its own state
-        // and lives in presentation/kitchen/, so this is a link out rather than a section here.
-        TextButton(onClick = onOpenKitchen, modifier = Modifier.padding(horizontal = Dimens.large)) {
-            Text(stringResource(Res.string.profile_kitchen_action))
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
+            item { GroupTitle(Res.string.profile_group_account) }
+            item { AccountArea(state, viewModel) }
+            item { GroupTitle(Res.string.profile_group_household) }
+            item { KitchenRow(onOpenKitchen) }
+            item { GroupTitle(Res.string.profile_group_food) }
+            foodPreferences(state, viewModel) { term -> choosing = term }
+            item { GroupTitle(Res.string.profile_group_appearance) }
+            item { AppearanceChooser(appearance, onAppearance) }
+            item { GroupTitle(Res.string.profile_group_privacy) }
+            item { TransparencyLine() }
+            if (state.hasAccount) {
+                item { DeleteAccountAction(enabled = !state.isAuthenticating, onDelete = viewModel::deleteAccount) }
+            }
+            item { GroupTitle(Res.string.profile_group_about) }
+            item { VersionRow() }
         }
-        Spacer(Modifier.height(Dimens.medium))
-
-        if (state.isCatalogueLoaded && state.sections.isEmpty()) {
-            EmptyState(
-                title = stringResource(Res.string.profile_no_preferences),
-                body =
-                    if (state.hasCatalogueFailed) {
-                        stringResource(Res.string.profile_vocabulary_failed)
-                    } else {
-                        stringResource(Res.string.profile_no_vocabulary)
-                    },
-                modifier = Modifier.weight(1f),
-                actionLabel = if (state.hasCatalogueFailed) stringResource(Res.string.error_retry) else null,
-                onAction = if (state.hasCatalogueFailed) viewModel::retry else null,
-            )
-        } else {
-            Preferences(state, viewModel, Modifier.weight(1f))
-        }
-
-        Spacer(Modifier.height(Dimens.medium))
         SaveStatus(
             isSaving = state.isSaving || state.hasUnsavedChanges,
             isSaved = state.isSaved,
@@ -144,21 +153,6 @@ private fun ProfileContent(
             onRetry = if (state.canRetry) viewModel::retry else null,
         )
         Spacer(Modifier.height(Dimens.large))
-    }
-}
-
-/** The sections, and the Prefer · Avoid · Off sheet for whichever term was tapped. */
-@Composable
-private fun Preferences(
-    state: ProfileUiState,
-    viewModel: ProfileViewModel,
-    modifier: Modifier,
-) {
-    var choosing by remember { mutableStateOf<TermRef?>(null) }
-    LazyColumn(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
-        items(state.sections, key = { section -> section.taxonomy.value }) { section ->
-            ConstraintSection(section = section, onChoose = { chip -> choosing = chip.term })
-        }
     }
     // Read from state each time, so the sheet shows the strength just chosen rather than the one it opened with.
     val chip = choosing?.let { term -> state.sections.flatMap { it.terms }.firstOrNull { it.term == term } }
@@ -171,6 +165,33 @@ private fun Preferences(
             },
             onDismiss = { choosing = null },
         )
+    }
+}
+
+/** The constraint sections, or what to say when the catalogue has none to offer. */
+private fun LazyListScope.foodPreferences(
+    state: ProfileUiState,
+    viewModel: ProfileViewModel,
+    onChoose: (TermRef) -> Unit,
+) {
+    if (state.isCatalogueLoaded && state.sections.isEmpty()) {
+        item {
+            EmptyState(
+                title = stringResource(Res.string.profile_no_preferences),
+                body =
+                    if (state.hasCatalogueFailed) {
+                        stringResource(Res.string.profile_vocabulary_failed)
+                    } else {
+                        stringResource(Res.string.profile_no_vocabulary)
+                    },
+                actionLabel = if (state.hasCatalogueFailed) stringResource(Res.string.error_retry) else null,
+                onAction = if (state.hasCatalogueFailed) viewModel::retry else null,
+            )
+        }
+        return
+    }
+    items(state.sections, key = { section -> section.taxonomy.value }) { section ->
+        ConstraintSection(section = section, onChoose = { chip -> onChoose(chip.term) })
     }
 }
 
@@ -210,7 +231,6 @@ private fun AccountArea(
         onAppleSignIn = appleLauncher?.let { { launchApple(viewModel::signInWithApple) } },
         onSignOut = viewModel::signOut,
     )
-    if (state.hasAccount) DeleteAccountAction(enabled = !state.isAuthenticating, onDelete = viewModel::deleteAccount)
 
     if (state.isConfirmingAccountSwitch) {
         SwitchAccountDialog(
