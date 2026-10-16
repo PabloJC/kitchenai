@@ -33,10 +33,14 @@ data class KitchenUi(
     val leaveDisabledReason: UiText?,
 )
 
-/** [name] is the label to draw, placeholder included; [canRemove] is the owner's action on others only. */
+/**
+ * [name] is the label to draw, placeholder included; [initials] is null when there is no name to
+ * take them from. [canRemove] is the owner's action on others only.
+ */
 data class KitchenMemberUi(
     val id: UserId,
     val name: UiText,
+    val initials: String?,
     val isSelf: Boolean,
     val isOwner: Boolean,
     val canRemove: Boolean,

@@ -205,7 +205,7 @@
     <string name="appearance_dark">Oscuro</string>
     <string name="kitchen_title">Cocina</string>
     <string name="kitchen_your_code">Tu código para unirse</string>
-    <string name="kitchen_copy">Copiar</string>
+    <string name="kitchen_copy">Copiar código</string>
     <string name="kitchen_regenerate_action">Nuevo código</string>
     <string name="kitchen_members_title">Miembros</string>
     <string name="kitchen_owner">Propietario</string>
@@ -235,6 +235,10 @@
     <string name="kitchen_member_removed">%1$s ya no está en la cocina</string>
     <string name="kitchen_joined">Te has unido a la cocina</string>
     <string name="kitchen_code_regenerated">Código nuevo listo</string>
+    <string name="kitchen_invite_action">Invitar</string>
+    <string name="kitchen_invite_message">Únete a mi cocina en KitchenAI con el código %1$s</string>
+    <string name="kitchen_code_copied">Código copiado</string>
+    <string name="kitchen_paste">Pegar</string>
     <string name="strength_prefer">Prefiero</string>
     <string name="strength_avoid">Evitar</string>
     <string name="strength_off">Nada</string>
