@@ -13,8 +13,13 @@ import com.kitchenai.ui.presentation.common.UiText
  */
 data class SuggestionsUiState(
     val suggestions: List<SuggestionUi> = emptyList(),
-    /** Below the suggested ones, always — a save is a standing choice, not this session's answer. */
+    /** Every kept recipe, newest first: its own view, a save is a standing choice and not this session's answer. */
     val savedRecipes: List<SuggestionUi> = emptyList(),
+    /** Which of the two views is on: the ideas feed or the saved recipes. */
+    val showingSaved: Boolean = false,
+    val savedQuery: String = "",
+    /** [savedRecipes] narrowed by [savedQuery], what can be cooked now first and newest first within each. */
+    val visibleSaved: List<SuggestionUi> = emptyList(),
     val isGenerating: Boolean = false,
     val hasGenerated: Boolean = false,
     val error: UiText? = null,
@@ -26,7 +31,12 @@ data class SuggestionsUiState(
 ) {
     /** Never auto-runs: each run costs a model call, so a changed filter only offers one. */
     val optionsChanged: Boolean get() = appliedOptions != null && appliedOptions != options
+
+    /** A handful scans by eye; past that a search earns its place. */
+    val offersSavedSearch: Boolean get() = savedRecipes.size > SAVED_SEARCH_THRESHOLD
 }
+
+private const val SAVED_SEARCH_THRESHOLD = 8
 
 /**
  * One card. Every word here is already resolved; the screen looks no label up. [tagRefs] is the

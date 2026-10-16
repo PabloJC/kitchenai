@@ -129,7 +129,11 @@
     <string name="suggestions_nothing_body">Añade algunas cosas a tu despensa y desliza hacia abajo para volver a intentarlo</string>
     <string name="suggestions_working">Leyendo tu despensa y pensando platos. Esto tarda un momento.</string>
     <string name="suggestions_generated">Generado</string>
-    <string name="suggestions_saved_title">Recetas guardadas</string>
+    <string name="suggestions_view_ideas">Ideas</string>
+    <string name="suggestions_view_saved">Guardadas (%1$d)</string>
+    <string name="suggestions_saved_empty_title">Aún no hay recetas guardadas</string>
+    <string name="suggestions_saved_empty_body">Toca ♡ en una receta para guardarla aquí.</string>
+    <string name="suggestions_saved_search">Buscar en guardadas</string>
     <string name="suggestions_missing">Faltan: %1$s</string>
     <string name="suggestions_minutes">%1$d min</string>
     <string name="suggestions_coverage_count">%1$d de %2$d ingredientes</string>

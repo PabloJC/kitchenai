@@ -209,6 +209,35 @@ class SuggestionsViewModel(
         }
     }
 
+    fun showSaved(showing: Boolean) = internalState.update { it.copy(showingSaved = showing) }
+
+    fun searchSaved(query: String) = internalState.update { it.copy(savedQuery = query).withVisibleSaved() }
+
+    /** The same removal as the detail screen's heart, from the card, with an undo. */
+    fun unsave(id: RecipeId) {
+        val kitchen = kitchenId.value ?: return
+        val recipe = currentSaved.firstOrNull { it.recipe.id == id }?.recipe ?: return
+        viewModelScope.launch {
+            when (val outcome = writes.unsave(kitchen, id)) {
+                is AppResult.Failure ->
+                    eventChannel.send(
+                        SuggestionsEvent.Failed(outcome.error.describe(Res.string.error_unauthorized_action)),
+                    )
+                is AppResult.Success -> eventChannel.send(SuggestionsEvent.Unsaved(recipe))
+            }
+        }
+    }
+
+    fun undoUnsave(recipe: Recipe) {
+        val kitchen = kitchenId.value ?: return
+        viewModelScope.launch {
+            val outcome = writes.save(kitchen, recipe)
+            if (outcome is AppResult.Failure) {
+                eventChannel.send(SuggestionsEvent.Failed(outcome.error.describe(Res.string.error_unauthorized_action)))
+            }
+        }
+    }
+
     private fun editOptions(block: (SuggestionOptionsUi) -> SuggestionOptionsUi) =
         internalState.update { current -> current.copy(options = block(current.options)) }
 
@@ -299,9 +328,13 @@ class SuggestionsViewModel(
             state.copy(
                 suggestions = current.map { suggestion -> suggestion.toUi(resolver) },
                 savedRecipes = currentSaved.map { suggestion -> suggestion.toUi(resolver) },
-            )
+            ).withVisibleSaved()
         }
     }
+
+    /** Recomputed whenever the saved list or the search changes, so the two never disagree. */
+    private fun SuggestionsUiState.withVisibleSaved(): SuggestionsUiState =
+        copy(visibleSaved = savedRecipes.searchedFor(savedQuery).cookableFirst())
 
     private fun fail(error: AppError) {
         val message = error.describe(Res.string.error_unauthorized_suggestions)

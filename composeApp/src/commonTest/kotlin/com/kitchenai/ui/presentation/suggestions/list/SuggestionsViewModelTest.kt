@@ -32,6 +32,8 @@ import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
+import com.kitchenai.shared.domain.usecase.recipe.RemoveSavedRecipeUseCase
+import com.kitchenai.shared.domain.usecase.recipe.SaveRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
@@ -53,6 +55,7 @@ import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_timeout
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.error_unauthorized_suggestions
+import com.kitchenai.ui.resources.snack_unsaved
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -675,6 +678,69 @@ class SuggestionsViewModelTest {
     }
 
     @Test
+    fun `the saved view lists what can be cooked now first and keeps the listener order within each`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort()
+            recipes.saveRecipe(defaultKitchenId, shortOfRice().recipe)
+            recipes.saveRecipe(defaultKitchenId, dish("recipe-2"))
+            recipes.saveRecipe(defaultKitchenId, dish("recipe-3"))
+            agent.answer = AppResult.Success(emptyList())
+
+            val viewModel = started(recipes = recipes)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("recipe-2", "recipe-3", "recipe-1"),
+                viewModel.state.value.visibleSaved.map { it.id.value },
+            )
+        }
+
+    @Test
+    fun `switching to the saved view and searching it`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort()
+            recipes.saveRecipe(defaultKitchenId, dish("recipe-1").copy(title = "Lentil stew"))
+            recipes.saveRecipe(defaultKitchenId, dish("recipe-2").copy(title = "Tomato soup"))
+            agent.answer = AppResult.Success(emptyList())
+            val viewModel = started(recipes = recipes)
+            advanceUntilIdle()
+
+            viewModel.showSaved(true)
+            viewModel.searchSaved("SOUP")
+            assertTrue(viewModel.state.value.showingSaved)
+            assertEquals(listOf("recipe-2"), viewModel.state.value.visibleSaved.map { it.id.value })
+
+            viewModel.searchSaved("")
+            assertEquals(2, viewModel.state.value.visibleSaved.size)
+            viewModel.showSaved(false)
+            assertFalse(viewModel.state.value.showingSaved)
+        }
+
+    @Test
+    fun `unsaving from a card removes it and an undo saves it again`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort()
+            recipes.saveRecipe(defaultKitchenId, dish("recipe-1"))
+            agent.answer = AppResult.Success(emptyList())
+            val viewModel = started(recipes = recipes)
+            advanceUntilIdle()
+            val seen = mutableListOf<SuggestionsEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            viewModel.unsave(RecipeId.of("recipe-1").orFail())
+            advanceUntilIdle()
+            assertTrue(recipes.saved.isEmpty())
+            assertTrue(viewModel.state.value.savedRecipes.isEmpty())
+
+            viewModel.undoUnsave((seen.single() as SuggestionsEvent.Unsaved).restore)
+            advanceUntilIdle()
+            collector.cancel()
+
+            assertEquals(listOf("recipe-1"), recipes.saved.map { it.id.value })
+            assertEquals(listOf("recipe-1"), viewModel.state.value.savedRecipes.map { it.id.value })
+        }
+
+    @Test
     fun `adding a card's missing ingredients writes them to the list and says how many`() =
         runTest(dispatcher) {
             agent.answer = AppResult.Success(listOf(shortOfRice()))
@@ -747,6 +813,11 @@ class SuggestionsViewModelTest {
         assertEquals(listOf(2, 1), joined.parts.map { (it as UiText.Plural).quantity })
     }
 
+    @Test
+    fun `an unsave reads as removed from saved`() {
+        assertEquals(UiText.of(Res.string.snack_unsaved), SuggestionsEvent.Unsaved(dish("recipe-1")).sentence())
+    }
+
     private fun riceHolding(): PantryItem =
         PantryItem(
             id = PantryItemId.of("item-1").orFail(),
@@ -806,6 +877,8 @@ class SuggestionsViewModelTest {
                         ),
                     defaultList =
                         EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, TimeProvider { now }),
+                    save = SaveRecipeUseCase(recipes),
+                    unsave = RemoveSavedRecipeUseCase(recipes),
                 ),
         ).also { it.start(UserId.of("user-1").orFail(), languageTags, "List") }
     }
