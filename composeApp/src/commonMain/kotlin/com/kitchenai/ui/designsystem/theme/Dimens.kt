@@ -15,6 +15,9 @@ object Dimens {
     val extraLarge = 24.dp
     val huge = 32.dp
 
+    /** Material's small top app bar, which recipe detail lays its photo under. */
+    val topBar = 64.dp
+
     /** Minimum touch target; below this the gesture is unreliable on a phone held in one hand. */
     val touchTarget = 48.dp
 

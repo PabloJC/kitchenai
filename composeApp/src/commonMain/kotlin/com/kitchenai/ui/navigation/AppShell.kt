@@ -51,34 +51,37 @@ fun AppShell(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = {
-                    // A tab keeps its own label; a screen with no tab — recipe detail, today —
-                    // gets to say what its title is instead of settling for a generic one.
-                    val title = if (tab == null) detailTopBar.title else null
-                    Text(
-                        title ?: stringResource(tab?.label ?: Res.string.detail_title),
-                        modifier = Modifier.semantics { heading() },
-                    )
-                },
-                navigationIcon = {
-                    // Only a screen opened from a tab needs a way out: every tab is reached by
-                    // tapping the bar below, never by going back into it.
-                    if (tab == null) {
-                        IconButton(onClick = navController::navigateUp) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = stringResource(Res.string.nav_back),
-                            )
+            // A screen drawing its own bar over its content is the one case with no shared bar.
+            if (tab != null || !detailTopBar.hidden) {
+                TopAppBar(
+                    title = {
+                        // A tab keeps its own label; a screen with no tab — the kitchen, cooking mode —
+                        // gets to say what its title is instead of settling for a generic one.
+                        val title = if (tab == null) detailTopBar.title else null
+                        Text(
+                            title ?: stringResource(tab?.label ?: Res.string.detail_title),
+                            modifier = Modifier.semantics { heading() },
+                        )
+                    },
+                    navigationIcon = {
+                        // Only a screen opened from a tab needs a way out: every tab is reached by
+                        // tapping the bar below, never by going back into it.
+                        if (tab == null) {
+                            IconButton(onClick = navController::navigateUp) {
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.ArrowBack,
+                                    contentDescription = stringResource(Res.string.nav_back),
+                                )
+                            }
                         }
-                    }
-                },
-                actions = {
-                    if (tab == null) {
-                        detailTopBar.action?.let { action -> TopBarActionButton(action) }
-                    }
-                },
-            )
+                    },
+                    actions = {
+                        if (tab == null) {
+                            detailTopBar.action?.let { action -> TopBarActionButton(action) }
+                        }
+                    },
+                )
+            }
         },
         bottomBar = {
             NavigationBar {

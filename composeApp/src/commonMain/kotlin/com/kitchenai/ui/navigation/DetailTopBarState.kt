@@ -8,8 +8,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * What a non-tab screen hands the shared top bar: its own title, and optionally one trailing
- * action. [AppShell] owns the bar and no screen gets one of its own, so this is how a screen
- * still gets to say what belongs in it — recipe detail is the only one today.
+ * action. A screen that draws its own bar over its content (recipe detail, whose photo runs
+ * under it) claims [hidden] instead, and [AppShell] draws none.
  *
  * A screen [claim]s it on composition and [release]s it on disposal; [AppShell] only reads.
  */
@@ -18,16 +18,20 @@ class DetailTopBarState {
         private set
     var action: TopBarAction? by mutableStateOf(null)
         private set
+    var hidden: Boolean by mutableStateOf(false)
+        private set
     private var owner: Any? = null
 
     fun claim(
         owner: Any,
         title: String?,
         action: TopBarAction? = null,
+        hidden: Boolean = false,
     ) {
         this.owner = owner
         this.title = title
         this.action = action
+        this.hidden = hidden
     }
 
     /** A no-op unless [owner] claimed last: a screen leaving mid-transition is disposed after the next one claimed. */
@@ -36,6 +40,7 @@ class DetailTopBarState {
         this.owner = null
         title = null
         action = null
+        hidden = false
     }
 }
 
