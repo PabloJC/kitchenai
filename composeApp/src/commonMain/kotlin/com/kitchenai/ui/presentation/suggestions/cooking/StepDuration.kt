@@ -24,19 +24,28 @@ private val joiner = Regex("""^\s*(?:,|and|y)?\s*""", RegexOption.IGNORE_CASE)
  * 1 h 30 min" is ninety minutes, not a one-hour timer and a second one. Null when there is none.
  */
 fun firstDurationIn(step: String): Duration? {
-    val first = span.find(step) ?: return null
-    var total = first.toDuration()
-    var rest = step.substring(first.range.last + 1)
-    var last = first
-    while (true) {
-        val lead = joiner.find(rest)?.value.orEmpty()
-        val next = span.find(rest.substring(lead.length))?.takeIf { it.range.first == 0 } ?: break
-        if (next.unitRank() >= last.unitRank()) break
-        total += next.toDuration()
-        rest = rest.substring(lead.length + next.range.last + 1)
-        last = next
+    var last = span.find(step) ?: return null
+    var total = last.toDuration()
+    var rest = step.substring(last.range.last + 1)
+    var next = smallerSpanAt(rest, last)
+    while (next != null) {
+        val (match, used) = next
+        total += match.toDuration()
+        rest = rest.substring(used)
+        last = match
+        next = smallerSpanAt(rest, last)
     }
     return total.takeIf { it > Duration.ZERO }
+}
+
+/** A span opening [rest] after an optional "and", in a smaller unit than [previous], and the length it took. */
+private fun smallerSpanAt(
+    rest: String,
+    previous: MatchResult,
+): Pair<MatchResult, Int>? {
+    val lead = joiner.find(rest)?.value.orEmpty()
+    val next = span.find(rest.substring(lead.length))?.takeIf { it.range.first == 0 } ?: return null
+    return if (next.unitRank() < previous.unitRank()) next to lead.length + next.range.last + 1 else null
 }
 
 private fun MatchResult.toDuration(): Duration {
