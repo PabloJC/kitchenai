@@ -74,7 +74,6 @@ abstract class SuggestionsViewModelHarness {
     protected val items = FakeShoppingItemPort()
     protected val lists = FakeShoppingListPort()
 
-
     protected fun started(
         recipes: FakeRecipePort = FakeRecipePort(),
         languageTags: List<String> = listOf("en"),
