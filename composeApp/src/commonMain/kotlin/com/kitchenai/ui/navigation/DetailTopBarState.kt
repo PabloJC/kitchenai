@@ -11,11 +11,32 @@ import androidx.compose.ui.graphics.vector.ImageVector
  * action. [AppShell] owns the bar and no screen gets one of its own, so this is how a screen
  * still gets to say what belongs in it — recipe detail is the only one today.
  *
- * A screen writes into this on composition and clears it on disposal; [AppShell] only reads.
+ * A screen [claim]s it on composition and [release]s it on disposal; [AppShell] only reads.
  */
 class DetailTopBarState {
     var title: String? by mutableStateOf(null)
+        private set
     var action: TopBarAction? by mutableStateOf(null)
+        private set
+    private var owner: Any? = null
+
+    fun claim(
+        owner: Any,
+        title: String?,
+        action: TopBarAction? = null,
+    ) {
+        this.owner = owner
+        this.title = title
+        this.action = action
+    }
+
+    /** A no-op unless [owner] claimed last: a screen leaving mid-transition is disposed after the next one claimed. */
+    fun release(owner: Any) {
+        if (this.owner !== owner) return
+        this.owner = null
+        title = null
+        action = null
+    }
 }
 
 data class TopBarAction(

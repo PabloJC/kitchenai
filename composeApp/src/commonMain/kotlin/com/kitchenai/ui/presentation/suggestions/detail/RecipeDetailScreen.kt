@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.AlertDialog
@@ -29,6 +30,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -94,6 +96,7 @@ import com.kitchenai.ui.resources.detail_servings
 import com.kitchenai.ui.resources.detail_servings_count
 import com.kitchenai.ui.resources.detail_servings_decrease
 import com.kitchenai.ui.resources.detail_servings_increase
+import com.kitchenai.ui.resources.detail_start_cooking
 import com.kitchenai.ui.resources.detail_step_spoken
 import com.kitchenai.ui.resources.detail_steps
 import com.kitchenai.ui.resources.detail_undo
@@ -119,6 +122,7 @@ fun RecipeDetailScreen(
     userId: UserId,
     recipeId: RecipeId,
     detailTopBar: DetailTopBarState,
+    onStartCooking: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: RecipeDetailViewModel = koinViewModel(),
 ) {
@@ -186,7 +190,7 @@ fun RecipeDetailScreen(
                 if (state.unverifiable.isNotEmpty()) {
                     UnverifiableCard(state.unverifiable, viewModel::confirmCandidate)
                 }
-                StepsCard(state.steps)
+                StepsCard(state.steps, onStartCooking)
             }
         }
     }
@@ -204,25 +208,24 @@ private fun PublishTopBar(
 ) {
     val savedTint = MaterialTheme.colorScheme.primary
     val favoriteLabel = stringResource(if (state.isSaved) Res.string.detail_unsave else Res.string.detail_save)
+    val owner = remember { Any() }
     DisposableEffect(state.title, state.isSaved, state.isWorking) {
-        detailTopBar.title = state.title.ifBlank { null }
-        detailTopBar.action =
-            TopBarAction(
-                icon = if (state.isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                contentDescription = favoriteLabel,
-                enabled = !state.isWorking,
-                tint = if (state.isSaved) savedTint else null,
-                onClick = if (state.isSaved) viewModel::unsave else viewModel::save,
-                checked = state.isSaved,
-            )
+        detailTopBar.claim(
+            owner,
+            title = state.title.ifBlank { null },
+            action =
+                TopBarAction(
+                    icon = if (state.isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = favoriteLabel,
+                    enabled = !state.isWorking,
+                    tint = if (state.isSaved) savedTint else null,
+                    onClick = if (state.isSaved) viewModel::unsave else viewModel::save,
+                    checked = state.isSaved,
+                ),
+        )
         onDispose {}
     }
-    DisposableEffect(Unit) {
-        onDispose {
-            detailTopBar.title = null
-            detailTopBar.action = null
-        }
-    }
+    DisposableEffect(Unit) { onDispose { detailTopBar.release(owner) } }
 }
 
 @Composable
@@ -403,14 +406,32 @@ private fun CandidateRow(
 }
 
 @Composable
-private fun StepsCard(steps: List<String>) {
+private fun StepsCard(
+    steps: List<String>,
+    onStartCooking: () -> Unit,
+) {
     if (steps.isEmpty()) return
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
         Column(
             modifier = Modifier.padding(Dimens.large),
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
-            Text(stringResource(Res.string.detail_steps), style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(Res.string.detail_steps),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                FilledTonalButton(onClick = onStartCooking, modifier = Modifier.heightIn(min = Dimens.touchTarget)) {
+                    Icon(
+                        Icons.Outlined.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    Spacer(Modifier.width(Dimens.small))
+                    Text(stringResource(Res.string.detail_start_cooking))
+                }
+            }
             val ruleColor = MaterialTheme.colorScheme.outlineVariant
             Column(
                 // One rule running the length of the list, not a segment per row: drawn behind

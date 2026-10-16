@@ -191,9 +191,10 @@ private fun PublishTitle(
     title: String,
     detailTopBar: DetailTopBarState,
 ) {
+    val owner = remember { Any() }
     DisposableEffect(title) {
-        detailTopBar.title = title
-        onDispose { detailTopBar.title = null }
+        detailTopBar.claim(owner, title)
+        onDispose { detailTopBar.release(owner) }
     }
 }
 

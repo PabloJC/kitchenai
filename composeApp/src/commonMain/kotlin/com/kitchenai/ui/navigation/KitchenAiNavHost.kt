@@ -1,6 +1,7 @@
 package com.kitchenai.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -14,9 +15,11 @@ import com.kitchenai.ui.presentation.kitchen.KitchenScreen
 import com.kitchenai.ui.presentation.pantry.PantryScreen
 import com.kitchenai.ui.presentation.profile.ProfileScreen
 import com.kitchenai.ui.presentation.shopping.ShoppingScreen
+import com.kitchenai.ui.presentation.suggestions.cooking.CookingModeScreen
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailScreen
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeUnavailableScreen
 import com.kitchenai.ui.presentation.suggestions.list.SuggestionsScreen
+import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * The whole graph. [userId] travels as a parameter rather than in a singleton: a uid kept in
@@ -46,7 +49,29 @@ fun KitchenAiNavHost(
                 // a malformed one must not become an identifier the domain trusts.
                 val raw = entry.toRoute<Route.RecipeDetail>().recipeId
                 when (val id = RecipeId.of(raw)) {
-                    is AppResult.Success -> RecipeDetailScreen(userId, id.data, detailTopBar)
+                    is AppResult.Success ->
+                        RecipeDetailScreen(
+                            userId,
+                            id.data,
+                            detailTopBar,
+                            onStartCooking = { navController.navigate(Route.CookingMode(raw)) },
+                        )
+                    is AppResult.Failure -> RecipeUnavailableScreen(onBack = navController::navigateUp)
+                }
+            }
+            composable<Route.CookingMode> { entry ->
+                // The detail entry below owns the ViewModel, so servings and the cook action are the
+                // ones already on screen; remembered per entry, since it is gone once this one pops.
+                val detail = remember(entry) { navController.getBackStackEntry<Route.RecipeDetail>() }
+                when (val id = RecipeId.of(entry.toRoute<Route.CookingMode>().recipeId)) {
+                    is AppResult.Success ->
+                        CookingModeScreen(
+                            userId,
+                            id.data,
+                            detailTopBar,
+                            onExit = navController::navigateUp,
+                            detail = koinViewModel(viewModelStoreOwner = detail),
+                        )
                     is AppResult.Failure -> RecipeUnavailableScreen(onBack = navController::navigateUp)
                 }
             }
