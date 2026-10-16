@@ -44,7 +44,7 @@ class RecipeShareTextTest {
     }
 
     @Test
-    fun `a recipe without minutes, summary or steps leaves no empty headings`() {
+    fun `a recipe without minutes or summary or steps leaves no empty headings`() {
         val state =
             RecipeDetailUiState(title = "Toast", held = listOf(IngredientLineUi("bread", "2", optional = false)))
 
