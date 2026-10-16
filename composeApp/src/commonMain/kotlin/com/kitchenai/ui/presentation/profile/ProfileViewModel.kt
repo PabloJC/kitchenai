@@ -37,6 +37,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -60,6 +62,7 @@ class ProfileViewModel(
     private var persisted: UserProfile? = null
     private var failedEdit: UserProfile? = null
     private var autosave: Job? = null
+    private val writes = Mutex()
     private val session = MutableStateFlow<Session?>(null)
     private val authenticating = MutableStateFlow(false)
 
@@ -103,12 +106,12 @@ class ProfileViewModel(
     fun retry() {
         if (!started) return
         failedEdit?.let { edit ->
-            // A refused write is answered by trying that same change again, not by reopening listeners.
+            // A refused write is answered by sending that same change again; a failed listener, by reopening it.
             failedEdit = null
             writeFailure.value = null
             draft.value = ProfileDraft(edit, edited = true)
             scheduleSave()
-            return
+            if (profileFailure.value == null && catalogueFailure.value == null) return
         }
         profileFailure.value = null
         catalogueFailure.value = null
@@ -256,7 +259,10 @@ class ProfileViewModel(
             }
     }
 
-    private suspend fun persist() {
+    // One write at a time, each reading the draft when its turn comes: an older one can never land last.
+    private suspend fun persist() = writes.withLock { write() }
+
+    private suspend fun write() {
         val editing = draft.value?.takeIf { it.edited }?.profile ?: return
         saving.value = true
         when (val result = saveUserProfile(editing)) {
@@ -413,5 +419,9 @@ internal data class CatalogueState(
     ): CatalogueState = copy(errors = errors + (id to message))
 }
 
-/** Long enough that a run of taps is one write, short enough that leaving the tab right after still saves. */
+/**
+ * Long enough that a run of taps is one write. Switching tabs keeps this ViewModel (the tab's state
+ * is saved, not cleared), so the pending write still lands; only a sign-out or a killed process
+ * inside the window drops it.
+ */
 private val AUTOSAVE_DELAY = 600.milliseconds
