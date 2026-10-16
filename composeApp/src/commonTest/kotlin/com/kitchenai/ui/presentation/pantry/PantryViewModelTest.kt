@@ -508,6 +508,20 @@ class PantryViewModelTest {
             assertEquals(null, viewModel.state.value.prefill)
         }
 
+    @Test
+    fun `save and add another after adding from a search starts the next form empty`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.search("cumin")
+            viewModel.addFromSearch()
+
+            viewModel.saveAndAddAnother(PantryItemDraft(null, "cumin", 1.0, null, null, null))
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.isEditorOpen)
+            assertEquals(null, viewModel.state.value.prefill)
+        }
+
     private suspend fun TestScope.loadedViewModel(): PantryViewModel {
         val viewModel = viewModel()
         viewModel.start(userId, languageTags)

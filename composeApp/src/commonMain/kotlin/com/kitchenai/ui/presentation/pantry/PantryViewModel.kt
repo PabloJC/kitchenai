@@ -152,6 +152,8 @@ class PantryViewModel(
                 isEditorOpen = true,
                 editorRevision = current.editorRevision + 1,
                 lastAdded = current.displayNameOf(draft),
+                // The next form starts empty: the name a search prefilled was this item's.
+                prefill = null,
             )
         }
         write(kitchen, editing, draft)
