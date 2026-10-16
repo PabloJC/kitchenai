@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.kitchen
 
+import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.KitchenId
@@ -487,14 +488,15 @@ class KitchenViewModelTest {
     fun `copying the code is confirmed once`() =
         runTest(dispatcher) {
             val viewModel = viewModel(FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self))))
-            val events = collectEvents(viewModel)
             viewModel.start(self)
             advanceUntilIdle()
 
-            viewModel.onCodeCopied()
-            advanceUntilIdle()
-
-            assertEquals(listOf<KitchenEvent>(KitchenEvent.CodeCopied), events)
+            // Turbine, not collectEvents: a send with no foreground work after it never wakes a background collector.
+            viewModel.events.test {
+                viewModel.onCodeCopied()
+                assertEquals(KitchenEvent.CodeCopied, awaitItem())
+                expectNoEvents()
+            }
         }
 
     private fun TestScope.collectEvents(viewModel: KitchenViewModel): List<KitchenEvent> {
