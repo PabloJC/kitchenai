@@ -9,7 +9,7 @@ import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGRectMake
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
-import platform.UIKit.UISceneActivationState
+import platform.UIKit.UISceneActivationStateForegroundActive
 import platform.UIKit.UIViewController
 import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
@@ -54,7 +54,7 @@ actual fun rememberShareText(): (text: String, anchor: Rect?) -> Unit {
 private fun keyWindow(): UIWindow? =
     UIApplication.sharedApplication.connectedScenes
         .filterIsInstance<UIWindowScene>()
-        .firstOrNull { it.activationState == UISceneActivationState.UISceneActivationStateForegroundActive }
+        .firstOrNull { it.activationState == UISceneActivationStateForegroundActive }
         ?.keyWindow
 
 private fun topController(window: UIWindow?): UIViewController? {
