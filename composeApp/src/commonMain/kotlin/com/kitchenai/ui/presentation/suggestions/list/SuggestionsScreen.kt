@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -171,7 +172,13 @@ private suspend fun SnackbarHostState.announce(
         showSnackbar(event.sentence().text())
         return
     }
-    val outcome = showSnackbar(message = event.sentence().text(), actionLabel = getString(Res.string.detail_undo))
+    // Bounded: with an action, Material's default is Indefinite and the Undo would never go away.
+    val outcome =
+        showSnackbar(
+            message = event.sentence().text(),
+            actionLabel = getString(Res.string.detail_undo),
+            duration = SnackbarDuration.Long,
+        )
     if (outcome == SnackbarResult.ActionPerformed) onUndoUnsave(event.restore)
 }
 
