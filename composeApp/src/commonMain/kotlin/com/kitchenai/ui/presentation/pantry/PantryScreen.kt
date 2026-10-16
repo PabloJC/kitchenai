@@ -2,14 +2,20 @@ package com.kitchenai.ui.presentation.pantry
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -21,14 +27,18 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.Freshness
 import com.kitchenai.shared.domain.model.PantryItem
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorState
@@ -43,9 +53,12 @@ import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.not_in_catalogue
 import com.kitchenai.ui.resources.pantry_add
+import com.kitchenai.ui.resources.pantry_add_named
 import com.kitchenai.ui.resources.pantry_delete
 import com.kitchenai.ui.resources.pantry_empty_body
 import com.kitchenai.ui.resources.pantry_empty_title
+import com.kitchenai.ui.resources.pantry_no_matches
+import com.kitchenai.ui.resources.pantry_no_matches_location
 import com.kitchenai.ui.resources.pantry_removed
 import com.kitchenai.ui.resources.pantry_section_expired
 import com.kitchenai.ui.resources.pantry_section_fresh
@@ -70,6 +83,7 @@ fun PantryScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags()) }
     LaunchedEffect(Unit) {
@@ -84,17 +98,30 @@ fun PantryScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
+            // Shrinks to its icon while scrolling down so it covers less of the rows being read;
+            // the icon carries the label only then, or a screen reader would say it twice.
+            // With nothing listed there is nothing to scroll back up to: stay expanded.
+            val expanded = listState.isScrollingUp() || state.visible.isEmpty()
+            val addLabel = stringResource(Res.string.pantry_add)
             ExtendedFloatingActionButton(
                 onClick = { viewModel.openEditor(null) },
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text(stringResource(Res.string.pantry_add)) },
+                expanded = expanded,
+                icon = { Icon(Icons.Filled.Add, contentDescription = if (expanded) null else addLabel) },
+                text = { Text(addLabel) },
             )
         },
     ) { padding ->
         PantryList(
             state = state,
-            onEdit = viewModel::openEditor,
-            onRemove = viewModel::remove,
+            listState = listState,
+            actions =
+                PantryListActions(
+                    onEdit = viewModel::openEditor,
+                    onRemove = viewModel::remove,
+                    onQuery = viewModel::search,
+                    onLocation = viewModel::filterByLocation,
+                    onAddTyped = viewModel::addFromSearch,
+                ),
             modifier = Modifier.fillMaxSize().padding(padding),
         )
     }
@@ -110,19 +137,23 @@ fun PantryScreen(
     }
 }
 
+/** What the list hands back to the ViewModel, grouped so the list does not take six lambdas. */
+private class PantryListActions(
+    val onEdit: (PantryItemUi) -> Unit,
+    val onRemove: (PantryItemUi) -> Unit,
+    val onQuery: (String) -> Unit,
+    val onLocation: (TermRef?) -> Unit,
+    val onAddTyped: () -> Unit,
+)
+
 @Composable
 private fun PantryList(
     state: PantryUiState,
-    onEdit: (PantryItemUi) -> Unit,
-    onRemove: (PantryItemUi) -> Unit,
+    listState: LazyListState,
+    actions: PantryListActions,
     modifier: Modifier = Modifier,
 ) {
     val error = state.error
-    // Resolved before the grouping: section() reads the catalogue's language, and remember's
-    // block is not composition.
-    val titles = sectionTitles()
-    val sections =
-        remember(state.items, titles) { state.items.groupBy { item -> titles.of(item.freshness) } }
 
     when {
         state.isLoading -> LoadingState(modifier)
@@ -134,23 +165,102 @@ private fun PantryList(
                 modifier = modifier,
             )
         else ->
-            LazyColumn(modifier = modifier) {
-                // A failed listener keeps the last good list underneath it: it stopped emitting,
-                // it did not report an empty pantry.
-                // Keyed on a constant rather than on error itself: LazyListScope.item requires a
-                // Bundle-saveable key, and UiText wraps a StringResource that is not one. There is
-                // at most one error item here, so a fixed key is exact rather than a workaround.
-                if (error != null) item(key = "pantry-error") { ErrorState(message = error.resolve()) }
-                sections.forEach { (title, rows) ->
-                    item(key = title) {
-                        SectionHeader(title = title, trailing = { SectionCount(rows.size) })
-                    }
-                    items(rows, key = { row -> row.id.value }) { row ->
-                        PantryRow(item = row, onEdit = onEdit, onRemove = onRemove)
-                    }
+            Column(modifier = modifier) {
+                PantrySearchBar(
+                    query = state.query,
+                    onQuery = actions.onQuery,
+                    locations = state.filterLocations,
+                    selected = state.locationFilter,
+                    onLocation = actions.onLocation,
+                    modifier = Modifier.padding(vertical = Dimens.small),
+                )
+                if (state.visible.isEmpty()) {
+                    // The rows' list carries the banner otherwise; a filter that empties it must not hide it.
+                    error?.let { message -> ErrorState(message = message.resolve()) }
+                    NoMatches(query = state.query, onAddTyped = actions.onAddTyped)
+                } else {
+                    SectionedRows(state, listState, actions)
                 }
             }
     }
+}
+
+@Composable
+private fun SectionedRows(
+    state: PantryUiState,
+    listState: LazyListState,
+    actions: PantryListActions,
+) {
+    val error = state.error
+    // Resolved before the grouping: section() reads the catalogue's language, and remember's
+    // block is not composition.
+    val titles = sectionTitles()
+    val sections =
+        remember(state.visible, titles) { state.visible.groupBy { item -> titles.of(item.freshness) } }
+    // The bottom padding keeps the last row clear of the floating button.
+    LazyColumn(state = listState, contentPadding = PaddingValues(bottom = Dimens.fabClearance)) {
+        // A failed listener keeps the last good list underneath it: it stopped emitting,
+        // it did not report an empty pantry.
+        // Keyed on a constant rather than on error itself: LazyListScope.item requires a
+        // Bundle-saveable key, and UiText wraps a StringResource that is not one. There is
+        // at most one error item here, so a fixed key is exact rather than a workaround.
+        if (error != null) item(key = "pantry-error") { ErrorState(message = error.resolve()) }
+        sections.forEach { (title, rows) ->
+            item(key = title) {
+                SectionHeader(title = title, trailing = { SectionCount(rows.size) })
+            }
+            items(rows, key = { row -> row.id.value }) { row ->
+                PantryRow(item = row, onEdit = actions.onEdit, onRemove = actions.onRemove)
+            }
+        }
+    }
+}
+
+/** A search that found nothing offers to add what was typed rather than ending in a blank screen. */
+@Composable
+private fun NoMatches(
+    query: String,
+    onAddTyped: () -> Unit,
+) {
+    val typed = query.trim()
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(Dimens.large),
+        verticalArrangement = Arrangement.spacedBy(Dimens.small),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text =
+                if (typed.isEmpty()) {
+                    stringResource(Res.string.pantry_no_matches_location)
+                } else {
+                    stringResource(Res.string.pantry_no_matches, typed)
+                },
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        if (typed.isNotEmpty()) {
+            Button(onClick = onAddTyped) { Text(stringResource(Res.string.pantry_add_named, typed)) }
+        }
+    }
+}
+
+/** Whether the list is moving up (or still): the floating button stays expanded then. */
+@Composable
+private fun LazyListState.isScrollingUp(): Boolean {
+    var previousIndex by remember(this) { mutableIntStateOf(firstVisibleItemIndex) }
+    var previousOffset by remember(this) { mutableIntStateOf(firstVisibleItemScrollOffset) }
+    return remember(this) {
+        derivedStateOf {
+            val up =
+                if (previousIndex != firstVisibleItemIndex) {
+                    previousIndex > firstVisibleItemIndex
+                } else {
+                    previousOffset >= firstVisibleItemScrollOffset
+                }
+            previousIndex = firstVisibleItemIndex
+            previousOffset = firstVisibleItemScrollOffset
+            up
+        }
+    }.value
 }
 
 @Composable

@@ -26,4 +26,14 @@ data class PantryUiState(
     val editorRevision: Int = 0,
     /** The name just added by "save and add another"; null once the sheet closes. */
     val lastAdded: String? = null,
+    /** What the search field holds; blank shows every row. */
+    val query: String = "",
+    /** The location chip that is on, or null for all of them. */
+    val locationFilter: TermRef? = null,
+    /** [items] narrowed by [query] and [locationFilter]: what the list draws. */
+    val visible: List<PantryItemUi> = emptyList(),
+    /** The chips to offer: only places some row is stored in. Empty hides the row of chips. */
+    val filterLocations: List<Pair<TermRef, String>> = emptyList(),
+    /** A name the add sheet opens with, from "Add 'xyz'" on a search that found nothing. */
+    val prefill: String? = null,
 )
