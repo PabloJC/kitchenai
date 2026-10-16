@@ -99,8 +99,17 @@ class KitchenViewModel(
             }
     }
 
+    /** A whole invite message pasted into the field leaves just its code behind. */
     fun onJoinCodeInputChange(text: String) {
-        joinCodeInput.value = text
+        joinCodeInput.value = extractJoinCode(text) ?: text
+    }
+
+    fun pasteJoinCode(clipboard: String) {
+        onJoinCodeInputChange(clipboard.trim())
+    }
+
+    fun onCodeCopied() {
+        announce(KitchenEvent.CodeCopied)
     }
 
     /** With no kitchen to leave behind there is nothing to warn about, so the join runs at once. */

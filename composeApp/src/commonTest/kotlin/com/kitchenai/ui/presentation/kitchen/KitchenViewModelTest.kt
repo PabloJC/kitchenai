@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.kitchen
 
+import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.KitchenId
@@ -455,6 +456,47 @@ class KitchenViewModelTest {
 
             assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
             assertFalse(viewModel.state.value.canRetry)
+        }
+
+    @Test
+    fun `a pasted invite message leaves only its code in the field`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel(FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self))))
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.pasteJoinCode("  Join my kitchen on KitchenAI with code 0f8fad5b-d9cb-469f-a165-70867728950e\n")
+            advanceUntilIdle()
+
+            assertEquals("0F8FAD5B-D9CB-469F-A165-70867728950E", viewModel.state.value.joinCodeInput)
+        }
+
+    @Test
+    fun `pasted text with no code in it is kept trimmed so the user can see what came in`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel(FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self))))
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            viewModel.pasteJoinCode("  abc-123 ")
+            advanceUntilIdle()
+
+            assertEquals("abc-123", viewModel.state.value.joinCodeInput)
+        }
+
+    @Test
+    fun `copying the code is confirmed once`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel(FakeKitchenPort(initial = kitchen(ownerId = self, memberIds = setOf(self))))
+            viewModel.start(self)
+            advanceUntilIdle()
+
+            // Turbine, not collectEvents: a send with no foreground work after it never wakes a background collector.
+            viewModel.events.test {
+                viewModel.onCodeCopied()
+                assertEquals(KitchenEvent.CodeCopied, awaitItem())
+                expectNoEvents()
+            }
         }
 
     private fun TestScope.collectEvents(viewModel: KitchenViewModel): List<KitchenEvent> {

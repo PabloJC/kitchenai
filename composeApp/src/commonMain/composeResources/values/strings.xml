@@ -208,7 +208,7 @@
     <string name="appearance_dark">Dark</string>
     <string name="kitchen_title">Kitchen</string>
     <string name="kitchen_your_code">Your join code</string>
-    <string name="kitchen_copy">Copy</string>
+    <string name="kitchen_copy">Copy code</string>
     <string name="kitchen_regenerate_action">New code</string>
     <string name="kitchen_members_title">Members</string>
     <string name="kitchen_owner">Owner</string>
@@ -238,6 +238,10 @@
     <string name="kitchen_member_removed">%1$s was removed</string>
     <string name="kitchen_joined">You joined the kitchen</string>
     <string name="kitchen_code_regenerated">New code ready</string>
+    <string name="kitchen_invite_action">Invite</string>
+    <string name="kitchen_invite_message">Join my kitchen on KitchenAI with code %1$s</string>
+    <string name="kitchen_code_copied">Code copied</string>
+    <string name="kitchen_paste">Paste</string>
     <string name="strength_prefer">Prefer</string>
     <string name="strength_avoid">Avoid</string>
     <string name="strength_off">Off</string>

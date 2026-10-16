@@ -154,6 +154,27 @@ class KitchenUiMapperTest {
 
     private fun userId(raw: String): UserId = (UserId.of(raw) as AppResult.Success).data
 
+    @Test
+    fun `a named member gets initials and an unnamed one gets none`() {
+        val names = mapOf(owner.value to "ana maría lópez")
+        val members =
+            kitchen(
+                ownerId = owner,
+                memberIds = setOf(owner, member),
+                memberDisplayNames = names,
+            ).toUi(owner).members
+
+        assertEquals("AM", members.first { it.id == owner }.initials)
+        assertNull(members.first { it.id == member }.initials)
+    }
+
+    @Test
+    fun `initials skip punctuation and a name with no letters has none`() {
+        assertEquals("JO", initialsOf("  (Jo)  O'Neil "))
+        assertEquals("C", initialsOf("Cher"))
+        assertNull(initialsOf("--"))
+    }
+
     private fun kitchen(
         ownerId: UserId,
         memberIds: Set<UserId>,

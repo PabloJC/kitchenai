@@ -146,10 +146,12 @@ the backend can answer. Run every scenario on both platforms unless it says othe
      row), Food preferences, Appearance, Privacy (the line about what every suggestion sends) and
      About (the version).
 5. Tap "Your kitchen".
-   - Top bar "Kitchen" with a back arrow. Under "Your join code", a code with a "Copy" button and,
-     because you own the kitchen, a "New code" button.
-   - Under "Members", one row ending in "(you)" with the supporting text "Owner". An anonymous
-     account has no display name, so the row shows the member id instead of a name.
+   - Top bar "Kitchen" with a back arrow. Under "Your join code", a tinted card with the code in
+     upper case and a monospace face, an "Invite" button and a copy icon and, because you own the
+     kitchen, a "New code" button.
+   - Under "Members", one row reading "You" with an "Owner" tag and a person icon in place of
+     initials, since an anonymous account has no display name.
+   - The card, the rows and "Leave this kitchen" share the same left edge as the other tabs (16 dp).
    - "Leave this kitchen" is enabled and no explanatory message is shown above it.
    - Under "Join a kitchen", an empty field with the placeholder "Enter a join code" and a disabled
      "Join" button.
@@ -259,9 +261,8 @@ Easiest to force on the sign-out half, which only needs the network for the step
 *Device A and device B, each on a fresh install of its own platform. Sign both in with Google (two
 different accounts) if you want names in the member list; anonymous works for everything else.*
 
-1. Device A: Profile, "Your kitchen". Read the code under "Your join code". Tap "Copy" and
-   paste it somewhere you can read it on B, or type it by hand; the case does not matter, so try
-   typing it in upper case on B.
+1. Device A: Profile, "Your kitchen". Tap "Invite" and send the message to B (see scenario 22), or
+   read the code and type it by hand on B; the case does not matter.
 2. Device B: Profile, "Your kitchen". Type A's code into the field "Enter a join code".
    - "Join" becomes enabled as soon as the field is not blank.
 3. Tap "Join". B already has a solo kitchen, so a dialog "Join this kitchen?" says the current one
@@ -610,6 +611,25 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The app stays dark on every tab, including sheets and dialogs.
 3. Close the app fully and reopen it.
    - Still dark, and "Dark" is selected. Choose "Light" and the app turns light at once.
+
+### 22. Inviting through the share sheet, and a join field that takes a pasted message
+
+*Run on both platforms; device B can be the same phone on another account.*
+
+1. Profile → "Your kitchen" → "Invite".
+   - The platform share sheet opens with "Join my kitchen on KitchenAI with code" followed by the
+     code shown on screen.
+2. Dismiss the sheet and tap the copy icon.
+   - A snackbar reads "Code copied" (Android 13+ also shows its own clipboard chip).
+3. With the code still on the clipboard, look at the empty field under "Join a kitchen".
+   - A paste icon sits at its end. iOS shows no paste prompt until it is tapped.
+4. Send the full invite message to yourself, copy the whole message, then tap the paste icon.
+   - The field holds only the code, in upper case. Typing letters by hand also gives capitals.
+5. With a code in the field, press the keyboard's Go key.
+   - It acts like "Join": the join dialog opens when you already have a kitchen. With the field
+     blank, Go does nothing.
+6. With initials: on an account signed in with Google, the member rows show the first letters of
+   the first two words of each name in a round avatar.
 
 ## Results
 

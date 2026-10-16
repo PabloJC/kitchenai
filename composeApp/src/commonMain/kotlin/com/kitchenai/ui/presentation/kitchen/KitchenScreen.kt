@@ -1,17 +1,31 @@
 package com.kitchenai.ui.presentation.kitchen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -19,31 +33,43 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
+import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
+import com.kitchenai.ui.platform.rememberShareText
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_retry
 import com.kitchenai.ui.resources.kitchen_cancel
+import com.kitchenai.ui.resources.kitchen_code_copied
 import com.kitchenai.ui.resources.kitchen_code_regenerated
 import com.kitchenai.ui.resources.kitchen_confirm_join_body
 import com.kitchenai.ui.resources.kitchen_confirm_join_title
@@ -57,6 +83,8 @@ import com.kitchenai.ui.resources.kitchen_confirm_remove_title
 import com.kitchenai.ui.resources.kitchen_copy
 import com.kitchenai.ui.resources.kitchen_empty_body
 import com.kitchenai.ui.resources.kitchen_empty_title
+import com.kitchenai.ui.resources.kitchen_invite_action
+import com.kitchenai.ui.resources.kitchen_invite_message
 import com.kitchenai.ui.resources.kitchen_join_action
 import com.kitchenai.ui.resources.kitchen_join_label
 import com.kitchenai.ui.resources.kitchen_join_placeholder
@@ -66,6 +94,7 @@ import com.kitchenai.ui.resources.kitchen_left
 import com.kitchenai.ui.resources.kitchen_member_removed
 import com.kitchenai.ui.resources.kitchen_members_title
 import com.kitchenai.ui.resources.kitchen_owner
+import com.kitchenai.ui.resources.kitchen_paste
 import com.kitchenai.ui.resources.kitchen_regenerate_action
 import com.kitchenai.ui.resources.kitchen_remove_action
 import com.kitchenai.ui.resources.kitchen_title
@@ -183,6 +212,7 @@ internal fun KitchenEvent.sentence(): UiText =
         is KitchenEvent.MemberRemoved -> UiText.Joined(Res.string.kitchen_member_removed, listOf(name))
         KitchenEvent.Joined -> UiText.of(Res.string.kitchen_joined)
         KitchenEvent.CodeRegenerated -> UiText.of(Res.string.kitchen_code_regenerated)
+        KitchenEvent.CodeCopied -> UiText.of(Res.string.kitchen_code_copied)
     }
 
 /** AppShell owns the one top bar every non-tab screen shares; this hands the title back on exit. */
@@ -204,8 +234,9 @@ private fun KitchenContent(
     viewModel: KitchenViewModel,
     modifier: Modifier = Modifier,
 ) {
+    // Vertical only: headers and rows carry their own 16 dp, as on every other screen.
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.large),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.large),
     ) {
         state.error?.let { message ->
@@ -213,12 +244,18 @@ private fun KitchenContent(
                 message = message.resolve(),
                 retryLabel = stringResource(Res.string.error_retry),
                 onRetry = if (state.canRetry) viewModel::retry else null,
+                modifier = Modifier.padding(horizontal = Dimens.large),
             )
         }
 
         val kitchen = state.kitchen
         if (kitchen != null) {
-            JoinCodeSection(kitchen, isBusy = state.isBusy, onRegenerate = viewModel::requestRegenerateJoinCode)
+            JoinCodeSection(
+                kitchen,
+                isBusy = state.isBusy,
+                onRegenerate = viewModel::requestRegenerateJoinCode,
+                onCopied = viewModel::onCodeCopied,
+            )
             MembersSection(kitchen, isBusy = state.isBusy, onRemove = viewModel::requestRemoveMember)
             LeaveSection(kitchen, isBusy = state.isBusy, onLeave = viewModel::requestLeave)
         } else if (!state.canRetry) {
@@ -233,6 +270,7 @@ private fun KitchenContent(
             value = state.joinCodeInput,
             isBusy = state.isBusy,
             onChange = viewModel::onJoinCodeInputChange,
+            onPaste = viewModel::pasteJoinCode,
             onJoin = viewModel::requestJoin,
         )
     }
@@ -243,8 +281,12 @@ private fun JoinCodeSection(
     kitchen: KitchenUi,
     isBusy: Boolean,
     onRegenerate: () -> Unit,
+    onCopied: () -> Unit,
 ) {
     val clipboard = LocalClipboardManager.current
+    val share = rememberShareText()
+    val code = displayJoinCode(kitchen.joinCode)
+    val invite = stringResource(Res.string.kitchen_invite_message, code)
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
         SectionHeader(
             title = stringResource(Res.string.kitchen_your_code),
@@ -256,14 +298,50 @@ private fun JoinCodeSection(
                 }
             },
         )
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
-            horizontalArrangement = Arrangement.spacedBy(Dimens.medium),
-            verticalAlignment = Alignment.CenterVertically,
+        JoinCodeCard(
+            code = code,
+            onInvite = { share(invite) },
+            onCopy = {
+                clipboard.setText(AnnotatedString(code))
+                onCopied()
+            },
+        )
+    }
+}
+
+/** Invite is the primary way to hand the code out; Copy stays for pasting it somewhere by hand. */
+@Composable
+private fun JoinCodeCard(
+    code: String,
+    onInvite: () -> Unit,
+    onCopy: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
+    ) {
+        Column(
+            modifier = Modifier.padding(Dimens.large),
+            verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
-            Text(kitchen.joinCode, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-            TextButton(onClick = { clipboard.setText(AnnotatedString(kitchen.joinCode)) }) {
-                Text(stringResource(Res.string.kitchen_copy))
+            Text(code, style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Dimens.small),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Button(onClick = onInvite) {
+                    Icon(
+                        Icons.Outlined.Share,
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(stringResource(Res.string.kitchen_invite_action))
+                }
+                IconButton(onClick = onCopy) {
+                    Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(Res.string.kitchen_copy))
+                }
             }
         }
     }
@@ -288,8 +366,17 @@ private fun MemberRow(
     onRemove: (UserId) -> Unit,
 ) {
     ListItem(
+        leadingContent = { MemberAvatar(member.initials) },
         headlineContent = { Text(member.name.resolve()) },
-        supportingContent = { if (member.isOwner) Text(stringResource(Res.string.kitchen_owner)) },
+        supportingContent = {
+            if (member.isOwner) {
+                Tag(
+                    label = stringResource(Res.string.kitchen_owner),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
+        },
         trailingContent = {
             if (member.canRemove) {
                 TextButton(onClick = { onRemove(member.id) }, enabled = !isBusy) {
@@ -300,13 +387,37 @@ private fun MemberRow(
     )
 }
 
+/** Decorative: the row's headline already names the member. */
+@Composable
+private fun MemberAvatar(initials: String?) {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = CircleShape,
+        modifier = Modifier.size(AVATAR_SIZE),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            if (initials != null) {
+                Text(initials, style = MaterialTheme.typography.titleSmall)
+            } else {
+                Icon(Icons.Outlined.Person, contentDescription = null)
+            }
+        }
+    }
+}
+
+private val AVATAR_SIZE = 40.dp
+
 @Composable
 private fun LeaveSection(
     kitchen: KitchenUi,
     isBusy: Boolean,
     onLeave: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
+    Column(
+        modifier = Modifier.padding(horizontal = Dimens.large),
+        verticalArrangement = Arrangement.spacedBy(Dimens.small),
+    ) {
         kitchen.leaveDisabledReason?.let { reason -> LeaveNote(reason) }
         OutlinedButton(onClick = onLeave, enabled = kitchen.canLeave && !isBusy, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(Res.string.kitchen_leave_action))
@@ -319,8 +430,10 @@ private fun JoinField(
     value: String,
     isBusy: Boolean,
     onChange: (String) -> Unit,
+    onPaste: (String) -> Unit,
     onJoin: () -> Unit,
 ) {
+    val canJoin = !isBusy && value.isNotBlank()
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
         SectionHeader(title = stringResource(Res.string.kitchen_join_label))
         Row(
@@ -332,12 +445,40 @@ private fun JoinField(
                 value = value,
                 onValueChange = onChange,
                 placeholder = { Text(stringResource(Res.string.kitchen_join_placeholder)) },
+                trailingIcon = { if (value.isEmpty()) PasteAction(onPaste) },
                 singleLine = true,
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Ascii,
+                        imeAction = ImeAction.Go,
+                    ),
+                keyboardActions = KeyboardActions(onGo = { if (canJoin) onJoin() }),
                 modifier = Modifier.weight(1f),
             )
-            Button(onClick = onJoin, enabled = !isBusy && value.isNotBlank()) {
+            Button(onClick = onJoin, enabled = canJoin) {
                 Text(stringResource(Res.string.kitchen_join_action))
             }
+        }
+    }
+}
+
+/**
+ * Offered only while the clipboard holds text, checked on every resume. Only asking whether there
+ * is text, not reading it, keeps iOS from showing its paste prompt until the user taps.
+ */
+@Composable
+private fun PasteAction(onPaste: (String) -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    var hasText by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(clipboard) {
+        hasText = clipboard.hasText()
+        onPauseOrDispose {}
+    }
+    if (hasText) {
+        IconButton(onClick = { clipboard.getText()?.text?.let(onPaste) }) {
+            Icon(Icons.Outlined.ContentPaste, contentDescription = stringResource(Res.string.kitchen_paste))
         }
     }
 }

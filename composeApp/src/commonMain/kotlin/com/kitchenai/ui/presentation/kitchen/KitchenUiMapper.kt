@@ -40,14 +40,26 @@ private fun Kitchen.memberUi(
     viewer: UserId,
 ): KitchenMemberUi {
     val isSelf = id == viewer
+    val name = nameOf(id)
     return KitchenMemberUi(
         id = id,
-        name = labelOf(nameOf(id), isSelf),
+        name = labelOf(name, isSelf),
+        initials = name?.let(::initialsOf),
         isSelf = isSelf,
         isOwner = id == ownerId,
         canRemove = ownerId == viewer && id != ownerId,
     )
 }
+
+/** The first letter of the first two words: "Ana María López" is "AM". */
+internal fun initialsOf(name: String): String? =
+    name
+        .split(' ')
+        .mapNotNull { word -> word.firstOrNull { it.isLetterOrDigit() } }
+        .take(2)
+        .joinToString("")
+        .uppercase()
+        .ifEmpty { null }
 
 /** Never the raw id: it means nothing to a person reading the list. */
 private fun labelOf(
