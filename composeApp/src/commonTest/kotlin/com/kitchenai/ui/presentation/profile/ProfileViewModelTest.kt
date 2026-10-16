@@ -39,6 +39,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_invalid_input
 import com.kitchenai.ui.resources.error_no_connection
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -193,6 +194,27 @@ class ProfileViewModelTest {
             assertEquals(ConstraintStrength.AVOID, viewModel.state.value.sections.single().terms.single().strength)
             assertEquals(ConstraintStrength.AVOID, profiles.saved?.constraints?.single()?.strength)
             assertNull(viewModel.state.value.error)
+        }
+
+    @Test
+    fun `a refused write that a newer change already replaced is neither shown nor retried`() =
+        runTest(dispatcher) {
+            val viewModel = ready("tx-1" to 1)
+            val term = termRef("tx-1", "tm-1")
+            profiles.gate = CompletableDeferred()
+            profiles.failNext = AppError.Network()
+
+            viewModel.setStrength(term, ConstraintStrength.PREFER)
+            advanceTimeBy(700.milliseconds)
+            // The first write is in flight when the second change lands.
+            viewModel.setStrength(term, ConstraintStrength.AVOID)
+            profiles.gate?.complete(Unit)
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.error)
+            assertFalse(viewModel.state.value.canRetry)
+            assertEquals(ConstraintStrength.AVOID, viewModel.state.value.sections.single().terms.single().strength)
+            assertEquals(ConstraintStrength.AVOID, profiles.saved?.constraints?.single()?.strength)
         }
 
     @Test
@@ -757,6 +779,10 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
         private set
     var saveResult: AppResult<Unit> = AppResult.Success(Unit)
 
+    // When set, the next write waits for it and then fails with failNext, as a slow refused write would.
+    var gate: CompletableDeferred<Unit>? = null
+    var failNext: AppError? = null
+
     override fun observeProfile(userId: UserId): Flow<UserProfile> {
         observedUserIds += userId
         return profiles
@@ -771,6 +797,14 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
         saveCount++
+        gate?.let { waiting ->
+            gate = null
+            waiting.await()
+        }
+        failNext?.let { error ->
+            failNext = null
+            return AppResult.Failure(error)
+        }
         if (saveResult is AppResult.Success) saved = profile
         return saveResult
     }

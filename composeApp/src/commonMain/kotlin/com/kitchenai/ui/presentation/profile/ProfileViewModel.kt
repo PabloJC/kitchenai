@@ -266,12 +266,8 @@ class ProfileViewModel(
         val editing = draft.value?.takeIf { it.edited }?.profile ?: return
         saving.value = true
         when (val result = saveUserProfile(editing)) {
-            is AppResult.Failure -> {
-                // Back to what is stored, unless a newer change has already replaced this one.
-                draft.update { current -> if (current?.profile == editing) reverted(current) else current }
-                failedEdit = editing.takeUnless { result.error is AppError.Validation }
-                writeFailure.value = result.error.toProfileError(isRetryable = failedEdit != null)
-            }
+            // A newer change already replaced this one and gets its own write: nothing to revert, report or retry.
+            is AppResult.Failure -> if (draft.value?.profile == editing) refused(editing, result.error)
             is AppResult.Success -> {
                 persisted = editing
                 saved.value = true
@@ -279,6 +275,16 @@ class ProfileViewModel(
             }
         }
         saving.value = false
+    }
+
+    /** Back to what is stored, and Retry armed unless sending the same change again would be refused again. */
+    private fun refused(
+        editing: UserProfile,
+        error: AppError,
+    ) {
+        draft.update { current -> current?.let(::reverted) }
+        failedEdit = editing.takeUnless { error is AppError.Validation }
+        writeFailure.value = error.toProfileError(isRetryable = failedEdit != null)
     }
 
     private fun reverted(current: ProfileDraft): ProfileDraft =
