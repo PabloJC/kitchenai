@@ -1,5 +1,6 @@
 package com.kitchenai.ui.platform
 
+import android.app.Activity
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -16,7 +17,10 @@ actual fun rememberShareText(): (String) -> Unit {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, text)
                 }
-            context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            val chooser = Intent.createChooser(send, null)
+            // Only a non-Activity context needs a task of its own; from an Activity it would split the back stack.
+            if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(chooser)
         }
     }
 }
