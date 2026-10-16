@@ -142,9 +142,10 @@ the backend can answer. Run every scenario on both platforms unless it says othe
 3. Tap **Shopping**.
    - The empty state "Nothing to buy" / "Add what you need and tick it off as you go."
 4. Tap **Profile**.
-   - A button "Sign in with Google" at the top, the line about what every suggestion sends, and a
-     "Manage your kitchen" button.
-5. Tap "Manage your kitchen".
+   - Groups in this order: Account (a "Sign in with Google" button), Household (a "Your kitchen"
+     row), Food preferences, Appearance, Privacy (the line about what every suggestion sends) and
+     About (the version).
+5. Tap "Your kitchen".
    - Top bar "Kitchen" with a back arrow. Under "Your join code", a code with a "Copy" button and,
      because you own the kitchen, a "New code" button.
    - Under "Members", one row ending in "(you)" with the supporting text "Owner". An anonymous
@@ -194,7 +195,7 @@ signed in to this Firebase project (delete it from Authentication → Users firs
    - **Pantry** and **Shopping** both load, without an error state, and still hold what you added
      as a guest: the anonymous user was linked to Google, not swapped for it (#250).
    - **Ideas** loads without an error.
-5. Profile tab, "Manage your kitchen".
+5. Profile tab, "Your kitchen".
    - The same join code as in scenario 1, and one member ending in "(you)" and "Owner".
 6. Console.
    - *Authentication → Users*: the uid from scenario 1, now with the Google provider. No new user.
@@ -222,7 +223,7 @@ signed in to this Firebase project (delete it from Authentication → Users firs
 2. Check the other tabs.
    - **Pantry** and **Shopping** load empty and **Ideas** loads, none of them with an error state.
      This is a new anonymous account, not the Google one with its data hidden.
-3. "Manage your kitchen".
+3. "Your kitchen".
    - A third join code, one member, labelled "You" (an anonymous account has no name).
 4. Console.
    - *Authentication → Users*: a new anonymous user, a uid you have not seen yet.
@@ -258,10 +259,10 @@ Easiest to force on the sign-out half, which only needs the network for the step
 *Device A and device B, each on a fresh install of its own platform. Sign both in with Google (two
 different accounts) if you want names in the member list; anonymous works for everything else.*
 
-1. Device A: Profile, "Manage your kitchen". Read the code under "Your join code". Tap "Copy" and
+1. Device A: Profile, "Your kitchen". Read the code under "Your join code". Tap "Copy" and
    paste it somewhere you can read it on B, or type it by hand; the case does not matter, so try
    typing it in upper case on B.
-2. Device B: Profile, "Manage your kitchen". Type A's code into the field "Enter a join code".
+2. Device B: Profile, "Your kitchen". Type A's code into the field "Enter a join code".
    - "Join" becomes enabled as soon as the field is not blank.
 3. Tap "Join". B already has a solo kitchen, so a dialog "Join this kitchen?" says the current one
    will no longer be visible (#253). "Cancel" changes nothing; tap "Join" in the dialog.
@@ -599,6 +600,17 @@ shared case, a second device joined to that kitchen (scenario 5).*
      appears at the bottom. Turn airplane mode off and tap it: the chip is "Prefiero" again and
      "Guardado" shows.
 
+### 21. Appearance follows the system, or is forced light or dark
+
+*Run on both platforms.*
+
+1. Profile → Appearance: with "System" selected, switch the device between light and dark mode.
+   - The app follows the device.
+2. Choose "Dark", then switch the device to light mode.
+   - The app stays dark on every tab, including sheets and dialogs.
+3. Close the app fully and reopen it.
+   - Still dark, and "Dark" is selected. Choose "Light" and the app turns light at once.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -627,3 +639,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 18. Cook confirmation and undo |  |  |  |  |
 | 19. Recipe header and sharing |  |  |  |  |
 | 20. Preferences autosave |  |  |  |  |
+| 21. Appearance setting |  |  |  |  |

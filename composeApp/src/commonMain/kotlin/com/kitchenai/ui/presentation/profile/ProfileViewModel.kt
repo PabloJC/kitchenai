@@ -427,7 +427,8 @@ internal data class CatalogueState(
 
 /**
  * Long enough that a run of taps is one write. Switching tabs keeps this ViewModel (the tab's state
- * is saved, not cleared), so the pending write still lands; only a sign-out or a killed process
+ * is saved, not cleared), so the pending write still lands; a sign-out, an account switch (whose
+ * draft belongs to a uid this session can no longer write) or a killed process
  * inside the window drops it.
  */
 private val AUTOSAVE_DELAY = 600.milliseconds

@@ -1,5 +1,6 @@
 package com.kitchenai.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +25,7 @@ import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.KitchenAiNavHost
 import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.navigation.ShellDestination
+import com.kitchenai.ui.presentation.common.AppearanceViewModel
 import com.kitchenai.ui.presentation.common.ConnectivityViewModel
 import com.kitchenai.ui.presentation.session.SessionGate
 import com.kitchenai.ui.resources.Res
@@ -40,7 +42,8 @@ import org.koin.compose.viewmodel.koinViewModel
 /** The composition root, and the only place in the shell that holds wording. */
 @Composable
 fun App() {
-    KitchenAiTheme {
+    val appearance by koinViewModel<AppearanceViewModel>().state.collectAsStateWithLifecycle()
+    KitchenAiTheme(darkTheme = appearance.isDark(isSystemInDarkTheme())) {
         Surface(modifier = Modifier.fillMaxSize()) {
             SessionGate(
                 defaultListName = stringResource(Res.string.shopping_default_list),
