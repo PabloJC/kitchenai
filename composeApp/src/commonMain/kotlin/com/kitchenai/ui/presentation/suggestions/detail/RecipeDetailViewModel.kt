@@ -234,6 +234,8 @@ class RecipeDetailViewModel(
             writes.save(kitchen, held).map { RecipeDetailEvent.Saved }
         }
 
+    fun toggleSaved() = if (internalState.value.isSaved) unsave() else save()
+
     /** Removing twice is not an error (the use case is idempotent), so a stale heart cannot fail here. */
     fun unsave() =
         act { kitchen ->

@@ -563,6 +563,23 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The snackbar counts what was added and what is "ya en tu despensa u opcional", and
      offers "Ver", which opens the Shopping tab.
 
+### 19. Recipe detail: the photo under the bar, the title once, and sharing
+
+*Run on both platforms, device language Spanish.*
+
+1. Open any recipe.
+   - The photo runs to the top of the screen under a transparent bar; back, share and the heart
+     sit on tonal discs over it. The bar shows no title; the title is the large one under the photo.
+   - Under the title: a clock with the minutes and "N de M en tu despensa".
+2. Scroll down slowly.
+   - Once the photo has gone under the bar, the bar turns solid; once the large title has gone, the
+     bar shows the title. At no point are both titles on screen.
+3. Tap share.
+   - The system share sheet opens with the recipe as text: title, minutes and servings, the
+     ingredients at the servings on screen, and the numbered steps.
+4. Open cooking mode and come back.
+   - Cooking mode has the shared bar with the recipe title; recipe detail has its own bar again.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -589,3 +606,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 16. Errors and offline banner |  |  |  |  |
 | 17. Cooking mode |  |  |  |  |
 | 18. Cook confirmation and undo |  |  |  |  |
+| 19. Recipe header and sharing |  |  |  |  |
