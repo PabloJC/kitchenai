@@ -18,12 +18,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,17 +45,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,8 +76,8 @@ import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.designsystem.theme.PillShape
 import com.kitchenai.ui.navigation.DetailTopBarState
-import com.kitchenai.ui.navigation.TopBarAction
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.platform.rememberShareText
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
@@ -82,10 +88,10 @@ import com.kitchenai.ui.resources.detail_cook
 import com.kitchenai.ui.resources.detail_cook_anyway
 import com.kitchenai.ui.resources.detail_cook_missing_hint
 import com.kitchenai.ui.resources.detail_have
+import com.kitchenai.ui.resources.detail_in_pantry
 import com.kitchenai.ui.resources.detail_ingredients
 import com.kitchenai.ui.resources.detail_missing
 import com.kitchenai.ui.resources.detail_optional_suffix
-import com.kitchenai.ui.resources.detail_save
 import com.kitchenai.ui.resources.detail_servings
 import com.kitchenai.ui.resources.detail_servings_count
 import com.kitchenai.ui.resources.detail_servings_decrease
@@ -94,7 +100,6 @@ import com.kitchenai.ui.resources.detail_start_cooking
 import com.kitchenai.ui.resources.detail_step_spoken
 import com.kitchenai.ui.resources.detail_steps
 import com.kitchenai.ui.resources.detail_undo
-import com.kitchenai.ui.resources.detail_unsave
 import com.kitchenai.ui.resources.detail_unverifiable
 import com.kitchenai.ui.resources.detail_unverifiable_body
 import com.kitchenai.ui.resources.detail_view_list
@@ -119,18 +124,23 @@ fun RecipeDetailScreen(
     userId: UserId,
     recipeId: RecipeId,
     detailTopBar: DetailTopBarState,
-    onStartCooking: () -> Unit,
-    onViewShoppingList: () -> Unit,
+    routes: RecipeDetailRoutes,
     modifier: Modifier = Modifier,
     viewModel: RecipeDetailViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val scroll = rememberScrollState()
+    var imageHeight by remember { mutableIntStateOf(0) }
+    val barHeight = with(LocalDensity.current) { Dimens.topBar.roundToPx() }
 
     // Nothing to show but the failure: the header and the cards would draw an empty dish around it.
     val loadFailed = state.error != null && state.title.isEmpty()
-    DetailEffects(userId, recipeId, viewModel, snackbar, onViewShoppingList)
-    PublishTopBar(state, viewModel, detailTopBar)
+    // Solid once content scrolls under the bar; titled once the header's own title has scrolled away.
+    val solid by remember { derivedStateOf { imageHeight == 0 || scroll.value >= imageHeight - barHeight } }
+    val titled by remember { derivedStateOf { imageHeight == 0 || scroll.value >= imageHeight } }
+    DetailEffects(userId, recipeId, viewModel, snackbar, routes.shoppingList)
+    HideSharedTopBar(detailTopBar)
 
     state.cookReview?.let { review ->
         CookReviewDialog(
@@ -147,6 +157,16 @@ fun RecipeDetailScreen(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) },
+        topBar = {
+            RecipeDetailTopBar(
+                solid || loadFailed,
+                titled || loadFailed,
+                state,
+                routes.back,
+                viewModel::toggleSaved,
+                rememberShare(state),
+            )
+        },
         // Pinned rather than the scroll's last row, so both actions are reachable without
         // scrolling past the steps.
         bottomBar = { if (!state.isLoading && !loadFailed) Actions(state, viewModel) },
@@ -155,31 +175,52 @@ fun RecipeDetailScreen(
             LoadingState(Modifier.padding(padding))
             return@Scaffold
         }
-        Column(
-            modifier = Modifier.padding(padding).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(Dimens.large),
-        ) {
-            if (!loadFailed) Header(state, viewModel)
-            state.error?.let { message ->
-                ErrorBanner(
-                    message = message.resolve(),
-                    modifier =
-                        Modifier.padding(
-                            start = Dimens.large,
-                            top = if (loadFailed) Dimens.large else Dimens.none,
-                            end = Dimens.large,
-                        ),
-                    retryLabel = stringResource(Res.string.error_retry),
-                    onRetry = viewModel::retry,
-                )
+        // No top padding once there is a photo: it is what runs under the transparent bar.
+        val top = if (loadFailed) padding.calculateTopPadding() else Dimens.none
+        DetailBody(
+            state = state,
+            viewModel = viewModel,
+            onStartCooking = routes.startCooking,
+            onImageHeight = { height -> imageHeight = height },
+            modifier = Modifier.padding(top = top, bottom = padding.calculateBottomPadding()).verticalScroll(scroll),
+        )
+    }
+}
+
+@Composable
+private fun DetailBody(
+    state: RecipeDetailUiState,
+    viewModel: RecipeDetailViewModel,
+    onStartCooking: () -> Unit,
+    onImageHeight: (Int) -> Unit,
+    modifier: Modifier,
+) {
+    // Nothing to show but the failure: the header and the cards would draw an empty dish around it.
+    val loadFailed = state.error != null && state.title.isEmpty()
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(Dimens.large),
+    ) {
+        if (!loadFailed) Header(state, viewModel, onImageHeight)
+        state.error?.let { message ->
+            ErrorBanner(
+                message = message.resolve(),
+                modifier =
+                    Modifier.padding(
+                        start = Dimens.large,
+                        top = if (loadFailed) Dimens.large else Dimens.none,
+                        end = Dimens.large,
+                    ),
+                retryLabel = stringResource(Res.string.error_retry),
+                onRetry = viewModel::retry,
+            )
+        }
+        if (!loadFailed) {
+            IngredientsCard(state)
+            if (state.unverifiable.isNotEmpty()) {
+                UnverifiableCard(state.unverifiable, viewModel::confirmCandidate)
             }
-            if (!loadFailed) {
-                IngredientsCard(state)
-                if (state.unverifiable.isNotEmpty()) {
-                    UnverifiableCard(state.unverifiable, viewModel::confirmCandidate)
-                }
-                StepsCard(state.steps, onStartCooking)
-            }
+            StepsCard(state.steps, onStartCooking)
         }
     }
 }
@@ -205,54 +246,50 @@ private fun DetailEffects(
 }
 
 /**
- * AppShell owns the one top bar every screen shares; this is this screen's turn to say what
- * belongs in it, and to hand it back once this screen is no longer the one showing.
+ * This screen draws its own bar over the photo, so it asks AppShell for none, and hands the
+ * shared one back once it is no longer the screen showing.
  */
 @Composable
-private fun PublishTopBar(
-    state: RecipeDetailUiState,
-    viewModel: RecipeDetailViewModel,
-    detailTopBar: DetailTopBarState,
-) {
-    val savedTint = MaterialTheme.colorScheme.primary
-    val favoriteLabel = stringResource(if (state.isSaved) Res.string.detail_unsave else Res.string.detail_save)
+private fun HideSharedTopBar(detailTopBar: DetailTopBarState) {
     val owner = remember { Any() }
-    DisposableEffect(state.title, state.isSaved, state.isWorking) {
-        detailTopBar.claim(
-            owner,
-            title = state.title.ifBlank { null },
-            action =
-                TopBarAction(
-                    icon = if (state.isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = favoriteLabel,
-                    enabled = !state.isWorking,
-                    tint = if (state.isSaved) savedTint else null,
-                    onClick = if (state.isSaved) viewModel::unsave else viewModel::save,
-                    checked = state.isSaved,
-                ),
-        )
-        onDispose {}
+    DisposableEffect(Unit) {
+        detailTopBar.claim(owner, title = null, hidden = true)
+        onDispose { detailTopBar.release(owner) }
     }
-    DisposableEffect(Unit) { onDispose { detailTopBar.release(owner) } }
+}
+
+/** Null until there is a recipe to share, so the action never offers an empty message. */
+@Composable
+private fun rememberShare(state: RecipeDetailUiState): (() -> Unit)? {
+    val share = rememberShareText()
+    if (state.title.isEmpty()) return null
+    val labels =
+        ShareLabels(
+            servings = pluralStringResource(Res.plurals.detail_servings_count, state.servings, state.servings),
+            minutes = state.totalMinutes?.let { stringResource(Res.string.suggestions_minutes, it) },
+            ingredients = stringResource(Res.string.detail_ingredients),
+            steps = stringResource(Res.string.detail_steps),
+            optionalSuffix = stringResource(Res.string.detail_optional_suffix),
+        )
+    return { share(state.shareText(labels)) }
 }
 
 @Composable
 private fun Header(
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
+    onImageHeight: (Int) -> Unit,
 ) {
-    // Edge to edge, unlike everything below it: the photograph sits flush with the top of the
-    // scroll rather than margined like body content.
-    RecipeImage(tags = state.tagRefs)
+    // Edge to edge and under the bar, unlike everything below it: the photograph sits flush with
+    // the top of the screen rather than margined like body content.
+    RecipeImage(tags = state.tagRefs, modifier = Modifier.onSizeChanged { onImageHeight(it.height) })
     Column(
         modifier = Modifier.padding(horizontal = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),
     ) {
-        Text(state.title, style = MaterialTheme.typography.headlineSmall)
+        Text(state.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
         state.summary?.let { summary -> Text(summary, style = MaterialTheme.typography.bodyMedium) }
-        state.totalMinutes?.let { minutes ->
-            Text(stringResource(Res.string.suggestions_minutes, minutes), style = MaterialTheme.typography.labelSmall)
-        }
+        MetadataRow(state)
         if (state.tags.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Dimens.extraSmall)) {
                 state.tags.forEach { tag ->
@@ -265,6 +302,38 @@ private fun Header(
             }
         }
         ServingsStepper(state, viewModel)
+    }
+}
+
+/** Minutes and how much of the dish the pantry already holds, each with an icon, read at a glance. */
+@Composable
+private fun MetadataRow(state: RecipeDetailUiState) {
+    val required = state.held.count { !it.optional } + state.missing.count { !it.optional }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(Dimens.large),
+        verticalArrangement = Arrangement.spacedBy(Dimens.extraSmall),
+    ) {
+        state.totalMinutes?.let { minutes ->
+            MetadataItem(Icons.Outlined.Schedule, stringResource(Res.string.suggestions_minutes, minutes))
+        }
+        if (required > 0) {
+            val held = state.held.count { !it.optional }
+            MetadataItem(Icons.Outlined.Kitchen, stringResource(Res.string.detail_in_pantry, held, required))
+        }
+    }
+}
+
+@Composable
+private fun MetadataItem(
+    icon: ImageVector,
+    text: String,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.extraSmall),
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+        Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

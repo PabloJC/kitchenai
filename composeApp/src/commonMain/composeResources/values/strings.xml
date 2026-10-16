@@ -136,6 +136,8 @@
     <string name="detail_cook_deduction_used_up">used up</string>
     <string name="detail_cook_missing_untouched">Missing, and left out: %1$s</string>
     <string name="detail_view_list">View</string>
+    <string name="detail_in_pantry">%1$d of %2$d in your pantry</string>
+    <string name="detail_share">Share recipe</string>
     <string name="snack_cook_undone">Put back in your pantry</string>
     <string name="detail_start_cooking">Start cooking</string>
     <string name="cooking_step_counter">Step %1$d of %2$d</string>

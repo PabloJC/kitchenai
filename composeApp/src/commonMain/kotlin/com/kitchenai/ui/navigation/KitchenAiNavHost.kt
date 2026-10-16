@@ -16,6 +16,7 @@ import com.kitchenai.ui.presentation.pantry.PantryScreen
 import com.kitchenai.ui.presentation.profile.ProfileScreen
 import com.kitchenai.ui.presentation.shopping.ShoppingScreen
 import com.kitchenai.ui.presentation.suggestions.cooking.CookingModeScreen
+import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailRoutes
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailScreen
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeUnavailableScreen
 import com.kitchenai.ui.presentation.suggestions.list.SuggestionsScreen
@@ -54,8 +55,11 @@ fun KitchenAiNavHost(
                             userId,
                             id.data,
                             detailTopBar,
-                            onStartCooking = { navController.navigate(Route.CookingMode(raw)) },
-                            onViewShoppingList = { navController.switchTo(Route.ShoppingList) },
+                            RecipeDetailRoutes(
+                                back = navController::navigateUp,
+                                startCooking = { navController.navigate(Route.CookingMode(raw)) },
+                                shoppingList = { navController.switchTo(Route.ShoppingList) },
+                            ),
                         )
                     is AppResult.Failure -> RecipeUnavailableScreen(onBack = navController::navigateUp)
                 }
