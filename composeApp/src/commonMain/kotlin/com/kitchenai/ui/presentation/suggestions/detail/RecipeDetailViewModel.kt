@@ -259,7 +259,7 @@ class RecipeDetailViewModel(
     fun reviewCook() =
         act { kitchen ->
             val held = recipe.value ?: return@act null
-            when (val plan = reads.planCook(kitchen, held, internalState.value.servings)) {
+            when (val plan = writes.planCook(kitchen, held, internalState.value.servings)) {
                 is AppResult.Failure -> plan
                 is AppResult.Success -> {
                     val resolver = resolver()

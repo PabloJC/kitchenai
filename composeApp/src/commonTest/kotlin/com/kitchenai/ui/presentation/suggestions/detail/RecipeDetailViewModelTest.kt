@@ -126,10 +126,10 @@ class RecipeDetailViewModelTest : RecipeDetailViewModelHarness() {
             // 300 left after cooking two servings, and four servings need 400.
             assertEquals(4, viewModel.state.value.servings)
             assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
-            // The tap and the refresh the cook's own write triggers share one flight, so a
-            // superseded match never reaches the pantry. A sixth read would be two matches
-            // running unmanaged, with whichever answered last deciding what the screen shows.
-            assertEquals(5, pantry.reads)
+            // The cook reads the pantry once, for its plan, and the tap and the refresh its write
+            // triggers share one flight, so a superseded match never reaches the pantry. A fifth
+            // read would be two matches running unmanaged, whichever answered last winning.
+            assertEquals(4, pantry.reads)
         }
 
     @Test

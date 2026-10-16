@@ -126,12 +126,12 @@ open class RecipeDetailViewModelHarness {
                 taxonomy = ObserveTaxonomyUseCase(taxonomies),
                 pantry = ObservePantryUseCase(pantryPort),
                 saved = ObserveSavedRecipesUseCase(recipePort),
-                planCook = planCook,
             )
         val writes =
             RecipeDetailWritesDelegate(
                 save = SaveRecipeUseCase(recipePort),
                 unsave = RemoveSavedRecipeUseCase(recipePort),
+                planCook = planCook,
                 cook = CookRecipeUseCase(recipePort, planCook, consume),
                 undoCook = UndoCookUseCase(pantryPort, time, noUnits()),
                 addMissing =
