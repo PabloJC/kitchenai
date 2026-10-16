@@ -31,7 +31,13 @@ class ProfileUiMapperTest {
     @Test
     fun `a loading draft renders as loading`() {
         val state =
-            uiState(draft = null, catalogue = CatalogueState(), saving = false, account = noAccount, failure = null)
+            uiState(
+                draft = null,
+                catalogue = CatalogueState(),
+                save = SaveState(saving = false, saved = false),
+                account = noAccount,
+                failure = null,
+            )
 
         assertEquals(true, state.isLoading)
     }
@@ -42,7 +48,7 @@ class ProfileUiMapperTest {
             uiState(
                 draft = ProfileDraft(profile()),
                 catalogue = CatalogueState(),
-                saving = true,
+                save = SaveState(saving = true, saved = false),
                 account = noAccount,
                 failure = null,
             )
@@ -150,7 +156,14 @@ class ProfileUiMapperTest {
     private fun accountUiState(
         account: AccountState,
         draft: ProfileDraft? = ProfileDraft(profile()),
-    ): ProfileUiState = uiState(draft, CatalogueState(), saving = false, account = account, failure = null)
+    ): ProfileUiState =
+        uiState(
+            draft,
+            CatalogueState(),
+            save = SaveState(saving = false, saved = false),
+            account = account,
+            failure = null,
+        )
 
     private fun profile(): UserProfile = UserProfile.newFor(userId, listOf("en"), now)
 

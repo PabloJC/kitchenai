@@ -174,7 +174,6 @@
     <string name="suggestions_coverage_count">%1$d de %2$d ingredientes</string>
     <string name="suggestions_check_manually">Revisar a mano: %1$s</string>
     <string name="profile_sent_summary">Cada sugerencia envía tus restricciones dietéticas, tu despensa y el idioma de la app.</string>
-    <string name="profile_save">Guardar</string>
     <string name="profile_saving">Guardando</string>
     <string name="profile_no_preferences">No hay preferencias que mostrar</string>
     <string name="profile_no_vocabulary">Este catálogo todavía no tiene vocabulario.</string>
@@ -227,7 +226,15 @@
     <string name="kitchen_code_regenerated">Código nuevo listo</string>
     <string name="strength_prefer">Prefiero</string>
     <string name="strength_avoid">Evitar</string>
-    <string name="strength_change_to">Cambiar a %1$s</string>
+    <string name="strength_off">Nada</string>
+    <string name="strength_choose">Elegir Prefiero, Evitar o Nada</string>
+    <string name="strength_prefer_explained">Prefiero: las sugerencias tienden a incluirlo.</string>
+    <string name="strength_avoid_explained">Evitar: nunca se sugieren recetas que lo lleven.</string>
+    <plurals name="profile_selected_count">
+        <item quantity="one">%1$d elegido</item>
+        <item quantity="other">%1$d elegidos</item>
+    </plurals>
+    <string name="profile_saved">Guardado</string>
     <string name="tab_pantry">Despensa</string>
     <string name="tab_shopping">Compra</string>
     <string name="tab_ideas">Ideas</string>

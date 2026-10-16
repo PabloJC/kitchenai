@@ -25,7 +25,9 @@ import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCas
 import com.kitchenai.ui.presentation.common.UiText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +37,10 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 /** The profile screen's one state; sections and terms come from the catalogue alone, none are known here. */
 class ProfileViewModel(
@@ -48,6 +54,15 @@ class ProfileViewModel(
     private val draft = MutableStateFlow<ProfileDraft?>(null)
     private val catalogue = MutableStateFlow(CatalogueState())
     private val saving = MutableStateFlow(false)
+
+    // A write landed this session, so the screen can say "Saved" rather than nothing.
+    private val saved = MutableStateFlow(false)
+
+    // What the server holds, which a refused write reverts the chips to; and that write, kept for Retry.
+    private var persisted: UserProfile? = null
+    private var failedEdit: UserProfile? = null
+    private var autosave: Job? = null
+    private val writes = Mutex()
     private val session = MutableStateFlow<Session?>(null)
     private val authenticating = MutableStateFlow(false)
 
@@ -74,7 +89,7 @@ class ProfileViewModel(
     private val activeUserId = MutableStateFlow<UserId?>(null)
 
     val state: StateFlow<ProfileUiState> =
-        combine(draft, catalogue, saving, account, failure, ::uiState)
+        combine(draft, catalogue, combine(saving, saved, ::SaveState), account, failure, ::uiState)
             .stateIn(viewModelScope, SharingStarted.Eagerly, ProfileUiState())
 
     /** Listeners start once; another uid is the session moving on, handed over after its setup finished. */
@@ -90,6 +105,14 @@ class ProfileViewModel(
     /** Re-subscribes the profile and catalogue listeners after one failed; drafted edits survive it. */
     fun retry() {
         if (!started) return
+        failedEdit?.let { edit ->
+            // A refused write is answered by sending that same change again; a failed listener, by reopening it.
+            failedEdit = null
+            writeFailure.value = null
+            draft.value = ProfileDraft(edit, edited = true)
+            scheduleSave()
+            if (profileFailure.value == null && catalogueFailure.value == null) return
+        }
         profileFailure.value = null
         catalogueFailure.value = null
         catalogue.update { state -> state.copy(answered = state.answered && !state.failed, failed = false) }
@@ -100,26 +123,11 @@ class ProfileViewModel(
         watchCatalogue()
     }
 
-    /** Which strength a first tap binds at is domain policy; this only asks for it. */
-    fun toggleConstraint(term: TermRef) =
-        edit { profile -> toggleDietaryConstraint(profile, term, ConstraintStrength.SOFTEST) }
-
-    fun cycleStrength(term: TermRef) = edit { profile -> profile.cycled(term) }
-
-    /** The only write from the screen: one per tap, never per keystroke. */
-    fun save() {
-        val editing = draft.value?.profile ?: return
-        if (saving.value) return
-        saving.value = true
-        writeFailure.value = null
-        viewModelScope.launch {
-            when (val result = saveUserProfile(editing)) {
-                is AppResult.Failure -> writeFailure.value = result.error.toProfileError()
-                is AppResult.Success -> draft.update { current -> current?.copy(edited = false) }
-            }
-            saving.value = false
-        }
-    }
+    /** Prefer, Avoid, or off when [strength] is null; written on its own shortly after the last change. */
+    fun setStrength(
+        term: TermRef,
+        strength: ConstraintStrength?,
+    ) = edit { profile -> profile.withStrength(term, strength) }
 
     /**
      * [displayName] is Google's own and goes no further than the profile (#189): no email or photo URL.
@@ -236,13 +244,61 @@ class ProfileViewModel(
 
     private fun edit(block: (UserProfile) -> UserProfile) {
         writeFailure.value = null
+        failedEdit = null
         draft.update { current -> current?.let { ProfileDraft(block(it.profile), edited = true) } }
+        scheduleSave()
     }
 
-    /** A strength change is a removal then an insertion, so the list edit stays in the use case that owns it. */
-    private fun UserProfile.cycled(term: TermRef): UserProfile {
-        val next = constraints.firstOrNull { it.term == term }?.strength?.next() ?: return this
-        return toggleDietaryConstraint(toggleDietaryConstraint(this, term, next), term, next)
+    /** Every change restarts the wait, so a run of taps is one write; a write once begun is never cut off. */
+    private fun scheduleSave() {
+        autosave?.cancel()
+        autosave =
+            viewModelScope.launch {
+                delay(AUTOSAVE_DELAY)
+                withContext(NonCancellable) { persist() }
+            }
+    }
+
+    // One write at a time, each reading the draft when its turn comes: an older one can never land last.
+    private suspend fun persist() = writes.withLock { write() }
+
+    private suspend fun write() {
+        val editing = draft.value?.takeIf { it.edited }?.profile ?: return
+        saving.value = true
+        when (val result = saveUserProfile(editing)) {
+            // A newer change already replaced this one and gets its own write: nothing to revert, report or retry.
+            is AppResult.Failure -> if (draft.value?.profile == editing) refused(editing, result.error)
+            is AppResult.Success -> {
+                persisted = editing
+                saved.value = true
+                draft.update { current -> if (current?.profile == editing) current.copy(edited = false) else current }
+            }
+        }
+        saving.value = false
+    }
+
+    /** Back to what is stored, and Retry armed unless sending the same change again would be refused again. */
+    private fun refused(
+        editing: UserProfile,
+        error: AppError,
+    ) {
+        draft.update { current -> current?.let(::reverted) }
+        failedEdit = editing.takeUnless { error is AppError.Validation }
+        writeFailure.value = error.toProfileError(isRetryable = failedEdit != null)
+    }
+
+    private fun reverted(current: ProfileDraft): ProfileDraft =
+        persisted?.let(::ProfileDraft) ?: current.copy(edited = false)
+
+    /** Off removes it; Prefer or Avoid replace whatever it was. The list edit stays in the use case that owns it. */
+    private fun UserProfile.withStrength(
+        term: TermRef,
+        strength: ConstraintStrength?,
+    ): UserProfile {
+        val current = constraints.firstOrNull { it.term == term }?.strength
+        if (current == strength) return this
+        val cleared = current?.let { toggleDietaryConstraint(this, term, it) } ?: this
+        return strength?.let { toggleDietaryConstraint(cleared, term, it) } ?: cleared
     }
 
     // Display only: the active uid comes from start(), as the raw session runs ahead of its setup.
@@ -268,6 +324,7 @@ class ProfileViewModel(
     /** Unsaved edits survive a remote update, but the name is not editable here, so the remote one wins. */
     private fun onProfile(loaded: UserProfile) {
         profileFailure.value = null
+        persisted = loaded
         draft.update { current ->
             if (current?.edited == true) {
                 current.copy(profile = current.profile.copy(displayName = loaded.displayName))
@@ -319,6 +376,12 @@ class ProfileViewModel(
     }
 }
 
+/** A write in flight, and whether one has landed since the screen opened. */
+internal data class SaveState(
+    val saving: Boolean,
+    val saved: Boolean,
+)
+
 /** The profile being edited, and whether it holds changes that have not been written. */
 internal data class ProfileDraft(
     val profile: UserProfile,
@@ -361,3 +424,10 @@ internal data class CatalogueState(
         message: UiText,
     ): CatalogueState = copy(errors = errors + (id to message))
 }
+
+/**
+ * Long enough that a run of taps is one write. Switching tabs keeps this ViewModel (the tab's state
+ * is saved, not cleared), so the pending write still lands; only a sign-out or a killed process
+ * inside the window drops it.
+ */
+private val AUTOSAVE_DELAY = 600.milliseconds

@@ -172,8 +172,8 @@ signed in to this Firebase project (delete it from Authentication → Users firs
 
 1. Cancel path first. Profile tab, tap "Sign in with Google" and dismiss the sheet without choosing
    an account.
-   - The button is enabled again, a red line "Something went wrong" appears above the "Save"
-     button, and the session is unchanged: still anonymous, same kitchen.
+   - The button is enabled again, a red line "Something went wrong" appears at the bottom of the
+     profile, and the session is unchanged: still anonymous, same kitchen.
 2. Under the button, a grey line reads "Keeps your pantry, list and recipes, and lets you use them
    on other devices." Tap "Sign in with Google" again.
    - The platform's own Google sheet opens (Credential Manager on Android, the Google Sign-In view
@@ -208,8 +208,8 @@ signed in to this Firebase project (delete it from Authentication → Users firs
      Google", and the guest item is still on Shopping.
    - Repeat and tap "Switch": the row shows the Google name and Pantry/Shopping show the data from
      steps 1–6, not the guest item.
-8. Profile tab: tap a term chip in one of the constraint sections, then tap "Save".
-   - The button reads "Saving" and then returns to a disabled "Save". No error text appears.
+8. Profile tab: tap a term chip in one of the constraint sections and choose "Prefer".
+   - A moment later the bottom of the profile reads "Saving" and then "Saved". No error text appears.
 
 ### 3. Sign-out: a fresh anonymous session, no permission errors
 
@@ -494,9 +494,10 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The servings buttons read "Decrease servings, button" and "Increase servings, button"; the
      count between them reads "4 servings", and is read again after a tap.
    - Each step reads as one item: "Step 2 of 6: …".
-5. Profile: select a dietary term so it shows "Prefer".
-   - The chip reads its state ("Prefer"), and its actions offer "Change to Avoid". Choosing it
-     turns the marker to "Avoid".
+5. Profile: tap a dietary term and choose "Prefer" in the sheet.
+   - The chip reads its state ("Prefer") and its action reads "Choose Prefer, Avoid or Off".
+     In the sheet each of Prefer, Avoid and Off reads as a selectable option, and the two lines
+     under them are read too. Choosing "Avoid" turns the chip's state to "Avoid".
 6. With the font at 200%, repeat steps 1 to 4 by sight.
    - No label is cut off and every button stays reachable by scrolling.
 
@@ -580,6 +581,24 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Open cooking mode and come back.
    - Cooking mode has the shared bar with the recipe title; recipe detail has its own bar again.
 
+### 20. Food preferences save on their own and say what Avoid does
+
+*Run on both platforms, device language Spanish.*
+
+1. Profile tab: tap an allergen term.
+   - A sheet titled with the term offers "Prefiero · Evitar · Nada", with the lines "Prefiero: las
+     sugerencias tienden a incluirlo." and, in red, "Evitar: nunca se sugieren recetas que lo
+     lleven." There is no Save button anywhere on the profile.
+2. Choose "Evitar".
+   - The sheet closes; the chip shows a no-entry icon in red, the section header reads "1 elegido",
+     and the bottom of the profile reads "Guardando" then "Guardado".
+3. Switch to another tab straight away, then back; then close the app fully and reopen it.
+   - The chip is still "Evitar" both times.
+4. Turn on airplane mode and choose "Prefiero" on another term.
+   - Once the save fails, that chip goes back to unselected and an error with "Inténtalo de nuevo"
+     appears at the bottom. Turn airplane mode off and tap it: the chip is "Prefiero" again and
+     "Guardado" shows.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -607,3 +626,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 17. Cooking mode |  |  |  |  |
 | 18. Cook confirmation and undo |  |  |  |  |
 | 19. Recipe header and sharing |  |  |  |  |
+| 20. Preferences autosave |  |  |  |  |

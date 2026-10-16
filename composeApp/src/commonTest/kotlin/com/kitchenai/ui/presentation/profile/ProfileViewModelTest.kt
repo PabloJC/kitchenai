@@ -39,6 +39,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_invalid_input
 import com.kitchenai.ui.resources.error_no_connection
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -48,8 +49,10 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -59,6 +62,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -110,11 +114,11 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `a term selected for the first time binds at the softest strength`() =
+    fun `choosing a strength selects the term with it`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
 
-            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
+            viewModel.setStrength(termRef("tx-1", "tm-1"), ConstraintStrength.PREFER)
             advanceUntilIdle()
 
             val chip = viewModel.state.value.sections.single().terms.single()
@@ -123,93 +127,95 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `selecting a term twice leaves it unselected`() =
-        runTest(dispatcher) {
-            val viewModel = ready("tx-1" to 1)
-
-            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
-            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
-            advanceUntilIdle()
-
-            assertNull(viewModel.state.value.sections.single().terms.single().strength)
-        }
-
-    @Test
-    fun `cycling toggles a selected term between the two strengths`() =
+    fun `off leaves the term unselected and another strength replaces the first`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
             val term = termRef("tx-1", "tm-1")
 
-            fun strength(): ConstraintStrength? {
-                advanceUntilIdle()
-                return viewModel.state.value.sections.single().terms.single().strength
-            }
+            viewModel.setStrength(term, ConstraintStrength.PREFER)
+            viewModel.setStrength(term, ConstraintStrength.AVOID)
+            advanceUntilIdle()
+            assertEquals(ConstraintStrength.AVOID, profiles.saved?.constraints?.single()?.strength)
 
-            viewModel.toggleConstraint(term)
-            assertEquals(ConstraintStrength.PREFER, strength())
-            viewModel.cycleStrength(term)
-            assertEquals(ConstraintStrength.AVOID, strength())
-            viewModel.cycleStrength(term)
-            assertEquals(ConstraintStrength.PREFER, strength())
+            viewModel.setStrength(term, null)
+            advanceUntilIdle()
+            assertNull(viewModel.state.value.sections.single().terms.single().strength)
+            assertTrue(profiles.saved?.constraints.orEmpty().isEmpty())
         }
 
     @Test
-    fun `a selection reaches the write with the strength it was given`() =
+    fun `a run of changes is written once after the last of them`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
 
-            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
-            viewModel.cycleStrength(termRef("tx-1", "tm-1"))
-            viewModel.save()
-            advanceUntilIdle()
-
-            val saved = profiles.saved?.constraints.orEmpty().single()
-            assertEquals(termRef("tx-1", "tm-1"), saved.term)
-            assertEquals(ConstraintStrength.AVOID, saved.strength)
-        }
-
-    @Test
-    fun `toggling writes nothing and one press writes once`() =
-        runTest(dispatcher) {
-            val viewModel = ready("tx-1" to 1)
-
-            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
-            viewModel.cycleStrength(termRef("tx-1", "tm-1"))
-            advanceUntilIdle()
+            viewModel.setStrength(termRef("tx-1", "tm-1"), ConstraintStrength.PREFER)
+            advanceTimeBy(400.milliseconds)
+            viewModel.setStrength(termRef("tx-1", "tm-1"), ConstraintStrength.AVOID)
+            advanceTimeBy(400.milliseconds)
+            runCurrent()
             assertEquals(0, profiles.saveCount)
 
-            viewModel.save()
             advanceUntilIdle()
-
             assertEquals(1, profiles.saveCount)
             assertEquals(ConstraintStrength.AVOID, profiles.saved?.constraints?.single()?.strength)
         }
 
     @Test
-    fun `hasUnsavedChanges tracks an edit and clears once it is written`() =
+    fun `a change reads as pending until it is written and then as saved`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
-            assertFalse(viewModel.state.value.hasUnsavedChanges)
+            assertFalse(viewModel.state.value.isSaved)
 
-            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
-            advanceUntilIdle()
+            viewModel.setStrength(termRef("tx-1", "tm-1"), ConstraintStrength.PREFER)
+            runCurrent()
             assertTrue(viewModel.state.value.hasUnsavedChanges)
+            assertFalse(viewModel.state.value.isSaved)
 
-            viewModel.save()
             advanceUntilIdle()
             assertFalse(viewModel.state.value.hasUnsavedChanges)
+            assertTrue(viewModel.state.value.isSaved)
         }
 
     @Test
-    fun `a second press while the first is in flight writes once`() =
+    fun `a write that fails puts the chip back and retry sends the same change again`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
+            profiles.saveResult = AppResult.Failure(AppError.Network())
 
-            viewModel.save()
-            viewModel.save()
+            viewModel.setStrength(termRef("tx-1", "tm-1"), ConstraintStrength.AVOID)
+            advanceUntilIdle()
+            assertNull(viewModel.state.value.sections.single().terms.single().strength)
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
+            assertTrue(viewModel.state.value.canRetry)
+
+            profiles.saveResult = AppResult.Success(Unit)
+            viewModel.retry()
+            advanceUntilIdle()
+            assertEquals(ConstraintStrength.AVOID, viewModel.state.value.sections.single().terms.single().strength)
+            assertEquals(ConstraintStrength.AVOID, profiles.saved?.constraints?.single()?.strength)
+            assertNull(viewModel.state.value.error)
+        }
+
+    @Test
+    fun `a refused write that a newer change already replaced is neither shown nor retried`() =
+        runTest(dispatcher) {
+            val viewModel = ready("tx-1" to 1)
+            val term = termRef("tx-1", "tm-1")
+            val inFlight = CompletableDeferred<Unit>()
+            profiles.gate = inFlight
+            profiles.failNext = AppError.Network()
+
+            viewModel.setStrength(term, ConstraintStrength.PREFER)
+            advanceTimeBy(700.milliseconds)
+            // The first write is in flight when the second change lands.
+            viewModel.setStrength(term, ConstraintStrength.AVOID)
+            inFlight.complete(Unit)
             advanceUntilIdle()
 
-            assertEquals(1, profiles.saveCount)
+            assertNull(viewModel.state.value.error)
+            assertFalse(viewModel.state.value.canRetry)
+            assertEquals(ConstraintStrength.AVOID, viewModel.state.value.sections.single().terms.single().strength)
+            assertEquals(ConstraintStrength.AVOID, profiles.saved?.constraints?.single()?.strength)
         }
 
     @Test
@@ -262,7 +268,7 @@ class ProfileViewModelTest {
         }
 
     @Test
-    fun `a refused save is not retryable because tapping save again is the retry`() =
+    fun `a refused save is not retryable because sending it again would be refused again`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
             viewModel.start(userId)
@@ -270,7 +276,7 @@ class ProfileViewModelTest {
             profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
             advanceUntilIdle()
 
-            viewModel.save()
+            viewModel.setStrength(termRef("t-1", "tm-1"), ConstraintStrength.PREFER)
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.canRetry)
@@ -291,7 +297,7 @@ class ProfileViewModelTest {
             advanceUntilIdle()
             assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.generalError)
 
-            viewModel.save()
+            viewModel.setStrength(termRef("t-1", "tm-1"), ConstraintStrength.PREFER)
             advanceUntilIdle()
 
             // The refusal is what the user just caused, so it is what they are told.
@@ -591,12 +597,11 @@ class ProfileViewModelTest {
     fun `a remote display name reaches an edited draft without discarding the edit`() =
         runTest(dispatcher) {
             val viewModel = ready("tx-1" to 1)
-            viewModel.toggleConstraint(termRef("tx-1", "tm-1"))
-            advanceUntilIdle()
+            viewModel.setStrength(termRef("tx-1", "tm-1"), ConstraintStrength.PREFER)
+            runCurrent()
 
+            // The remote name lands while the change still waits out the autosave delay.
             profiles.profiles.emit(profile().copy(displayName = "Ada Lovelace"))
-            advanceUntilIdle()
-            viewModel.save()
             advanceUntilIdle()
 
             assertEquals("Ada Lovelace", profiles.saved?.displayName)
@@ -704,7 +709,7 @@ class ProfileViewModelTest {
             profiles.profiles.emit(profile().copy(preferences = listOf(termRef("t-9", "a"))))
             advanceUntilIdle()
 
-            viewModel.save()
+            viewModel.setStrength(termRef("t-1", "tm-1"), ConstraintStrength.PREFER)
             advanceUntilIdle()
 
             assertEquals(UiText.of(Res.string.error_invalid_input), viewModel.state.value.generalError)
@@ -773,6 +778,11 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
         private set
     var saved: UserProfile? = null
         private set
+    var saveResult: AppResult<Unit> = AppResult.Success(Unit)
+
+    // When set, the next write waits for it and then fails with failNext, as a slow refused write would.
+    var gate: CompletableDeferred<Unit>? = null
+    var failNext: AppError? = null
 
     override fun observeProfile(userId: UserId): Flow<UserProfile> {
         observedUserIds += userId
@@ -788,8 +798,16 @@ private class FakeUserProfilePort : UserProfileRepositoryContract {
 
     override suspend fun save(profile: UserProfile): AppResult<Unit> {
         saveCount++
-        saved = profile
-        return AppResult.Success(Unit)
+        gate?.let { waiting ->
+            gate = null
+            waiting.await()
+        }
+        failNext?.let { error ->
+            failNext = null
+            return AppResult.Failure(error)
+        }
+        if (saveResult is AppResult.Success) saved = profile
+        return saveResult
     }
 }
 
