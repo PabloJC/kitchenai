@@ -631,6 +631,22 @@ shared case, a second device joined to that kitchen (scenario 5).*
 6. With initials: on an account signed in with Google, the member rows show the first letters of
    the first two words of each name in a round avatar.
 
+### 23. Android: icon, splash, dark launch and per-app language
+
+*Android only. Use an Android 13+ device for steps 2 and 5.*
+
+1. Install the debug build and open the launcher and recents.
+   - The KitchenAI mark (white on blue, as on iOS) instead of the Android robot.
+2. Turn on themed icons (Wallpaper & style → Themed icons).
+   - The icon takes the wallpaper tint like the system apps, with the same mark.
+3. Force-stop the app and open it.
+   - One blue splash with the mark, then the first tab. No separate spinner page after it on a
+     normal connection; offline, the splash gives way to the session error with "Try again".
+4. Turn on dark mode, force-stop the app and open it.
+   - After the splash, no white frame before the dark UI.
+5. Settings → Apps → KitchenAI → Language.
+   - English and Español are listed. Choosing Español switches the app's text to Spanish.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

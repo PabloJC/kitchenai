@@ -41,13 +41,14 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /** The composition root, and the only place in the shell that holds wording. */
 @Composable
-fun App() {
+fun App(onSessionSettled: () -> Unit = {}) {
     val appearance by koinViewModel<AppearanceViewModel>().state.collectAsStateWithLifecycle()
     KitchenAiTheme(darkTheme = appearance.isDark(isSystemInDarkTheme())) {
         Surface(modifier = Modifier.fillMaxSize()) {
             SessionGate(
                 defaultListName = stringResource(Res.string.shopping_default_list),
                 retryLabel = stringResource(Res.string.session_retry),
+                onSettled = onSessionSettled,
             ) { userId ->
                 // Keyed by uid: a ViewModel started for the old user keeps listening to its kitchen after a swap.
                 key(userId) {

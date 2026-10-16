@@ -16,12 +16,16 @@ import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
-/** [content] composes only once the session exists: earlier, it would read `users/{uid}` with no uid. */
+/**
+ * [content] composes only once the session exists: earlier, it would read `users/{uid}` with no uid.
+ * [onSettled] fires once the session is ready or has failed, so a platform splash can stand in for the spinner.
+ */
 @Composable
 fun SessionGate(
     defaultListName: String,
     retryLabel: String,
     modifier: Modifier = Modifier,
+    onSettled: () -> Unit = {},
     viewModel: SessionViewModel = koinViewModel(),
     content: @Composable (UserId) -> Unit,
 ) {
@@ -29,6 +33,8 @@ fun SessionGate(
 
     // The composition guards the recomposition, the ViewModel guards the configuration change.
     LaunchedEffect(Unit) { viewModel.start(platformLanguageTags(), defaultListName) }
+    val settled = state != SessionUiState.Loading
+    LaunchedEffect(settled) { if (settled) onSettled() }
 
     // Drawn before the shell exists, so the Scaffold inside `content` pads neither; the components
     // themselves must not, or they double up. fillMaxSize bounds the height ErrorState centres in.
