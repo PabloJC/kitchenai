@@ -79,6 +79,7 @@ import com.kitchenai.ui.resources.suggestions_only_pantry
 import com.kitchenai.ui.resources.suggestions_quick
 import com.kitchenai.ui.resources.suggestions_view_ideas
 import com.kitchenai.ui.resources.suggestions_view_saved
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -103,7 +104,8 @@ fun SuggestionsScreen(
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { event -> snackbar.announce(event, viewModel::undoUnsave) }
+        // Launched apart: an Undo snackbar suspends until dismissed and must not hold back the next event.
+        viewModel.events.collect { event -> launch { snackbar.announce(event, viewModel::undoUnsave) } }
     }
 
     // The insets are AppShell's; a second round here would open a gap between the toolbar and
