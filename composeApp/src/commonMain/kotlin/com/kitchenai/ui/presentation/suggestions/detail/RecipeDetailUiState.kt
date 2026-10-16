@@ -27,13 +27,14 @@ data class RecipeDetailUiState(
     val isWorking: Boolean = false,
     val isSaved: Boolean = false,
     val error: UiText? = null,
+    /** Set while the cook confirmation is open: what it will subtract, read just before. */
+    val cookReview: CookReviewUi? = null,
 ) {
-    /**
-     * Cooking is refused without every required line, so the button says so before it is tapped.
-     * `title` standing in for "a recipe loaded": without it an empty screen reports nothing
-     * missing, which is not the same as having everything.
-     */
-    val canCook: Boolean get() = !isLoading && !isWorking && title.isNotEmpty() && missing.isEmpty()
+    /** `title` standing in for "a recipe loaded": an empty screen has nothing to cook. */
+    val canCook: Boolean get() = !isLoading && !isWorking && title.isNotEmpty()
+
+    /** A required line is missing, so a cook goes ahead with what is held and says so first. */
+    val cooksAnyway: Boolean get() = missing.any { !it.optional }
 }
 
 data class IngredientLineUi(

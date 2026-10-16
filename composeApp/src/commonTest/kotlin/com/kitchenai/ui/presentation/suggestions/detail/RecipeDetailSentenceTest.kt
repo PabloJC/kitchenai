@@ -3,6 +3,7 @@ package com.kitchenai.ui.presentation.suggestions.detail
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.snack_added_count
+import com.kitchenai.ui.resources.snack_cook_undone
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_unsaved
@@ -34,6 +35,11 @@ class RecipeDetailSentenceTest {
         val refusal = UiText.Raw("You are missing ingredients for this")
 
         assertEquals(refusal, RecipeDetailEvent.Failed(refusal).sentence())
+    }
+
+    @Test
+    fun `an undone cook says the pantry got it back`() {
+        assertEquals(UiText.of(Res.string.snack_cook_undone), RecipeDetailEvent.CookUndone.sentence())
     }
 
     @Test

@@ -16,11 +16,20 @@ class RecipeDetailCookHintTest {
     ) = RecipeDetailUiState(title = "Paella", isLoading = false, isWorking = isWorking, missing = missing)
 
     @Test
-    fun `a missing ingredient is the reason Cook this is disabled and the hint counts them`() {
+    fun `a missing ingredient turns the cook into cook anyway and the hint counts them`() {
         val state = loaded(missing = listOf(line, line))
 
-        assertEquals(false, state.canCook)
+        assertEquals(true, state.canCook)
+        assertEquals(true, state.cooksAnyway)
         assertEquals(UiText.Plural(Res.plurals.detail_cook_missing_hint, 2), state.cookHint())
+    }
+
+    @Test
+    fun `an optional line missing is neither cook anyway nor counted`() {
+        val state = loaded(missing = listOf(line, line.copy(optional = true)))
+
+        assertEquals(UiText.Plural(Res.plurals.detail_cook_missing_hint, 1), state.cookHint())
+        assertEquals(false, loaded(missing = listOf(line.copy(optional = true))).cooksAnyway)
     }
 
     @Test

@@ -109,7 +109,7 @@ private fun NavBackStackEntry?.isIn(graph: Route): Boolean =
 private fun NavBackStackEntry?.isAt(route: Route): Boolean = this?.destination?.hasRoute(route::class) == true
 
 /** One entry per tab, each tab keeping the stack it had: tapping a tab twice must not stack it twice. */
-private fun NavHostController.switchTo(route: Route) {
+internal fun NavHostController.switchTo(route: Route) {
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true

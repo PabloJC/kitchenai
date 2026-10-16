@@ -128,7 +128,7 @@ fun CookingModeScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             if (recipe.steps.isNotEmpty()) {
-                // Without every required line the pantry cannot be subtracted from, so Done just leaves.
+                // Mid-write there is nothing to confirm yet, so Done just leaves.
                 StepNavigation(pager, onDone = { if (recipe.canCook) finishing = true else onExit() })
             }
         },

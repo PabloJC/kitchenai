@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -37,19 +36,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,13 +77,10 @@ import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_add_missing
-import com.kitchenai.ui.resources.detail_cancel
 import com.kitchenai.ui.resources.detail_candidate_prompt
 import com.kitchenai.ui.resources.detail_cook
-import com.kitchenai.ui.resources.detail_cook_body
-import com.kitchenai.ui.resources.detail_cook_confirm
+import com.kitchenai.ui.resources.detail_cook_anyway
 import com.kitchenai.ui.resources.detail_cook_missing_hint
-import com.kitchenai.ui.resources.detail_cook_title
 import com.kitchenai.ui.resources.detail_have
 import com.kitchenai.ui.resources.detail_ingredients
 import com.kitchenai.ui.resources.detail_missing
@@ -103,15 +97,18 @@ import com.kitchenai.ui.resources.detail_undo
 import com.kitchenai.ui.resources.detail_unsave
 import com.kitchenai.ui.resources.detail_unverifiable
 import com.kitchenai.ui.resources.detail_unverifiable_body
+import com.kitchenai.ui.resources.detail_view_list
 import com.kitchenai.ui.resources.error_retry
 import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.snack_added_count
+import com.kitchenai.ui.resources.snack_cook_undone
 import com.kitchenai.ui.resources.snack_cooked
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_saved
 import com.kitchenai.ui.resources.snack_unsaved
 import com.kitchenai.ui.resources.suggestions_minutes
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -123,33 +120,24 @@ fun RecipeDetailScreen(
     recipeId: RecipeId,
     detailTopBar: DetailTopBarState,
     onStartCooking: () -> Unit,
+    onViewShoppingList: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: RecipeDetailViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    var confirmingCook by remember { mutableStateOf(false) }
-
-    // The same name the shopping screen would create the list under, read here because a
-    // LaunchedEffect block is a coroutine and not composition.
-    val defaultListName = stringResource(Res.string.shopping_default_list)
 
     // Nothing to show but the failure: the header and the cards would draw an empty dish around it.
     val loadFailed = state.error != null && state.title.isEmpty()
-
-    LaunchedEffect(userId, recipeId) {
-        viewModel.start(userId, recipeId, platformLanguageTags(), defaultListName)
-    }
-    LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.announce(event, viewModel::save) } }
+    DetailEffects(userId, recipeId, viewModel, snackbar, onViewShoppingList)
     PublishTopBar(state, viewModel, detailTopBar)
 
-    if (confirmingCook) {
-        CookDialog(
-            onConfirm = {
-                confirmingCook = false
-                viewModel.cook()
-            },
-            onDismiss = { confirmingCook = false },
+    state.cookReview?.let { review ->
+        CookReviewDialog(
+            review,
+            state.cooksAnyway,
+            onConfirm = viewModel::cook,
+            onDismiss = viewModel::dismissCookReview,
         )
     }
 
@@ -161,7 +149,7 @@ fun RecipeDetailScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         // Pinned rather than the scroll's last row, so both actions are reachable without
         // scrolling past the steps.
-        bottomBar = { if (!state.isLoading && !loadFailed) Actions(state, viewModel) { confirmingCook = true } },
+        bottomBar = { if (!state.isLoading && !loadFailed) Actions(state, viewModel) },
     ) { padding ->
         if (state.isLoading) {
             LoadingState(Modifier.padding(padding))
@@ -193,6 +181,26 @@ fun RecipeDetailScreen(
                 StepsCard(state.steps, onStartCooking)
             }
         }
+    }
+}
+
+@Composable
+private fun DetailEffects(
+    userId: UserId,
+    recipeId: RecipeId,
+    viewModel: RecipeDetailViewModel,
+    snackbar: SnackbarHostState,
+    onViewShoppingList: () -> Unit,
+) {
+    // The same name the shopping screen would create the list under, read here because a
+    // LaunchedEffect block is a coroutine and not composition.
+    val defaultListName = stringResource(Res.string.shopping_default_list)
+    LaunchedEffect(userId, recipeId) {
+        viewModel.start(userId, recipeId, platformLanguageTags(), defaultListName)
+    }
+    LaunchedEffect(viewModel) {
+        // Launched apart: a snackbar with an action suspends until dismissed, and must not hold back the next.
+        viewModel.events.collect { event -> launch { snackbar.announce(event, viewModel, onViewShoppingList) } }
     }
 }
 
@@ -486,7 +494,6 @@ private fun StepRow(
 private fun Actions(
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
-    onCook: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         HorizontalDivider()
@@ -512,7 +519,7 @@ private fun Actions(
                 Text(stringResource(Res.string.detail_add_missing))
             }
             Button(
-                onClick = onCook,
+                onClick = viewModel::reviewCook,
                 enabled = state.canCook,
                 modifier = Modifier.weight(1f).heightIn(min = Dimens.touchTarget),
             ) {
@@ -522,7 +529,7 @@ private fun Actions(
                     modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
                 Spacer(Modifier.width(Dimens.small))
-                Text(stringResource(Res.string.detail_cook))
+                Text(stringResource(if (state.cooksAnyway) Res.string.detail_cook_anyway else Res.string.detail_cook))
             }
         }
         state.cookHint()?.let { hint ->
@@ -537,43 +544,45 @@ private fun Actions(
 }
 
 /**
- * Why Cook this is disabled, when the reason is something the reader can fix. A busy or still
- * loading screen is transient and says nothing: a hint that flickered per tap would be noise.
+ * What Cook anyway leaves out, before it is tapped. A busy or still loading screen is transient
+ * and says nothing: a hint that flickered per tap would be noise. Optional lines do not count.
  */
 internal fun RecipeDetailUiState.cookHint(): UiText? {
     val settled = !isLoading && !isWorking
-    if (!settled || missing.isEmpty()) return null
-    return UiText.Plural(Res.plurals.detail_cook_missing_hint, missing.size)
-}
-
-/**
- * Two buttons, not one. The prototype gave this a single acknowledgement, but the action
- * subtracts food and cannot be undone, so there has to be a way out of the dialog.
- */
-@Composable
-private fun CookDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.detail_cook_title)) },
-        text = { Text(stringResource(Res.string.detail_cook_body)) },
-        confirmButton = { Button(onClick = onConfirm) { Text(stringResource(Res.string.detail_cook_confirm)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.detail_cancel)) } },
-    )
+    val required = missing.count { !it.optional }
+    if (!settled || required == 0) return null
+    return UiText.Plural(Res.plurals.detail_cook_missing_hint, required)
 }
 
 private suspend fun SnackbarHostState.announce(
     event: RecipeDetailEvent,
-    onUndoUnsave: () -> Unit,
+    viewModel: RecipeDetailViewModel,
+    onViewShoppingList: () -> Unit,
 ) {
-    if (event != RecipeDetailEvent.Unsaved) {
-        showSnackbar(event.sentence().text())
-        return
-    }
-    val outcome = showSnackbar(message = event.sentence().text(), actionLabel = getString(Res.string.detail_undo))
-    if (outcome == SnackbarResult.ActionPerformed) onUndoUnsave()
+    // Bounded: with an action, Material's default is Indefinite and the snackbar would never go away.
+    val action: Pair<String?, (() -> Unit)?> =
+        when (event) {
+            RecipeDetailEvent.Unsaved -> getString(Res.string.detail_undo) to viewModel::save
+            is RecipeDetailEvent.Cooked ->
+                if (event.cooked.deductions.isEmpty()) {
+                    null to null
+                } else {
+                    getString(Res.string.detail_undo) to {
+                        viewModel.undoCook(event.cooked)
+                    }
+                }
+            is RecipeDetailEvent.AddedToList ->
+                if (event.added == 0) null to null else getString(Res.string.detail_view_list) to onViewShoppingList
+            else -> null to null
+        }
+    val (label, onAction) = action
+    val outcome =
+        showSnackbar(
+            message = event.sentence().text(),
+            actionLabel = label,
+            duration = if (label == null) SnackbarDuration.Short else SnackbarDuration.Long,
+        )
+    if (outcome == SnackbarResult.ActionPerformed) onAction?.invoke()
 }
 
 /**
@@ -592,7 +601,8 @@ internal fun RecipeDetailEvent.sentence(): UiText =
                     UiText.Plural(Res.plurals.snack_not_needed_count, skipped),
                 ),
             )
-        RecipeDetailEvent.Cooked -> UiText.of(Res.string.snack_cooked)
+        is RecipeDetailEvent.Cooked -> UiText.of(Res.string.snack_cooked)
+        RecipeDetailEvent.CookUndone -> UiText.of(Res.string.snack_cook_undone)
         RecipeDetailEvent.Saved -> UiText.of(Res.string.snack_saved)
         RecipeDetailEvent.Unsaved -> UiText.of(Res.string.snack_unsaved)
         is RecipeDetailEvent.Failed -> message

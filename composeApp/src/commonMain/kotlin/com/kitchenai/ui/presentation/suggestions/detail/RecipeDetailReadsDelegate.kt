@@ -8,6 +8,7 @@ import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
+import com.kitchenai.shared.domain.usecase.recipe.PlanCookUseCase
 
 /**
  * What the detail screen reads: the dish, how it stands against the pantry, and the names for
@@ -29,4 +30,6 @@ class RecipeDetailReadsDelegate(
     val pantry: ObservePantryUseCase,
     /** Whether this dish is already kept: the heart has to show it on arrival, not only after a tap here. */
     val saved: ObserveSavedRecipesUseCase,
+    /** What a cook would subtract, read for the confirmation before anything is written. */
+    val planCook: PlanCookUseCase,
 )

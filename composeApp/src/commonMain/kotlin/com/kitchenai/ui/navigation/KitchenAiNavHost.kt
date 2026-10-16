@@ -55,6 +55,7 @@ fun KitchenAiNavHost(
                             id.data,
                             detailTopBar,
                             onStartCooking = { navController.navigate(Route.CookingMode(raw)) },
+                            onViewShoppingList = { navController.switchTo(Route.ShoppingList) },
                         )
                     is AppResult.Failure -> RecipeUnavailableScreen(onBack = navController::navigateUp)
                 }

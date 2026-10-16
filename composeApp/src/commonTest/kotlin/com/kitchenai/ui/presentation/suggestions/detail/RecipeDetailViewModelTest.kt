@@ -2,54 +2,19 @@ package com.kitchenai.ui.presentation.suggestions.detail
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.domain.model.Ingredient
-import com.kitchenai.shared.domain.model.IngredientId
-import com.kitchenai.shared.domain.model.PantryItem
-import com.kitchenai.shared.domain.model.PantryItemId
-import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
-import com.kitchenai.shared.domain.model.RecipeIngredient
-import com.kitchenai.shared.domain.model.RecipeSource
-import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
-import com.kitchenai.shared.domain.model.TaxonomyPurpose
-import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
-import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.IdGenerator
-import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
-import com.kitchenai.shared.domain.port.TimeProvider
-import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
-import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase
-import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
-import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
-import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
-import com.kitchenai.shared.domain.usecase.recipe.CookRecipeUseCase
-import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
-import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipeUseCase
-import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
-import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
-import com.kitchenai.shared.domain.usecase.recipe.RemoveSavedRecipeUseCase
-import com.kitchenai.shared.domain.usecase.recipe.SaveRecipeUseCase
-import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
-import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
-import com.kitchenai.ui.presentation.common.FakeIngredientPort
-import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
-import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
-import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.FlakyPantryPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.defaultKitchenId
-import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.error_missing_ingredients
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_not_found
 import kotlinx.coroutines.CompletableDeferred
@@ -57,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -69,33 +33,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class RecipeDetailViewModelTest {
-    private val dispatcher = StandardTestDispatcher()
-    private val now = Instant.fromEpochSeconds(1_000)
-    private val user = UserId.of("user-1").orFail()
-    private val gram = TermRef(TaxonomyId.of("units").orFail(), TermId.of("gram").orFail())
-
-    /** One catalogue line the pantry can check, and one free-text line it never can. */
-    private val dish =
-        Recipe(
-            id = RecipeId.of("recipe-1").orFail(),
-            title = "Dish",
-            summary = "A dish",
-            servings = 2,
-            totalMinutes = 20,
-            ingredients =
-                listOf(
-                    RecipeIngredient(IngredientId.of("rice").orFail(), null, Quantity(200.0, gram), false),
-                    RecipeIngredient(null, "a pinch of salt", null, false),
-                ),
-            steps = listOf("Cook it"),
-            tags = emptyList(),
-            source = RecipeSource.Catalogue,
-        )
-
+class RecipeDetailViewModelTest : RecipeDetailViewModelHarness() {
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
@@ -143,7 +83,7 @@ class RecipeDetailViewModelTest {
             assertEquals(4, viewModel.state.value.servings)
             // The buckets moved with the numbers. This is the whole reason the domain changed.
             assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
-            assertFalse(viewModel.state.value.canCook)
+            assertTrue(viewModel.state.value.cooksAnyway)
         }
 
     @Test
@@ -162,66 +102,6 @@ class RecipeDetailViewModelTest {
 
             assertEquals(2, pantry.reads)
             assertEquals(6, viewModel.state.value.servings)
-            assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
-        }
-
-    @Test
-    fun `cooking is refused while anything is missing and says so`() =
-        runTest(dispatcher) {
-            val pantry = FakePantryPort(emptyList())
-            val viewModel = started(pantry = emptyList(), pantryPort = pantry)
-            advanceUntilIdle()
-
-            assertFalse(viewModel.state.value.canCook)
-            // The refusal is a one-shot event, not a banner: the screen already lists which
-            // ingredients are short, so a permanent message would repeat what is on screen.
-            val seen = mutableListOf<RecipeDetailEvent>()
-            val collector = launch { viewModel.events.toList(seen) }
-
-            viewModel.cook()
-            advanceUntilIdle()
-            collector.cancel()
-
-            val failure = seen.filterIsInstance<RecipeDetailEvent.Failed>().single()
-            // The cook's own sentence, not the generic validation one.
-            assertEquals(UiText.of(Res.string.error_missing_ingredients), failure.message)
-            assertTrue(pantry.held.isEmpty())
-        }
-
-    @Test
-    fun `cooking takes the ingredients out of the pantry`() =
-        runTest(dispatcher) {
-            val pantry = FakePantryPort(listOf(holding(500.0)))
-            val viewModel = started(pantry = listOf(holding(500.0)), pantryPort = pantry)
-            advanceUntilIdle()
-
-            viewModel.cook()
-            advanceUntilIdle()
-
-            assertEquals(300.0, pantry.held.single().quantity.amount)
-        }
-
-    @Test
-    fun `a cook that worked is never followed by a failure`() =
-        runTest(dispatcher) {
-            // Enough for one cook and not for the next, so the buckets have to move afterwards.
-            val recipes = FakeRecipePort(catalogue = emptyList(), stored = listOf(dish))
-            val pantry = FakePantryPort(listOf(holding(350.0)))
-            val viewModel = started(pantry = listOf(holding(350.0)), pantryPort = pantry, recipePort = recipes)
-            advanceUntilIdle()
-            val seen = mutableListOf<RecipeDetailEvent>()
-            val collector = launch { viewModel.events.toList(seen) }
-
-            // A new generation replaces the stored one while this screen is still open, so the
-            // dish this ViewModel is showing exists nowhere any longer.
-            recipes.replaceAll(emptyList())
-            viewModel.cook()
-            advanceUntilIdle()
-            collector.cancel()
-
-            assertEquals(listOf<RecipeDetailEvent>(RecipeDetailEvent.Cooked), seen)
-            assertEquals(150.0, pantry.held.single().quantity.amount)
-            // And the buckets still refreshed: what is left no longer covers another serving.
             assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
         }
 
@@ -524,7 +404,7 @@ class RecipeDetailViewModelTest {
         }
 
     @Test
-    fun `cooking enables once the pantry covers every ingredient without reopening the dish`() =
+    fun `cook anyway turns back into cook once the pantry covers every ingredient without reopening the dish`() =
         runTest(dispatcher) {
             val pantry = FakePantryPort()
             val viewModel =
@@ -535,7 +415,7 @@ class RecipeDetailViewModelTest {
                 )
             advanceUntilIdle()
             assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
-            assertFalse(viewModel.state.value.canCook)
+            assertTrue(viewModel.state.value.cooksAnyway)
 
             // Shopping happens on another tab while this detail sits on the back stack.
             pantry.upsert(defaultKitchenId, holding(200.0))
@@ -543,7 +423,7 @@ class RecipeDetailViewModelTest {
 
             assertTrue(viewModel.state.value.missing.isEmpty())
             assertEquals(listOf("rice"), viewModel.state.value.held.map { it.name })
-            assertTrue(viewModel.state.value.canCook)
+            assertFalse(viewModel.state.value.cooksAnyway)
         }
 
     @Test
@@ -585,109 +465,7 @@ class RecipeDetailViewModelTest {
             assertEquals(4, viewModel.state.value.servings)
             assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
         }
-
-    private fun holding(amount: Double): PantryItem =
-        PantryItem(
-            id = PantryItemId.of("item-1").orFail(),
-            ingredient = IngredientId.of("rice").orFail(),
-            freeText = null,
-            quantity = Quantity(amount, gram),
-            location = null,
-            expiresAt = null,
-            updatedAt = now,
-        )
-
-    private fun freeTextHolding(
-        id: String,
-        freeText: String,
-    ): PantryItem =
-        PantryItem(
-            id = PantryItemId.of(id).orFail(),
-            ingredient = null,
-            freeText = freeText,
-            quantity = Quantity(1.0),
-            location = null,
-            expiresAt = null,
-            updatedAt = now,
-        )
-
-    private val taxonomies = FakeTaxonomyPort()
-    private val catalogue = FakeIngredientPort()
-    private val items = FakeShoppingItemPort()
-    private var lists = FakeShoppingListPort()
-    private val kitchens = FakeKitchenPort()
-
-    private fun started(
-        pantry: List<PantryItem>,
-        pantryPort: PantryRepositoryContract = FakePantryPort(pantry),
-        recipePort: RecipeRepositoryContract = FakeRecipePort(catalogue = listOf(dish)),
-        recipeId: RecipeId = dish.id,
-    ): RecipeDetailViewModel {
-        val time = TimeProvider { now }
-        val reads =
-            RecipeDetailReadsDelegate(
-                recipe = GetRecipeByIdUseCase(recipePort),
-                storedRecipe = GetStoredRecipeUseCase(recipePort),
-                match = MatchRecipeAgainstPantryUseCase(recipePort, pantryPort, time, noUnits()),
-                ingredients = ObserveIngredientsUseCase(catalogue),
-                taxonomies = ObserveTaxonomiesUseCase(taxonomies),
-                taxonomy = ObserveTaxonomyUseCase(taxonomies),
-                pantry = ObservePantryUseCase(pantryPort),
-                saved = ObserveSavedRecipesUseCase(recipePort),
-            )
-        val writes =
-            RecipeDetailWritesDelegate(
-                save = SaveRecipeUseCase(recipePort),
-                unsave = RemoveSavedRecipeUseCase(recipePort),
-                cook =
-                    CookRecipeUseCase(
-                        recipePort,
-                        pantryPort,
-                        ConsumePantryItemsUseCase(pantryPort, time, noUnits()),
-                        time,
-                        noUnits(),
-                    ),
-                addMissing =
-                    AddMissingIngredientsToShoppingListUseCase(
-                        recipePort,
-                        pantryPort,
-                        items,
-                        catalogue,
-                        sequentialIds(),
-                        time,
-                        noUnits(),
-                    ),
-                defaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
-            )
-        return RecipeDetailViewModel(reads, writes, ObserveKitchenUseCase(kitchens))
-            .also { it.start(user, recipeId, listOf("en"), "List") }
-    }
-
-    private fun ingredient(
-        id: String,
-        labels: Map<String, String>,
-    ): Ingredient = Ingredient(IngredientId.of(id).orFail(), labels, null, emptyList())
-
-    private fun term(
-        ref: TermRef,
-        labels: Map<String, String>,
-    ): Term = Term(ref, labels, null, 0)
-
-    private fun unitsTaxonomy(default: String): Taxonomy =
-        Taxonomy(gram.taxonomy, mapOf("en" to "Units"), default, TaxonomyPurpose.UNITS)
-
-    /** No `purpose` at all — the same as diets, allergens and every other tag vocabulary seeded. */
-    private fun cuisinesTaxonomy(default: String): Taxonomy =
-        Taxonomy(TaxonomyId.of("cuisines").orFail(), mapOf("en" to "Cuisines"), default, null)
-
-    /** Distinct ids: a constant one would fold two drafted lines into a single item. */
-    private fun sequentialIds(): IdGenerator {
-        var next = 0
-        return IdGenerator { "shopping-${++next}" }
-    }
 }
-
-private fun <T> AppResult<T>.orFail(): T = (this as AppResult.Success).data
 
 /** Refuses every read of one recipe while [error] is set, then answers like the port it wraps. */
 private class FailingRecipePort(
