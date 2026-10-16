@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.ui.presentation.common.foldForSearch
 
 /**
  * The rows a search and a location chip leave. The name matches anywhere in it, ignoring case
