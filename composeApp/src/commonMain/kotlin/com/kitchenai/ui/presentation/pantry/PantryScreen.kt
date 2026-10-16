@@ -100,7 +100,8 @@ fun PantryScreen(
         floatingActionButton = {
             // Shrinks to its icon while scrolling down so it covers less of the rows being read;
             // the icon carries the label only then, or a screen reader would say it twice.
-            val expanded = listState.isScrollingUp()
+            // With nothing listed there is nothing to scroll back up to: stay expanded.
+            val expanded = listState.isScrollingUp() || state.visible.isEmpty()
             val addLabel = stringResource(Res.string.pantry_add)
             ExtendedFloatingActionButton(
                 onClick = { viewModel.openEditor(null) },
@@ -174,6 +175,8 @@ private fun PantryList(
                     modifier = Modifier.padding(vertical = Dimens.small),
                 )
                 if (state.visible.isEmpty()) {
+                    // The rows' list carries the banner otherwise; a filter that empties it must not hide it.
+                    error?.let { message -> ErrorState(message = message.resolve()) }
                     NoMatches(query = state.query, onAddTyped = actions.onAddTyped)
                 } else {
                     SectionedRows(state, listState, actions)
