@@ -18,6 +18,9 @@ object Dimens {
     /** Minimum touch target; below this the gesture is unreliable on a phone held in one hand. */
     val touchTarget = 48.dp
 
+    /** Room under a list for the floating action button (56dp) and its margins, so the last row stays tappable. */
+    val fabClearance = 88.dp
+
     /** Corner radius shared by cards and the swipe background, so the two line up. */
     val corner = 12.dp
 

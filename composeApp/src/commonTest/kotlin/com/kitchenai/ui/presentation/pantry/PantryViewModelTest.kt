@@ -447,6 +447,81 @@ class PantryViewModelTest {
             assertEquals(1, pantry.items.subscriptionCount.value)
         }
 
+    @Test
+    fun `a search narrows the rows and clearing it brings them back`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+
+            viewModel.search("nothing like it")
+            assertEquals(emptyList(), viewModel.state.value.visible)
+
+            viewModel.search("INGREDIENT")
+            assertEquals(listOf(itemId), viewModel.state.value.visible.map { row -> row.id })
+
+            viewModel.search("")
+            assertEquals(viewModel.state.value.items, viewModel.state.value.visible)
+        }
+
+    @Test
+    fun `a location chip filters and tapping it again turns it off`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            assertEquals(listOf(locationRef to LOCATION_LABEL), viewModel.state.value.filterLocations)
+
+            viewModel.filterByLocation(locationRef)
+            assertEquals(locationRef, viewModel.state.value.locationFilter)
+            assertEquals(listOf(itemId), viewModel.state.value.visible.map { row -> row.id })
+
+            viewModel.filterByLocation(locationRef)
+            assertEquals(null, viewModel.state.value.locationFilter)
+        }
+
+    @Test
+    fun `the filter follows the rows as they change`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.search("other")
+            assertEquals(emptyList(), viewModel.state.value.visible)
+
+            catalogue.emit(listOf(ingredient, otherIngredient))
+            pantry.items.emit(
+                listOf(item, item.copy(id = PantryItemId.of("item-9").value(), ingredient = otherIngredient.id)),
+            )
+            advanceUntilIdle()
+
+            assertEquals(listOf("item-9"), viewModel.state.value.visible.map { row -> row.id.value })
+        }
+
+    @Test
+    fun `adding from a search that found nothing opens the sheet with what was typed`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.search("  cumin ")
+
+            viewModel.addFromSearch()
+
+            assertTrue(viewModel.state.value.isEditorOpen)
+            assertEquals(null, viewModel.state.value.editing)
+            assertEquals("cumin", viewModel.state.value.prefill)
+
+            viewModel.closeEditor()
+            assertEquals(null, viewModel.state.value.prefill)
+        }
+
+    @Test
+    fun `save and add another after adding from a search starts the next form empty`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.search("cumin")
+            viewModel.addFromSearch()
+
+            viewModel.saveAndAddAnother(PantryItemDraft(null, "cumin", 1.0, null, null, null))
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.isEditorOpen)
+            assertEquals(null, viewModel.state.value.prefill)
+        }
+
     private suspend fun TestScope.loadedViewModel(): PantryViewModel {
         val viewModel = viewModel()
         viewModel.start(userId, languageTags)
