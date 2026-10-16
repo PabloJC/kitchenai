@@ -175,7 +175,6 @@
     <string name="suggestions_coverage_count">%1$d of %2$d ingredients</string>
     <string name="suggestions_check_manually">Check manually: %1$s</string>
     <string name="profile_sent_summary">Every suggestion sends your dietary constraints, your pantry, and the app\'s language.</string>
-    <string name="profile_save">Save</string>
     <string name="profile_saving">Saving</string>
     <string name="profile_no_preferences">No preferences to show</string>
     <string name="profile_no_vocabulary">This catalogue has no vocabulary in it yet.</string>
@@ -228,7 +227,15 @@
     <string name="kitchen_code_regenerated">New code ready</string>
     <string name="strength_prefer">Prefer</string>
     <string name="strength_avoid">Avoid</string>
-    <string name="strength_change_to">Change to %1$s</string>
+    <string name="strength_off">Off</string>
+    <string name="strength_choose">Choose Prefer, Avoid or Off</string>
+    <string name="strength_prefer_explained">Prefer: suggestions lean towards it.</string>
+    <string name="strength_avoid_explained">Avoid: recipes containing it are never suggested.</string>
+    <plurals name="profile_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="profile_saved">Saved</string>
     <string name="tab_pantry">Pantry</string>
     <string name="tab_shopping">Shopping</string>
     <string name="tab_ideas">Ideas</string>

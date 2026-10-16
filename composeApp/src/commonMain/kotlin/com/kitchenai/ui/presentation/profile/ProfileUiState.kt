@@ -5,9 +5,6 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.UiText
 
-/** The field name `SaveUserProfileUseCase` reports; the screen anchors its messages to it. */
-const val CONSTRAINTS_FIELD = "constraints"
-
 /**
  * Everything the profile screen draws. The shapes below belong to this one state and mean
  * nothing apart from it, which is why they share a file.
@@ -21,9 +18,10 @@ data class ProfileUiState(
     val hasCatalogueFailed: Boolean = false,
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
-    // Surfaces ProfileDraft.edited: without it, the screen looks identical whether the last
-    // toggle was written or is still only sitting in memory.
+    // A change waiting out the autosave delay or being written, so the screen can say "Saving".
     val hasUnsavedChanges: Boolean = false,
+    // A write landed this session and nothing is pending: the quiet "Saved" that replaces a Save button.
+    val isSaved: Boolean = false,
     // True only for a non-anonymous Session.SignedIn: an anonymous session is drawn the same
     // way as a signed-out one, since neither has an account to show.
     val hasAccount: Boolean = false,
@@ -36,17 +34,10 @@ data class ProfileUiState(
     val switchNeedsAppleSheet: Boolean = false,
     val error: ProfileError? = null,
 ) {
-    /** A message belongs to an input only when the use case named that input. */
-    fun errorFor(field: String): UiText? = error?.takeIf { it.field == field }?.message
+    /** Every failure, whichever field it names: with no inputs to anchor to, the banner is the one place to say it. */
+    val generalError: UiText? get() = error?.message
 
-    /**
-     * What is left once every field has taken its own: the screen shows it beside the save
-     * button. A failure naming a field this screen does not bind still shows up here, because
-     * the alternative is dropping it and telling the user nothing.
-     */
-    val generalError: UiText? get() = error?.takeIf { it.field !in BOUND_FIELDS }?.message
-
-    /** Only a listener that failed can be reopened; a refused write is answered by tapping Save again. */
+    /** A listener that failed, or a write that may succeed if sent again; a refused (invalid) write would not. */
     val canRetry: Boolean get() = error?.isRetryable == true
 }
 
@@ -79,6 +70,3 @@ data class TermChipUi(
 ) {
     val selected: Boolean get() = strength != null
 }
-
-/** The inputs that render their own message; anything else falls through to the general one. */
-private val BOUND_FIELDS = setOf(CONSTRAINTS_FIELD)

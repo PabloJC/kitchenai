@@ -24,10 +24,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.AppleIdToken
 import com.kitchenai.shared.domain.model.AppleRawNonce
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorBanner
@@ -50,7 +54,7 @@ import com.kitchenai.ui.resources.profile_delete_title
 import com.kitchenai.ui.resources.profile_kitchen_action
 import com.kitchenai.ui.resources.profile_no_preferences
 import com.kitchenai.ui.resources.profile_no_vocabulary
-import com.kitchenai.ui.resources.profile_save
+import com.kitchenai.ui.resources.profile_saved
 import com.kitchenai.ui.resources.profile_saving
 import com.kitchenai.ui.resources.profile_sent_summary
 import com.kitchenai.ui.resources.profile_switch_body
@@ -129,30 +133,44 @@ private fun ProfileContent(
                 onAction = if (state.hasCatalogueFailed) viewModel::retry else null,
             )
         } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(Dimens.medium),
-            ) {
-                item { state.errorFor(CONSTRAINTS_FIELD)?.let { message -> FieldMessage(message) } }
-                items(state.sections, key = { section -> section.taxonomy.value }) { section ->
-                    ConstraintSection(
-                        section = section,
-                        onToggle = viewModel::toggleConstraint,
-                        onCycleStrength = viewModel::cycleStrength,
-                    )
-                }
-            }
+            Preferences(state, viewModel, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(Dimens.medium))
-        SaveRow(
-            isSaving = state.isSaving,
-            hasUnsavedChanges = state.hasUnsavedChanges,
+        SaveStatus(
+            isSaving = state.isSaving || state.hasUnsavedChanges,
+            isSaved = state.isSaved,
             message = state.generalError,
             onRetry = if (state.canRetry) viewModel::retry else null,
-            onSave = viewModel::save,
         )
         Spacer(Modifier.height(Dimens.large))
+    }
+}
+
+/** The sections, and the Prefer · Avoid · Off sheet for whichever term was tapped. */
+@Composable
+private fun Preferences(
+    state: ProfileUiState,
+    viewModel: ProfileViewModel,
+    modifier: Modifier,
+) {
+    var choosing by remember { mutableStateOf<TermRef?>(null) }
+    LazyColumn(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
+        items(state.sections, key = { section -> section.taxonomy.value }) { section ->
+            ConstraintSection(section = section, onChoose = { chip -> choosing = chip.term })
+        }
+    }
+    // Read from state each time, so the sheet shows the strength just chosen rather than the one it opened with.
+    val chip = choosing?.let { term -> state.sections.flatMap { it.terms }.firstOrNull { it.term == term } }
+    if (chip != null) {
+        StrengthSheet(
+            chip = chip,
+            onChoose = { strength ->
+                viewModel.setStrength(chip.term, strength)
+                choosing = null
+            },
+            onDismiss = { choosing = null },
+        )
     }
 }
 
@@ -313,39 +331,28 @@ private fun TransparencyLine() {
     )
 }
 
+/**
+ * Where the Save button was: a quiet "Saving" or "Saved", since every change is written on its
+ * own; a refused write shows here with Retry, its chip already back to what is stored.
+ */
 @Composable
-private fun SaveRow(
+private fun SaveStatus(
     isSaving: Boolean,
-    hasUnsavedChanges: Boolean,
+    isSaved: Boolean,
     message: UiText?,
     onRetry: (() -> Unit)?,
-    onSave: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
-        verticalArrangement = Arrangement.spacedBy(Dimens.small),
-    ) {
-        message?.let { text ->
-            ErrorBanner(text.resolve(), retryLabel = stringResource(Res.string.error_retry), onRetry = onRetry)
-        }
-        // Disabled rather than always tappable: with nothing changed, a tap was a silent no-op
-        // write — this both signals "nothing pending" and stops that write from firing.
-        Button(
-            onClick = onSave,
-            enabled = !isSaving && hasUnsavedChanges,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (isSaving) stringResource(Res.string.profile_saving) else stringResource(Res.string.profile_save))
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large)) {
+        when {
+            message != null ->
+                ErrorBanner(message.resolve(), retryLabel = stringResource(Res.string.error_retry), onRetry = onRetry)
+            isSaving || isSaved ->
+                Text(
+                    text = stringResource(if (isSaving) Res.string.profile_saving else Res.string.profile_saved),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
         }
     }
-}
-
-/** In the error colour so it is not read as a hint. */
-@Composable
-private fun FieldMessage(message: UiText) {
-    Text(
-        text = message.resolve(),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.error,
-    )
 }

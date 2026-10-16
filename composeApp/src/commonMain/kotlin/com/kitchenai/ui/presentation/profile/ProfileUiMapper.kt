@@ -12,7 +12,7 @@ import com.kitchenai.ui.resources.error_unauthorized_own_data
 internal fun uiState(
     draft: ProfileDraft?,
     catalogue: CatalogueState,
-    saving: Boolean,
+    save: SaveState,
     account: AccountState,
     failure: ProfileError?,
 ): ProfileUiState {
@@ -22,8 +22,9 @@ internal fun uiState(
         isCatalogueLoaded = catalogue.answered,
         hasCatalogueFailed = catalogue.failed,
         isLoading = draft == null,
-        isSaving = saving,
+        isSaving = save.saving,
         hasUnsavedChanges = draft?.edited == true,
+        isSaved = save.saved && !save.saving && draft?.edited != true,
         hasAccount = account.session.hasAccount(),
         displayName = profile?.displayName,
         isAuthenticating = account.authenticating,
