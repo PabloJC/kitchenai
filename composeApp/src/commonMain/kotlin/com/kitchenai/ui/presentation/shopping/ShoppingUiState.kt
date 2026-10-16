@@ -71,4 +71,6 @@ data class ShoppingDraftUi(
 data class IngredientSuggestion(
     val id: IngredientId,
     val label: String,
+    /** Already on the list, unticked: picking it merges into that line rather than adding a second. */
+    val onList: Boolean = false,
 )

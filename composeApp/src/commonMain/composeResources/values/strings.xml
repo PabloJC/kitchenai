@@ -68,6 +68,9 @@
     <string name="pantry_expiry_pick">Pick a date</string>
     <string name="shopping_add_field">Add an item</string>
     <string name="shopping_add">Add</string>
+    <string name="shopping_on_list">%1$s · already on the list</string>
+    <string name="shopping_quantity_toggle">Set an amount</string>
+    <string name="shopping_unpick">Remove the pick</string>
     <string name="shopping_default_list">Shopping list</string>
     <string name="shopping_to_buy">To buy</string>
     <string name="shopping_in_cart">In the cart</string>

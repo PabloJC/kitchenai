@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.ui.presentation.common.foldForSearch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
