@@ -104,7 +104,7 @@ fun SuggestionsScreen(
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     LaunchedEffect(viewModel) {
-        // Launched apart: an Undo snackbar suspends until dismissed and must not hold back the next event.
+        // Launched apart so the collector keeps draining while an Undo waits; the host still shows them in order.
         viewModel.events.collect { event -> launch { snackbar.announce(event, viewModel::undoUnsave) } }
     }
 
