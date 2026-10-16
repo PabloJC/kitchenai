@@ -455,6 +455,76 @@ class ShoppingViewModelTest {
         }
 
     @Test
+    fun `an amount and unit typed before the name are added as the quantity`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            taxonomies.taxonomies.emit(listOf(unitsTaxonomy))
+            taxonomies.terms.emit(listOf(gramTerm))
+            items.emit(emptyList())
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("200 g flour")
+            viewModel.add()
+            advanceUntilIdle()
+
+            val added = items.upserts.last().single()
+            assertEquals("flour", added.freeText)
+            assertEquals(Quantity(200.0, gram), added.quantity)
+        }
+
+    @Test
+    fun `an amount set by hand wins over one typed in the field`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            taxonomies.taxonomies.emit(listOf(unitsTaxonomy))
+            taxonomies.terms.emit(listOf(gramTerm))
+            items.emit(emptyList())
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("200 g flour")
+            viewModel.onQuantityChange(5.0, null)
+            viewModel.add()
+            advanceUntilIdle()
+
+            assertEquals(Quantity(5.0, null), items.upserts.last().single().quantity)
+        }
+
+    @Test
+    fun `a typed amount survives picking the suggestion its name found`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            taxonomies.taxonomies.emit(listOf(unitsTaxonomy))
+            taxonomies.terms.emit(listOf(gramTerm))
+            items.emit(emptyList())
+            catalogue.emit(listOf(Ingredient(ingredientId, mapOf("en" to "catalogued"), null, emptyList())))
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("300 g cata")
+            advanceUntilIdle()
+            viewModel.onPick(viewModel.state.value.draft.suggestions.single())
+            viewModel.add()
+            advanceUntilIdle()
+
+            val added = items.upserts.last().single()
+            assertEquals(ingredientId, added.ingredient)
+            assertEquals(Quantity(300.0, gram), added.quantity)
+        }
+
+    @Test
+    fun `a suggestion already on the list says so`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            catalogue.emit(listOf(Ingredient(ingredientId, mapOf("en" to "catalogued"), null, emptyList())))
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("cata")
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.draft.suggestions.single().onList)
+        }
+
+    @Test
     fun `a picked suggestion is written as an identifier and typed words as free text`() =
         runTest(dispatcher) {
             val viewModel = started()
