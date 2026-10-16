@@ -4,14 +4,18 @@ import android.app.Activity
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 
-/** Always through the chooser: a default share target picked once would otherwise skip it for good. */
+/**
+ * Always through the chooser: a default share target picked once would otherwise skip it for good.
+ * The chooser is a bottom sheet, so the anchor goes unused.
+ */
 @Composable
-actual fun rememberShareText(): (String) -> Unit {
+actual fun rememberShareText(): (text: String, anchor: Rect?) -> Unit {
     val context = LocalContext.current
     return remember(context) {
-        { text ->
+        { text, _ ->
             val send =
                 Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"

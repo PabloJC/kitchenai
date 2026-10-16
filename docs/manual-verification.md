@@ -577,6 +577,9 @@ shared case, a second device joined to that kitchen (scenario 5).*
 3. Tap share.
    - The system share sheet opens with the recipe as text: title, minutes and servings, the
      ingredients at the servings on screen, and the numbered steps.
+   - On an iPad the sheet is a popover whose arrow points at the share icon. Open it in portrait,
+     close it, rotate to landscape and open it again; then repeat with the bar solid after
+     scrolling down.
 4. Open cooking mode and come back.
    - Cooking mode has the shared bar with the recipe title; recipe detail has its own bar again.
 
