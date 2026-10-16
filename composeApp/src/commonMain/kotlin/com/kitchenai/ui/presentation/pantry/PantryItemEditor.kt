@@ -101,7 +101,7 @@ fun PantryItemEditor(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val form = rememberEditorForm(state.editing, state.editorRevision)
+    val form = rememberEditorForm(state.editing, state.editorRevision, state.prefill)
 
     // Fully expanded from the start and scrollable: partially expanded, Save sat below the fold.
     ModalBottomSheet(
@@ -211,10 +211,11 @@ private class EditorForm(
 private fun rememberEditorForm(
     editing: PantryItemUi?,
     revision: Int,
+    prefill: String?,
 ): EditorForm =
     EditorForm(
         pickedId = rememberSaveable(editing, revision) { mutableStateOf(editing?.ingredient?.value) },
-        query = rememberSaveable(editing, revision) { mutableStateOf(editing?.name.orEmpty()) },
+        query = rememberSaveable(editing, revision, prefill) { mutableStateOf(editing?.name ?: prefill.orEmpty()) },
         amount = rememberSaveable(editing, revision) { mutableStateOf(editing?.amount) },
         malformed = rememberSaveable(editing, revision) { mutableStateOf(false) },
         unitId = rememberSaveable(editing, revision) { mutableStateOf(editing?.unit?.term?.value) },

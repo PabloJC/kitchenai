@@ -19,6 +19,7 @@ import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUse
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
+import com.kitchenai.ui.presentation.common.foldForSearch
 import com.kitchenai.ui.presentation.common.wordFor
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_list
@@ -269,13 +270,27 @@ class ShoppingViewModel(
         }
     }
 
-    /** Typing anywhere drops the pick: the word on screen would otherwise stop matching the identifier. */
+    /**
+     * Typing anywhere drops the pick: the word on screen would otherwise stop matching the
+     * identifier. Suggestions look at the name alone, so "2 kg pota" still offers potatoes.
+     */
     fun onDraftChange(text: String) {
-        draft.value = draft.value.copy(text = text, picked = null, suggestions = suggest(text))
+        draft.value = draft.value.copy(text = text, picked = null, suggestions = suggest(parsed(text).name))
     }
 
+    /** A quantity typed before the pick ("2 kg pota") is kept, unless one was set by hand. */
     fun onPick(suggestion: IngredientSuggestion) {
-        draft.value = draft.value.copy(text = suggestion.label, picked = suggestion, suggestions = emptyList())
+        val current = draft.value
+        val typed = parsed(current.text)
+        val keepsTyped = current.amount == null && typed.amount != null
+        draft.value =
+            current.copy(
+                text = suggestion.label,
+                picked = suggestion,
+                suggestions = emptyList(),
+                amount = if (keepsTyped) typed.amount else current.amount,
+                unit = if (keepsTyped) typed.unit else current.unit,
+            )
     }
 
     /** Null amount is an empty or half-typed field: the line is then added without a quantity. */
@@ -288,11 +303,15 @@ class ShoppingViewModel(
 
     fun add() {
         val current = draft.value
-        val text = current.text.trim()
         val picked = current.picked
+        // "2 kg potatoes" in the one field; an amount set by hand in the quantity row wins.
+        val typed = if (picked == null) parsed(current.text) else QuickAddText(current.text.trim())
+        val text = typed.name
         if (picked == null && text.isEmpty()) return
+        val amount = current.amount ?: typed.amount
+        val unit = if (current.amount != null) current.unit else typed.unit
         // Zero or less is not an amount: it would be refused downstream, so the line goes in bare.
-        val quantity = current.amount?.takeIf { it > 0.0 }?.let { amount -> Quantity(amount, current.unit) }
+        val quantity = amount?.takeIf { it > 0.0 }?.let { held -> Quantity(held, unit) }
         val dispatched =
             edit { kitchen, list ->
                 writes.add(
@@ -377,14 +396,31 @@ class ShoppingViewModel(
         )
 
     private fun suggest(query: String): List<IngredientSuggestion> {
-        val trimmed = query.trim()
-        if (trimmed.isEmpty()) return emptyList()
+        val needle = foldForSearch(query).trim()
+        if (needle.isEmpty()) return emptyList()
+        val onList =
+            items.value.orEmpty().filterNot {
+                    line ->
+                line.checked
+            }.mapNotNullTo(mutableSetOf()) { it.ingredient }
         return catalogue.value
             .mapNotNull { ingredient ->
-                resolver.value.label(ingredient.id)?.let { label -> IngredientSuggestion(ingredient.id, label) }
-            }.filter { suggestion -> suggestion.label.contains(trimmed, ignoreCase = true) }
+                resolver.value.label(ingredient.id)?.let { label ->
+                    IngredientSuggestion(ingredient.id, label, onList = ingredient.id in onList)
+                }
+            }.filter { suggestion -> foldForSearch(suggestion.label).contains(needle) }
             .take(SUGGESTION_LIMIT)
     }
+
+    /** Every spelling of every unit, singular and plural in any language, for the one-line parse. */
+    private fun parsed(text: String): QuickAddText =
+        parseQuickAdd(
+            text,
+            units.value.map {
+                    term ->
+                term.ref to (term.labels.values + term.pluralLabels.values).toSet()
+            },
+        )
 
     /**
      * Every write goes through here, so no action can forget to report its failure. Returns

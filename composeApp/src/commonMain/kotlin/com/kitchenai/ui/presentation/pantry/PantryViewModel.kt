@@ -12,6 +12,7 @@ import com.kitchenai.shared.domain.model.Taxonomy
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
@@ -93,11 +94,31 @@ class PantryViewModel(
     }
 
     fun openEditor(item: PantryItemUi?) {
-        _state.update { current -> current.copy(editing = item, isEditorOpen = true, lastAdded = null) }
+        _state.update { current ->
+            current.copy(editing = item, isEditorOpen = true, lastAdded = null, prefill = null)
+        }
     }
 
     fun closeEditor() {
-        _state.update { current -> current.copy(editing = null, isEditorOpen = false, lastAdded = null) }
+        _state.update { current ->
+            current.copy(editing = null, isEditorOpen = false, lastAdded = null, prefill = null)
+        }
+    }
+
+    fun search(query: String) = _state.update { current -> current.copy(query = query).filtered() }
+
+    /** Tapping the chip that is already on turns it off, back to every location. */
+    fun filterByLocation(location: TermRef?) =
+        _state.update { current ->
+            current.copy(locationFilter = location.takeUnless { it == current.locationFilter }).filtered()
+        }
+
+    /** A search that found nothing offers to add what was typed, so the sheet opens with it. */
+    fun addFromSearch() {
+        val typed = _state.value.query.trim().takeIf { it.isNotEmpty() }
+        _state.update { current ->
+            current.copy(editing = null, isEditorOpen = true, lastAdded = null, prefill = typed)
+        }
     }
 
     /** The editor's own delete: the same removal and undo as a swipe, which not everyone can do. */
@@ -131,6 +152,8 @@ class PantryViewModel(
                 isEditorOpen = true,
                 editorRevision = current.editorRevision + 1,
                 lastAdded = current.displayNameOf(draft),
+                // The next form starts empty: the name a search prefilled was this item's.
+                prefill = null,
             )
         }
         write(kitchen, editing, draft)
@@ -304,8 +327,16 @@ class PantryViewModel(
                         taxonomies.of(TaxonomyPurpose.STORAGE_LOCATIONS) + items.orEmpty().locationTaxonomies(),
                         resolver,
                     ),
-            )
+            ).filtered()
         }
+    }
+
+    /** Recomputed on every change to the rows or to the filters, so the two never disagree. */
+    private fun PantryUiState.filtered(): PantryUiState {
+        val offered = locations.usedBy(items)
+        // A chip whose last row went away would filter to nothing with no chip left to turn off.
+        val location = locationFilter?.takeIf { ref -> offered.any { (option, _) -> option == ref } }
+        return copy(locationFilter = location, filterLocations = offered, visible = items.filteredBy(query, location))
     }
 
     /**

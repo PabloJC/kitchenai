@@ -46,6 +46,12 @@
     <string name="pantry_delete">Delete</string>
     <string name="pantry_empty_title">The pantry is empty</string>
     <string name="pantry_empty_body">Add what you already have and the suggestions start working</string>
+    <string name="pantry_filter_search">Search the pantry</string>
+    <string name="pantry_search_clear">Clear search</string>
+    <string name="pantry_filter_all">All</string>
+    <string name="pantry_no_matches">Nothing matches “%1$s”</string>
+    <string name="pantry_no_matches_location">Nothing is stored here</string>
+    <string name="pantry_add_named">Add “%1$s”</string>
     <string name="pantry_section_expired">Expired</string>
     <string name="pantry_section_soon">Use soon</string>
     <string name="pantry_section_fresh">Fresh</string>
@@ -68,6 +74,9 @@
     <string name="pantry_expiry_pick">Pick a date</string>
     <string name="shopping_add_field">Add an item</string>
     <string name="shopping_add">Add</string>
+    <string name="shopping_on_list">%1$s · already on the list</string>
+    <string name="shopping_quantity_toggle">Set an amount</string>
+    <string name="shopping_unpick">Remove the pick</string>
     <string name="shopping_default_list">Shopping list</string>
     <string name="shopping_to_buy">To buy</string>
     <string name="shopping_in_cart">In the cart</string>
