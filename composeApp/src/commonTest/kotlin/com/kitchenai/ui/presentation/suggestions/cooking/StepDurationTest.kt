@@ -9,7 +9,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class StepDurationTest {
     @Test
-    fun `english units, spelled out and short`() {
+    fun `english units spelled out and short`() {
         assertEquals(10.minutes, firstDurationIn("Simmer for 10 minutes."))
         assertEquals(25.minutes, firstDurationIn("Bake 25 min"))
         assertEquals(1.hours, firstDurationIn("Roast 1 h"))
@@ -19,7 +19,7 @@ class StepDurationTest {
     }
 
     @Test
-    fun `spanish units, spelled out and short`() {
+    fun `spanish units spelled out and short`() {
         assertEquals(10.minutes, firstDurationIn("Cocer 10 minutos"))
         assertEquals(1.hours, firstDurationIn("Hornear 1 hora"))
         assertEquals(2.hours, firstDurationIn("Dejar reposar 2 horas"))
@@ -49,7 +49,7 @@ class StepDurationTest {
     }
 
     @Test
-    fun `a second span of the same unit is a later step, not more of this one`() {
+    fun `a second span of the same unit is a later step and not more of this one`() {
         assertEquals(10.minutes, firstDurationIn("Cook 10 minutes, then 5 minutes more"))
     }
 

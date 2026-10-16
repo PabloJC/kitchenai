@@ -67,7 +67,7 @@ class CookingModeViewModelTest {
         }
 
     @Test
-    fun `a second timer replaces the first, which never goes off`() =
+    fun `a second timer replaces the first and the first never goes off`() =
         runTest(dispatcher) {
             val viewModel = CookingModeViewModel(dispatcher.scheduler.timeSource)
             val seen = mutableListOf<TimerDone>()
