@@ -55,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -260,7 +261,7 @@ private fun HideSharedTopBar(detailTopBar: DetailTopBarState) {
 
 /** Null until there is a recipe to share, so the action never offers an empty message. */
 @Composable
-private fun rememberShare(state: RecipeDetailUiState): (() -> Unit)? {
+private fun rememberShare(state: RecipeDetailUiState): ((anchor: Rect?) -> Unit)? {
     val share = rememberShareText()
     if (state.title.isEmpty()) return null
     val labels =
@@ -271,7 +272,7 @@ private fun rememberShare(state: RecipeDetailUiState): (() -> Unit)? {
             steps = stringResource(Res.string.detail_steps),
             optionalSuffix = stringResource(Res.string.detail_optional_suffix),
         )
-    return { share(state.shareText(labels)) }
+    return { anchor -> share(state.shareText(labels), anchor) }
 }
 
 @Composable

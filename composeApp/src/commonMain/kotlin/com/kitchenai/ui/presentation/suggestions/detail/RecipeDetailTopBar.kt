@@ -18,8 +18,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,7 +51,7 @@ internal fun RecipeDetailTopBar(
     state: RecipeDetailUiState,
     onBack: () -> Unit,
     onToggleSaved: () -> Unit,
-    onShare: (() -> Unit)?,
+    onShare: ((anchor: Rect?) -> Unit)?,
 ) {
     val colors = MaterialTheme.colorScheme
     val buttonColors =
@@ -67,7 +74,13 @@ internal fun RecipeDetailTopBar(
         },
         actions = {
             onShare?.let { share ->
-                IconButton(onClick = share, colors = buttonColors) {
+                // Read only on click, so a layout pass writing it never recomposes the bar.
+                var anchor by remember { mutableStateOf<Rect?>(null) }
+                IconButton(
+                    onClick = { share(anchor) },
+                    colors = buttonColors,
+                    modifier = Modifier.onGloballyPositioned { anchor = it.boundsInWindow() },
+                ) {
                     Icon(Icons.Outlined.Share, contentDescription = stringResource(Res.string.detail_share))
                 }
             }
