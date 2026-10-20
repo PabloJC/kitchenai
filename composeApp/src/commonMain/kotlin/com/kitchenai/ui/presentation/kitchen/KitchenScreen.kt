@@ -48,6 +48,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -309,7 +312,7 @@ private fun JoinCodeSection(
         )
         JoinCodeCard(
             code = code,
-            onInvite = { share(invite) },
+            onInvite = { anchor -> share(invite, anchor) },
             onCopy = {
                 clipboard.setText(AnnotatedString(code))
                 onCopied()
@@ -322,7 +325,7 @@ private fun JoinCodeSection(
 @Composable
 private fun JoinCodeCard(
     code: String,
-    onInvite: () -> Unit,
+    onInvite: (anchor: Rect?) -> Unit,
     onCopy: () -> Unit,
 ) {
     Surface(
@@ -339,7 +342,12 @@ private fun JoinCodeCard(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.small),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(onClick = onInvite) {
+                // Where the iPad share popover points; every other platform ignores it.
+                var anchor by remember { mutableStateOf<Rect?>(null) }
+                Button(
+                    onClick = { onInvite(anchor) },
+                    modifier = Modifier.onGloballyPositioned { anchor = it.boundsInWindow() },
+                ) {
                     Icon(
                         Icons.Outlined.Share,
                         contentDescription = null,
