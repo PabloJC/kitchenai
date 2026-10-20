@@ -29,6 +29,7 @@ import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.RecipeImage
+import com.kitchenai.ui.designsystem.component.tonalCardColors
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_unsave
@@ -105,7 +106,12 @@ private fun SavedRecipeCard(
     onOpen: (RecipeId) -> Unit,
     onUnsave: (RecipeId) -> Unit,
 ) {
-    Card(onClick = { onOpen(recipe.id) }, modifier = Modifier.fillMaxWidth()) {
+    Card(
+        onClick = { onOpen(recipe.id) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = tonalCardColors(),
+    ) {
         Column {
             RecipeImage(tags = recipe.tagRefs)
             Column(

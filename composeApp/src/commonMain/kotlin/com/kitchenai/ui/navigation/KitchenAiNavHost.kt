@@ -42,7 +42,7 @@ fun KitchenAiNavHost(
         modifier = modifier.readableWidth(),
     ) {
         composable<Route.Pantry> { PantryScreen(userId) }
-        composable<Route.ShoppingList> { ShoppingScreen(userId) }
+        composable<Route.ShoppingList> { ShoppingScreen(userId, topBar = detailTopBar) }
         navigation<Route.SuggestionsGraph>(startDestination = Route.Suggestions) {
             composable<Route.Suggestions> {
                 SuggestionsScreen(

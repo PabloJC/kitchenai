@@ -54,6 +54,7 @@ import com.kitchenai.ui.designsystem.component.SKELETON_SUMMARY_WIDTH
 import com.kitchenai.ui.designsystem.component.SKELETON_TITLE_WIDTH
 import com.kitchenai.ui.designsystem.component.SkeletonBar
 import com.kitchenai.ui.designsystem.component.Tag
+import com.kitchenai.ui.designsystem.component.tonalCardColors
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
@@ -346,7 +347,7 @@ private fun Skeleton() {
  */
 @Composable
 private fun SkeletonCard() {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = tonalCardColors()) {
         Column {
             RecipeImagePlaceholder()
             Column(
@@ -371,7 +372,12 @@ private fun SuggestionCard(
 ) {
     // The whole card opens the recipe: a dedicated "Open" button repeated what tapping the card
     // already does everywhere else in the app.
-    Card(onClick = { onOpen(suggestion.id) }, modifier = Modifier.fillMaxWidth()) {
+    Card(
+        onClick = { onOpen(suggestion.id) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = tonalCardColors(),
+    ) {
         Column {
             RecipeImage(tags = suggestion.tagRefs)
             Column(
