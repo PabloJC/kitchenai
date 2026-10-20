@@ -1,6 +1,7 @@
 package com.kitchenai.shared.di
 
 import com.kitchenai.shared.domain.usecase.pantry.AddPantryItemUseCase
+import com.kitchenai.shared.domain.usecase.pantry.AddStaplesUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ConsumePantryItemsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
@@ -13,6 +14,7 @@ import org.koin.dsl.module
 val pantryModule: Module =
     module {
         factory { AddPantryItemUseCase(get(), get(), get(), get()) }
+        factory { AddStaplesUseCase(get(), get(), get()) }
         factory { ConsumePantryItemsUseCase(get(), get(), get()) }
         factory { ObserveIngredientsUseCase(get()) }
         factory { ObservePantryUseCase(get()) }

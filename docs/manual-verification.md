@@ -135,19 +135,21 @@ the backend can answer. Run every scenario on both platforms unless it says othe
 
 1. Launch the app.
    - A loading indicator shows while the session resolves. No error text appears at any point.
-2. Wait for the shell.
+2. The first-run flow opens on "Step 1 of 3" (scenario 26 covers it). Tap **Skip**.
+3. Wait for the shell.
+   - The **Ideas** tab opens, on "Your pantry is empty". Tap **Pantry**.
    - The **Pantry** tab is selected, with its top bar titled "Pantry" and the empty state "The
      pantry is empty" / "Add what you already have and the suggestions start working", with an
      "Add items" button.
    - The bottom bar shows four tabs: "Pantry", "Shopping", "Ideas", "Profile".
-3. Tap **Shopping**.
+4. Tap **Shopping**.
    - The empty state "Nothing to buy" / "Add what you need and tick it off as you go.", with an
      "Add an item" button.
-4. Tap **Profile**.
+5. Tap **Profile**.
    - Groups in this order: Account (a "Sign in with Google" button), Household (a "Your kitchen"
      row), Food preferences, Appearance, Privacy (the line about what every suggestion sends) and
      About (the version).
-5. Tap "Your kitchen".
+6. Tap "Your kitchen".
    - Top bar "Kitchen" with a back arrow. Under "Your join code", a tinted card with the code in
      upper case and a monospace face, an "Invite" button and a copy icon and, because you own the
      kitchen, a "New code" button.
@@ -157,7 +159,7 @@ the backend can answer. Run every scenario on both platforms unless it says othe
    - "Leave this kitchen" is enabled and no explanatory message is shown above it.
    - Under "Join a kitchen", an empty field with the placeholder "Enter a join code" and a disabled
      "Join" button.
-6. Console.
+7. Console.
    - *Authentication → Users*: one new user with no provider (anonymous).
    - `users/<uid>`: exists, with `languageTags` set to the device language and `displayName`
      absent.
@@ -166,7 +168,7 @@ the backend can answer. Run every scenario on both platforms unless it says othe
    - `kitchenInvites/<code>`: exists, holding only `kitchenId`.
    - `kitchens/<kitchenId>/shoppingLists/<listId>`: one document whose `labels` maps the device
      language tag to "Shopping list".
-7. Kill the app and launch it again.
+8. Kill the app and launch it again.
    - Same uid, same kitchen, still exactly one shopping list: nothing is created twice.
 
 ### 2. Google sign-in: linking keeps the guest's data, an existing account asks before switching
@@ -692,6 +694,31 @@ shared case, a second device joined to that kitchen (scenario 5).*
 6. Profile → "Your kitchen", right after leaving a kitchen (before the new one appears): tap "Enter a
    code".
    - The join field takes focus.
+
+### 26. The first run: once, skippable, staples in one tap
+
+*A fresh install. Repeat step 6 on a device that already has items in its kitchen.*
+
+1. Launch and wait for the session.
+   - "Step 1 of 3", "Dishes from what you already have", a **Skip** button at the top and **Next** at the
+     bottom. No back button on this page.
+2. **Next**.
+   - "What is in your kitchen?" with one chip per catalogue ingredient, by name. Tapping chips turns the
+     button into "Add 2" (for two). **Back** returns to page 1 and keeps the choice.
+3. Choose two staples and tap "Add 2".
+   - Page 3, "Anything you avoid?". The two staples are in Pantry, each as an amount of 1.
+4. Tap "Not now, show me ideas".
+   - The app opens on **Ideas** and a generation starts at once.
+5. Close the app fully and reopen it.
+   - The first run does not appear again.
+6. Clear the app data, launch, and sign in with Google on an account whose kitchen already holds items.
+   - After the sign-in the first run is not offered again for that kitchen on this device. (Before
+     the sign-in the new anonymous kitchen is empty, so the first run shows; skip it.)
+7. On a fresh install, go to page 3 and tap "Set diet and allergies".
+   - The app opens on **Profile**, where Food preferences is one of the groups, and Ideas has not
+     generated anything yet.
+8. On a fresh install, tap **Skip** on page 2 after choosing staples.
+   - Nothing is added to Pantry, and the first run does not come back.
 
 ### 27. Tablets, foldables and landscape: a rail and a readable column
 

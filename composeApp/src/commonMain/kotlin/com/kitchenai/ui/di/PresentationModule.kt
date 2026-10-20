@@ -20,6 +20,7 @@ val presentationModule: Module =
         factory { SessionKitchenDelegate(get(), get(), get()) }
         viewModel { SessionViewModel(get(), get(), get(), get(), get(), get(), get()) }
         includes(kitchenPresentationModule)
+        includes(onboardingPresentationModule)
         includes(pantryPresentationModule)
         includes(profilePresentationModule)
         includes(shoppingPresentationModule)

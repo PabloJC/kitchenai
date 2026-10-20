@@ -306,4 +306,20 @@
     <string name="suggestions_pantry_empty_body">Ideas are built from what you already have. Add a few things first.</string>
     <string name="suggestions_see_ideas">See ideas</string>
     <string name="kitchen_empty_action">Enter a code</string>
+    <string name="onboarding_step">Step %1$d of %2$d</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_value_title">Dishes from what you already have</string>
+    <string name="onboarding_value_body">Tell KitchenAI what is in your kitchen and it suggests dishes you can cook now, with a shopping list for anything missing. Share one kitchen with your household.</string>
+    <string name="onboarding_staples_title">What is in your kitchen?</string>
+    <string name="onboarding_staples_body">Tap what you have. Amounts can wait: you can set them later in Pantry.</string>
+    <string name="onboarding_preferences_title">Anything you avoid?</string>
+    <string name="onboarding_preferences_body">Set your allergies and diets before your first ideas so every suggestion respects them. You can change them any time in Profile.</string>
+    <string name="onboarding_preferences_action">Set diet and allergies</string>
+    <string name="onboarding_not_now">Not now, show me ideas</string>
+    <plurals name="onboarding_add_count">
+        <item quantity="one">Add %1$d</item>
+        <item quantity="other">Add %1$d</item>
+    </plurals>
 </resources>
