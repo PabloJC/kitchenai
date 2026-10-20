@@ -70,7 +70,7 @@ open class SuggestionsViewModelHarness {
             updatedAt = now,
         )
 
-    /** In no fixture recipe, so it changes no match; it only makes the pantry non-empty, which a run on arrival needs. */
+    /** In no fixture recipe, so it changes no match: it only makes the pantry non-empty for a run on arrival. */
     protected fun flourHolding(): PantryItem =
         PantryItem(
             id = PantryItemId.of("item-flour").orFail(),
