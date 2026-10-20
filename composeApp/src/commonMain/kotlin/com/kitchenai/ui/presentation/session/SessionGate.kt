@@ -14,11 +14,14 @@ import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.resolve
+import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * [content] composes only once the session exists: earlier, it would read `users/{uid}` with no uid.
- * [onSettled] fires once the session is ready or has failed, so a platform splash can stand in for the spinner.
+ * [onSettled] fires once the session is ready or has failed, so a platform splash can stand in for the spinner,
+ * or after [SPLASH_CAP] at the latest: sign-in has no timeout, and a splash that never lifts looks like a crash.
  */
 @Composable
 fun SessionGate(
@@ -34,7 +37,11 @@ fun SessionGate(
     // The composition guards the recomposition, the ViewModel guards the configuration change.
     LaunchedEffect(Unit) { viewModel.start(platformLanguageTags(), defaultListName) }
     val settled = state != SessionUiState.Loading
-    LaunchedEffect(settled) { if (settled) onSettled() }
+    // Keyed on settled: settling cancels the pending cap, so a quick session reports once.
+    LaunchedEffect(settled) {
+        if (!settled) delay(SPLASH_CAP)
+        onSettled()
+    }
 
     // Drawn before the shell exists, so the Scaffold inside `content` pads neither; the components
     // themselves must not, or they double up. fillMaxSize bounds the height ErrorState centres in.
@@ -54,3 +61,5 @@ fun SessionGate(
         is SessionUiState.Ready -> content(resolved.userId)
     }
 }
+
+private val SPLASH_CAP = 3.seconds
