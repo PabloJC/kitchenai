@@ -34,6 +34,7 @@ class SuggestionsSavedViewTest : SuggestionsViewModelHarness() {
         Dispatchers.resetMain()
     }
 
+    @Test
     fun `the saved view lists what can be cooked now first and keeps the listener order within each`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort()
