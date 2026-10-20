@@ -647,6 +647,25 @@ shared case, a second device joined to that kitchen (scenario 5).*
 5. Settings → Apps → KitchenAI → Language.
    - English and Español are listed. Choosing Español switches the app's text to Spanish.
 
+### 24. iOS: launch screen, dark and tinted icons, language and back swipe
+
+*iOS 18.2 or later.*
+
+1. Close the app fully and open it, first in light mode, then in dark mode.
+   - The launch screen shows the white mark on blue in light mode and on near-black in dark mode,
+     never a blank system screen.
+2. Home Screen → long-press → Edit → Customize → Dark, then Tinted.
+   - Dark shows the mark in light blue on the system's dark backdrop; Tinted shows it in the chosen
+     tint. Neither is a washed-out copy of the light icon.
+3. Settings → KitchenAI.
+   - A "Language" row offers English and Español. Choosing Español switches the app, and the
+     system sheets it opens (share, Google sign-in), to Spanish.
+4. Open a recipe from Ideas, then go back by swiping from the left edge. Do the same from Profile
+   → "Your kitchen".
+   - Both screens show a chevron in the top bar, and the edge swipe returns to the previous screen.
+5. On Shopping, swipe a row from the left edge towards the right.
+   - Nothing is deleted: rows only delete on a swipe from the right edge.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

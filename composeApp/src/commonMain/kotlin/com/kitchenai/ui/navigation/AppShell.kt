@@ -1,8 +1,6 @@
 package com.kitchenai.ui.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +22,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.kitchenai.ui.platform.backIcon
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_title
 import com.kitchenai.ui.resources.nav_back
@@ -69,7 +68,7 @@ fun AppShell(
                         if (tab == null) {
                             IconButton(onClick = navController::navigateUp) {
                                 Icon(
-                                    Icons.AutoMirrored.Outlined.ArrowBack,
+                                    backIcon,
                                     contentDescription = stringResource(Res.string.nav_back),
                                 )
                             }
