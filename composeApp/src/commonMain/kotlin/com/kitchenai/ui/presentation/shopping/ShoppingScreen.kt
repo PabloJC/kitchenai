@@ -38,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -295,6 +297,7 @@ private fun ShoppingItemRow(
     onEditAmount: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = LocalHapticFeedback.current
     SwipeToDismissRow(
         onDismiss = onRemove,
         deleteLabel = stringResource(Res.string.shopping_delete),
@@ -305,7 +308,12 @@ private fun ShoppingItemRow(
                 deleteAction
                     .fillMaxWidth()
                     .heightIn(min = Dimens.touchTarget)
-                    .toggleable(value = item.checked, role = Role.Checkbox, onValueChange = onCheck)
+                    .toggleable(value = item.checked, role = Role.Checkbox) { checked ->
+                        haptics.performHapticFeedback(
+                            if (checked) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff,
+                        )
+                        onCheck(checked)
+                    }
                     .padding(horizontal = Dimens.large, vertical = Dimens.small),
             horizontalArrangement = Arrangement.spacedBy(Dimens.medium),
             verticalAlignment = Alignment.CenterVertically,

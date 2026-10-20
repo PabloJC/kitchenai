@@ -57,8 +57,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -389,7 +391,14 @@ private fun StepperButton(
 ) {
     // IconButton keeps the 48dp touch target: this is the button someone taps repeatedly while
     // their hands are full of food.
-    IconButton(onClick = onClick, enabled = enabled) { Icon(icon, contentDescription = label) }
+    val haptics = LocalHapticFeedback.current
+    IconButton(
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            onClick()
+        },
+        enabled = enabled,
+    ) { Icon(icon, contentDescription = label) }
 }
 
 @Composable
