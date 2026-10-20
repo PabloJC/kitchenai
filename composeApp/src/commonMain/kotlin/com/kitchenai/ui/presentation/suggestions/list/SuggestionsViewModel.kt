@@ -31,8 +31,10 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -124,7 +126,10 @@ class SuggestionsViewModel(
             // The stamped match is a snapshot of the pantry at generation time. distinctUntilChanged
             // keeps a snapshot that re-emits unchanged holdings from costing a pass of reads.
             kitchenId.filterNotNull().flatMapLatest { id ->
-                reads.pantry(id).distinctUntilChanged().map { id }
+                reads.pantry(id)
+                    .onEach { held -> internalState.update { it.copy(isPantryEmpty = held.isEmpty()) } }
+                    .distinctUntilChanged()
+                    .map { id }
             }.collectLatest { id -> rematchGenerated(id) }
         }
         viewModelScope.launch {
@@ -136,7 +141,9 @@ class SuggestionsViewModel(
                 generation.value?.cancel()
                 internalState.update { it.copy(isGenerating = false) }
                 showStored(id)
-                generate()
+                // An empty pantry would spend a model call on "nothing to suggest"; the screen
+                // points at the pantry instead. A listener that fails without emitting still generates.
+                if (reads.pantry(id).firstOrNull()?.isEmpty() != true) generate()
             }
         }
     }

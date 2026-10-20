@@ -378,7 +378,7 @@ class SuggestionsViewModelTest : SuggestionsViewModelHarness() {
     @Test
     fun `a generated card's coverage follows the pantry without another model call`() =
         runTest(dispatcher) {
-            val pantry = FakePantryPort()
+            val pantry = FakePantryPort(listOf(flourHolding()))
             agent.answer = AppResult.Success(listOf(shortOfRice()))
             val viewModel = started(pantryPort = pantry)
             advanceUntilIdle()
@@ -401,7 +401,7 @@ class SuggestionsViewModelTest : SuggestionsViewModelHarness() {
     @Test
     fun `a re-match that fails leaves the generated card as it was`() =
         runTest(dispatcher) {
-            val pantry = FlakyPantryPort()
+            val pantry = FlakyPantryPort(FakePantryPort(listOf(flourHolding())))
             agent.answer = AppResult.Success(listOf(shortOfRice()))
             val viewModel = started(pantryPort = pantry)
             advanceUntilIdle()
@@ -419,7 +419,7 @@ class SuggestionsViewModelTest : SuggestionsViewModelHarness() {
     @Test
     fun `a re-match that lands after a newer generation does not overwrite it`() =
         runTest(dispatcher) {
-            val pantry = FlakyPantryPort()
+            val pantry = FlakyPantryPort(FakePantryPort(listOf(flourHolding())))
             agent.answer = AppResult.Success(listOf(shortOfRice()))
             val viewModel = started(pantryPort = pantry)
             advanceUntilIdle()
@@ -446,7 +446,7 @@ class SuggestionsViewModelTest : SuggestionsViewModelHarness() {
     @Test
     fun `a pantry change during generation is reflected when the suggestions land`() =
         runTest(dispatcher) {
-            val pantry = FakePantryPort()
+            val pantry = FakePantryPort(listOf(flourHolding()))
             agent.gate = CompletableDeferred()
             agent.answer = AppResult.Success(listOf(shortOfRice()))
             val viewModel = started(pantryPort = pantry)

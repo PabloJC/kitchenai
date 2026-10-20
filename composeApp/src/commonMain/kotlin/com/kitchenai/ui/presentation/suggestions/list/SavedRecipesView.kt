@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ import com.kitchenai.ui.resources.suggestions_saved_empty_body
 import com.kitchenai.ui.resources.suggestions_saved_empty_title
 import com.kitchenai.ui.resources.suggestions_saved_no_matches
 import com.kitchenai.ui.resources.suggestions_saved_search
+import com.kitchenai.ui.resources.suggestions_see_ideas
 import org.jetbrains.compose.resources.stringResource
 
 // Two columns on a phone from about 400dp wide, one below; more on a tablet.
@@ -52,6 +54,7 @@ internal fun SavedRecipesView(
     onOpen: (RecipeId) -> Unit,
     onUnsave: (RecipeId) -> Unit,
     onSearch: (String) -> Unit,
+    onSeeIdeas: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (state.savedRecipes.isEmpty()) {
@@ -59,6 +62,9 @@ internal fun SavedRecipesView(
             title = stringResource(Res.string.suggestions_saved_empty_title),
             body = stringResource(Res.string.suggestions_saved_empty_body),
             modifier = modifier.fillMaxSize(),
+            icon = Icons.Outlined.FavoriteBorder,
+            actionLabel = stringResource(Res.string.suggestions_see_ideas),
+            onAction = onSeeIdeas,
         )
         return
     }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
@@ -45,6 +46,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -81,6 +84,7 @@ import com.kitchenai.ui.resources.kitchen_confirm_regenerate_title
 import com.kitchenai.ui.resources.kitchen_confirm_remove_body
 import com.kitchenai.ui.resources.kitchen_confirm_remove_title
 import com.kitchenai.ui.resources.kitchen_copy
+import com.kitchenai.ui.resources.kitchen_empty_action
 import com.kitchenai.ui.resources.kitchen_empty_body
 import com.kitchenai.ui.resources.kitchen_empty_title
 import com.kitchenai.ui.resources.kitchen_invite_action
@@ -234,6 +238,7 @@ private fun KitchenContent(
     viewModel: KitchenViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val joinField = remember { FocusRequester() }
     // Vertical only: headers and rows carry their own 16 dp, as on every other screen.
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = Dimens.large),
@@ -263,10 +268,14 @@ private fun KitchenContent(
             EmptyState(
                 title = stringResource(Res.string.kitchen_empty_title),
                 body = stringResource(Res.string.kitchen_empty_body),
+                icon = Icons.Outlined.Group,
+                actionLabel = stringResource(Res.string.kitchen_empty_action),
+                onAction = { joinField.requestFocus() },
             )
         }
 
         JoinField(
+            focus = joinField,
             value = state.joinCodeInput,
             isBusy = state.isBusy,
             onChange = viewModel::onJoinCodeInputChange,
@@ -427,6 +436,7 @@ private fun LeaveSection(
 
 @Composable
 private fun JoinField(
+    focus: FocusRequester,
     value: String,
     isBusy: Boolean,
     onChange: (String) -> Unit,
@@ -455,7 +465,7 @@ private fun JoinField(
                         imeAction = ImeAction.Go,
                     ),
                 keyboardActions = KeyboardActions(onGo = { if (canJoin) onJoin() }),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(focus),
             )
             Button(onClick = onJoin, enabled = canJoin) {
                 Text(stringResource(Res.string.kitchen_join_action))
