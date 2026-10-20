@@ -5,7 +5,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Share
@@ -24,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import com.kitchenai.ui.platform.backIcon
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_save
 import com.kitchenai.ui.resources.detail_share
@@ -62,7 +62,7 @@ internal fun RecipeDetailTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onBack, colors = buttonColors) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(Res.string.nav_back))
+                Icon(backIcon, contentDescription = stringResource(Res.string.nav_back))
             }
         },
         actions = {

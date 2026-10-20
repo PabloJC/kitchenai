@@ -54,7 +54,7 @@ of it.
 | Firebase (GitLive KMP) | 2.5.0 &nbsp;<sub>2.6.0 is broken on Maven Central</sub> |
 | Koin | 4.1.0 |
 | minSdk / compileSdk | 26 / 36 |
-| Minimum iOS | 14 (arm64 only) |
+| Minimum iOS | 18.2 (arm64 only), the deployment target in `iosApp.xcodeproj` |
 
 > Compose Multiplatform 1.11 dropped the Apple x86_64 targets: do not declare `iosX64()`.
 
