@@ -128,8 +128,8 @@ private fun ShellTopBar(
             )
         },
         navigationIcon = {
-            // Only a screen opened from a tab needs a way out: every tab is reached by
-            // tapping the bar below, never by going back into it.
+            // Only a screen opened from a tab needs a way out: a tab is reached from the bar or
+            // rail, never by going back into it.
             if (tab == null) {
                 IconButton(onClick = onBack) {
                     Icon(backIcon, contentDescription = stringResource(Res.string.nav_back))
