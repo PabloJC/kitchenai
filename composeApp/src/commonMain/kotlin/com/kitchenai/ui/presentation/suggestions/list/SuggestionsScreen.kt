@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.outlined.AddShoppingCart
+import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -65,6 +66,7 @@ import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_unsaved
 import com.kitchenai.ui.resources.suggestions_add_missing
+import com.kitchenai.ui.resources.suggestions_add_to_pantry
 import com.kitchenai.ui.resources.suggestions_check_manually
 import com.kitchenai.ui.resources.suggestions_coverage_count
 import com.kitchenai.ui.resources.suggestions_empty_body_action
@@ -77,6 +79,8 @@ import com.kitchenai.ui.resources.suggestions_new_ideas
 import com.kitchenai.ui.resources.suggestions_nothing_body_action
 import com.kitchenai.ui.resources.suggestions_nothing_title
 import com.kitchenai.ui.resources.suggestions_only_pantry
+import com.kitchenai.ui.resources.suggestions_pantry_empty_body
+import com.kitchenai.ui.resources.suggestions_pantry_empty_title
 import com.kitchenai.ui.resources.suggestions_quick
 import com.kitchenai.ui.resources.suggestions_view_ideas
 import com.kitchenai.ui.resources.suggestions_view_saved
@@ -97,6 +101,7 @@ fun SuggestionsScreen(
     userId: UserId,
     modifier: Modifier = Modifier,
     onOpen: (RecipeId) -> Unit = {},
+    onGoToPantry: () -> Unit = {},
     viewModel: SuggestionsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -130,13 +135,25 @@ fun SuggestionsScreen(
                 onShowSaved = viewModel::showSaved,
             )
             if (state.showingSaved) {
-                SavedRecipesView(state, onOpen, onUnsave = viewModel::unsave, onSearch = viewModel::searchSaved)
+                SavedRecipesView(
+                    state,
+                    onOpen,
+                    onUnsave = viewModel::unsave,
+                    onSearch = viewModel::searchSaved,
+                    onSeeIdeas = { viewModel.showSaved(false) },
+                )
             } else {
                 Options(state, viewModel)
                 if (state.optionsChanged && !state.isGenerating) FiltersChangedBanner(onUpdate = viewModel::generate)
                 if (state.isGenerating) GeneratingStrip(onCancel = viewModel::cancelGeneration)
                 state.error?.let { message -> SuggestionsErrorCard(message, onRetry = viewModel::generate) }
-                Results(state, onOpen, onAddMissing = viewModel::addMissingToList, onRefresh = viewModel::generate)
+                Results(
+                    state,
+                    onOpen,
+                    onAddMissing = viewModel::addMissingToList,
+                    onRefresh = viewModel::generate,
+                    onGoToPantry = onGoToPantry,
+                )
             }
         }
     }
@@ -244,6 +261,7 @@ private fun Results(
     onOpen: (RecipeId) -> Unit,
     onAddMissing: (RecipeId) -> Unit,
     onRefresh: () -> Unit,
+    onGoToPantry: () -> Unit,
 ) {
     // Pulling down is the secondary trigger for the button's own generate(), guarded the same
     // way. The strip above shows progress, so the pull indicator is not held open for it.
@@ -267,26 +285,51 @@ private fun Results(
                 // A skeleton rather than a spinner: the call takes the better part of a minute,
                 // and a blank screen for that long reads as a hang rather than as work.
                 state.isGenerating -> item { Skeleton() }
-                // Generated and found nothing is not the same as never asked, and neither is an error.
-                state.hasGenerated && state.error == null ->
-                    item {
-                        EmptyState(
-                            title = stringResource(Res.string.suggestions_nothing_title),
-                            body = stringResource(Res.string.suggestions_nothing_body_action),
-                            modifier = Modifier.fillParentMaxSize(),
-                        )
-                    }
-                !state.hasGenerated ->
-                    item {
-                        EmptyState(
-                            title = stringResource(Res.string.suggestions_empty_title),
-                            body = stringResource(Res.string.suggestions_empty_body_action),
-                            modifier = Modifier.fillParentMaxSize(),
-                        )
-                    }
-                else -> Unit
+                // A failed run is reported by the banner above; anything else empty says why it is.
+                state.hasGenerated && state.error != null -> Unit
+                else -> item { EmptyResults(state, onRefresh, onGoToPantry, Modifier.fillParentMaxSize()) }
             }
         }
+    }
+}
+
+/** Found nothing, never asked, or never asked because nothing is held: each has its own way forward. */
+@Composable
+private fun EmptyResults(
+    state: SuggestionsUiState,
+    onRefresh: () -> Unit,
+    onGoToPantry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when {
+        state.hasGenerated ->
+            EmptyState(
+                title = stringResource(Res.string.suggestions_nothing_title),
+                body = stringResource(Res.string.suggestions_nothing_body_action),
+                modifier = modifier,
+                icon = Icons.Outlined.Kitchen,
+                actionLabel = stringResource(Res.string.suggestions_add_to_pantry),
+                onAction = onGoToPantry,
+            )
+        // Nothing ran on arrival because nothing is held: filling the pantry comes first.
+        state.isPantryEmpty ->
+            EmptyState(
+                title = stringResource(Res.string.suggestions_pantry_empty_title),
+                body = stringResource(Res.string.suggestions_pantry_empty_body),
+                modifier = modifier,
+                icon = Icons.Outlined.Kitchen,
+                actionLabel = stringResource(Res.string.suggestions_add_to_pantry),
+                onAction = onGoToPantry,
+            )
+        else ->
+            EmptyState(
+                title = stringResource(Res.string.suggestions_empty_title),
+                body = stringResource(Res.string.suggestions_empty_body_action),
+                modifier = modifier,
+                icon = Icons.Filled.AutoAwesome,
+                actionLabel = stringResource(Res.string.suggestions_new_ideas),
+                onAction = onRefresh,
+            )
     }
 }
 

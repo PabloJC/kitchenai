@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -55,6 +56,7 @@ import com.kitchenai.ui.resources.not_in_catalogue
 import com.kitchenai.ui.resources.pantry_add
 import com.kitchenai.ui.resources.pantry_add_named
 import com.kitchenai.ui.resources.pantry_delete
+import com.kitchenai.ui.resources.pantry_empty_action
 import com.kitchenai.ui.resources.pantry_empty_body
 import com.kitchenai.ui.resources.pantry_empty_title
 import com.kitchenai.ui.resources.pantry_no_matches
@@ -121,6 +123,7 @@ fun PantryScreen(
                     onQuery = viewModel::search,
                     onLocation = viewModel::filterByLocation,
                     onAddTyped = viewModel::addFromSearch,
+                    onAdd = { viewModel.openEditor(null) },
                 ),
             modifier = Modifier.fillMaxSize().padding(padding),
         )
@@ -137,13 +140,14 @@ fun PantryScreen(
     }
 }
 
-/** What the list hands back to the ViewModel, grouped so the list does not take six lambdas. */
+/** What the list hands back to the ViewModel, grouped so the list does not take seven lambdas. */
 private class PantryListActions(
     val onEdit: (PantryItemUi) -> Unit,
     val onRemove: (PantryItemUi) -> Unit,
     val onQuery: (String) -> Unit,
     val onLocation: (TermRef?) -> Unit,
     val onAddTyped: () -> Unit,
+    val onAdd: () -> Unit,
 )
 
 @Composable
@@ -163,6 +167,9 @@ private fun PantryList(
                 title = stringResource(Res.string.pantry_empty_title),
                 body = stringResource(Res.string.pantry_empty_body),
                 modifier = modifier,
+                icon = Icons.Outlined.Kitchen,
+                actionLabel = stringResource(Res.string.pantry_empty_action),
+                onAction = actions.onAdd,
             )
         else ->
             Column(modifier = modifier) {

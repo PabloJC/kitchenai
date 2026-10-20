@@ -137,10 +137,12 @@ the backend can answer. Run every scenario on both platforms unless it says othe
    - A loading indicator shows while the session resolves. No error text appears at any point.
 2. Wait for the shell.
    - The **Pantry** tab is selected, with its top bar titled "Pantry" and the empty state "The
-     pantry is empty" / "Add what you already have and the suggestions start working".
+     pantry is empty" / "Add what you already have and the suggestions start working", with an
+     "Add items" button.
    - The bottom bar shows four tabs: "Pantry", "Shopping", "Ideas", "Profile".
 3. Tap **Shopping**.
-   - The empty state "Nothing to buy" / "Add what you need and tick it off as you go."
+   - The empty state "Nothing to buy" / "Add what you need and tick it off as you go.", with an
+     "Add an item" button.
 4. Tap **Profile**.
    - Groups in this order: Account (a "Sign in with Google" button), Household (a "Your kitchen"
      row), Food preferences, Appearance, Privacy (the line about what every suggestion sends) and
@@ -670,6 +672,26 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - Both screens show a chevron in the top bar, and the edge swipe returns to the previous screen.
 5. On Shopping, swipe a row from the left edge towards the right.
    - Nothing is deleted: rows only delete on a swipe from the right edge.
+
+### 25. Empty states lead somewhere, and Ideas waits for a pantry
+
+*A fresh install, so every list starts empty.*
+
+1. Pantry: tap "Add items".
+   - The add-item editor opens, as from the "Add" button.
+2. Shopping: tap "Add an item".
+   - The field at the bottom takes focus and the keyboard opens.
+3. Ideas, with the pantry still empty.
+   - No skeleton and no model call: "Your pantry is empty" with an "Add to pantry" button. Tapping
+     it switches to the Pantry tab.
+   - "New ideas" still runs a generation on request.
+4. Add one item to the pantry, then close and reopen the app and open Ideas.
+   - A generation starts on arrival, as before.
+5. Ideas → Saved, with nothing saved: tap "See ideas".
+   - The view switches back to the ideas feed.
+6. Profile → "Your kitchen", right after leaving a kitchen (before the new one appears): tap "Enter a
+   code".
+   - The join field takes focus.
 
 ## Results
 

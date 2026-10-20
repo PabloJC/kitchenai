@@ -300,4 +300,10 @@
     <string name="pantry_editor_unit">Unit</string>
     <string name="pantry_editor_save_and_add">Save and add another</string>
     <string name="pantry_editor_added">Added %1$s</string>
+    <string name="pantry_empty_action">Add items</string>
+    <string name="suggestions_add_to_pantry">Add to pantry</string>
+    <string name="suggestions_pantry_empty_title">Your pantry is empty</string>
+    <string name="suggestions_pantry_empty_body">Ideas are built from what you already have. Add a few things first.</string>
+    <string name="suggestions_see_ideas">See ideas</string>
+    <string name="kitchen_empty_action">Enter a code</string>
 </resources>

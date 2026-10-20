@@ -70,6 +70,18 @@ open class SuggestionsViewModelHarness {
             updatedAt = now,
         )
 
+    /** In no fixture recipe, so it changes no match: it only makes the pantry non-empty for a run on arrival. */
+    protected fun flourHolding(): PantryItem =
+        PantryItem(
+            id = PantryItemId.of("item-flour").orFail(),
+            ingredient = IngredientId.of("flour").orFail(),
+            freeText = null,
+            quantity = Quantity(1.0),
+            location = null,
+            expiresAt = null,
+            updatedAt = now,
+        )
+
     protected val kitchens = FakeKitchenPort()
     protected val items = FakeShoppingItemPort()
     protected val lists = FakeShoppingListPort()
@@ -77,7 +89,7 @@ open class SuggestionsViewModelHarness {
     protected fun started(
         recipes: FakeRecipePort = FakeRecipePort(),
         languageTags: List<String> = listOf("en"),
-        pantryPort: PantryRepositoryContract = FakePantryPort(),
+        pantryPort: PantryRepositoryContract = FakePantryPort(listOf(flourHolding())),
     ): SuggestionsViewModel {
         return SuggestionsViewModel(
             suggestRecipes =

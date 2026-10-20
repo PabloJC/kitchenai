@@ -43,7 +43,11 @@ fun KitchenAiNavHost(
         composable<Route.ShoppingList> { ShoppingScreen(userId) }
         navigation<Route.SuggestionsGraph>(startDestination = Route.Suggestions) {
             composable<Route.Suggestions> {
-                SuggestionsScreen(userId, onOpen = { id -> navController.navigate(Route.RecipeDetail(id.value)) })
+                SuggestionsScreen(
+                    userId,
+                    onOpen = { id -> navController.navigate(Route.RecipeDetail(id.value)) },
+                    onGoToPantry = { navController.switchTo(Route.Pantry) },
+                )
             }
             composable<Route.RecipeDetail> { entry ->
                 // The id survives as a String and is validated here: a route argument is text, and

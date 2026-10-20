@@ -22,6 +22,8 @@ data class SuggestionsUiState(
     val visibleSaved: List<SuggestionUi> = emptyList(),
     val isGenerating: Boolean = false,
     val hasGenerated: Boolean = false,
+    /** Nothing held, so nothing ran on arrival: the empty state offers the pantry instead. */
+    val isPantryEmpty: Boolean = false,
     val error: UiText? = null,
     val options: SuggestionOptionsUi = SuggestionOptionsUi(),
     /** What the results on screen were generated with; null until a run lands. */
