@@ -37,9 +37,9 @@ fun SessionGate(
     // The composition guards the recomposition, the ViewModel guards the configuration change.
     LaunchedEffect(Unit) { viewModel.start(platformLanguageTags(), defaultListName) }
     val settled = state != SessionUiState.Loading
-    LaunchedEffect(settled) { if (settled) onSettled() }
-    LaunchedEffect(Unit) {
-        delay(SPLASH_CAP)
+    // Keyed on settled: settling cancels the pending cap, so a quick session reports once.
+    LaunchedEffect(settled) {
+        if (!settled) delay(SPLASH_CAP)
         onSettled()
     }
 

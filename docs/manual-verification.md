@@ -641,7 +641,9 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The icon takes the wallpaper tint like the system apps, with the same mark.
 3. Force-stop the app and open it.
    - One blue splash with the mark, then the first tab. No separate spinner page after it on a
-     normal connection; offline, the splash gives way to the session error with "Try again".
+     normal connection.
+   - In airplane mode on a fresh install, the splash lifts within 3 seconds to the spinner or the
+     session error with "Try again", never staying on screen.
 4. Turn on dark mode, force-stop the app and open it.
    - After the splash, no white frame before the dark UI.
 5. Settings → Apps → KitchenAI → Language.
