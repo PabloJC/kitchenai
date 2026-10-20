@@ -8,7 +8,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * What a non-tab screen hands the shared top bar: its own title, and optionally one trailing
- * action. A screen that draws its own bar over its content (recipe detail, whose photo runs
+ * action. A tab may rename itself too ([claimTabTitle]), as Shopping does with the list's
+ * name. A screen that draws its own bar over its content (recipe detail, whose photo runs
  * under it) claims [hidden] instead, and [AppShell] draws none.
  *
  * A screen [claim]s it on composition and [release]s it on disposal; [AppShell] only reads.
@@ -33,6 +34,28 @@ class DetailTopBarState {
         this.action = action
         this.hidden = hidden
     }
+
+    /** A tab's own name for itself in place of its label; shown only while [route] is the tab on screen. */
+    private var tabTitle: Pair<Route, String>? by mutableStateOf(null)
+    private var tabOwner: Any? = null
+
+    fun claimTabTitle(
+        owner: Any,
+        route: Route,
+        title: String,
+    ) {
+        tabOwner = owner
+        tabTitle = route to title
+    }
+
+    fun releaseTabTitle(owner: Any) {
+        if (tabOwner !== owner) return
+        tabOwner = null
+        tabTitle = null
+    }
+
+    /** Keyed by route: the tab being left is still composed while the next one is drawn. */
+    fun tabTitleFor(route: Route): String? = tabTitle?.takeIf { (claimed, _) -> claimed == route }?.second
 
     /** A no-op unless [owner] claimed last: a screen leaving mid-transition is disposed after the next one claimed. */
     fun release(owner: Any) {

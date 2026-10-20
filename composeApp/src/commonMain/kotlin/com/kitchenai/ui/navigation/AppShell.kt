@@ -12,6 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -20,9 +21,14 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -46,6 +52,7 @@ import org.jetbrains.compose.resources.stringResource
  * From [RAIL_MIN_WIDTH] up, Material's medium and expanded widths, the tabs move from a bottom bar
  * to a rail at the side: a bar stretched across a tablet puts four targets a hand-span apart.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppShell(
     navController: NavHostController,
@@ -59,49 +66,29 @@ fun AppShell(
     // The tab whose own screen is showing; null on a screen opened from it.
     val tab = selected?.takeIf { destination -> entry.isAt(destination.route) }
     val onSelect: (ShellDestination) -> Unit = { destination -> navController.select(destination, selected) }
+    // A tab's title starts large and folds into the bar as its content scrolls; each tab starts
+    // expanded rather than inheriting how far the previous one was scrolled.
+    val barState = remember(selected) { TopAppBarState(-Float.MAX_VALUE, 0f, 0f) }
+    val collapse = if (tab != null) TopAppBarDefaults.exitUntilCollapsedScrollBehavior(barState) else null
 
     BoxWithConstraints(modifier) {
         val rail = maxWidth >= RAIL_MIN_WIDTH
         Row {
-            if (rail) {
-                NavigationRail {
-                    destinations.forEach { destination ->
-                        NavigationRailItem(
-                            selected = destination == selected,
-                            onClick = { onSelect(destination) },
-                            icon = { Icon(destination.icon, contentDescription = null) },
-                            label = { Text(stringResource(destination.label)) },
-                        )
-                    }
-                }
-            }
+            if (rail) ShellRail(destinations, selected, onSelect)
             Scaffold(
                 // The rail already pads for the start edge; the bar and content must not pad for it again.
                 modifier =
-                    Modifier.weight(1f).then(
-                        if (rail) {
-                            Modifier.consumeWindowInsets(
-                                WindowInsets.safeDrawing.only(WindowInsetsSides.Start),
-                            )
-                        } else {
-                            Modifier
-                        },
-                    ),
-                topBar = { ShellTopBar(tab, detailTopBar, onBack = navController::navigateUp) },
-                bottomBar = {
-                    if (!rail) {
-                        NavigationBar {
-                            destinations.forEach { destination ->
-                                NavigationBarItem(
-                                    selected = destination == selected,
-                                    onClick = { onSelect(destination) },
-                                    icon = { Icon(destination.icon, contentDescription = null) },
-                                    label = { Text(stringResource(destination.label)) },
-                                )
-                            }
-                        }
-                    }
-                },
+                    Modifier
+                        .weight(1f)
+                        .then(
+                            if (rail) {
+                                Modifier.consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))
+                            } else {
+                                Modifier
+                            },
+                        ).then(collapse?.let { Modifier.nestedScroll(it.nestedScrollConnection) } ?: Modifier),
+                topBar = { ShellTopBar(tab, detailTopBar, collapse, onBack = navController::navigateUp) },
+                bottomBar = { if (!rail) ShellBar(destinations, selected, onSelect) },
                 content = content,
             )
         }
@@ -113,35 +100,70 @@ fun AppShell(
 private fun ShellTopBar(
     tab: ShellDestination?,
     detailTopBar: DetailTopBarState,
+    collapse: TopAppBarScrollBehavior?,
     onBack: () -> Unit,
 ) {
     // A screen drawing its own bar over its content is the one case with no shared bar.
     if (tab == null && detailTopBar.hidden) return
+    // A screen may name itself (the kitchen, cooking mode, a shopping list); otherwise a tab shows its label.
+    val title =
+        if (tab != null) {
+            detailTopBar.tabTitleFor(tab.route) ?: stringResource(tab.label)
+        } else {
+            detailTopBar.title ?: stringResource(Res.string.detail_title)
+        }
+    val heading: @Composable () -> Unit = { Text(title, modifier = Modifier.semantics { heading() }) }
+    if (tab != null) {
+        LargeTopAppBar(title = heading, scrollBehavior = collapse)
+        return
+    }
     TopAppBar(
-        title = {
-            // A tab keeps its own label; a screen with no tab — the kitchen, cooking mode —
-            // gets to say what its title is instead of settling for a generic one.
-            val title = if (tab == null) detailTopBar.title else null
-            Text(
-                title ?: stringResource(tab?.label ?: Res.string.detail_title),
-                modifier = Modifier.semantics { heading() },
-            )
-        },
+        title = heading,
         navigationIcon = {
             // Only a screen opened from a tab needs a way out: a tab is reached from the bar or
             // rail, never by going back into it.
-            if (tab == null) {
-                IconButton(onClick = onBack) {
-                    Icon(backIcon, contentDescription = stringResource(Res.string.nav_back))
-                }
+            IconButton(onClick = onBack) {
+                Icon(backIcon, contentDescription = stringResource(Res.string.nav_back))
             }
         },
-        actions = {
-            if (tab == null) {
-                detailTopBar.action?.let { action -> TopBarActionButton(action) }
-            }
-        },
+        actions = { detailTopBar.action?.let { action -> TopBarActionButton(action) } },
     )
+}
+
+@Composable
+private fun ShellRail(
+    destinations: List<ShellDestination>,
+    selected: ShellDestination?,
+    onSelect: (ShellDestination) -> Unit,
+) {
+    NavigationRail {
+        destinations.forEach { destination ->
+            NavigationRailItem(
+                selected = destination == selected,
+                onClick = { onSelect(destination) },
+                icon = { Icon(destination.icon, contentDescription = null) },
+                label = { Text(stringResource(destination.label)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ShellBar(
+    destinations: List<ShellDestination>,
+    selected: ShellDestination?,
+    onSelect: (ShellDestination) -> Unit,
+) {
+    NavigationBar {
+        destinations.forEach { destination ->
+            NavigationBarItem(
+                selected = destination == selected,
+                onClick = { onSelect(destination) },
+                icon = { Icon(destination.icon, contentDescription = null) },
+                label = { Text(stringResource(destination.label)) },
+            )
+        }
+    }
 }
 
 /** Tapping the tab already selected goes back to its own screen rather than stacking it again. */

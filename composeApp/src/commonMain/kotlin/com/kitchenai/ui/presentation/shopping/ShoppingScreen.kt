@@ -56,6 +56,9 @@ import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
 import com.kitchenai.ui.designsystem.format.decimalSeparatorFor
 import com.kitchenai.ui.designsystem.format.formatAmount
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.navigation.DetailTopBarState
+import com.kitchenai.ui.navigation.PublishTabTitle
+import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
@@ -103,6 +106,7 @@ fun ShoppingScreen(
     userId: UserId,
     modifier: Modifier = Modifier,
     onViewPantry: (() -> Unit)? = null,
+    topBar: DetailTopBarState? = null,
     viewModel: ShoppingViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -114,6 +118,8 @@ fun ShoppingScreen(
     val addField = remember { FocusRequester() }
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
+    // The list's name is the tab's title: a second heading under the bar said the same thing twice.
+    if (state.listName.isNotBlank()) topBar?.let { PublishTabTitle(it, Route.ShoppingList, state.listName) }
     LaunchedEffect(Unit) {
         viewModel.events.collect { event -> snackbar.announce(event, viewModel::undoRemove, onViewPantry) }
     }
@@ -126,7 +132,6 @@ fun ShoppingScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
-            SectionHeader(title = state.listName)
             state.error?.let { message -> ErrorBanner(message) }
 
             ShoppingBody(

@@ -710,6 +710,19 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. On a phone in landscape, open Shopping and tap the add field.
    - A rail on the left; the field stays visible above the keyboard and adding works.
 
+### 29. Large tab titles that fold away, one title per screen, one card surface
+
+1. Open each tab: Pantry, Shopping, Ideas, Profile.
+   - The title is large under the status bar. Scrolling the list up folds it into a normal bar,
+     and scrolling back to the top unfolds it. Switching tab starts the next one unfolded.
+2. Shopping.
+   - The title is the list's name, and no second heading with the same name sits under it.
+3. Open a recipe, the kitchen and cooking mode.
+   - They keep the small bar with a back arrow; nothing folds.
+4. Ideas, in light and dark mode.
+   - Suggestion cards, saved-recipe cards and the loading skeletons share one tinted surface and
+     the same rounded corner, and each card's photo is clipped by that corner.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
