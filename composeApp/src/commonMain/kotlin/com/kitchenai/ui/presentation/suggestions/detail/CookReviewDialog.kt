@@ -13,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import com.kitchenai.ui.designsystem.theme.Dimens
@@ -43,7 +45,13 @@ internal fun CookReviewDialog(
         title = { Text(stringResource(Res.string.detail_cook_title)) },
         text = { ReviewBody(review) },
         confirmButton = {
-            Button(onClick = onConfirm) {
+            val haptics = LocalHapticFeedback.current
+            Button(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    onConfirm()
+                },
+            ) {
                 Text(stringResource(if (anyway) Res.string.detail_cook_anyway else Res.string.detail_cook_confirm))
             }
         },
