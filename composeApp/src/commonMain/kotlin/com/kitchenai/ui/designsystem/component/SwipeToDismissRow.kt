@@ -19,6 +19,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -42,6 +44,14 @@ fun SwipeToDismissRow(
 ) {
     val state = rememberSwipeToDismissBoxState()
     val dismiss by rememberUpdatedState(onDismiss)
+
+    // A tick when the swipe crosses the point where letting go deletes, and again if it backs off.
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(state.targetValue) {
+        if (state.targetValue == SwipeToDismissBoxValue.EndToStart) {
+            haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+        }
+    }
 
     // Reacting to the settled value instead of vetoing it: `confirmValueChange` is deprecated.
     LaunchedEffect(state.currentValue) {

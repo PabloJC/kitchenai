@@ -5,6 +5,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import com.kitchenai.ui.platform.rememberReducedMotion
 
 /**
  * Shapes rather than radii passed at call sites: a component asks for `medium` and this decides
@@ -25,10 +27,12 @@ fun KitchenAiTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = kitchenAiTypography(),
-        shapes = KitchenAiShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalReducedMotion provides rememberReducedMotion()) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = kitchenAiTypography(),
+            shapes = KitchenAiShapes,
+            content = content,
+        )
+    }
 }

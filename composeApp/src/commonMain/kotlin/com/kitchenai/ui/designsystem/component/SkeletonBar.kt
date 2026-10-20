@@ -14,10 +14,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.designsystem.theme.LocalReducedMotion
 
 private const val MIN_ALPHA = 0.4f
 private const val MAX_ALPHA = 1f
 private const val PULSE_MILLIS = 800
+private const val STILL_ALPHA = 0.7f
 
 /** Width fractions for a [SkeletonBar] standing in for a title or a summary line. */
 const val SKELETON_TITLE_WIDTH = 0.7f
@@ -30,6 +32,18 @@ const val SKELETON_SUMMARY_WIDTH = 0.85f
  */
 @Composable
 fun SkeletonBar(modifier: Modifier = Modifier) {
+    // Held still when the system asks for less motion; the shape alone still reads as "loading".
+    val alpha = if (LocalReducedMotion.current) STILL_ALPHA else pulsingAlpha()
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(Dimens.cornerSmall))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = alpha)),
+    )
+}
+
+@Composable
+private fun pulsingAlpha(): Float {
     val transition = rememberInfiniteTransition(label = "skeleton")
     val alpha by
         transition.animateFloat(
@@ -38,10 +52,5 @@ fun SkeletonBar(modifier: Modifier = Modifier) {
             animationSpec = infiniteRepeatable(tween(PULSE_MILLIS), RepeatMode.Reverse),
             label = "skeletonAlpha",
         )
-    Box(
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(Dimens.cornerSmall))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = alpha)),
-    )
+    return alpha
 }

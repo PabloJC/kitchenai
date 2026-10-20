@@ -25,8 +25,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -103,9 +105,14 @@ private fun SavedToggle(
     onToggle: () -> Unit,
 ) {
     val label = stringResource(if (state.isSaved) Res.string.detail_unsave else Res.string.detail_save)
+    val haptics = LocalHapticFeedback.current
     IconToggleButton(
         checked = state.isSaved,
-        onCheckedChange = { onToggle() },
+        onCheckedChange = { saving ->
+            // Only keeping it is confirmed; removing is undone from the snackbar, not celebrated.
+            if (saving) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            onToggle()
+        },
         enabled = !state.isWorking && state.title.isNotEmpty(),
         colors =
             if (solid) {
