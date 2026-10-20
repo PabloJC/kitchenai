@@ -12,12 +12,14 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.OfflineBanner
 import com.kitchenai.ui.designsystem.theme.KitchenAiTheme
 import com.kitchenai.ui.navigation.AppShell
@@ -25,8 +27,11 @@ import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.KitchenAiNavHost
 import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.navigation.ShellDestination
+import com.kitchenai.ui.navigation.switchTo
 import com.kitchenai.ui.presentation.common.AppearanceViewModel
 import com.kitchenai.ui.presentation.common.ConnectivityViewModel
+import com.kitchenai.ui.presentation.onboarding.OnboardingExit
+import com.kitchenai.ui.presentation.onboarding.OnboardingGate
 import com.kitchenai.ui.presentation.session.SessionGate
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.network_offline_banner
@@ -52,30 +57,48 @@ fun App(onSessionSettled: () -> Unit = {}) {
             ) { userId ->
                 // Keyed by uid: a ViewModel started for the old user keeps listening to its kitchen after a swap.
                 key(userId) {
-                    val navController = rememberNavController()
-                    val detailTopBar = remember { DetailTopBarState() }
-                    val connectivity by koinViewModel<ConnectivityViewModel>().state.collectAsStateWithLifecycle()
-                    AppShell(
-                        navController = navController,
-                        destinations = tabs,
-                        detailTopBar = detailTopBar,
-                    ) { padding ->
-                        // Consumed so the screens' own imePadding() subtracts the bar it already sits above.
-                        Column(Modifier.padding(padding).consumeWindowInsets(padding)) {
-                            OfflineBanner(
-                                visible = !connectivity.isOnline,
-                                message = stringResource(Res.string.network_offline_banner),
-                            )
-                            KitchenAiNavHost(
-                                navController = navController,
-                                userId = userId,
-                                detailTopBar = detailTopBar,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
+                    OnboardingGate(userId) { landing, onLanded -> Shell(userId, landing, onLanded) }
                 }
             }
+        }
+    }
+}
+
+/** The tabs and their screens, opened where the first run left off when it has just ended. */
+@Composable
+private fun Shell(
+    userId: UserId,
+    landing: OnboardingExit?,
+    onLanded: () -> Unit,
+) {
+    val navController = rememberNavController()
+    val detailTopBar = remember { DetailTopBarState() }
+    val connectivity by koinViewModel<ConnectivityViewModel>().state.collectAsStateWithLifecycle()
+    LaunchedEffect(landing) {
+        when (landing) {
+            OnboardingExit.IDEAS -> navController.switchTo(Route.SuggestionsGraph)
+            OnboardingExit.PREFERENCES -> navController.switchTo(Route.ProfileGraph)
+            null -> return@LaunchedEffect
+        }
+        onLanded()
+    }
+    AppShell(
+        navController = navController,
+        destinations = tabs,
+        detailTopBar = detailTopBar,
+    ) { padding ->
+        // Consumed so the screens' own imePadding() subtracts the bar it already sits above.
+        Column(Modifier.padding(padding).consumeWindowInsets(padding)) {
+            OfflineBanner(
+                visible = !connectivity.isOnline,
+                message = stringResource(Res.string.network_offline_banner),
+            )
+            KitchenAiNavHost(
+                navController = navController,
+                userId = userId,
+                detailTopBar = detailTopBar,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

@@ -302,4 +302,20 @@
     <string name="suggestions_pantry_empty_body">Las ideas salen de lo que ya tienes. Añade algunas cosas primero.</string>
     <string name="suggestions_see_ideas">Ver ideas</string>
     <string name="kitchen_empty_action">Introducir un código</string>
+    <string name="onboarding_step">Paso %1$d de %2$d</string>
+    <string name="onboarding_skip">Omitir</string>
+    <string name="onboarding_back">Atrás</string>
+    <string name="onboarding_next">Siguiente</string>
+    <string name="onboarding_value_title">Platos con lo que ya tienes</string>
+    <string name="onboarding_value_body">Cuéntale a KitchenAI qué hay en tu cocina y te sugerirá platos que puedes cocinar ya, con una lista de la compra para lo que falte. Comparte una cocina con tu hogar.</string>
+    <string name="onboarding_staples_title">¿Qué hay en tu cocina?</string>
+    <string name="onboarding_staples_body">Toca lo que tengas. Las cantidades pueden esperar: puedes ponerlas luego en Despensa.</string>
+    <string name="onboarding_preferences_title">¿Hay algo que evites?</string>
+    <string name="onboarding_preferences_body">Indica tus alergias y dietas antes de tus primeras ideas para que todas las sugerencias las respeten. Puedes cambiarlas cuando quieras en Perfil.</string>
+    <string name="onboarding_preferences_action">Indicar dieta y alergias</string>
+    <string name="onboarding_not_now">Ahora no, enséñame ideas</string>
+    <plurals name="onboarding_add_count">
+        <item quantity="one">Añadir %1$d</item>
+        <item quantity="other">Añadir %1$d</item>
+    </plurals>
 </resources>
