@@ -11,6 +11,7 @@ import androidx.navigation.toRoute
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.ui.designsystem.component.readableWidth
 import com.kitchenai.ui.presentation.kitchen.KitchenScreen
 import com.kitchenai.ui.presentation.pantry.PantryScreen
 import com.kitchenai.ui.presentation.profile.ProfileScreen
@@ -37,7 +38,8 @@ fun KitchenAiNavHost(
     NavHost(
         navController = navController,
         startDestination = Route.Pantry,
-        modifier = modifier,
+        // Every screen at once: on a tablet a single phone column stretched wide is unreadable.
+        modifier = modifier.readableWidth(),
     ) {
         composable<Route.Pantry> { PantryScreen(userId) }
         composable<Route.ShoppingList> { ShoppingScreen(userId) }

@@ -693,6 +693,23 @@ shared case, a second device joined to that kitchen (scenario 5).*
    code".
    - The join field takes focus.
 
+### 27. Tablets, foldables and landscape: a rail and a readable column
+
+*An iPad or an Android tablet, and a phone turned to landscape.*
+
+1. On the tablet in landscape, open each tab.
+   - The tabs sit in a rail on the left, not in a bar along the bottom. Tapping the selected tab
+     again returns to its own screen, as the bar does.
+   - Each screen's content is a centred column, not the full width: no line of body text runs past
+     about 80 characters, and a recipe's steps read like a page.
+2. Rotate the tablet to portrait, and fold or unfold a foldable.
+   - The rail stays while the window is 600 dp or wider and becomes the bottom bar below that,
+     with the same tab selected.
+3. On a phone in portrait.
+   - The bottom bar and full-width screens exactly as before.
+4. On a phone in landscape, open Shopping and tap the add field.
+   - A rail on the left; the field stays visible above the keyboard and adding works.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
