@@ -14,7 +14,6 @@ import com.kitchenai.ui.presentation.suggestions.cooking.CookingModeScreen
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailRoutes
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailScreen
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeUnavailableScreen
-import com.kitchenai.ui.presentation.suggestions.list.SuggestionsScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 /** Ideas, a recipe and cooking it: one tab's stack. The list and the detail share the photograph's move. */
@@ -25,13 +24,7 @@ internal fun NavGraphBuilder.suggestionsGraph(
 ) {
     navigation<Route.SuggestionsGraph>(startDestination = Route.Suggestions) {
         composable<Route.Suggestions> {
-            AnimatedDestination(this) {
-                SuggestionsScreen(
-                    userId,
-                    onOpen = { id -> navController.navigate(Route.RecipeDetail(id.value)) },
-                    onGoToPantry = { navController.switchTo(Route.Pantry) },
-                )
-            }
+            AnimatedDestination(this) { IdeasDestination(navController, userId) }
         }
         composable<Route.RecipeDetail> { entry ->
             // The id survives as a String and is validated here: a route argument is text, and
@@ -40,16 +33,18 @@ internal fun NavGraphBuilder.suggestionsGraph(
             when (val id = RecipeId.of(raw)) {
                 is AppResult.Success ->
                     AnimatedDestination(this) {
-                        RecipeDetailScreen(
-                            userId,
-                            id.data,
-                            detailTopBar,
-                            RecipeDetailRoutes(
-                                back = navController::navigateUp,
-                                startCooking = { navController.navigate(Route.CookingMode(raw)) },
-                                shoppingList = { navController.switchTo(Route.ShoppingList) },
-                            ),
-                        )
+                        Readable {
+                            RecipeDetailScreen(
+                                userId,
+                                id.data,
+                                detailTopBar,
+                                RecipeDetailRoutes(
+                                    back = navController::navigateUp,
+                                    startCooking = { navController.navigate(Route.CookingMode(raw)) },
+                                    shoppingList = { navController.switchTo(Route.ShoppingList) },
+                                ),
+                            )
+                        }
                     }
                 is AppResult.Failure -> RecipeUnavailableScreen(onBack = navController::navigateUp)
             }
@@ -60,13 +55,15 @@ internal fun NavGraphBuilder.suggestionsGraph(
             val detail = remember(entry) { navController.getBackStackEntry<Route.RecipeDetail>() }
             when (val id = RecipeId.of(entry.toRoute<Route.CookingMode>().recipeId)) {
                 is AppResult.Success ->
-                    CookingModeScreen(
-                        userId,
-                        id.data,
-                        detailTopBar,
-                        onExit = navController::navigateUp,
-                        detail = koinViewModel(viewModelStoreOwner = detail),
-                    )
+                    Readable {
+                        CookingModeScreen(
+                            userId,
+                            id.data,
+                            detailTopBar,
+                            onExit = navController::navigateUp,
+                            detail = koinViewModel(viewModelStoreOwner = detail),
+                        )
+                    }
                 is AppResult.Failure -> RecipeUnavailableScreen(onBack = navController::navigateUp)
             }
         }

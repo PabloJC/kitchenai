@@ -123,11 +123,15 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
+/**
+ * [detailTopBar] null means embedded beside the Ideas list on a wide window: the shell's bar stays
+ * up, and the photograph does not travel, since its card is on screen beside it.
+ */
 @Composable
 fun RecipeDetailScreen(
     userId: UserId,
     recipeId: RecipeId,
-    detailTopBar: DetailTopBarState,
+    detailTopBar: DetailTopBarState?,
     routes: RecipeDetailRoutes,
     modifier: Modifier = Modifier,
     viewModel: RecipeDetailViewModel = koinViewModel(),
@@ -144,7 +148,7 @@ fun RecipeDetailScreen(
     val solid by remember { derivedStateOf { imageHeight == 0 || scroll.value >= imageHeight - barHeight } }
     val titled by remember { derivedStateOf { imageHeight == 0 || scroll.value >= imageHeight } }
     DetailEffects(userId, recipeId, viewModel, snackbar, routes.shoppingList)
-    HideSharedTopBar(detailTopBar)
+    detailTopBar?.let { HideSharedTopBar(it) }
 
     state.cookReview?.let { review ->
         CookReviewDialog(
@@ -182,7 +186,7 @@ fun RecipeDetailScreen(
         // No top padding once there is a photo: it is what runs under the transparent bar.
         val top = if (loadFailed) padding.calculateTopPadding() else Dimens.none
         DetailBody(
-            recipeId = recipeId,
+            sharedImageKey = recipeId.value.takeIf { detailTopBar != null },
             state = state,
             viewModel = viewModel,
             onStartCooking = routes.startCooking,
@@ -194,7 +198,7 @@ fun RecipeDetailScreen(
 
 @Composable
 private fun DetailBody(
-    recipeId: RecipeId,
+    sharedImageKey: String?,
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
     onStartCooking: () -> Unit,
@@ -207,7 +211,7 @@ private fun DetailBody(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Dimens.large),
     ) {
-        if (!loadFailed) Header(recipeId, state, viewModel, onImageHeight)
+        if (!loadFailed) Header(sharedImageKey, state, viewModel, onImageHeight)
         state.error?.let { message ->
             ErrorBanner(
                 message = message.resolve(),
@@ -282,7 +286,7 @@ private fun rememberShare(state: RecipeDetailUiState): ((anchor: Rect?) -> Unit)
 
 @Composable
 private fun Header(
-    recipeId: RecipeId,
+    sharedImageKey: String?,
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
     onImageHeight: (Int) -> Unit,
@@ -290,10 +294,8 @@ private fun Header(
     // Edge to edge and under the bar, unlike everything below it: the photograph sits flush with
     // the top of the screen rather than margined like body content.
     // The card's photograph lands here: the same recipe id names both ends of the move.
-    RecipeImage(
-        tags = state.tagRefs,
-        modifier = Modifier.sharedRecipeImage(recipeId.value).onSizeChanged { onImageHeight(it.height) },
-    )
+    val shared = sharedImageKey?.let { key -> Modifier.sharedRecipeImage(key) } ?: Modifier
+    RecipeImage(tags = state.tagRefs, modifier = shared.onSizeChanged { onImageHeight(it.height) })
     Column(
         modifier = Modifier.padding(horizontal = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),

@@ -736,6 +736,12 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The bottom bar and full-width screens exactly as before.
 4. On a phone in landscape, open Shopping and tap the add field.
    - A rail on the left; the field stays visible above the keyboard and adding works.
+5. On the tablet in landscape (840 dp or wider), open Ideas and tap a suggestion.
+   - The recipe opens on the right, beside the list, with "Pick an idea" there before any tap.
+     Tapping another card replaces it; the back arrow on the recipe empties the right pane.
+   - "Start cooking" from the right pane opens cooking mode full screen; back returns to the recipe.
+6. Rotate that tablet to portrait, below 840 dp.
+   - Ideas is one list again, and a tap opens the recipe on its own screen.
 
 ### 28. Motion and haptics, and less of both when the system asks
 
