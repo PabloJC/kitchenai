@@ -9,9 +9,15 @@ import com.kitchenai.shared.domain.usecase.profile.metricUnitConverter
 import com.kitchenai.shared.domain.usecase.recipe.recipe
 import com.kitchenai.shared.domain.usecase.recipe.recipeId
 import com.kitchenai.shared.domain.usecase.recipe.recipeIngredient
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toInstant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 class PantryMatcherTest {
@@ -160,9 +166,40 @@ class PantryMatcherTest {
     }
 
     @Test
-    fun `an expired holding covers nothing`() {
+    fun `a holding expiring today covers its line until local midnight east and west of UTC`() {
         val line = recipeIngredient("ing-1", quantity = Quantity(1.0, unitA))
-        val pantry = listOf(pantryItem("item-1", "ing-1", Quantity(5.0, unitA), expiresAt = now))
+        for (zone in listOf(TimeZone.of("Asia/Tokyo"), TimeZone.of("America/Los_Angeles"))) {
+            val endOfToday = LocalDateTime(2026, 10, 14, 23, 59, 59).toInstant(zone)
+            val pantry = listOf(pantryItem("item-1", "ing-1", Quantity(5.0, unitA), expiresAt = endOfToday))
+            val lateTonight = LocalDateTime(2026, 10, 14, 23, 30).toInstant(zone)
+            val tomorrowMorning = LocalDateTime(2026, 10, 15, 0, 30).toInstant(zone)
+
+            val tonight = PantryMatcher.match(recipe(ingredients = listOf(line)), pantry, lateTonight, zone = zone)
+            val tomorrow = PantryMatcher.match(recipe(ingredients = listOf(line)), pantry, tomorrowMorning, zone = zone)
+
+            assertEquals(1, tonight.covered.size, zone.id)
+            assertTrue(tomorrow.covered.isEmpty(), zone.id)
+        }
+    }
+
+    @Test
+    fun `a date stored as UTC midnight is stock for the whole of its own day west of UTC`() {
+        // UTC midnight is the evening before in Los Angeles: read as an instant it would already be past.
+        val zone = TimeZone.of("America/Los_Angeles")
+        val legacy = LocalDate(2026, 10, 14).atStartOfDayIn(TimeZone.UTC)
+        val line = recipeIngredient("ing-1", quantity = Quantity(1.0, unitA))
+        val pantry = listOf(pantryItem("item-1", "ing-1", Quantity(5.0, unitA), expiresAt = legacy))
+        val evening = LocalDateTime(2026, 10, 14, 20, 0).toInstant(zone)
+
+        val match = PantryMatcher.match(recipe(ingredients = listOf(line)), pantry, evening, zone = zone)
+
+        assertEquals(1, match.covered.size)
+    }
+
+    @Test
+    fun `a holding past its date covers nothing`() {
+        val line = recipeIngredient("ing-1", quantity = Quantity(1.0, unitA))
+        val pantry = listOf(pantryItem("item-1", "ing-1", Quantity(5.0, unitA), expiresAt = now - 1.days))
 
         val match = PantryMatcher.match(recipe(ingredients = listOf(line)), pantry, now)
 

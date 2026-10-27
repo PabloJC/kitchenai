@@ -8,6 +8,8 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.shared.domain.model.daysUntilExpiry
+import com.kitchenai.shared.domain.model.freshnessIn
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.wordFor
@@ -49,7 +51,7 @@ internal fun PantryItem.toUi(
         location = location,
         locationLabel = location?.let { place -> resolver.wordFor(place) },
         expiresAt = expiresAt,
-        freshness = freshnessIn(daysLeft),
+        freshness = freshnessIn(daysLeft, EXPIRING_SOON_DAYS),
         expiryLabel = daysLeft?.let(::expiryLabel),
     )
 }

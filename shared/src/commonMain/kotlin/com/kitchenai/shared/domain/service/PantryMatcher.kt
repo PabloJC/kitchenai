@@ -9,7 +9,9 @@ import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeIngredient
+import com.kitchenai.shared.domain.model.hasExpiredOn
 import com.kitchenai.shared.domain.model.reaches
+import kotlinx.datetime.TimeZone
 import kotlin.time.Instant
 
 /**
@@ -26,12 +28,14 @@ object PantryMatcher {
         pantry: List<PantryItem>,
         now: Instant,
         units: UnitConverter = UnitConverter.NONE,
+        // The device's zone in production: an item expiring today is stock until local midnight.
+        zone: TimeZone = TimeZone.UTC,
     ): PantryMatch {
         // A free-text holding has no catalogue id to compare a recipe line against, so it is
         // dropped here rather than left to land under a key nothing ever looks up.
         val held: Map<IngredientId, List<PantryItem>> =
             pantry
-                .filterNot { it.hasExpiredAt(now) }
+                .filterNot { it.hasExpiredOn(now, zone) }
                 .mapNotNull { item -> item.ingredient?.let { id -> id to item } }
                 .groupBy(keySelector = { (id, _) -> id }, valueTransform = { (_, item) -> item })
         val covered = mutableListOf<CoveredIngredient>()
@@ -73,10 +77,6 @@ object PantryMatcher {
 
     private fun List<PantryItem>.ids(): List<PantryItemId> = map { it.id }
 }
-
-// Expired stock is not stock. `freshnessAt` is not used here: it needs a product-defined
-// window that the matcher has no business knowing about.
-private fun PantryItem.hasExpiredAt(now: Instant): Boolean = expiresAt?.let { it <= now } == true
 
 /** The three answers a single line can get, kept private: callers read [PantryMatch] instead. */
 private sealed interface Verdict {
