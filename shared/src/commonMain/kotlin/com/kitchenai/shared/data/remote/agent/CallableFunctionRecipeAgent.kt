@@ -69,6 +69,8 @@ internal class CallableFunctionRecipeAgent(
                     maxResults = options.maxResults,
                     maxMinutes = options.maxMinutes,
                     useOnlyPantry = options.useOnlyPantry,
+                    useExpiringSoon = options.useExpiringSoon,
+                    mealType = options.mealType?.name,
                 ),
             constraints = constraints.map { it.toDto() },
             preferences = preferences.map { it.toDto() },
