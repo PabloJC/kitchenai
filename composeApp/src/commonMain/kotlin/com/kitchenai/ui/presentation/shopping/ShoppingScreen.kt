@@ -138,7 +138,7 @@ fun ShoppingScreen(
         snackbarHost = { ShoppingSnackbarHost(snackbar) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
-            state.error?.let { message -> ShoppingErrorBanner(message, state.canRetry, viewModel::retry) }
+            state.error?.let { message -> ShoppingErrorBanner(message, state.bannerOffersRetry, viewModel::retry) }
 
             ShoppingBody(
                 state = state,

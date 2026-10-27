@@ -658,6 +658,8 @@ class ShoppingViewModelTest {
             items.errors.emit(AppError.Unauthorized())
             advanceUntilIdle()
             assertTrue(viewModel.state.value.canRetry)
+            // The failed-list state carries the button; the banner above it does not repeat it.
+            assertFalse(viewModel.state.value.bannerOffersRetry)
 
             viewModel.retry()
             advanceUntilIdle()

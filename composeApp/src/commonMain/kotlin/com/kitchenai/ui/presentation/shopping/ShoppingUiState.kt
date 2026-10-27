@@ -26,6 +26,9 @@ data class ShoppingUiState(
     // The error is a listener's, so listening again may fix it; a refused write is not.
     val canRetry: Boolean = false,
 ) {
+    /** A list that never loaded already offers Try again in its own empty state: one button per failure. */
+    val bannerOffersRetry: Boolean get() = canRetry && !failedToLoad
+
     // A line just ticked still sits in `unchecked` for a moment, so the ticked set spans both lists.
     private val ticked: List<ShoppingItemUi> get() = unchecked.filter(ShoppingItemUi::checked) + checked
 
