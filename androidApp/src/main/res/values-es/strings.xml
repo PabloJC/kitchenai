@@ -4,4 +4,7 @@
     <string name="shortcut_shopping_add_long">Añadir a la lista de la compra</string>
     <string name="shortcut_pantry">Despensa</string>
     <string name="shortcut_ideas">Ver ideas</string>
+    <string name="widget_shopping_label">Lista de la compra</string>
+    <string name="widget_shopping_description">Marca lo que has comprado sin abrir la app.</string>
+    <string name="widget_shopping_loading">Cargando tu lista…</string>
 </resources>
