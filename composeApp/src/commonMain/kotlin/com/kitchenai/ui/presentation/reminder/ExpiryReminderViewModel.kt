@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.reminder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.ReminderSettings
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.TimeProvider
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -39,7 +41,6 @@ class ExpiryReminderViewModel(
 
     private var startedFor: UserId? = null
     private var following: Job? = null
-    private var current = ReminderSettings()
 
     // Dismissed without an answer: not asked again until the next launch, and nothing is stored.
     private var postponed = false
@@ -55,7 +56,6 @@ class ExpiryReminderViewModel(
     private suspend fun follow(userId: UserId) {
         val pantry = reads.kitchen(userId).flatMapLatest { kitchen -> reads.pantry(kitchen.id) }
         combine(pantry, reads.settings(), ::Pair).collectLatest { (items, settings) ->
-            current = settings
             val dated = items.any { item -> item.expiresAt != null }
             internalState.update { it.copy(offering = !postponed && !settings.offered && dated) }
             val digests = if (settings.offered) reads.plan(items, settings, time.now(), zone()) else emptyList()
@@ -73,18 +73,22 @@ class ExpiryReminderViewModel(
     }
 
     /** The answer to the system prompt: a no keeps them off, and neither is asked again. */
-    fun answered(granted: Boolean) = store(current.copy(offered = true, enabled = granted))
+    fun answered(granted: Boolean) = store { it.copy(offered = true, enabled = granted) }
 
-    fun decline() = store(current.copy(offered = true, enabled = false))
+    fun decline() = store { it.copy(offered = true, enabled = false) }
 
     fun later() {
         postponed = true
         internalState.update { it.copy(offering = false) }
     }
 
-    // A failed write only means the question comes back next launch.
-    private fun store(next: ReminderSettings) {
+    // Read inside the scope: the iOS permission callback arrives off the main thread. A failed write asks again.
+    private fun store(change: (ReminderSettings) -> ReminderSettings) {
         internalState.update { it.copy(offering = false) }
-        viewModelScope.launch { save(next) }
+        viewModelScope.launch {
+            if (save(change(reads.settings().first())) is AppResult.Failure) {
+                internalState.update { it.copy(offering = true) }
+            }
+        }
     }
 }

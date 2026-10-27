@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.reminder
 
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItem
@@ -123,6 +124,20 @@ class ExpiryReminderViewModelTest {
         }
 
     @Test
+    fun `an answer that could not be stored puts the question back`() =
+        runTest(dispatcher) {
+            settings.failWith = AppError.Unknown()
+            val viewModel = started(FakePantryPort(listOf(item("a", tomorrow()))))
+            advanceUntilIdle()
+
+            viewModel.decline()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.offering)
+            assertEquals(ReminderSettings(), settings.current.value)
+        }
+
+    @Test
     fun `dismissing postpones the question without storing an answer`() =
         runTest(dispatcher) {
             val pantry = FakePantryPort(listOf(item("a", tomorrow())))
@@ -210,7 +225,10 @@ private class FakeSettingsRepository : ReminderSettingsRepositoryContract {
 
     override fun observeSettings(): Flow<ReminderSettings> = current
 
+    var failWith: AppError? = null
+
     override suspend fun saveSettings(settings: ReminderSettings): AppResult<Unit> {
+        failWith?.let { return AppResult.Failure(it) }
         current.value = settings
         return AppResult.Success(Unit)
     }
