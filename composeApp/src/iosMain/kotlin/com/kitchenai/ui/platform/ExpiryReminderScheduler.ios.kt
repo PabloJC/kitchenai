@@ -1,5 +1,6 @@
 package com.kitchenai.ui.platform
 
+import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestsUseCase.Companion.HORIZON_DAYS
 import org.koin.core.scope.Scope
 import platform.UserNotifications.UNMutableNotificationContent
 import platform.UserNotifications.UNNotificationRequest
@@ -9,31 +10,32 @@ import kotlin.time.Clock
 
 actual fun Scope.platformExpiryReminderScheduler(): ExpiryReminderScheduler = UserNotificationsExpiryReminderScheduler()
 
-/** One identifier, so scheduling again replaces the pending reminder rather than adding a second. */
+/** One identifier per day slot, so scheduling again replaces the pending reminders rather than adding to them. */
 internal class UserNotificationsExpiryReminderScheduler : ExpiryReminderScheduler {
     private val center = UNUserNotificationCenter.currentNotificationCenter()
 
-    override fun schedule(reminder: ScheduledReminder) {
-        val content =
-            UNMutableNotificationContent().apply {
-                title = reminder.title
-                body = reminder.body
-            }
-        // An interval rather than calendar components: the instant was already worked out in the right zone.
-        val seconds = (reminder.fireAt - Clock.System.now()).inWholeSeconds.coerceAtLeast(1).toDouble()
-        val trigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(seconds, repeats = false)
-        center.removePendingNotificationRequestsWithIdentifiers(listOf(IDENTIFIER))
-        center.addNotificationRequest(
-            UNNotificationRequest.requestWithIdentifier(IDENTIFIER, content, trigger),
-            withCompletionHandler = null,
-        )
+    override fun schedule(reminders: List<ScheduledReminder>) {
+        cancel()
+        val now = Clock.System.now()
+        reminders.take(HORIZON_DAYS).forEachIndexed { slot, reminder ->
+            val content =
+                UNMutableNotificationContent().apply {
+                    title = reminder.title
+                    body = reminder.body
+                }
+            // An interval rather than calendar components: the instant was already worked out in the right zone.
+            val seconds = (reminder.fireAt - now).inWholeSeconds.coerceAtLeast(1).toDouble()
+            val trigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(seconds, repeats = false)
+            center.addNotificationRequest(
+                UNNotificationRequest.requestWithIdentifier(identifier(slot), content, trigger),
+                withCompletionHandler = null,
+            )
+        }
     }
 
     override fun cancel() {
-        center.removePendingNotificationRequestsWithIdentifiers(listOf(IDENTIFIER))
+        center.removePendingNotificationRequestsWithIdentifiers(List(HORIZON_DAYS, ::identifier))
     }
 
-    private companion object {
-        const val IDENTIFIER = "expiry-reminder"
-    }
+    private fun identifier(slot: Int): String = "expiry-reminder-$slot"
 }

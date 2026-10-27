@@ -11,7 +11,7 @@ import com.kitchenai.shared.domain.usecase.profile.SaveAppearanceUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
 import com.kitchenai.shared.domain.usecase.reminder.ObserveReminderSettingsUseCase
-import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestUseCase
+import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestsUseCase
 import com.kitchenai.shared.domain.usecase.reminder.SaveReminderSettingsUseCase
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -26,7 +26,7 @@ val profileModule: Module =
         factory { CompleteOnboardingUseCase(get()) }
         factory { ObserveReminderSettingsUseCase(get()) }
         factory { SaveReminderSettingsUseCase(get()) }
-        factory { PlanExpiryDigestUseCase() }
+        factory { PlanExpiryDigestsUseCase() }
         factory { ObserveUserProfileUseCase(get()) }
         factory { ObserveTaxonomyUseCase(get()) }
         factory { ObserveTaxonomiesUseCase(get()) }

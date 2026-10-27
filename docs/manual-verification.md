@@ -763,7 +763,10 @@ shared case, a second device joined to that kitchen (scenario 5).*
      date. Tapping it opens the app.
 4. Reinstall, repeat step 2 and tap "No, thanks", or deny the system prompt.
    - The dialog never returns and no notification arrives at 18:00.
-5. With reminders on, use up or delete every dated item.
+5. With reminders on, give one item a date three days ahead and close the app without opening it
+   again. Move the clock to 17:59 on each of the next days.
+   - The notification arrives on the evening before that date, with the app never reopened.
+6. With reminders on, use up or delete every dated item.
    - No notification arrives at 18:00.
 
 ## Results

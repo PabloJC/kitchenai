@@ -2,9 +2,10 @@ package com.kitchenai.ui.platform
 
 import org.koin.core.scope.Scope
 
-/** Hands the next reminder to the system so it fires with the app closed. At most one: a new one replaces it. */
+/** Hands the planned reminders to the system so they fire with the app closed. */
 interface ExpiryReminderScheduler {
-    fun schedule(reminder: ScheduledReminder)
+    /** Replaces every pending reminder with [reminders]. */
+    fun schedule(reminders: List<ScheduledReminder>)
 
     fun cancel()
 }

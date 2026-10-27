@@ -21,8 +21,8 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 
 /**
- * Keeps the system's one pending expiry reminder in step with the kitchen's pantry: every
- * snapshot replans it, so an item used up or re-dated never leaves a stale reminder behind.
+ * Keeps the system's pending expiry reminders in step with the kitchen's pantry: every
+ * snapshot replans them, so an item used up or re-dated never leaves a stale reminder behind.
  * Nothing is scheduled until the person has said yes to the one-time question.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -58,12 +58,16 @@ class ExpiryReminderViewModel(
             current = settings
             val dated = items.any { item -> item.expiresAt != null }
             internalState.update { it.copy(offering = !postponed && !settings.offered && dated) }
-            val digest = if (settings.offered) reads.plan(items, settings, time.now(), zone()) else null
-            if (digest == null) {
+            val digests = if (settings.offered) reads.plan(items, settings, time.now(), zone()) else emptyList()
+            if (digests.isEmpty()) {
                 scheduler.cancel()
             } else {
-                val text = wording.describe(digest)
-                scheduler.schedule(ScheduledReminder(digest.fireAt, text.title, text.body, text.channelName))
+                scheduler.schedule(
+                    digests.map { digest ->
+                        val text = wording.describe(digest)
+                        ScheduledReminder(digest.fireAt, text.title, text.body, text.channelName)
+                    },
+                )
             }
         }
     }

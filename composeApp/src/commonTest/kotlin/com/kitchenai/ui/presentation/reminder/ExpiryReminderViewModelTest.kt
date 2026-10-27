@@ -12,7 +12,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.reminder.ObserveReminderSettingsUseCase
-import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestUseCase
+import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestsUseCase
 import com.kitchenai.shared.domain.usecase.reminder.SaveReminderSettingsUseCase
 import com.kitchenai.ui.platform.ExpiryReminderScheduler
 import com.kitchenai.ui.platform.ScheduledReminder
@@ -66,7 +66,7 @@ class ExpiryReminderViewModelTest {
             advanceUntilIdle()
 
             assertTrue(viewModel.state.value.offering)
-            assertNull(scheduler.scheduled)
+            assertNull(scheduler.next)
         }
 
     @Test
@@ -89,8 +89,9 @@ class ExpiryReminderViewModelTest {
 
             assertFalse(viewModel.state.value.offering)
             assertEquals(ReminderSettings(enabled = true, offered = true), settings.current.value)
-            assertEquals(LocalDateTime(2026, 10, 20, 18, 0).toInstant(zone), scheduler.scheduled?.fireAt)
-            assertEquals("1 expiring, 0 expired", scheduler.scheduled?.body)
+            assertEquals(LocalDateTime(2026, 10, 20, 18, 0).toInstant(zone), scheduler.next?.fireAt)
+            assertEquals("1 expiring, 0 expired", scheduler.next?.body)
+            assertEquals(1, scheduler.pending.size)
         }
 
     @Test
@@ -104,7 +105,7 @@ class ExpiryReminderViewModelTest {
 
             assertEquals(ReminderSettings(enabled = false, offered = true), settings.current.value)
             assertFalse(viewModel.state.value.offering)
-            assertNull(scheduler.scheduled)
+            assertNull(scheduler.next)
             assertTrue(scheduler.cancelled > 0)
         }
 
@@ -118,7 +119,7 @@ class ExpiryReminderViewModelTest {
             advanceUntilIdle()
 
             assertEquals(ReminderSettings(enabled = false, offered = true), settings.current.value)
-            assertNull(scheduler.scheduled)
+            assertNull(scheduler.next)
         }
 
     @Test
@@ -148,7 +149,7 @@ class ExpiryReminderViewModelTest {
             pantry.remove(defaultKitchenId, (PantryItemId.of("a") as AppResult.Success).data)
             advanceUntilIdle()
 
-            assertNull(scheduler.scheduled)
+            assertNull(scheduler.next)
         }
 
     @Test
@@ -177,7 +178,7 @@ class ExpiryReminderViewModelTest {
                     kitchen = ObserveKitchenUseCase(FakeKitchenPort()),
                     pantry = ObservePantryUseCase(pantry),
                     settings = ObserveReminderSettingsUseCase(settings),
-                    plan = PlanExpiryDigestUseCase(),
+                    plan = PlanExpiryDigestsUseCase(),
                 ),
             save = SaveReminderSettingsUseCase(settings),
             scheduler = scheduler,
@@ -216,20 +217,21 @@ private class FakeSettingsRepository : ReminderSettingsRepositoryContract {
 }
 
 private class RecordingScheduler : ExpiryReminderScheduler {
-    var scheduled: ScheduledReminder? = null
+    var pending: List<ScheduledReminder> = emptyList()
         private set
+    val next: ScheduledReminder? get() = pending.firstOrNull()
     var scheduledCount = 0
         private set
     var cancelled = 0
         private set
 
-    override fun schedule(reminder: ScheduledReminder) {
-        scheduled = reminder
+    override fun schedule(reminders: List<ScheduledReminder>) {
+        pending = reminders
         scheduledCount++
     }
 
     override fun cancel() {
-        scheduled = null
+        pending = emptyList()
         cancelled++
     }
 }
