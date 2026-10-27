@@ -318,4 +318,18 @@
         <item quantity="one">Añadir %1$d</item>
         <item quantity="other">Añadir %1$d</item>
     </plurals>
+    <string name="reminder_title">Úsalo antes de que se estropee</string>
+    <string name="reminder_channel">Avisos de caducidad</string>
+    <string name="reminder_offer_title">¿Quieres un aviso antes de que algo caduque?</string>
+    <string name="reminder_offer_body">Un aviso a las 18:00 los días en que algo de tu cocina esté a punto de caducar. Ningún otro día.</string>
+    <string name="reminder_offer_yes">Avisarme</string>
+    <string name="reminder_offer_no">No, gracias</string>
+    <plurals name="reminder_expiring">
+        <item quantity="one">%1$d producto caduca en menos de un día</item>
+        <item quantity="other">%1$d productos caducan en menos de un día</item>
+    </plurals>
+    <plurals name="reminder_expired">
+        <item quantity="one">%1$d producto ya ha caducado</item>
+        <item quantity="other">%1$d productos ya han caducado</item>
+    </plurals>
 </resources>

@@ -750,6 +750,22 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - Suggestion cards, saved-recipe cards and the loading skeletons share one tinted surface and
      the same rounded corner, and each card's photo is clipped by that corner.
 
+### 30. Expiry reminders: asked in context, one digest a day
+
+1. On a fresh install, finish the first run, then add a pantry item with no expiry date.
+   - No reminder question appears.
+2. Give an item an expiry date of tomorrow.
+   - A dialog asks "Want a reminder before things expire?". Tapping outside it closes it; it comes
+     back on the next launch.
+3. Tap "Remind me". On Android 13+ and on iOS the system permission prompt follows.
+   - Allow it. Set the device clock to 17:59 today and wait: at 18:00 one notification titled
+     "Use it before it goes" says how many items expire within a day and how many are past their
+     date. Tapping it opens the app.
+4. Reinstall, repeat step 2 and tap "No, thanks", or deny the system prompt.
+   - The dialog never returns and no notification arrives at 18:00.
+5. With reminders on, use up or delete every dated item.
+   - No notification arrives at 18:00.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

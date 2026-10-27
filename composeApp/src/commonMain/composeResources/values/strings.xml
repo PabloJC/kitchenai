@@ -322,4 +322,18 @@
         <item quantity="one">Add %1$d</item>
         <item quantity="other">Add %1$d</item>
     </plurals>
+    <string name="reminder_title">Use it before it goes</string>
+    <string name="reminder_channel">Expiry reminders</string>
+    <string name="reminder_offer_title">Want a reminder before things expire?</string>
+    <string name="reminder_offer_body">One notification at 18:00 on days when something in your kitchen is about to expire. Nothing on other days.</string>
+    <string name="reminder_offer_yes">Remind me</string>
+    <string name="reminder_offer_no">No, thanks</string>
+    <plurals name="reminder_expiring">
+        <item quantity="one">%1$d item expires within a day</item>
+        <item quantity="other">%1$d items expire within a day</item>
+    </plurals>
+    <plurals name="reminder_expired">
+        <item quantity="one">%1$d item is past its date</item>
+        <item quantity="other">%1$d items are past their date</item>
+    </plurals>
 </resources>

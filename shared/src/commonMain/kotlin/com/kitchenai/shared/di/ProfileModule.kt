@@ -10,10 +10,13 @@ import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveAppearanceUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
+import com.kitchenai.shared.domain.usecase.reminder.ObserveReminderSettingsUseCase
+import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestUseCase
+import com.kitchenai.shared.domain.usecase.reminder.SaveReminderSettingsUseCase
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
-/** Profile, vocabulary and this device's own settings (appearance, first run). Ports come from the data modules. */
+/** Profile, vocabulary and this device's own settings (appearance, first run, reminders). Ports: the data modules. */
 val profileModule: Module =
     module {
         factory { GetUnitConverterUseCase(get()) }
@@ -21,6 +24,9 @@ val profileModule: Module =
         factory { SaveAppearanceUseCase(get()) }
         factory { ObserveOnboardingCompletedUseCase(get()) }
         factory { CompleteOnboardingUseCase(get()) }
+        factory { ObserveReminderSettingsUseCase(get()) }
+        factory { SaveReminderSettingsUseCase(get()) }
+        factory { PlanExpiryDigestUseCase() }
         factory { ObserveUserProfileUseCase(get()) }
         factory { ObserveTaxonomyUseCase(get()) }
         factory { ObserveTaxonomiesUseCase(get()) }

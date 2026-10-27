@@ -32,6 +32,7 @@ import com.kitchenai.ui.presentation.common.AppearanceViewModel
 import com.kitchenai.ui.presentation.common.ConnectivityViewModel
 import com.kitchenai.ui.presentation.onboarding.OnboardingExit
 import com.kitchenai.ui.presentation.onboarding.OnboardingGate
+import com.kitchenai.ui.presentation.reminder.ExpiryReminders
 import com.kitchenai.ui.presentation.session.SessionGate
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.network_offline_banner
@@ -101,6 +102,7 @@ private fun Shell(
             )
         }
     }
+    ExpiryReminders(userId)
 }
 
 /** Recipe detail and Kitchen are reached from a tab, so they live in its graph and are not tabs. */
