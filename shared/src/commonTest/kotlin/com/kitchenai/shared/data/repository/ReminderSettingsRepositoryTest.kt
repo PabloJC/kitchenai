@@ -41,6 +41,14 @@ class ReminderSettingsRepositoryTest {
         }
 
     @Test
+    fun `a stored time no clock shows falls back to the defaults`() =
+        runTest(dispatcher) {
+            val store = SettingsStore("reminders.expiry" to "true;99;0;true")
+
+            assertEquals(ReminderSettings(), repository(store).observeSettings().first())
+        }
+
+    @Test
     fun `a store that throws on write is reported rather than crashing`() =
         runTest(dispatcher) {
             val broken =

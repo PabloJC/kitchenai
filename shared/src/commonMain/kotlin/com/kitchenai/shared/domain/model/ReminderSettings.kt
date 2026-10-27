@@ -10,7 +10,12 @@ data class ReminderSettings(
     val minute: Int = 0,
     val offered: Boolean = false,
 ) {
+    /** False for a time no clock shows; such settings are never stored or planned. */
+    val isTimeOfDay: Boolean get() = hour in HOURS && minute in MINUTES
+
     companion object {
         const val DEFAULT_HOUR = 18
+        private val HOURS = 0..23
+        private val MINUTES = 0..59
     }
 }

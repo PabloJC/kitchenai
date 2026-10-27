@@ -41,6 +41,7 @@ class ReminderSettingsRepository(
             null
         } else {
             ReminderSettings(enabled = flags.first, hour = time.first, minute = time.second, offered = flags.second)
+                .takeIf { it.isTimeOfDay }
         }
     }
 
