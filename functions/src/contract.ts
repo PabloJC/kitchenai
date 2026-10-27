@@ -38,13 +38,23 @@ export interface PantryEntry {
   expiringSoon: boolean;
 }
 
+/** What the dishes are for. Absent means any meal, which is what older clients ask for. */
+export const MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'] as const;
+export type MealType = (typeof MEAL_TYPES)[number];
+
 export interface SuggestRequest {
   schemaVersion: number;
   requestId: string;
   capability: string;
   languageTags: string[];
   servings: number;
-  options: { maxResults: number; maxMinutes: number | null; useOnlyPantry: boolean };
+  options: {
+    maxResults: number;
+    maxMinutes: number | null;
+    useOnlyPantry: boolean;
+    useExpiringSoon: boolean;
+    mealType: MealType | null;
+  };
   constraints: Constraint[];
   preferences: TermRef[];
   avoidedIngredients: string[];
@@ -77,6 +87,9 @@ export function parseRequest(raw: unknown): SuggestRequest {
       maxResults: clampInt(options.maxResults, 1, MAX_RESULTS, 'maxResults'),
       maxMinutes: options.maxMinutes == null ? null : clampInt(options.maxMinutes, 1, 24 * 60, 'maxMinutes'),
       useOnlyPantry: options.useOnlyPantry === true,
+      // Both optional on the wire: a client from before #293 omits them and means "no preference".
+      useExpiringSoon: options.useExpiringSoon === true,
+      mealType: mealType(options.mealType),
     },
     constraints: list(body.constraints, MAX_CONSTRAINTS).map(constraint),
     preferences: list(body.preferences, MAX_CONSTRAINTS).map(termRef),
@@ -141,6 +154,12 @@ export function identifier(raw: unknown, field: string): string {
     throw new BadRequest(`${field} must not contain free text`);
   }
   return raw;
+}
+
+function mealType(raw: unknown): MealType | null {
+  if (raw == null) return null;
+  if (typeof raw === 'string' && (MEAL_TYPES as readonly string[]).includes(raw)) return raw as MealType;
+  throw new BadRequest('mealType must be one of ' + MEAL_TYPES.join(', '));
 }
 
 function clampInt(raw: unknown, min: number, max: number, field: string): number {

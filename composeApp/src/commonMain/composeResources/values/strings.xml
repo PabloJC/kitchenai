@@ -160,6 +160,11 @@
     <string name="detail_optional_suffix"> (optional)</string>
     <string name="suggestions_only_pantry">Only what I have</string>
     <string name="suggestions_quick">Under 30 minutes</string>
+    <string name="suggestions_use_expiring">Use what expires soon</string>
+    <string name="suggestions_meal_breakfast">Breakfast</string>
+    <string name="suggestions_meal_lunch">Lunch</string>
+    <string name="suggestions_meal_dinner">Dinner</string>
+    <string name="suggestions_meal_snack">Snack</string>
     <string name="suggestions_empty_title">No suggestions yet</string>
     <string name="suggestions_nothing_title">Nothing to suggest</string>
     <string name="suggestions_working">Reading your pantry and thinking of dishes. This takes a moment.</string>

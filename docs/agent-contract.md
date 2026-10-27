@@ -29,7 +29,8 @@ or a number.** There is no field in which a sentence can leave the device.
   "capability": "SUGGEST_FROM_PANTRY",
   "languageTags": ["en", "es"],
   "servings": 2,
-  "options": { "maxResults": 5, "maxMinutes": null, "useOnlyPantry": true },
+  "options": { "maxResults": 5, "maxMinutes": null, "useOnlyPantry": true,
+               "useExpiringSoon": false, "mealType": null },
   "constraints": [ { "taxonomy": "<id>", "term": "<id>", "strength": "AVOID" } ],
   "preferences": [ { "taxonomy": "<id>", "term": "<id>" } ],
   "avoidedIngredients": ["<ingredientId>"],
@@ -41,6 +42,9 @@ or a number.** There is no field in which a sentence can leave the device.
 ```
 
 `requestId` is the client's, so a retry is recognisable server-side as the same question.
+
+`useExpiringSoon` and `mealType` (`BREAKFAST`, `LUNCH`, `DINNER`, `SNACK` or `null`) were added
+in #293 and are optional: a client that omits them asks for no preference.
 
 `strength` is one of `PREFER`, `AVOID` — how hard a constraint binds is app logic, not
 vocabulary, which is why it is an enum while the term it applies to is not. `AVOID` is the one

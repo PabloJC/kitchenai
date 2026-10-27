@@ -5,6 +5,7 @@ import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.CoveredIngredient
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.MealType
 import com.kitchenai.shared.domain.model.MissingIngredient
 import com.kitchenai.shared.domain.model.PantryMatch
 import com.kitchenai.shared.domain.model.Recipe
@@ -24,13 +25,22 @@ class SuggestionsUiMapperTest {
 
     @Test
     fun `an options draft maps field for field onto the domain shape`() {
-        val ui = SuggestionOptionsUi(maxResults = 5, maxMinutes = 30, useOnlyPantry = true)
+        val ui =
+            SuggestionOptionsUi(
+                maxResults = 5,
+                maxMinutes = 30,
+                useOnlyPantry = true,
+                useExpiringSoon = true,
+                mealType = MealType.SNACK,
+            )
 
         val domain = ui.toDomain()
 
         assertEquals(5, domain.maxResults)
         assertEquals(30, domain.maxMinutes)
         assertEquals(true, domain.useOnlyPantry)
+        assertEquals(true, domain.useExpiringSoon)
+        assertEquals(MealType.SNACK, domain.mealType)
     }
 
     @Test
