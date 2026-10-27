@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.usecase.reminder.SaveReminderSettingsUseCase
 import com.kitchenai.ui.platform.ExpiryReminderScheduler
 import com.kitchenai.ui.platform.ScheduledReminder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,37 +37,33 @@ class ExpiryReminderViewModel(
     private val internalState = MutableStateFlow(ExpiryReminderUiState())
     val state: StateFlow<ExpiryReminderUiState> = internalState.asStateFlow()
 
-    private var started = false
+    private var startedFor: UserId? = null
+    private var following: Job? = null
     private var current = ReminderSettings()
 
     // Dismissed without an answer: not asked again until the next launch, and nothing is stored.
     private var postponed = false
 
-    /** Idempotent: the shell composes again on rotation, not a second set of listeners. */
+    /** Idempotent per user: the shell composes again on rotation; a uid swap follows the new kitchen. */
     fun start(userId: UserId) {
-        if (started) return
-        started = true
-        viewModelScope.launch {
-            val pantry = reads.kitchen(userId).flatMapLatest { kitchen -> reads.pantry(kitchen.id) }
-            combine(pantry, reads.settings(), ::Pair).collectLatest { (items, settings) ->
-                current = settings
-                internalState.update {
-                    it.copy(
-                        offering =
-                            !settings.offered &&
-                                items.any {
-                                        item ->
-                                    item.expiresAt != null
-                                },
-                    )
-                }
-                val digest = if (settings.offered) reads.plan(items, settings, time.now(), zone()) else null
-                if (digest == null) {
-                    scheduler.cancel()
-                } else {
-                    val text = wording.describe(digest)
-                    scheduler.schedule(ScheduledReminder(digest.fireAt, text.title, text.body, text.channelName))
-                }
+        if (userId == startedFor) return
+        startedFor = userId
+        following?.cancel()
+        following = viewModelScope.launch { follow(userId) }
+    }
+
+    private suspend fun follow(userId: UserId) {
+        val pantry = reads.kitchen(userId).flatMapLatest { kitchen -> reads.pantry(kitchen.id) }
+        combine(pantry, reads.settings(), ::Pair).collectLatest { (items, settings) ->
+            current = settings
+            val dated = items.any { item -> item.expiresAt != null }
+            internalState.update { it.copy(offering = !postponed && !settings.offered && dated) }
+            val digest = if (settings.offered) reads.plan(items, settings, time.now(), zone()) else null
+            if (digest == null) {
+                scheduler.cancel()
+            } else {
+                val text = wording.describe(digest)
+                scheduler.schedule(ScheduledReminder(digest.fireAt, text.title, text.body, text.channelName))
             }
         }
     }

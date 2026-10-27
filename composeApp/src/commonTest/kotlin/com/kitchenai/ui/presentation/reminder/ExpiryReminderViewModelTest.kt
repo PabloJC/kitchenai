@@ -151,6 +151,23 @@ class ExpiryReminderViewModelTest {
             assertNull(scheduler.scheduled)
         }
 
+    @Test
+    fun `another user replaces the previous listener instead of adding one`() =
+        runTest(dispatcher) {
+            settings.current.value = ReminderSettings(offered = true)
+            val pantry = FakePantryPort(listOf(item("a", tomorrow())))
+            val viewModel = started(pantry)
+            advanceUntilIdle()
+
+            viewModel.start((UserId.of("user-2") as AppResult.Success).data)
+            advanceUntilIdle()
+            val afterSwap = scheduler.scheduledCount
+            pantry.upsert(defaultKitchenId, item("b", tomorrow()))
+            advanceUntilIdle()
+
+            assertEquals(afterSwap + 1, scheduler.scheduledCount)
+        }
+
     private fun tomorrow(): Instant = LocalDateTime(2026, 10, 21, 12, 0).toInstant(zone)
 
     private fun started(pantry: FakePantryPort): ExpiryReminderViewModel =
