@@ -3,6 +3,7 @@ package com.kitchenai.shared.domain.usecase.reminder
 import com.kitchenai.shared.domain.model.ExpiryDigest
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.ReminderSettings
+import com.kitchenai.shared.domain.model.daysUntilExpiry
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -11,12 +12,11 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 /**
  * Plans the daily reminders for the next [HORIZON_DAYS] from a pantry snapshot, so they keep coming
- * with the app closed. A day gets one when something expires within a day of its time; the first also
+ * with the app closed. A day gets one when something expires that day or the next; the first also
  * when something is already past its date. Empty means nothing to say, or reminders are off.
  */
 class PlanExpiryDigestsUseCase {
@@ -33,8 +33,10 @@ class PlanExpiryDigestsUseCase {
         return (0 until HORIZON_DAYS).mapNotNull { day ->
             // A DST gap moves the time to the next valid instant.
             val fireAt = LocalDateTime(first.plus(DatePeriod(days = day)), time).toInstant(zone)
-            val expired = dated.count { it <= fireAt }
-            val expiring = dated.count { it > fireAt && it <= fireAt + WINDOW }
+            // Calendar days, as the pantry counts them: today and tomorrow are soon, yesterday is gone.
+            val days = dated.map { expiry -> daysUntilExpiry(expiry, fireAt, zone) }
+            val expired = days.count { it < 0 }
+            val expiring = days.count { it in 0..SOON_DAYS }
             if (expiring > 0 || (day == 0 && expired > 0)) ExpiryDigest(fireAt, expiring, expired) else null
         }
     }
@@ -52,6 +54,6 @@ class PlanExpiryDigestsUseCase {
     companion object {
         /** How far ahead reminders are handed to the system; the next launch plans again from there. */
         const val HORIZON_DAYS = 7
-        private val WINDOW = 1.days
+        private const val SOON_DAYS = 1
     }
 }

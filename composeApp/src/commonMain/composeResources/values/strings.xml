@@ -263,6 +263,7 @@
     <string name="error_recipe_unavailable_title">This recipe is no longer available</string>
     <string name="error_recipe_unavailable_body">Go back to your ideas and choose another one.</string>
     <string name="network_offline_banner">Offline. Your changes will sync when you reconnect.</string>
+    <string name="network_new_ideas_offline">New ideas need a connection. They will be back when you reconnect.</string>
     <!-- Shopping check-off flow -->
     <string name="shopping_removed">%1$s removed</string>
     <plurals name="shopping_move_count">
@@ -324,9 +325,16 @@
     <string name="reminder_title">Use it before it goes</string>
     <string name="reminder_channel">Expiry reminders</string>
     <string name="reminder_offer_title">Want a reminder before things expire?</string>
-    <string name="reminder_offer_body">One notification at 18:00 on days when something in your kitchen is about to expire. Nothing on other days.</string>
+    <string name="reminder_offer_body">One notification at %1$s on days when something in your kitchen is about to expire. Nothing on other days.</string>
     <string name="reminder_offer_yes">Remind me</string>
     <string name="reminder_offer_no">No, thanks</string>
+    <string name="profile_group_reminders">Reminders</string>
+    <string name="reminder_setting_title">Expiry reminders</string>
+    <string name="reminder_setting_body">A notification on days when something in your kitchen is about to expire.</string>
+    <string name="reminder_setting_time">Time</string>
+    <string name="reminder_setting_refused">Notifications are off for KitchenAI. Allow them in your device settings, then turn this on again.</string>
+    <string name="reminder_time_ok">OK</string>
+    <string name="reminder_time_cancel">Cancel</string>
     <plurals name="reminder_expiring">
         <item quantity="one">%1$d item expires within a day</item>
         <item quantity="other">%1$d items expire within a day</item>

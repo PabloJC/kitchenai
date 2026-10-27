@@ -22,7 +22,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
@@ -47,6 +46,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kitchenai.shared.domain.model.PantryMoveRecord
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.TermRef
@@ -127,7 +127,9 @@ fun ShoppingScreen(
     // The list's name is the tab's title: a second heading under the bar said the same thing twice.
     if (state.listName.isNotBlank()) topBar?.let { PublishTabTitle(it, Route.ShoppingList, state.listName) }
     LaunchedEffect(Unit) {
-        viewModel.events.collect { event -> snackbar.announce(event, viewModel::undoRemove, onViewPantry) }
+        viewModel.events.collect { event ->
+            snackbar.announce(event, viewModel::undoRemove, viewModel::undoMove, onViewPantry)
+        }
     }
 
     // The insets are AppShell's; a second round here would open a gap between the toolbar and
@@ -135,7 +137,7 @@ fun ShoppingScreen(
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { ShoppingSnackbarHost(snackbar) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
             state.error?.let { message -> ErrorBanner(message) }
@@ -480,6 +482,7 @@ private fun ErrorBanner(message: UiText) {
 private suspend fun SnackbarHostState.announce(
     event: ShoppingEvent,
     onUndo: (ShoppingItem) -> Unit,
+    onUndoMove: (PantryMoveRecord) -> Unit,
     onViewPantry: (() -> Unit)?,
 ) {
     when (event) {
@@ -493,22 +496,34 @@ private suspend fun SnackbarHostState.announce(
         }
 
         is ShoppingEvent.CheckedCleared -> showSnackbar(event.sentence().text())
-        is ShoppingEvent.MovedToPantry -> {
-            // Nothing moved means nothing to look at in the pantry.
-            val action = if (event.moved > 0) onViewPantry else null
-            if (action == null) {
-                showSnackbar(event.sentence().text())
-            } else {
-                val result =
-                    showSnackbar(
-                        message = event.sentence().text(),
-                        actionLabel = getString(Res.string.shopping_view_pantry),
-                        duration = SnackbarDuration.Long,
-                    )
-                if (result == SnackbarResult.ActionPerformed) action()
-            }
-        }
+        is ShoppingEvent.MovedToPantry -> announceMove(event, onUndoMove, onViewPantry)
     }
+}
+
+/** Nothing moved means nothing to undo and nothing to look at in the pantry. */
+private suspend fun SnackbarHostState.announceMove(
+    event: ShoppingEvent.MovedToPantry,
+    onUndoMove: (PantryMoveRecord) -> Unit,
+    onViewPantry: (() -> Unit)?,
+) {
+    val record = event.undo
+    val message = event.sentence().text()
+    val result =
+        when {
+            record == null -> showSnackbar(message)
+            onViewPantry == null ->
+                showSnackbar(message, getString(Res.string.shopping_undo), duration = SnackbarDuration.Long)
+            else ->
+                showSnackbar(
+                    MovedToPantryVisuals(
+                        message = message,
+                        actionLabel = getString(Res.string.shopping_undo),
+                        secondaryLabel = getString(Res.string.shopping_view_pantry),
+                        onSecondary = onViewPantry,
+                    ),
+                )
+        }
+    if (record != null && result == SnackbarResult.ActionPerformed) onUndoMove(record)
 }
 
 internal fun ShoppingEvent.ItemRemoved.sentence(): UiText = UiText.of(Res.string.shopping_removed, label)

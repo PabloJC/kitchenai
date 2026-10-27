@@ -7,6 +7,7 @@ import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.MovedToPantrySummary
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
+import com.kitchenai.shared.domain.model.PantryMoveRecord
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingListId
@@ -75,9 +76,25 @@ class MoveCheckedItemsToPantryUseCase(
                             .upsertAllConfirmed(kitchenId, touched.data)
                             .flatMap {
                                 shoppingItems.removeItems(kitchenId, listId, withQuantity.map { (item, _) -> item.id })
-                            }.map { MovedToPantrySummary(withQuantity.size, skipped) }
+                            }.map {
+                                val record = record(listId, held, withQuantity.map { (item, _) -> item }, touched.data)
+                                MovedToPantrySummary(withQuantity.size, skipped, record)
+                            }
                 }
         }
+
+    /** Each touched row either existed in [held], and is put back as it was, or is new and goes. */
+    private fun record(
+        listId: ShoppingListId,
+        held: List<PantryItem>,
+        lines: List<ShoppingItem>,
+        touched: List<PantryItem>,
+    ): PantryMoveRecord {
+        val touchedIds = touched.map { it.id }.toSet()
+        val before = held.filter { it.id in touchedIds }
+        val created = touchedIds - before.map { it.id }.toSet()
+        return PantryMoveRecord(listId, lines, before, created.toList())
+    }
 
     /**
      * Folded against a working copy, so two checked lines for the same ingredient in the same

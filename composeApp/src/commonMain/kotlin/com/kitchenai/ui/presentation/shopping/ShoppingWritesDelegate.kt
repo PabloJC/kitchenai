@@ -6,6 +6,7 @@ import com.kitchenai.shared.domain.usecase.shopping.MoveCheckedItemsToPantryUseC
 import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemCheckedUseCase
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemQuantityUseCase
+import com.kitchenai.shared.domain.usecase.shopping.UndoMoveToPantryUseCase
 
 /**
  * What the shopping screen changes. Like [ShoppingReadsDelegate], it holds no logic and decides
@@ -18,4 +19,5 @@ class ShoppingWritesDelegate(
     val remove: RemoveShoppingItemUseCase,
     val clearChecked: ClearCheckedItemsUseCase,
     val moveCheckedToPantry: MoveCheckedItemsToPantryUseCase,
+    val undoMoveToPantry: UndoMoveToPantryUseCase,
 )

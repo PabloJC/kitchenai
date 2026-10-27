@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.KitchenId
+import com.kitchenai.shared.domain.model.PantryMoveRecord
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
@@ -264,10 +265,15 @@ class ShoppingViewModel(
         edit { kitchen, list ->
             val result = writes.moveCheckedToPantry(kitchen, list)
             if (result is AppResult.Success) {
-                _events.send(ShoppingEvent.MovedToPantry(result.data.moved, result.data.skipped))
+                _events.send(ShoppingEvent.MovedToPantry(result.data.moved, result.data.skipped, result.data.undo))
             }
             result
         }
+    }
+
+    /** The snackbar's undo for a move: it travels with the event, so a second move cannot steal it. */
+    fun undoMove(record: PantryMoveRecord) {
+        edit { kitchen, _ -> writes.undoMoveToPantry(kitchen, record) }
     }
 
     /**
@@ -451,7 +457,11 @@ sealed interface ShoppingEvent {
 
     data class CheckedCleared(val count: Int) : ShoppingEvent
 
-    data class MovedToPantry(val moved: Int, val skipped: Int) : ShoppingEvent
+    data class MovedToPantry(
+        val moved: Int,
+        val skipped: Int,
+        val undo: PantryMoveRecord? = null,
+    ) : ShoppingEvent
 }
 
 private const val SUGGESTION_LIMIT = 6

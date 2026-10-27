@@ -22,7 +22,9 @@ import com.kitchenai.ui.presentation.common.nameOf
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_own_data
 import com.kitchenai.ui.resources.pantry_save_failed_named
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,6 +76,10 @@ class PantryViewModel(
 
     private var started = false
     private var languageTags: List<String> = emptyList()
+    private var userId: UserId? = null
+
+    // Every listener but the projection, so a retry restarts them together.
+    private var listeners: Job? = null
 
     // The kitchen a user belongs to can change while this screen is open (joining another one),
     // so it is a listener like the pantry itself, not a value captured once at start().
@@ -87,11 +93,27 @@ class PantryViewModel(
         if (started) return
         started = true
         this.languageTags = languageTags
-        watchKitchen(userId)
-        watchPantry()
-        watchCatalogue()
-        watchVocabulary()
+        this.userId = userId
+        subscribe(userId)
         watchProjection()
+    }
+
+    /** Re-subscribes after a listener failed; the last good rows stay on screen meanwhile. */
+    fun retry() {
+        val uid = userId ?: return
+        errors.value = emptyMap()
+        listeners?.cancel()
+        subscribe(uid)
+    }
+
+    private fun subscribe(userId: UserId) {
+        listeners =
+            viewModelScope.launch {
+                watchKitchen(userId)
+                watchPantry()
+                watchCatalogue()
+                watchVocabulary()
+            }
     }
 
     fun openEditor(item: PantryItemUi?) {
@@ -211,21 +233,21 @@ class PantryViewModel(
         }
     }
 
-    private fun watchKitchen(userId: UserId) {
-        viewModelScope.launch {
+    private fun CoroutineScope.watchKitchen(userId: UserId) {
+        launch {
             observeKitchen(userId).collect { kitchen ->
                 kitchenId.value = kitchen.id
                 recovered(Source.KITCHEN)
             }
         }
-        viewModelScope.launch {
+        launch {
             observeKitchen.errors(userId).collect { error -> fail(Source.KITCHEN, error) }
         }
     }
 
     /** Restarted on every kitchen change via [flatMapLatest], rather than accumulating one listener per kitchen. */
-    private fun watchPantry() {
-        viewModelScope.launch {
+    private fun CoroutineScope.watchPantry() {
+        launch {
             kitchenId.filterNotNull().flatMapLatest(reads.pantry::invoke).collect { items ->
                 held.value = items
                 // Clearing belongs here rather than in render(): re-emitting an unchanged list
@@ -233,7 +255,7 @@ class PantryViewModel(
                 recovered(Source.PANTRY)
             }
         }
-        viewModelScope.launch {
+        launch {
             kitchenId.filterNotNull().flatMapLatest(reads.pantry::errors).collect {
                     error ->
                 fail(Source.PANTRY, error)
@@ -241,14 +263,14 @@ class PantryViewModel(
         }
     }
 
-    private fun watchCatalogue() {
-        viewModelScope.launch {
+    private fun CoroutineScope.watchCatalogue() {
+        launch {
             reads.ingredients().collect { ingredients ->
                 catalogue.value = ingredients
                 recovered(Source.CATALOGUE)
             }
         }
-        viewModelScope.launch {
+        launch {
             reads.ingredients.errors().collect { error -> fail(Source.CATALOGUE, error) }
         }
     }
@@ -258,7 +280,7 @@ class PantryViewModel(
      * says which taxonomy holds units and which holds storage places, and naming one here would
      * be the contextual constant this project does not allow.
      */
-    private fun watchVocabulary() {
+    private fun CoroutineScope.watchVocabulary() {
         val ids =
             combine(held, catalogue, vocabularies) { items, ingredients, declared ->
                 // The catalogue declaring what a vocabulary is for is the only thing that lets a
@@ -267,22 +289,22 @@ class PantryViewModel(
                 declared.purposeful() + ingredients.unitTaxonomies() + items.orEmpty().termTaxonomies()
             }.distinctUntilChanged()
 
-        viewModelScope.launch {
+        launch {
             ids.flatMapLatest(::termsOf).collect { terms ->
                 vocabulary.value = terms
                 recovered(Source.TERMS)
             }
         }
-        viewModelScope.launch {
+        launch {
             reads.taxonomies().collect { loaded ->
                 vocabularies.value = loaded
                 recovered(Source.TAXONOMIES)
             }
         }
-        viewModelScope.launch {
+        launch {
             reads.taxonomies.errors().collect { error -> fail(Source.TAXONOMIES, error) }
         }
-        viewModelScope.launch {
+        launch {
             ids.flatMapLatest { watched ->
                 watched.map { id -> reads.taxonomy.errors(id) }.merge()
             }.collect { error -> fail(Source.TERMS, error) }

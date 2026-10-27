@@ -10,4 +10,6 @@ data class MovedToPantrySummary(
     val moved: Int,
     /** Checked lines with no stated amount: a normal shopping line, not a normal pantry row. */
     val skipped: Int,
+    /** What to put back for an undo; null when nothing moved. */
+    val undo: PantryMoveRecord? = null,
 )
