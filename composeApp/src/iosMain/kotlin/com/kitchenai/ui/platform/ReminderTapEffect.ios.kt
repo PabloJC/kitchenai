@@ -42,8 +42,8 @@ private class ReminderTapDelegate :
         if (id.startsWith(REMINDER_PREFIX)) tapped.value += 1
         withCompletionHandler()
     }
-
-    private companion object {
-        const val REMINDER_PREFIX = "expiry-reminder-"
-    }
 }
+
+// Top level: Kotlin/Native allows no companion fields on a subclass of an Objective-C type.
+private const val REMINDER_PREFIX = "expiry-reminder-"
+
