@@ -2,6 +2,7 @@ package com.kitchenai.ui.di
 
 import com.kitchenai.ui.presentation.profile.ProfileAccountDelegate
 import com.kitchenai.ui.presentation.profile.ProfileViewModel
+import com.kitchenai.ui.presentation.profile.ReminderSettingsViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -11,4 +12,5 @@ val profilePresentationModule: Module =
     module {
         factory { ProfileAccountDelegate(get(), get(), get(), get(), get(), get(), get(), get()) }
         viewModel { ProfileViewModel(get(), get(), get(), get(), get(), get()) }
+        viewModel { ReminderSettingsViewModel(get(), get()) }
     }

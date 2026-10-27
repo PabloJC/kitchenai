@@ -61,6 +61,7 @@ import com.kitchenai.ui.resources.profile_group_appearance
 import com.kitchenai.ui.resources.profile_group_food
 import com.kitchenai.ui.resources.profile_group_household
 import com.kitchenai.ui.resources.profile_group_privacy
+import com.kitchenai.ui.resources.profile_group_reminders
 import com.kitchenai.ui.resources.profile_no_preferences
 import com.kitchenai.ui.resources.profile_no_vocabulary
 import com.kitchenai.ui.resources.profile_saved
@@ -86,6 +87,7 @@ fun ProfileScreen(
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = koinViewModel(),
     appearanceViewModel: AppearanceViewModel = koinViewModel(),
+    reminderViewModel: ReminderSettingsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val appearance by appearanceViewModel.state.collectAsStateWithLifecycle()
@@ -100,6 +102,7 @@ fun ProfileScreen(
                 viewModel = viewModel,
                 appearance = appearance,
                 onAppearance = appearanceViewModel::choose,
+                reminders = reminderViewModel,
                 onOpenKitchen = onOpenKitchen,
                 modifier = modifier,
             )
@@ -116,7 +119,7 @@ fun ProfileScreen(
 
 /**
  * Grouped like the platforms' own settings: Account, Household, Food preferences, Appearance,
- * Privacy, About. One scroll for all of them, with the save status pinned below it.
+ * Reminders, Privacy, About. One scroll for all of them, with the save status pinned below it.
  */
 @Composable
 private fun ProfileContent(
@@ -124,9 +127,11 @@ private fun ProfileContent(
     viewModel: ProfileViewModel,
     appearance: AppearanceUiState,
     onAppearance: (Appearance) -> Unit,
+    reminders: ReminderSettingsViewModel,
     onOpenKitchen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val reminderState by reminders.state.collectAsStateWithLifecycle()
     var choosing by remember { mutableStateOf<TermRef?>(null) }
     Column(modifier = modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
@@ -138,6 +143,8 @@ private fun ProfileContent(
             foodPreferences(state, viewModel) { term -> choosing = term }
             item { GroupTitle(Res.string.profile_group_appearance) }
             item { AppearanceChooser(appearance, onAppearance) }
+            item { GroupTitle(Res.string.profile_group_reminders) }
+            item { ReminderRows(reminderState, reminders) }
             item { GroupTitle(Res.string.profile_group_privacy) }
             item { TransparencyLine() }
             if (state.hasAccount) {

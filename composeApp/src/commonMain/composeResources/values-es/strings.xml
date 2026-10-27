@@ -320,9 +320,16 @@
     <string name="reminder_title">Úsalo antes de que se estropee</string>
     <string name="reminder_channel">Avisos de caducidad</string>
     <string name="reminder_offer_title">¿Quieres un aviso antes de que algo caduque?</string>
-    <string name="reminder_offer_body">Un aviso a las 18:00 los días en que algo de tu cocina esté a punto de caducar. Ningún otro día.</string>
+    <string name="reminder_offer_body">Un aviso a las %1$s los días en que algo de tu cocina esté a punto de caducar. Ningún otro día.</string>
     <string name="reminder_offer_yes">Avisarme</string>
     <string name="reminder_offer_no">No, gracias</string>
+    <string name="profile_group_reminders">Avisos</string>
+    <string name="reminder_setting_title">Avisos de caducidad</string>
+    <string name="reminder_setting_body">Un aviso los días en que algo de tu cocina esté a punto de caducar.</string>
+    <string name="reminder_setting_time">Hora</string>
+    <string name="reminder_setting_refused">Las notificaciones de KitchenAI están desactivadas. Actívalas en los ajustes del dispositivo y vuelve a encender esto.</string>
+    <string name="reminder_time_ok">Aceptar</string>
+    <string name="reminder_time_cancel">Cancelar</string>
     <plurals name="reminder_expiring">
         <item quantity="one">%1$d producto caduca en menos de un día</item>
         <item quantity="other">%1$d productos caducan en menos de un día</item>
