@@ -56,6 +56,7 @@ import com.kitchenai.ui.designsystem.component.SKELETON_TITLE_WIDTH
 import com.kitchenai.ui.designsystem.component.SkeletonBar
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.component.tonalCardColors
+import com.kitchenai.ui.designsystem.motion.sharedRecipeImage
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
@@ -415,7 +416,7 @@ private fun SuggestionCard(
         colors = tonalCardColors(),
     ) {
         Column {
-            RecipeImage(tags = suggestion.tagRefs)
+            RecipeImage(tags = suggestion.tagRefs, modifier = Modifier.sharedRecipeImage(suggestion.id.value))
             Column(
                 modifier = Modifier.padding(Dimens.large),
                 verticalArrangement = Arrangement.spacedBy(Dimens.small),

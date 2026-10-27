@@ -751,10 +751,14 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Recipe detail: tap − and + on servings; save the recipe; confirm a cook.
    - A small tick per servings step; a firmer confirmation on save and on cooking. Unsaving gives
      none.
-5. Turn on Reduce Motion (iOS: Settings → Accessibility → Motion) or Remove animations (Android:
+5. Ideas: tap a suggestion card, then go back. Do the same from Saved.
+   - The card's photograph grows into the recipe's header and shrinks back into its card.
+6. Pantry, on a cold start and after deleting the last item.
+   - The loading spinner fades into the rows, and the last row going fades into the empty state.
+7. Turn on Reduce Motion (iOS: Settings → Accessibility → Motion) or Remove animations (Android:
    Settings → Accessibility), then reopen the app.
    - Ideas' loading skeleton stays still instead of pulsing, and moving between screens cuts
-     instead of cross-fading.
+     instead of cross-fading. The photograph does not travel, and Pantry's states cut.
 
 ### 29. Large tab titles that fold away, one title per screen, one card surface
 

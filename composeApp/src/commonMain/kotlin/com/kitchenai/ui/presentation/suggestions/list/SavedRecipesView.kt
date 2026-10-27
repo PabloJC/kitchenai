@@ -30,6 +30,7 @@ import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.RecipeImage
 import com.kitchenai.ui.designsystem.component.tonalCardColors
+import com.kitchenai.ui.designsystem.motion.sharedRecipeImage
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_unsave
@@ -114,7 +115,7 @@ private fun SavedRecipeCard(
         colors = tonalCardColors(),
     ) {
         Column {
-            RecipeImage(tags = recipe.tagRefs)
+            RecipeImage(tags = recipe.tagRefs, modifier = Modifier.sharedRecipeImage(recipe.id.value))
             Column(
                 modifier = Modifier.padding(Dimens.medium),
                 verticalArrangement = Arrangement.spacedBy(Dimens.extraSmall),
