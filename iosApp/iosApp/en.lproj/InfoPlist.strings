@@ -1,0 +1,4 @@
+/* Home-screen quick actions. Their types are the app's own kitchenai:// links. */
+"shortcut.shopping.add" = "Add to shopping list";
+"shortcut.pantry" = "Pantry";
+"shortcut.ideas" = "Get ideas";

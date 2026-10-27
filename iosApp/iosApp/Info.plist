@@ -20,6 +20,33 @@
 			</array>
 		</dict>
 	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>kitchenai://shopping/add</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>shortcut.shopping.add</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>cart.badge.plus</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>kitchenai://pantry</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>shortcut.pantry</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>refrigerator</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>kitchenai://ideas</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>shortcut.ideas</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>sparkles</string>
+		</dict>
+	</array>
 	<key>FunctionsRegion</key>
 	<string>$(FUNCTIONS_REGION)</string>
 	<key>GIDClientID</key>

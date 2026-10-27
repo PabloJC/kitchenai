@@ -804,7 +804,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
 3. Repeat step 1 and tap "Undo".
    - Both lines are back on the list, ticked; rice is 500 g again and beans are gone from the pantry.
 
-### 32. Android app shortcuts open the right place
+### 32. App shortcuts open the right place, on both platforms
 
 1. Long-press the KitchenAI icon on the launcher.
    - Three shortcuts: "Add to shopping list", "Pantry" and "Get ideas", in the device language.
@@ -814,6 +814,9 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - Each opens its tab, as tapping the tab would: back from Ideas goes to Pantry, then out.
 4. Rotate the device after one of them.
    - The screen stays where it is; the shortcut is not followed a second time.
+5. iPhone: touch and hold the KitchenAI icon, then repeat steps 2 and 3 from its quick actions.
+   - The same three, with their icons, in the device language; each opens the same place, from a
+     closed app and from one in the background.
 
 ## Results
 
