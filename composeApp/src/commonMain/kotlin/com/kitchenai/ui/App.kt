@@ -28,6 +28,7 @@ import com.kitchenai.ui.navigation.KitchenAiNavHost
 import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.navigation.ShellDestination
 import com.kitchenai.ui.navigation.switchTo
+import com.kitchenai.ui.platform.ReminderTapEffect
 import com.kitchenai.ui.presentation.common.AppearanceViewModel
 import com.kitchenai.ui.presentation.common.ConnectivityViewModel
 import com.kitchenai.ui.presentation.onboarding.OnboardingExit
@@ -103,6 +104,7 @@ private fun Shell(
         }
     }
     ExpiryReminders(userId)
+    ReminderTapEffect { navController.switchTo(Route.Pantry) }
 }
 
 /** Recipe detail and Kitchen are reached from a tab, so they live in its graph and are not tabs. */
