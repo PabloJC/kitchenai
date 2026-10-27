@@ -122,8 +122,7 @@ fun ShoppingScreen(
     var editingAmountOf by rememberSaveable { mutableStateOf<String?>(null) }
 
     val defaultListName = stringResource(Res.string.shopping_default_list)
-    val addField = remember { FocusRequester() }
-    FocusOnAddRequest(addField)
+    val addField = rememberAddFieldFocus()
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     // The list's name is the tab's title: a second heading under the bar said the same thing twice.
@@ -189,9 +188,10 @@ fun ShoppingScreen(
     }
 }
 
-/** A shortcut's "Add to shopping list" lands here: the cursor goes straight into the add field. */
+/** The add field's requester; a shortcut's "Add to shopping list" puts the cursor straight into it. */
 @Composable
-private fun FocusOnAddRequest(addField: FocusRequester) {
+private fun rememberAddFieldFocus(): FocusRequester {
+    val addField = remember { FocusRequester() }
     val requests = koinInject<ShoppingAddRequests>()
     LaunchedEffect(requests) {
         requests.requests.collect {
@@ -200,6 +200,7 @@ private fun FocusOnAddRequest(addField: FocusRequester) {
             addField.requestFocus()
         }
     }
+    return addField
 }
 
 /** The part of the screen that depends on whether the list loaded, failed or is empty. */
