@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.suggestions.list
 
+import com.kitchenai.shared.domain.model.MealType
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.UiText
@@ -81,4 +82,7 @@ data class SuggestionOptionsUi(
     val maxResults: Int = 5,
     val maxMinutes: Int? = null,
     val useOnlyPantry: Boolean = false,
+    val useExpiringSoon: Boolean = false,
+    /** Null is any meal; one chip at most is on. */
+    val mealType: MealType? = null,
 )

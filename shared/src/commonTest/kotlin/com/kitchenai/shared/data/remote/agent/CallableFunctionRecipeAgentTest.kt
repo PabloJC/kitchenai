@@ -16,6 +16,7 @@ import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.DietaryConstraint
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.MealType
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermId
@@ -47,6 +48,31 @@ class CallableFunctionRecipeAgentTest {
             // could travel, which is the property worth pinning rather than a substring search.
             assertEquals(listOf("en"), sent.languageTags)
             assertEquals(2, sent.servings)
+        }
+
+    @Test
+    fun `sends the meal type by its wire name and the expiring-first flag`() =
+        runTest {
+            val transport = FakeCallableTransport(FakeCallableTransport.Answer.Body(wellFormed()))
+            val asking = SuggestionOptions(maxResults = 5, useExpiringSoon = true, mealType = MealType.DINNER)
+
+            agent(transport).suggest(context().copy(options = asking))
+
+            val sent = requireNotNull(transport.lastRequest).options
+            assertEquals("DINNER", sent.mealType)
+            assertEquals(true, sent.useExpiringSoon)
+        }
+
+    @Test
+    fun `sends no meal type and no flag when none is chosen`() =
+        runTest {
+            val transport = FakeCallableTransport(FakeCallableTransport.Answer.Body(wellFormed()))
+
+            agent(transport).suggest(context())
+
+            val sent = requireNotNull(transport.lastRequest).options
+            assertEquals(null, sent.mealType)
+            assertEquals(false, sent.useExpiringSoon)
         }
 
     /**
