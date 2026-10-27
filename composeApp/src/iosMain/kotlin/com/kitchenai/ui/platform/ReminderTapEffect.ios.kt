@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import platform.UserNotifications.UNNotificationResponse
 import platform.UserNotifications.UNUserNotificationCenter
 import platform.UserNotifications.UNUserNotificationCenterDelegateProtocol
@@ -39,10 +40,8 @@ private class ReminderTapDelegate :
         withCompletionHandler: () -> Unit,
     ) {
         val id = didReceiveNotificationResponse.notification.request.identifier
-        if (id.startsWith(REMINDER_PREFIX)) tapped.value += 1
+        // update, not +=: the centre calls on a background thread, and two quick taps must both count.
+        if (id.startsWith(REMINDER_ID_PREFIX)) tapped.update { it + 1 }
         withCompletionHandler()
     }
 }
-
-// Top level: Kotlin/Native allows no companion fields on a subclass of an Objective-C type.
-private const val REMINDER_PREFIX = "expiry-reminder-"
