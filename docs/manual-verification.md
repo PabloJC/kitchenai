@@ -779,7 +779,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
 3. Tap "Remind me". On Android 13+ and on iOS the system permission prompt follows.
    - Allow it. Set the device clock to 17:59 today and wait: at 18:00 one notification titled
      "Use it before it goes" says how many items expire within a day and how many are past their
-     date. Tapping it opens the app.
+     date. Tapping it opens the app on the Pantry tab, from another tab or with the app closed.
 4. Reinstall, repeat step 2 and tap "No, thanks", or deny the system prompt.
    - The dialog never returns and no notification arrives at 18:00.
 5. With reminders on, give one item a date three days ahead and close the app without opening it
