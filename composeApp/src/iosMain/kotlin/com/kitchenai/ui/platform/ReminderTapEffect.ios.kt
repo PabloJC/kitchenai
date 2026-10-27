@@ -46,4 +46,3 @@ private class ReminderTapDelegate :
 
 // Top level: Kotlin/Native allows no companion fields on a subclass of an Objective-C type.
 private const val REMINDER_PREFIX = "expiry-reminder-"
-
