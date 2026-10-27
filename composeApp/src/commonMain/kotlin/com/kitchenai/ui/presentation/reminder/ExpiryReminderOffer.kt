@@ -36,7 +36,7 @@ fun ExpiryReminders(
         // Tapping outside is not an answer: it postpones the question rather than refusing for good.
         onDismissRequest = viewModel::later,
         title = { Text(stringResource(Res.string.reminder_offer_title)) },
-        text = { Text(stringResource(Res.string.reminder_offer_body)) },
+        text = { Text(stringResource(Res.string.reminder_offer_body, state.time)) },
         confirmButton = {
             Button(onClick = { requestPermission(viewModel::answered) }) {
                 Text(stringResource(Res.string.reminder_offer_yes))

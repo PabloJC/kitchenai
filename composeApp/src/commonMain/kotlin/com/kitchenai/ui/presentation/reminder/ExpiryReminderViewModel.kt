@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.reminder.SaveReminderSettingsUseCase
 import com.kitchenai.ui.platform.ExpiryReminderScheduler
 import com.kitchenai.ui.platform.ScheduledReminder
+import com.kitchenai.ui.presentation.common.clockTime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,7 +58,12 @@ class ExpiryReminderViewModel(
         val pantry = reads.kitchen(userId).flatMapLatest { kitchen -> reads.pantry(kitchen.id) }
         combine(pantry, reads.settings(), ::Pair).collectLatest { (items, settings) ->
             val dated = items.any { item -> item.expiresAt != null }
-            internalState.update { it.copy(offering = !postponed && !settings.offered && dated) }
+            internalState.update {
+                it.copy(
+                    offering = !postponed && !settings.offered && dated,
+                    time = clockTime(settings.hour, settings.minute),
+                )
+            }
             val digests = if (settings.offered) reads.plan(items, settings, time.now(), zone()) else emptyList()
             if (digests.isEmpty()) {
                 scheduler.cancel()

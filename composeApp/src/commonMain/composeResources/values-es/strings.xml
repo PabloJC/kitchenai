@@ -258,6 +258,7 @@
     <string name="error_recipe_unavailable_title">Esta receta ya no está disponible</string>
     <string name="error_recipe_unavailable_body">Vuelve a las ideas y elige otra.</string>
     <string name="network_offline_banner">Sin conexión. Tus cambios se sincronizarán al volver a conectarte.</string>
+    <string name="network_new_ideas_offline">Las ideas nuevas necesitan conexión. Volverán cuando te conectes.</string>
 
     <!-- Shopping check-off flow -->
     <string name="shopping_removed">%1$s eliminado</string>
@@ -320,9 +321,16 @@
     <string name="reminder_title">Úsalo antes de que se estropee</string>
     <string name="reminder_channel">Avisos de caducidad</string>
     <string name="reminder_offer_title">¿Quieres un aviso antes de que algo caduque?</string>
-    <string name="reminder_offer_body">Un aviso a las 18:00 los días en que algo de tu cocina esté a punto de caducar. Ningún otro día.</string>
+    <string name="reminder_offer_body">Un aviso a las %1$s los días en que algo de tu cocina esté a punto de caducar. Ningún otro día.</string>
     <string name="reminder_offer_yes">Avisarme</string>
     <string name="reminder_offer_no">No, gracias</string>
+    <string name="profile_group_reminders">Avisos</string>
+    <string name="reminder_setting_title">Avisos de caducidad</string>
+    <string name="reminder_setting_body">Un aviso los días en que algo de tu cocina esté a punto de caducar.</string>
+    <string name="reminder_setting_time">Hora</string>
+    <string name="reminder_setting_refused">Las notificaciones de KitchenAI están desactivadas. Actívalas en los ajustes del dispositivo y vuelve a encender esto.</string>
+    <string name="reminder_time_ok">Aceptar</string>
+    <string name="reminder_time_cancel">Cancelar</string>
     <plurals name="reminder_expiring">
         <item quantity="one">%1$d producto caduca en menos de un día</item>
         <item quantity="other">%1$d productos caducan en menos de un día</item>

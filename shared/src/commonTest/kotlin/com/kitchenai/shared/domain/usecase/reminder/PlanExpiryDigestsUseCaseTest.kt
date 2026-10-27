@@ -19,15 +19,17 @@ class PlanExpiryDigestsUseCaseTest {
     private val plan = PlanExpiryDigestsUseCase()
 
     @Test
-    fun `an item expiring tomorrow is announced at today's chosen time`() {
+    fun `an item expiring tomorrow is announced at today's chosen time and again on its day`() {
         val now = at(2026, 10, 20, 9)
         val items = listOf(item("a", at(2026, 10, 21, 12)))
 
-        val digest = plan(items, ReminderSettings(), now, zone).single()
+        val digests = plan(items, ReminderSettings(), now, zone)
 
-        assertEquals(at(2026, 10, 20, 18), digest.fireAt)
-        assertEquals(1, digest.expiringCount)
-        assertEquals(0, digest.expiredCount)
+        assertEquals(listOf(at(2026, 10, 20, 18), at(2026, 10, 21, 18)), digests.map { it.fireAt })
+        assertEquals(1, digests[0].expiringCount)
+        assertEquals(0, digests[0].expiredCount)
+        // Still good until midnight on its own day, so expiring rather than expired.
+        assertEquals(1, digests[1].expiringCount)
     }
 
     @Test
@@ -51,11 +53,12 @@ class PlanExpiryDigestsUseCaseTest {
 
         val digests = plan(items, ReminderSettings(), now, zone)
 
-        assertEquals(listOf(at(2026, 10, 20, 18), at(2026, 10, 24, 18)), digests.map { it.fireAt })
+        val days = listOf(at(2026, 10, 20, 18), at(2026, 10, 21, 18), at(2026, 10, 24, 18), at(2026, 10, 25, 18))
+        assertEquals(days, digests.map { it.fireAt })
         assertEquals(1, digests[0].expiredCount)
         assertEquals(1, digests[0].expiringCount)
-        assertEquals(2, digests[1].expiredCount)
-        assertEquals(1, digests[1].expiringCount)
+        assertEquals(2, digests[2].expiredCount)
+        assertEquals(1, digests[2].expiringCount)
     }
 
     @Test
