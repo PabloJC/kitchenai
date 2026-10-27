@@ -12,7 +12,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.ui.designsystem.component.readableWidth
 import com.kitchenai.ui.designsystem.motion.SharedTransitions
 import com.kitchenai.ui.designsystem.theme.LocalReducedMotion
 import com.kitchenai.ui.presentation.kitchen.KitchenScreen
@@ -40,19 +39,22 @@ fun KitchenAiNavHost(
         NavHost(
             navController = navController,
             startDestination = Route.Pantry,
-            // Every screen at once: on a tablet a single phone column stretched wide is unreadable.
-            modifier = modifier.readableWidth(),
+            // Each destination caps its own width (Readable): on a tablet a phone column stretched
+            // wide is unreadable, and Ideas uses the whole width for its two panes instead.
+            modifier = modifier,
             enterTransition = { if (reduced) EnterTransition.None else fadeIn(tween(FADE_MILLIS)) },
             exitTransition = { if (reduced) ExitTransition.None else fadeOut(tween(FADE_MILLIS)) },
         ) {
-            composable<Route.Pantry> { PantryScreen(userId) }
-            composable<Route.ShoppingList> { ShoppingScreen(userId, onViewPantry = viewPantry, topBar = detailTopBar) }
+            composable<Route.Pantry> { Readable { PantryScreen(userId) } }
+            composable<Route.ShoppingList> {
+                Readable { ShoppingScreen(userId, onViewPantry = viewPantry, topBar = detailTopBar) }
+            }
             suggestionsGraph(navController, userId, detailTopBar)
             navigation<Route.ProfileGraph>(startDestination = Route.Profile) {
                 composable<Route.Profile> {
-                    ProfileScreen(userId, onOpenKitchen = { navController.navigate(Route.Kitchen) })
+                    Readable { ProfileScreen(userId, onOpenKitchen = { navController.navigate(Route.Kitchen) }) }
                 }
-                composable<Route.Kitchen> { KitchenScreen(userId, detailTopBar) }
+                composable<Route.Kitchen> { Readable { KitchenScreen(userId, detailTopBar) } }
             }
         }
     }
