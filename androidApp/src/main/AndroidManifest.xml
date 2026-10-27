@@ -28,7 +28,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- No intent filter for kitchenai://: the shortcuts name this activity, and no other app should. -->
+            <!-- No kitchenai:// filter: browsers and implicit intents never reach it. Links are still untrusted input. -->
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
