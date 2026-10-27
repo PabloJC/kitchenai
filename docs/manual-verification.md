@@ -787,6 +787,12 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The notification arrives on the evening before that date, with the app never reopened.
 6. With reminders on, use up or delete every dated item.
    - No notification arrives at 18:00.
+7. Profile → Reminders: turn the switch off, then on again.
+   - Turning it on asks for the system permission if it was refused; denying it leaves the switch
+     off with a line saying to allow notifications in the device settings.
+8. With it on, tap Time and pick 07:30.
+   - The row shows 07:30, and the next reminder arrives at 07:30 instead of 18:00. On a fresh
+     install that set the time first, the in-context question names 07:30 too.
 
 ## Results
 

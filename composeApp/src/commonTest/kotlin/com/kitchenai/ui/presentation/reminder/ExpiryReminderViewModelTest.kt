@@ -8,7 +8,6 @@ import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ReminderSettings
 import com.kitchenai.shared.domain.model.UserId
-import com.kitchenai.shared.domain.port.ReminderSettingsRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
@@ -19,11 +18,10 @@ import com.kitchenai.ui.platform.ExpiryReminderScheduler
 import com.kitchenai.ui.platform.ScheduledReminder
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
+import com.kitchenai.ui.presentation.common.FakeReminderSettingsPort
 import com.kitchenai.ui.presentation.common.defaultKitchenId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -47,7 +45,7 @@ class ExpiryReminderViewModelTest {
     private val zone = TimeZone.of("Europe/Madrid")
     private val now = LocalDateTime(2026, 10, 20, 9, 0).toInstant(zone)
     private val user = (UserId.of("user-1") as AppResult.Success).data
-    private val settings = FakeSettingsRepository()
+    private val settings = FakeReminderSettingsPort()
     private val scheduler = RecordingScheduler()
 
     @BeforeTest
@@ -92,7 +90,8 @@ class ExpiryReminderViewModelTest {
             assertEquals(ReminderSettings(enabled = true, offered = true), settings.current.value)
             assertEquals(LocalDateTime(2026, 10, 20, 18, 0).toInstant(zone), scheduler.next?.fireAt)
             assertEquals("1 expiring, 0 expired", scheduler.next?.body)
-            assertEquals(1, scheduler.pending.size)
+            // Today, the evening before, and tomorrow, its own day.
+            assertEquals(2, scheduler.pending.size)
         }
 
     @Test
@@ -218,20 +217,6 @@ class ExpiryReminderViewModelTest {
             expiresAt = expiresAt,
             updatedAt = now,
         )
-}
-
-private class FakeSettingsRepository : ReminderSettingsRepositoryContract {
-    val current = MutableStateFlow(ReminderSettings())
-
-    override fun observeSettings(): Flow<ReminderSettings> = current
-
-    var failWith: AppError? = null
-
-    override suspend fun saveSettings(settings: ReminderSettings): AppResult<Unit> {
-        failWith?.let { return AppResult.Failure(it) }
-        current.value = settings
-        return AppResult.Success(Unit)
-    }
 }
 
 private class RecordingScheduler : ExpiryReminderScheduler {
