@@ -737,6 +737,25 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. On a phone in landscape, open Shopping and tap the add field.
    - A rail on the left; the field stays visible above the keyboard and adding works.
 
+### 28. Motion and haptics, and less of both when the system asks
+
+*A physical device on each platform: simulators play no haptics.*
+
+1. Pantry: add an item, then swipe one away.
+   - The new row slides into place and the others move to make room; the removed one collapses
+     rather than vanishing. Saved recipes behave the same when one is unsaved.
+2. Swipe a pantry or shopping row slowly past the delete point.
+   - A light tick as it crosses the point; backing off gives none.
+3. Shopping: tick a line, untick it.
+   - A light tap each time, different for on and off.
+4. Recipe detail: tap − and + on servings; save the recipe; confirm a cook.
+   - A small tick per servings step; a firmer confirmation on save and on cooking. Unsaving gives
+     none.
+5. Turn on Reduce Motion (iOS: Settings → Accessibility → Motion) or Remove animations (Android:
+   Settings → Accessibility), then reopen the app.
+   - Ideas' loading skeleton stays still instead of pulsing, and moving between screens cuts
+     instead of cross-fading.
+
 ### 29. Large tab titles that fold away, one title per screen, one card surface
 
 1. Open each tab: Pantry, Shopping, Ideas, Profile.

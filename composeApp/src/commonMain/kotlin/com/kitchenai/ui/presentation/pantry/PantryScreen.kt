@@ -214,10 +214,15 @@ private fun SectionedRows(
         if (error != null) item(key = "pantry-error") { ErrorState(message = error.resolve()) }
         sections.forEach { (title, rows) ->
             item(key = title) {
-                SectionHeader(title = title, trailing = { SectionCount(rows.size) })
+                SectionHeader(title = title, trailing = { SectionCount(rows.size) }, modifier = Modifier.animateItem())
             }
             items(rows, key = { row -> row.id.value }) { row ->
-                PantryRow(item = row, onEdit = actions.onEdit, onRemove = actions.onRemove)
+                PantryRow(
+                    item = row,
+                    onEdit = actions.onEdit,
+                    onRemove = actions.onRemove,
+                    modifier = Modifier.animateItem(),
+                )
             }
         }
     }
@@ -275,6 +280,7 @@ private fun PantryRow(
     item: PantryItemUi,
     onEdit: (PantryItemUi) -> Unit,
     onRemove: (PantryItemUi) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // Italics alone tell the two kinds of row apart only to someone who can see them.
     val freeTextMarker: (@Composable () -> Unit)? =
@@ -286,6 +292,7 @@ private fun PantryRow(
     SwipeToDismissRow(
         onDismiss = { onRemove(item) },
         deleteLabel = stringResource(Res.string.pantry_delete),
+        modifier = modifier,
     ) { deleteAction ->
         ListItem(
             overlineContent = freeTextMarker,

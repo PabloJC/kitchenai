@@ -94,7 +94,7 @@ internal fun SavedRecipesView(
             contentPadding = PaddingValues(bottom = Dimens.large),
         ) {
             items(state.visibleSaved, key = { recipe -> recipe.id.value }) { recipe ->
-                SavedRecipeCard(recipe, onOpen, onUnsave)
+                SavedRecipeCard(recipe, onOpen, onUnsave, Modifier.animateItem())
             }
         }
     }
@@ -105,10 +105,11 @@ private fun SavedRecipeCard(
     recipe: SuggestionUi,
     onOpen: (RecipeId) -> Unit,
     onUnsave: (RecipeId) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Card(
         onClick = { onOpen(recipe.id) },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = tonalCardColors(),
     ) {
