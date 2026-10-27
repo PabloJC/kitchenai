@@ -193,7 +193,7 @@ private fun FocusOnAddRequest(addField: FocusRequester) {
     LaunchedEffect(requests) {
         requests.requests.collect {
             // A frame first: the field's requester attaches during the composition that follows.
-            withFrameNanos { it }
+            withFrameNanos { frameTime -> frameTime }
             addField.requestFocus()
         }
     }
