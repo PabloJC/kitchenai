@@ -43,6 +43,7 @@ fun KitchenAiNavHost(
 ) {
     // NavHost's own cross-fade, cut to nothing when the system asks for less motion.
     val reduced = LocalReducedMotion.current
+    val viewPantry = { navController.switchTo(Route.Pantry) }
     NavHost(
         navController = navController,
         startDestination = Route.Pantry,
@@ -52,7 +53,7 @@ fun KitchenAiNavHost(
         exitTransition = { if (reduced) ExitTransition.None else fadeOut(tween(FADE_MILLIS)) },
     ) {
         composable<Route.Pantry> { PantryScreen(userId) }
-        composable<Route.ShoppingList> { ShoppingScreen(userId, topBar = detailTopBar) }
+        composable<Route.ShoppingList> { ShoppingScreen(userId, onViewPantry = viewPantry, topBar = detailTopBar) }
         navigation<Route.SuggestionsGraph>(startDestination = Route.Suggestions) {
             composable<Route.Suggestions> {
                 SuggestionsScreen(
