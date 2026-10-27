@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import type { Catalogue, ReadableRequest } from './catalogue.js';
+import type { MealType } from './contract.js';
 
 /**
  * Fast and cheap: this runs while a user waits, and a suggestion is a starting point rather
@@ -79,7 +80,14 @@ export interface Vocabulary {
  * The request arrives already reduced to words by [toReadable], so nothing the user typed
  * reaches this function — only labels the catalogue itself supplies.
  */
-function instructions(request: ReadableRequest, vocabulary: Vocabulary): string {
+const MEALS: Record<MealType, string> = {
+  BREAKFAST: 'breakfast',
+  LUNCH: 'lunch',
+  DINNER: 'dinner',
+  SNACK: 'a snack',
+};
+
+export function instructions(request: ReadableRequest, vocabulary: Vocabulary): string {
   const pantry = request.pantry
     .map((it) => `- ${it.name}: ${it.amount}${it.unit ? ` ${it.unit}` : ''}${it.expiringSoon ? ' (use this first, it is about to spoil)' : ''}`)
     .join('\n');
@@ -93,6 +101,10 @@ function instructions(request: ReadableRequest, vocabulary: Vocabulary): string 
     request.useOnlyPantry
       ? 'Use only what is in their kitchen. Do not add anything they do not have.'
       : 'Prefer what they already have; a few common extras are fine.',
+    request.useExpiringSoon
+      ? 'Build every dish around what is about to spoil (marked below) before anything else in the kitchen.'
+      : null,
+    request.mealType ? `Every dish must suit ${MEALS[request.mealType]}.` : null,
     '',
     'In their kitchen:',
     pantry || '- nothing yet',

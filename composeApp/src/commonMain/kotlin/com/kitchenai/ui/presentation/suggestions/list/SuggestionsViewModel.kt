@@ -6,6 +6,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.KitchenId
+import com.kitchenai.shared.domain.model.MealType
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.RecipeSuggestion
@@ -179,6 +180,10 @@ class SuggestionsViewModel(
     fun setMaxMinutes(value: Int?) = editOptions { it.copy(maxMinutes = value) }
 
     fun setUseOnlyPantry(value: Boolean) = editOptions { it.copy(useOnlyPantry = value) }
+
+    fun setUseExpiringSoon(value: Boolean) = editOptions { it.copy(useExpiringSoon = value) }
+
+    fun setMealType(value: MealType?) = editOptions { it.copy(mealType = value) }
 
     /**
      * A second tap while one is in flight is ignored rather than queued: two runs would bill

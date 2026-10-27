@@ -1,5 +1,5 @@
 import type { Firestore } from 'firebase-admin/firestore';
-import type { Constraint, PantryEntry, SuggestRequest, TermRef } from './contract.js';
+import type { Constraint, MealType, PantryEntry, SuggestRequest, TermRef } from './contract.js';
 
 /**
  * Turning identifiers into words, against the same documents the app reads. This is the half of
@@ -76,6 +76,8 @@ export interface ReadableRequest {
   maxResults: number;
   maxMinutes: number | null;
   useOnlyPantry: boolean;
+  useExpiringSoon: boolean;
+  mealType: MealType | null;
   pantry: { name: string; amount: number; unit: string | null; expiringSoon: boolean }[];
   excluded: string[];
   preferred: string[];
@@ -90,6 +92,8 @@ export function toReadable(request: SuggestRequest, catalogue: Catalogue): Reada
     maxResults: request.options.maxResults,
     maxMinutes: request.options.maxMinutes,
     useOnlyPantry: request.options.useOnlyPantry,
+    useExpiringSoon: request.options.useExpiringSoon,
+    mealType: request.options.mealType,
     pantry: request.pantry.map((entry) => holding(entry, catalogue)).filter((it) => it !== null),
     // 'EXCLUDE' is the legacy name for what the client now sends as 'AVOID' (#180) — both land
     // here, the absolute bucket, never in the softer one below.
