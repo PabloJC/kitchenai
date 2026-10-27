@@ -258,6 +258,7 @@
     <string name="error_recipe_unavailable_title">Esta receta ya no está disponible</string>
     <string name="error_recipe_unavailable_body">Vuelve a las ideas y elige otra.</string>
     <string name="network_offline_banner">Sin conexión. Tus cambios se sincronizarán al volver a conectarte.</string>
+    <string name="network_new_ideas_offline">Las ideas nuevas necesitan conexión. Volverán cuando te conectes.</string>
 
     <!-- Shopping check-off flow -->
     <string name="shopping_removed">%1$s eliminado</string>

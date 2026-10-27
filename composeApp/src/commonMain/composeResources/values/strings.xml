@@ -263,6 +263,7 @@
     <string name="error_recipe_unavailable_title">This recipe is no longer available</string>
     <string name="error_recipe_unavailable_body">Go back to your ideas and choose another one.</string>
     <string name="network_offline_banner">Offline. Your changes will sync when you reconnect.</string>
+    <string name="network_new_ideas_offline">New ideas need a connection. They will be back when you reconnect.</string>
     <!-- Shopping check-off flow -->
     <string name="shopping_removed">%1$s removed</string>
     <plurals name="shopping_move_count">
