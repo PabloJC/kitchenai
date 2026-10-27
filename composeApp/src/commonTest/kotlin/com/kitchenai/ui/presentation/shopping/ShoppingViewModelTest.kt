@@ -56,6 +56,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -648,6 +649,43 @@ class ShoppingViewModelTest {
             val state = viewModel.state.value
             assertEquals(false, state.isLoading)
             assertTrue(state.failedToLoad)
+        }
+
+    @Test
+    fun `retry after a failed first load listens again and the lines arrive`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.errors.emit(AppError.Unauthorized())
+            advanceUntilIdle()
+            assertTrue(viewModel.state.value.canRetry)
+
+            viewModel.retry()
+            advanceUntilIdle()
+
+            // Loading again, on one item listener rather than two.
+            assertTrue(viewModel.state.value.isLoading)
+            assertNull(viewModel.state.value.error)
+            assertEquals(1, items.errors.subscriptionCount.value)
+
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+            assertFalse(viewModel.state.value.failedToLoad)
+            assertEquals(1, viewModel.state.value.unchecked.size)
+        }
+
+    @Test
+    fun `a refused write is not offered a retry`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1")))
+            advanceUntilIdle()
+            items.upsertResult = AppResult.Failure(AppError.Network())
+
+            viewModel.setChecked(itemId("item-1"), true)
+            advanceUntilIdle()
+
+            assertEquals(UiText.of(Res.string.error_no_connection), viewModel.state.value.error)
+            assertFalse(viewModel.state.value.canRetry)
         }
 
     @Test

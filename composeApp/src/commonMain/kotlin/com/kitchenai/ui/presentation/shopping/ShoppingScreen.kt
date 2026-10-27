@@ -51,6 +51,7 @@ import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.SectionHeader
@@ -66,6 +67,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_retry
 import com.kitchenai.ui.resources.not_in_catalogue
 import com.kitchenai.ui.resources.shopping_add_amount
 import com.kitchenai.ui.resources.shopping_add_field
@@ -136,7 +138,7 @@ fun ShoppingScreen(
         snackbarHost = { ShoppingSnackbarHost(snackbar) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
-            state.error?.let { message -> ErrorBanner(message) }
+            state.error?.let { message -> ShoppingErrorBanner(message, state.canRetry, viewModel::retry) }
 
             ShoppingBody(
                 state = state,
@@ -144,6 +146,7 @@ fun ShoppingScreen(
                 onRemove = viewModel::remove,
                 onEditAmount = { id -> editingAmountOf = id.value },
                 onStartAdding = { addField.requestFocus() },
+                onRetry = viewModel::retry,
             )
 
             if (state.tickedCount > 0) {
@@ -190,6 +193,7 @@ private fun ColumnScope.ShoppingBody(
     onRemove: (ShoppingItemId) -> Unit,
     onEditAmount: (ShoppingItemId) -> Unit,
     onStartAdding: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     when {
         state.isLoading -> LoadingState(Modifier.weight(1f))
@@ -200,6 +204,8 @@ private fun ColumnScope.ShoppingBody(
                 title = stringResource(Res.string.shopping_failed_title),
                 body = stringResource(Res.string.shopping_failed_body),
                 modifier = Modifier.weight(1f),
+                actionLabel = stringResource(Res.string.error_retry),
+                onAction = onRetry,
             )
 
         state.unchecked.isEmpty() && state.checked.isEmpty() ->
@@ -450,14 +456,21 @@ private fun ClearCheckedDialog(
     )
 }
 
-/** Above the list rather than replacing it: a failed listener leaves the last good lines standing. */
+/**
+ * Above the list rather than replacing it: a failed listener leaves the last good lines standing.
+ * A refused write offers no Try again, since listening again would not change the answer.
+ */
 @Composable
-private fun ErrorBanner(message: UiText) {
-    Text(
-        text = message.resolve(),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
+private fun ShoppingErrorBanner(
+    message: UiText,
+    canRetry: Boolean,
+    onRetry: () -> Unit,
+) {
+    ErrorBanner(
+        message = message.resolve(),
+        modifier = Modifier.padding(horizontal = Dimens.large, vertical = Dimens.small),
+        retryLabel = if (canRetry) stringResource(Res.string.error_retry) else null,
+        onRetry = onRetry.takeIf { canRetry },
     )
 }
 
