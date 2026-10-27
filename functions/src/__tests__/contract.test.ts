@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BadRequest, parseRequest } from '../contract.ts';
 import { resolve, toReadable } from '../catalogue.ts';
-import { toWire } from '../suggest.ts';
+import { instructions, toWire } from '../suggest.ts';
 
 const wellFormed = {
   schemaVersion: 1,
@@ -179,4 +179,34 @@ test('drops a tag missing either half', () => {
     5,
   );
   assert.deepEqual(wire[0]?.tags, []);
+});
+
+test('a client from before #293 omits the new options and asks for no preference', () => {
+  const parsed = parseRequest(wellFormed);
+  assert.equal(parsed.options.useExpiringSoon, false);
+  assert.equal(parsed.options.mealType, null);
+});
+
+test('accepts a meal type and the expiring-first flag', () => {
+  const asking = { ...wellFormed, options: { ...wellFormed.options, useExpiringSoon: true, mealType: 'DINNER' } };
+  const parsed = parseRequest(asking);
+  assert.equal(parsed.options.useExpiringSoon, true);
+  assert.equal(parsed.options.mealType, 'DINNER');
+});
+
+test('refuses a meal type it does not know rather than guessing one', () => {
+  const unknown = { ...wellFormed, options: { ...wellFormed.options, mealType: 'brunch please' } };
+  assert.throws(() => parseRequest(unknown), BadRequest);
+});
+
+test('the prompt asks for the meal and for what spoils first only when the request does', () => {
+  const vocabulary = { ingredients: [], units: [], dishTypes: [] };
+  const plain = instructions(toReadable(parseRequest(wellFormed), catalogue), vocabulary);
+  assert.ok(!plain.includes('must suit'));
+  assert.ok(!plain.includes('Build every dish around'));
+
+  const asking = { ...wellFormed, options: { ...wellFormed.options, useExpiringSoon: true, mealType: 'BREAKFAST' } };
+  const prompt = instructions(toReadable(parseRequest(asking), catalogue), vocabulary);
+  assert.ok(prompt.includes('Every dish must suit breakfast.'));
+  assert.ok(prompt.includes('Build every dish around what is about to spoil'));
 });

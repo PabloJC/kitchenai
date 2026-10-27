@@ -37,5 +37,8 @@ internal class UserNotificationsExpiryReminderScheduler : ExpiryReminderSchedule
         center.removePendingNotificationRequestsWithIdentifiers(List(HORIZON_DAYS, ::identifier))
     }
 
-    private fun identifier(slot: Int): String = "expiry-reminder-$slot"
+    private fun identifier(slot: Int): String = "$REMINDER_ID_PREFIX$slot"
 }
+
+/** Every reminder's identifier starts with this; the tap handler recognises its own by it. */
+internal const val REMINDER_ID_PREFIX = "expiry-reminder-"

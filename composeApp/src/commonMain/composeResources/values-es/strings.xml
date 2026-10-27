@@ -157,6 +157,11 @@
     <string name="detail_optional_suffix"> (opcional)</string>
     <string name="suggestions_only_pantry">Solo lo que tengo</string>
     <string name="suggestions_quick">Menos de 30 minutos</string>
+    <string name="suggestions_use_expiring">Usar lo que caduca pronto</string>
+    <string name="suggestions_meal_breakfast">Desayuno</string>
+    <string name="suggestions_meal_lunch">Comida</string>
+    <string name="suggestions_meal_dinner">Cena</string>
+    <string name="suggestions_meal_snack">Merienda</string>
     <string name="suggestions_empty_title">Todavía no hay sugerencias</string>
     <string name="suggestions_nothing_title">Nada que sugerir</string>
     <string name="suggestions_working">Leyendo tu despensa y pensando platos. Esto tarda un momento.</string>

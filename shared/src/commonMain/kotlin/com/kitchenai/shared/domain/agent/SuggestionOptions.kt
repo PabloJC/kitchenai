@@ -1,5 +1,7 @@
 package com.kitchenai.shared.domain.agent
 
+import com.kitchenai.shared.domain.model.MealType
+
 /**
  * What the caller asks of a suggestion round, in numbers and flags only.
  *
@@ -16,6 +18,10 @@ data class SuggestionOptions(
     val maxPantryEntries: Int = DEFAULT_MAX_PANTRY_ENTRIES,
     /** How many calendar days, today included, still count as urgent when flagging holdings. */
     val expiringSoonDays: Int = DEFAULT_EXPIRING_SOON_DAYS,
+    /** Build the dishes around what is about to spoil, rather than only flagging it. */
+    val useExpiringSoon: Boolean = false,
+    /** Null is any meal. */
+    val mealType: MealType? = null,
 ) {
     companion object {
         const val DEFAULT_MAX_RESULTS: Int = 5

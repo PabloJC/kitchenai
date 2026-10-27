@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kitchenai.shared.domain.model.MealType
 import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
@@ -74,6 +75,10 @@ import com.kitchenai.ui.resources.suggestions_coverage_count
 import com.kitchenai.ui.resources.suggestions_empty_body_action
 import com.kitchenai.ui.resources.suggestions_empty_title
 import com.kitchenai.ui.resources.suggestions_generated
+import com.kitchenai.ui.resources.suggestions_meal_breakfast
+import com.kitchenai.ui.resources.suggestions_meal_dinner
+import com.kitchenai.ui.resources.suggestions_meal_lunch
+import com.kitchenai.ui.resources.suggestions_meal_snack
 import com.kitchenai.ui.resources.suggestions_minutes
 import com.kitchenai.ui.resources.suggestions_missing
 import com.kitchenai.ui.resources.suggestions_missing_more
@@ -84,9 +89,11 @@ import com.kitchenai.ui.resources.suggestions_only_pantry
 import com.kitchenai.ui.resources.suggestions_pantry_empty_body
 import com.kitchenai.ui.resources.suggestions_pantry_empty_title
 import com.kitchenai.ui.resources.suggestions_quick
+import com.kitchenai.ui.resources.suggestions_use_expiring
 import com.kitchenai.ui.resources.suggestions_view_ideas
 import com.kitchenai.ui.resources.suggestions_view_saved
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -259,8 +266,32 @@ private fun Options(
                 label = { Text(stringResource(Res.string.suggestions_quick)) },
             )
         }
+        item {
+            FilterChip(
+                selected = state.options.useExpiringSoon,
+                onClick = { viewModel.setUseExpiringSoon(!state.options.useExpiringSoon) },
+                label = { Text(stringResource(Res.string.suggestions_use_expiring)) },
+            )
+        }
+        // One meal at most: tapping the chosen one again means any meal.
+        items(MealType.entries) { meal ->
+            val selected = state.options.mealType == meal
+            FilterChip(
+                selected = selected,
+                onClick = { viewModel.setMealType(if (selected) null else meal) },
+                label = { Text(stringResource(meal.label())) },
+            )
+        }
     }
 }
+
+private fun MealType.label(): StringResource =
+    when (this) {
+        MealType.BREAKFAST -> Res.string.suggestions_meal_breakfast
+        MealType.LUNCH -> Res.string.suggestions_meal_lunch
+        MealType.DINNER -> Res.string.suggestions_meal_dinner
+        MealType.SNACK -> Res.string.suggestions_meal_snack
+    }
 
 @Composable
 private fun Results(
