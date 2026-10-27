@@ -152,7 +152,7 @@ fun SuggestionsScreen(
                     FiltersChangedBanner(onUpdate = viewModel::generate)
                 }
                 if (state.isGenerating) GeneratingStrip(onCancel = viewModel::cancelGeneration)
-                state.error?.let { message -> SuggestionsErrorBanner(message, onRetry = viewModel::retry) }
+                state.error?.let { message -> SuggestionsErrorBanner(message, viewModel::retry, state.isOnline) }
                 Results(
                     state,
                     onOpen,

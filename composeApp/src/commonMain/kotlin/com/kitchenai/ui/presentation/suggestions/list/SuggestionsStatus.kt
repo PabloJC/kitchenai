@@ -67,18 +67,22 @@ internal fun FiltersChangedBanner(
     }
 }
 
-/** The shared banner, with a Try again that reopens whatever failed: the kitchen or the last run. */
+/**
+ * The shared banner, with a Try again that reopens whatever failed: the kitchen or the last run.
+ * Offline it has none: the offline note says why, and a button that cannot run would look broken.
+ */
 @Composable
 internal fun SuggestionsErrorBanner(
     message: UiText,
     onRetry: () -> Unit,
+    online: Boolean,
     modifier: Modifier = Modifier,
 ) {
     ErrorBanner(
         message = message.resolve(),
         modifier = modifier,
-        retryLabel = stringResource(Res.string.suggestions_retry),
-        onRetry = onRetry,
+        retryLabel = if (online) stringResource(Res.string.suggestions_retry) else null,
+        onRetry = onRetry.takeIf { online },
     )
 }
 
