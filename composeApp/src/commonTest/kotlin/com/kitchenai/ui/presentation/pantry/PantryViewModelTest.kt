@@ -163,6 +163,43 @@ class PantryViewModelTest {
         }
 
     @Test
+    fun `retry listens again after a failed first load and the rows arrive`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId, languageTags)
+            advanceUntilIdle()
+            pantry.errors.emit(AppError.Network())
+            advanceUntilIdle()
+
+            viewModel.retry()
+            advanceUntilIdle()
+
+            // Back to loading, with one listener and not two: the failed one was replaced.
+            assertNull(viewModel.state.value.error)
+            assertTrue(viewModel.state.value.isLoading)
+            assertEquals(1, pantry.items.subscriptionCount.value)
+
+            pantry.items.emit(listOf(item))
+            advanceUntilIdle()
+            assertEquals(1, viewModel.state.value.items.size)
+            assertFalse(viewModel.state.value.isLoading)
+        }
+
+    @Test
+    fun `retry keeps the rows on screen while the listener comes back`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            pantry.errors.emit(AppError.Network())
+            advanceUntilIdle()
+
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.error)
+            assertEquals(1, viewModel.state.value.items.size)
+        }
+
+    @Test
     fun `a broken listener is reported without clearing the rows already on screen`() =
         runTest(dispatcher) {
             val viewModel = loadedViewModel()

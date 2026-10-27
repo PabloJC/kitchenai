@@ -42,6 +42,7 @@ import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.ErrorState
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
@@ -49,9 +50,11 @@ import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_retry
 import com.kitchenai.ui.resources.not_in_catalogue
 import com.kitchenai.ui.resources.pantry_add
 import com.kitchenai.ui.resources.pantry_add_named
@@ -124,6 +127,7 @@ fun PantryScreen(
                     onLocation = viewModel::filterByLocation,
                     onAddTyped = viewModel::addFromSearch,
                     onAdd = { viewModel.openEditor(null) },
+                    onRetry = viewModel::retry,
                 ),
             modifier = Modifier.fillMaxSize().padding(padding),
         )
@@ -148,6 +152,7 @@ private class PantryListActions(
     val onLocation: (TermRef?) -> Unit,
     val onAddTyped: () -> Unit,
     val onAdd: () -> Unit,
+    val onRetry: () -> Unit,
 )
 
 @Composable
@@ -161,7 +166,13 @@ private fun PantryList(
 
     when {
         state.isLoading -> LoadingState(modifier)
-        state.items.isEmpty() && error != null -> ErrorState(message = error.resolve(), modifier = modifier)
+        state.items.isEmpty() && error != null ->
+            ErrorState(
+                message = error.resolve(),
+                modifier = modifier,
+                retryLabel = stringResource(Res.string.error_retry),
+                onRetry = actions.onRetry,
+            )
         state.items.isEmpty() ->
             EmptyState(
                 title = stringResource(Res.string.pantry_empty_title),
@@ -183,13 +194,27 @@ private fun PantryList(
                 )
                 if (state.visible.isEmpty()) {
                     // The rows' list carries the banner otherwise; a filter that empties it must not hide it.
-                    error?.let { message -> ErrorState(message = message.resolve()) }
+                    error?.let { message -> PantryErrorBanner(message, actions.onRetry) }
                     NoMatches(query = state.query, onAddTyped = actions.onAddTyped)
                 } else {
                     SectionedRows(state, listState, actions)
                 }
             }
     }
+}
+
+/** Over rows that are still there: the listener stopped, it did not empty the pantry. */
+@Composable
+private fun PantryErrorBanner(
+    message: UiText,
+    onRetry: () -> Unit,
+) {
+    ErrorBanner(
+        message = message.resolve(),
+        modifier = Modifier.padding(horizontal = Dimens.large, vertical = Dimens.small),
+        retryLabel = stringResource(Res.string.error_retry),
+        onRetry = onRetry,
+    )
 }
 
 @Composable
@@ -211,7 +236,7 @@ private fun SectionedRows(
         // Keyed on a constant rather than on error itself: LazyListScope.item requires a
         // Bundle-saveable key, and UiText wraps a StringResource that is not one. There is
         // at most one error item here, so a fixed key is exact rather than a workaround.
-        if (error != null) item(key = "pantry-error") { ErrorState(message = error.resolve()) }
+        if (error != null) item(key = "pantry-error") { PantryErrorBanner(error, actions.onRetry) }
         sections.forEach { (title, rows) ->
             item(key = title) {
                 SectionHeader(title = title, trailing = { SectionCount(rows.size) }, modifier = Modifier.animateItem())

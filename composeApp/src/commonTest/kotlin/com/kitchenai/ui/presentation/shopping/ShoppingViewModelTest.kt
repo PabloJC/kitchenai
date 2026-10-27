@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.shopping
 
+import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
@@ -30,6 +31,7 @@ import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemCheckedUseCase
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemQuantityUseCase
+import com.kitchenai.shared.domain.usecase.shopping.UndoMoveToPantryUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
@@ -268,10 +270,31 @@ class ShoppingViewModelTest {
                 viewModel.moveCheckedToPantry()
                 advanceUntilIdle()
 
-                assertEquals(ShoppingEvent.MovedToPantry(moved = 1, skipped = 1), awaitItem())
+                assertEquals(ShoppingEvent.MovedToPantry(moved = 1, skipped = 1), awaitMove().copy(undo = null))
                 assertEquals(listOf(itemId("item-1")), items.removedBatch)
                 assertEquals(listOf(ingredientId), pantry.held.map { it.ingredient })
             }
+        }
+
+    @Test
+    fun `undoing a move puts the line back on the list and takes the new row out of the pantry`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            val moved = line("item-1", checked = true, quantity = Quantity(200.0, gram))
+            items.emit(listOf(moved))
+            advanceUntilIdle()
+
+            viewModel.events.test {
+                viewModel.moveCheckedToPantry()
+                advanceUntilIdle()
+                val record = checkNotNull(awaitMove().undo)
+
+                viewModel.undoMove(record)
+                advanceUntilIdle()
+            }
+
+            assertEquals(listOf(moved), items.upserts.last())
+            assertTrue(pantry.held.isEmpty())
         }
 
     @Test
@@ -312,7 +335,7 @@ class ShoppingViewModelTest {
                 viewModel.moveCheckedToPantry()
                 advanceUntilIdle()
 
-                assertEquals(ShoppingEvent.MovedToPantry(moved = 1, skipped = 0), awaitItem())
+                assertEquals(ShoppingEvent.MovedToPantry(moved = 1, skipped = 0), awaitMove().copy(undo = null))
             }
             assertEquals(Quantity(2.0, gram), pantry.held.single().quantity)
         }
@@ -663,6 +686,7 @@ class ShoppingViewModelTest {
                         setQuantity = SetShoppingItemQuantityUseCase(items, time),
                         remove = RemoveShoppingItemUseCase(items),
                         clearChecked = ClearCheckedItemsUseCase(items),
+                        undoMoveToPantry = UndoMoveToPantryUseCase(items, pantry),
                         moveCheckedToPantry =
                             MoveCheckedItemsToPantryUseCase(
                                 items,
@@ -689,6 +713,9 @@ private val unitsTaxonomy = Taxonomy(gram.taxonomy, mapOf("en" to "Units"), "en"
 private fun itemId(raw: String): ShoppingItemId = unwrap(ShoppingItemId.of(raw))
 
 private fun <T> unwrap(result: AppResult<T>): T = (result as AppResult.Success).data
+
+private suspend fun ReceiveTurbine<ShoppingEvent>.awaitMove(): ShoppingEvent.MovedToPantry =
+    awaitItem() as ShoppingEvent.MovedToPantry
 
 /** Identifiers and opaque words only: a real product name here would be the constant the domain refuses. */
 private fun line(

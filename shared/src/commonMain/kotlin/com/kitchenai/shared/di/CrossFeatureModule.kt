@@ -5,6 +5,7 @@ import com.kitchenai.shared.domain.usecase.recipe.PlanCookUseCase
 import com.kitchenai.shared.domain.usecase.recipe.UndoCookUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
 import com.kitchenai.shared.domain.usecase.shopping.MoveCheckedItemsToPantryUseCase
+import com.kitchenai.shared.domain.usecase.shopping.UndoMoveToPantryUseCase
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -16,4 +17,5 @@ val crossFeatureModule: Module =
         factory { CookRecipeUseCase(get(), get(), get()) }
         factory { UndoCookUseCase(get(), get(), get()) }
         factory { MoveCheckedItemsToPantryUseCase(get(), get(), get(), get(), get()) }
+        factory { UndoMoveToPantryUseCase(get(), get()) }
     }

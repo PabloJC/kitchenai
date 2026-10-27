@@ -787,6 +787,22 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The notification arrives on the evening before that date, with the app never reopened.
 6. With reminders on, use up or delete every dated item.
    - No notification arrives at 18:00.
+7. Profile → Reminders: turn the switch off, then on again.
+   - Turning it on asks for the system permission if it was refused; denying it leaves the switch
+     off with a line saying to allow notifications in the device settings.
+8. With it on, tap Time and pick 07:30.
+   - The row shows 07:30, and the next reminder arrives at 07:30 instead of 18:00. On a fresh
+     install that set the time first, the in-context question names 07:30 too.
+
+### 31. Moving to the pantry can be undone, and leads to the pantry
+
+1. Pantry: hold 500 g of rice. Shopping: add "rice 200 g" and "beans 300 g", tick both, then
+   "Move to pantry".
+   - The snackbar says 2 moved and offers "View pantry" and "Undo".
+2. Tap "View pantry".
+   - The Pantry tab opens, with rice at 700 g and beans at 300 g.
+3. Repeat step 1 and tap "Undo".
+   - Both lines are back on the list, ticked; rice is 500 g again and beans are gone from the pantry.
 
 ## Results
 
