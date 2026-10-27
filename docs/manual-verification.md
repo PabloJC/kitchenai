@@ -795,7 +795,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
 2. With the app closed, tap "Add to shopping list".
    - Shopping opens with the cursor in the add field and the keyboard up.
 3. With the app open on Profile, go home and tap "Get ideas", then "Pantry".
-   - Each opens its tab; going back from it leaves the app rather than returning to Profile.
+   - Each opens its tab, as tapping the tab would: back from Ideas goes to Pantry, then out.
 4. Rotate the device after one of them.
    - The screen stays where it is; the shortcut is not followed a second time.
 
