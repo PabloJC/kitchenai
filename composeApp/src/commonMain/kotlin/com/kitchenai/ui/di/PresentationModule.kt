@@ -23,6 +23,7 @@ val presentationModule: Module =
         includes(onboardingPresentationModule)
         includes(pantryPresentationModule)
         includes(profilePresentationModule)
+        includes(reminderPresentationModule)
         includes(shoppingPresentationModule)
         includes(suggestionsPresentationModule)
     }

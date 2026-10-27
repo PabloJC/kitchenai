@@ -62,6 +62,9 @@ kotlin {
             implementation(libs.androidx.credentials)
             implementation(libs.androidx.credentials.play.services.auth)
             implementation(libs.google.id)
+
+            // The notification permission prompt: NotificationPermission.android.kt.
+            implementation(libs.androidx.activity.compose)
         }
         iosMain.dependencies {
             // Google Sign-In via Google's own iOS SDK, wrapped for Kotlin/Native rather than

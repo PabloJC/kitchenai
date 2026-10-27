@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- NetworkMonitor reads connectivity to show the offline banner. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Expiry reminders; asked for in context, after the first dated pantry item. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".KitchenAiApplication"
@@ -27,5 +29,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Posts the expiry reminder its alarm carries; only this app's own alarm sends to it. -->
+        <receiver
+            android:name="com.kitchenai.ui.platform.ExpiryReminderReceiver"
+            android:exported="false" />
     </application>
 </manifest>
