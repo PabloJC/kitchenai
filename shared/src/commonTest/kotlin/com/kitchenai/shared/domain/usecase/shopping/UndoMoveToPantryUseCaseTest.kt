@@ -19,7 +19,7 @@ class UndoMoveToPantryUseCaseTest {
     private val heldRice = pantryItem("held-rice", "rice", Quantity(500.0, unit))
 
     @Test
-    fun `undo puts back the lines, the merged amount and removes the row the move created`() =
+    fun `undo puts back the lines and the merged amount and removes the row the move created`() =
         runTest {
             val items = FakeShoppingItemRepositoryContract()
             val rice = shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true)
