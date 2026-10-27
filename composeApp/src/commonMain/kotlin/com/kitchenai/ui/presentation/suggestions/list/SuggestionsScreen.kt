@@ -123,7 +123,9 @@ fun SuggestionsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             // Generating is the ideas view's action; on the saved view it would add to a list not shown.
-            if (!state.showingSaved) NewIdeasButton(enabled = !state.isGenerating, onClick = viewModel::generate)
+            if (!state.showingSaved) {
+                NewIdeasButton(enabled = !state.isGenerating && state.isOnline, onClick = viewModel::generate)
+            }
         },
     ) { padding ->
         Column(
@@ -145,9 +147,12 @@ fun SuggestionsScreen(
                 )
             } else {
                 Options(state, viewModel)
-                if (state.optionsChanged && !state.isGenerating) FiltersChangedBanner(onUpdate = viewModel::generate)
+                if (!state.isOnline) OfflineNote()
+                if (state.optionsChanged && !state.isGenerating && state.isOnline) {
+                    FiltersChangedBanner(onUpdate = viewModel::generate)
+                }
                 if (state.isGenerating) GeneratingStrip(onCancel = viewModel::cancelGeneration)
-                state.error?.let { message -> SuggestionsErrorCard(message, onRetry = viewModel::generate) }
+                state.error?.let { message -> SuggestionsErrorBanner(message, onRetry = viewModel::retry) }
                 Results(
                     state,
                     onOpen,

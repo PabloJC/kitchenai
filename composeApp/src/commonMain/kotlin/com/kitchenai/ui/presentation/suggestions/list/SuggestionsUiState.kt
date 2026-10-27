@@ -25,6 +25,8 @@ data class SuggestionsUiState(
     /** Nothing held, so nothing ran on arrival: the empty state offers the pantry instead. */
     val isPantryEmpty: Boolean = false,
     val error: UiText? = null,
+    /** New ideas need the model, and the model needs the network: offline the button waits. */
+    val isOnline: Boolean = true,
     val options: SuggestionOptionsUi = SuggestionOptionsUi(),
     /** What the results on screen were generated with; null until a run lands. */
     val appliedOptions: SuggestionOptionsUi? = null,

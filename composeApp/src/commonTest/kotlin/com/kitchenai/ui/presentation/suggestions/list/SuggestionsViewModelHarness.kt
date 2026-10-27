@@ -27,6 +27,7 @@ import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShopp
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
+import com.kitchenai.ui.presentation.common.FakeNetworkMonitor
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
@@ -47,6 +48,7 @@ open class SuggestionsViewModelHarness {
     protected val now = Instant.fromEpochSeconds(0)
     protected val catalogue = FakeIngredientPort()
     protected val agent = RecordingOrchestrator()
+    protected val network = FakeNetworkMonitor()
     protected val profile =
         UserProfile(
             userId = UserId.of("user-1").orFail(),
@@ -133,6 +135,7 @@ open class SuggestionsViewModelHarness {
                     save = SaveRecipeUseCase(recipes),
                     unsave = RemoveSavedRecipeUseCase(recipes),
                 ),
+            network = network,
         ).also { it.start(UserId.of("user-1").orFail(), languageTags, "List") }
     }
 

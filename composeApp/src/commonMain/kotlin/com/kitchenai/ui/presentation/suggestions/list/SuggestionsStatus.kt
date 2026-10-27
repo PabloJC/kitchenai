@@ -4,9 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -15,10 +12,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.network_new_ideas_offline
 import com.kitchenai.ui.resources.suggestions_cancel
 import com.kitchenai.ui.resources.suggestions_filters_changed
 import com.kitchenai.ui.resources.suggestions_retry
@@ -68,27 +67,28 @@ internal fun FiltersChangedBanner(
     }
 }
 
-/** Local to this screen on purpose: the shared error component is a separate change. */
+/** The shared banner, with a Try again that reopens whatever failed: the kitchen or the last run. */
 @Composable
-internal fun SuggestionsErrorCard(
+internal fun SuggestionsErrorBanner(
     message: UiText,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    ErrorBanner(
+        message = message.resolve(),
+        modifier = modifier,
+        retryLabel = stringResource(Res.string.suggestions_retry),
+        onRetry = onRetry,
+    )
+}
+
+/** Why New ideas is disabled, said once above the results rather than left to a greyed button. */
+@Composable
+internal fun OfflineNote(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(Res.string.network_new_ideas_offline),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(Dimens.large),
-            verticalArrangement = Arrangement.spacedBy(Dimens.small),
-        ) {
-            Text(message.resolve(), style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onRetry) { Text(stringResource(Res.string.suggestions_retry)) }
-        }
-    }
+    )
 }

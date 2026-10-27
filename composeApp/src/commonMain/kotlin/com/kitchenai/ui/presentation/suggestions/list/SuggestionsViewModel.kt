@@ -14,6 +14,7 @@ import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
+import com.kitchenai.ui.platform.NetworkMonitor
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
@@ -55,6 +56,7 @@ class SuggestionsViewModel(
     private val matchRecipe: MatchRecipeAgainstPantryUseCase,
     private val reads: SuggestionsReadsDelegate,
     private val writes: SuggestionsWritesDelegate,
+    private val network: NetworkMonitor,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(SuggestionsUiState())
     val state: StateFlow<SuggestionsUiState> = internalState.asStateFlow()
@@ -84,6 +86,9 @@ class SuggestionsViewModel(
     // block. Tracked here so the kitchen-change path can cancel it explicitly.
     private val generation = MutableStateFlow<Job?>(null)
 
+    // Tracked so a retry can replace a kitchen listener that failed before it ever answered.
+    private var kitchenListener: Job? = null
+
     /** Idempotent: a configuration change composes the screen again and must not double the listener or the launch. */
     fun start(
         userId: UserId,
@@ -107,13 +112,9 @@ class SuggestionsViewModel(
             }
         }
         viewModelScope.launch {
-            reads.kitchen(userId).collect { kitchen -> kitchenId.value = kitchen.id }
+            network.isOnline.collect { online -> internalState.update { it.copy(isOnline = online) } }
         }
-        viewModelScope.launch {
-            reads.kitchen.errors(userId).collect { error ->
-                internalState.update { it.copy(error = error.describe(Res.string.error_unauthorized_suggestions)) }
-            }
-        }
+        watchKitchen(userId)
         viewModelScope.launch {
             // matchRecipe reads the pantry itself, but only once per call — combine so a saved
             // recipe's coverage is recomputed on a pantry change too, not only when the saved
@@ -148,6 +149,31 @@ class SuggestionsViewModel(
         }
     }
 
+    /**
+     * What Try again means depends on what failed: a kitchen that never answered is listened to
+     * again; anything else was a run, and runs again.
+     */
+    fun retry() {
+        val userId = user ?: return
+        if (kitchenId.value != null) return generate()
+        internalState.update { it.copy(error = null) }
+        kitchenListener?.cancel()
+        watchKitchen(userId)
+    }
+
+    private fun watchKitchen(userId: UserId) {
+        kitchenListener =
+            viewModelScope.launch {
+                launch { reads.kitchen(userId).collect { kitchen -> kitchenId.value = kitchen.id } }
+                launch {
+                    reads.kitchen.errors(userId).collect { error ->
+                        val message = error.describe(Res.string.error_unauthorized_suggestions)
+                        internalState.update { it.copy(error = message) }
+                    }
+                }
+            }
+    }
+
     fun setMaxResults(value: Int) = editOptions { it.copy(maxResults = value) }
 
     fun setMaxMinutes(value: Int?) = editOptions { it.copy(maxMinutes = value) }
@@ -165,7 +191,8 @@ class SuggestionsViewModel(
     fun generate() {
         val userId = user ?: return
         val kitchen = kitchenId.value ?: return
-        if (internalState.value.isGenerating) return
+        // The button is disabled offline; this also stops the arrival run from failing on its own.
+        if (internalState.value.isGenerating || !internalState.value.isOnline) return
         // The options this run is sent with, so an edit made while it is in flight still reads
         // as a change once it lands.
         val sent = internalState.value.options
