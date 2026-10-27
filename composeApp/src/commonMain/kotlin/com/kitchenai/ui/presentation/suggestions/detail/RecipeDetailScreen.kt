@@ -76,6 +76,7 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.RecipeImage
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.component.TermChip
+import com.kitchenai.ui.designsystem.motion.sharedRecipeImage
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.designsystem.theme.PillShape
 import com.kitchenai.ui.navigation.DetailTopBarState
@@ -181,6 +182,7 @@ fun RecipeDetailScreen(
         // No top padding once there is a photo: it is what runs under the transparent bar.
         val top = if (loadFailed) padding.calculateTopPadding() else Dimens.none
         DetailBody(
+            recipeId = recipeId,
             state = state,
             viewModel = viewModel,
             onStartCooking = routes.startCooking,
@@ -192,6 +194,7 @@ fun RecipeDetailScreen(
 
 @Composable
 private fun DetailBody(
+    recipeId: RecipeId,
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
     onStartCooking: () -> Unit,
@@ -204,7 +207,7 @@ private fun DetailBody(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Dimens.large),
     ) {
-        if (!loadFailed) Header(state, viewModel, onImageHeight)
+        if (!loadFailed) Header(recipeId, state, viewModel, onImageHeight)
         state.error?.let { message ->
             ErrorBanner(
                 message = message.resolve(),
@@ -279,13 +282,18 @@ private fun rememberShare(state: RecipeDetailUiState): ((anchor: Rect?) -> Unit)
 
 @Composable
 private fun Header(
+    recipeId: RecipeId,
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
     onImageHeight: (Int) -> Unit,
 ) {
     // Edge to edge and under the bar, unlike everything below it: the photograph sits flush with
     // the top of the screen rather than margined like body content.
-    RecipeImage(tags = state.tagRefs, modifier = Modifier.onSizeChanged { onImageHeight(it.height) })
+    // The card's photograph lands here: the same recipe id names both ends of the move.
+    RecipeImage(
+        tags = state.tagRefs,
+        modifier = Modifier.sharedRecipeImage(recipeId.value).onSizeChanged { onImageHeight(it.height) },
+    )
     Column(
         modifier = Modifier.padding(horizontal = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),
