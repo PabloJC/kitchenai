@@ -35,6 +35,8 @@ import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_unauthorized_own_data
+import com.kitchenai.ui.resources.pantry_save_failed_named
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -321,7 +323,7 @@ class PantryViewModelTest {
             viewModel.events.test {
                 viewModel.save(PantryItemDraft(ingredientId, null, 1.0, unitRef, null, null))
                 advanceUntilIdle()
-                assertEquals(PantryEvent.SaveFailed(UNAUTHORIZED_MESSAGE), awaitItem())
+                assertEquals(PantryEvent.SaveFailed(refused(INGREDIENT_LABEL)), awaitItem())
             }
             assertNull(viewModel.state.value.error)
         }
@@ -417,9 +419,30 @@ class PantryViewModelTest {
             viewModel.events.test {
                 viewModel.saveAndAddAnother(PantryItemDraft(ingredientId, null, 1.0, unitRef, null, null))
                 advanceUntilIdle()
-                assertEquals(PantryEvent.SaveFailed(UNAUTHORIZED_MESSAGE), awaitItem())
+                assertEquals(PantryEvent.SaveFailed(refused(INGREDIENT_LABEL)), awaitItem())
             }
             assertNull(viewModel.state.value.lastAdded)
+        }
+
+    @Test
+    fun `an earlier refused save never takes back a later save's confirmation and names what it lost`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            val first = CompletableDeferred<AppResult<Unit>>()
+            pantry.nextUpsert = first
+            viewModel.openEditor(null)
+
+            viewModel.events.test {
+                viewModel.saveAndAddAnother(PantryItemDraft(null, "the good bread", 1.0, null, null, null))
+                advanceUntilIdle()
+                viewModel.saveAndAddAnother(PantryItemDraft(null, "olive oil", 1.0, null, null, null))
+                advanceUntilIdle()
+                first.complete(AppResult.Failure(AppError.Unauthorized()))
+                advanceUntilIdle()
+
+                assertEquals(PantryEvent.SaveFailed(refused("the good bread")), awaitItem())
+            }
+            assertEquals("olive oil", viewModel.state.value.lastAdded)
         }
 
     @Test
@@ -563,6 +586,9 @@ private const val UNIT_LABEL = "unit-label"
 private const val LOCATION_LABEL = "location-label"
 private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)
 
+private fun refused(name: String): UiText =
+    UiText.Joined(Res.string.pantry_save_failed_named, listOf(UiText.Raw(name), UNAUTHORIZED_MESSAGE))
+
 private val languageTags = listOf("aa")
 private val userId = UserId.of("user-1").value()
 private val ingredientId = IngredientId.of("ingredient-1").value()
@@ -609,6 +635,9 @@ private class FakePantryPort : PantryRepositoryContract {
     val removed = mutableListOf<PantryItemId>()
     var upsertResult: AppResult<Unit> = AppResult.Success(Unit)
 
+    /** Holds the next single write open until the test answers it, so a later one can overtake it. */
+    var nextUpsert: CompletableDeferred<AppResult<Unit>>? = null
+
     override fun observePantry(kitchenId: KitchenId): Flow<List<PantryItem>> = items
 
     override fun pantryErrors(kitchenId: KitchenId): Flow<AppError> = errors
@@ -621,7 +650,9 @@ private class FakePantryPort : PantryRepositoryContract {
         item: PantryItem,
     ): AppResult<Unit> {
         upserted += item
-        return upsertResult
+        val held = nextUpsert ?: return upsertResult
+        nextUpsert = null
+        return held.await()
     }
 
     override suspend fun remove(

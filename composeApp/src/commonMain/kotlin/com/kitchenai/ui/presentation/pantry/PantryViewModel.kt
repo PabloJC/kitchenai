@@ -21,6 +21,7 @@ import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.presentation.common.nameOf
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_own_data
+import com.kitchenai.ui.resources.pantry_save_failed_named
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -146,24 +147,29 @@ class PantryViewModel(
     fun saveAndAddAnother(draft: PantryItemDraft) {
         val kitchen = kitchenId.value ?: return
         val editing = _state.value.editing
+        val revision = _state.value.editorRevision + 1
         _state.update { current ->
             current.copy(
                 editing = null,
                 isEditorOpen = true,
-                editorRevision = current.editorRevision + 1,
+                editorRevision = revision,
                 lastAdded = current.displayNameOf(draft),
                 // The next form starts empty: the name a search prefilled was this item's.
                 prefill = null,
             )
         }
-        write(kitchen, editing, draft)
+        write(kitchen, editing, draft, revision)
     }
 
+    /** [revision] is the form this write's confirmation belongs to, when it set one. */
     private fun write(
         kitchen: KitchenId,
         editing: PantryItemUi?,
         draft: PantryItemDraft,
+        revision: Int? = null,
     ) {
+        // Named in the error: the form may already be empty, so the user cannot see what was refused.
+        val name = _state.value.displayNameOf(draft)
         viewModelScope.launch {
             val quantity = Quantity(draft.amount, draft.unit)
             val result =
@@ -172,9 +178,15 @@ class PantryViewModel(
                 } else {
                     writes.update(kitchen, editing.applied(draft, writes.time.now()))
                 }
-            // A confirmation for a write that was refused would be a lie.
-            if (result is AppResult.Failure) _state.update { current -> current.copy(lastAdded = null) }
-            result.reportFailure()
+            if (result is AppResult.Failure) {
+                // Only this write's own confirmation: a later save may already have replaced it.
+                _state.update { current ->
+                    if (current.editorRevision == revision) current.copy(lastAdded = null) else current
+                }
+                val reason = result.error.describe(Res.string.error_unauthorized_own_data)
+                val message = UiText.Joined(Res.string.pantry_save_failed_named, listOf(UiText.Raw(name), reason))
+                _events.send(PantryEvent.SaveFailed(message))
+            }
         }
     }
 

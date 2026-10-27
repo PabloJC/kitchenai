@@ -297,6 +297,7 @@
     <string name="pantry_editor_save_and_add">Guardar y añadir otro</string>
     <string name="pantry_editor_added">Añadido: %1$s</string>
     <string name="pantry_empty_action">Añadir productos</string>
+    <string name="pantry_save_failed_named">%1$s no se ha guardado. %2$s</string>
     <string name="suggestions_add_to_pantry">Añadir a la despensa</string>
     <string name="suggestions_pantry_empty_title">Tu despensa está vacía</string>
     <string name="suggestions_pantry_empty_body">Las ideas salen de lo que ya tienes. Añade algunas cosas primero.</string>

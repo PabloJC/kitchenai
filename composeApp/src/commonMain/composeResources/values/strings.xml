@@ -301,6 +301,7 @@
     <string name="pantry_editor_save_and_add">Save and add another</string>
     <string name="pantry_editor_added">Added %1$s</string>
     <string name="pantry_empty_action">Add items</string>
+    <string name="pantry_save_failed_named">%1$s was not saved. %2$s</string>
     <string name="suggestions_add_to_pantry">Add to pantry</string>
     <string name="suggestions_pantry_empty_title">Your pantry is empty</string>
     <string name="suggestions_pantry_empty_body">Ideas are built from what you already have. Add a few things first.</string>
