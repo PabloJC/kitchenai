@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -61,6 +62,7 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.PublishTabTitle
 import com.kitchenai.ui.navigation.Route
+import com.kitchenai.ui.navigation.ShoppingAddRequests
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
@@ -95,6 +97,7 @@ import com.kitchenai.ui.resources.snack_left_no_amount_count
 import com.kitchenai.ui.resources.snack_moved_count
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -118,6 +121,7 @@ fun ShoppingScreen(
 
     val defaultListName = stringResource(Res.string.shopping_default_list)
     val addField = remember { FocusRequester() }
+    FocusOnAddRequest(addField)
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     // The list's name is the tab's title: a second heading under the bar said the same thing twice.
@@ -177,6 +181,19 @@ fun ShoppingScreen(
 
     if (confirmingClear) {
         ClearCheckedDialog(onConfirm = viewModel::clearChecked, onDismiss = { confirmingClear = false })
+    }
+}
+
+/** A shortcut's "Add to shopping list" lands here: the cursor goes straight into the add field. */
+@Composable
+private fun FocusOnAddRequest(addField: FocusRequester) {
+    val requests = koinInject<ShoppingAddRequests>()
+    LaunchedEffect(requests) {
+        requests.requests.collect {
+            // A frame first: the field's requester attaches during the composition that follows.
+            withFrameNanos { it }
+            addField.requestFocus()
+        }
     }
 }
 

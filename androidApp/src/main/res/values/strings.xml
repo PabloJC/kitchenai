@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher-only text. Everything the app itself shows lives in composeApp's resources. -->
+<resources>
+    <string name="shortcut_shopping_add_short">Add to list</string>
+    <string name="shortcut_shopping_add_long">Add to shopping list</string>
+    <string name="shortcut_pantry">Pantry</string>
+    <string name="shortcut_ideas">Get ideas</string>
+</resources>

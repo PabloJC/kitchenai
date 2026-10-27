@@ -27,7 +27,10 @@ import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.KitchenAiNavHost
 import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.navigation.ShellDestination
+import com.kitchenai.ui.navigation.ShoppingAddRequests
+import com.kitchenai.ui.navigation.open
 import com.kitchenai.ui.navigation.switchTo
+import com.kitchenai.ui.platform.LaunchLinkEffect
 import com.kitchenai.ui.presentation.common.AppearanceViewModel
 import com.kitchenai.ui.presentation.common.ConnectivityViewModel
 import com.kitchenai.ui.presentation.onboarding.OnboardingExit
@@ -43,6 +46,7 @@ import com.kitchenai.ui.resources.tab_pantry
 import com.kitchenai.ui.resources.tab_profile
 import com.kitchenai.ui.resources.tab_shopping
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /** The composition root, and the only place in the shell that holds wording. */
@@ -103,6 +107,8 @@ private fun Shell(
         }
     }
     ExpiryReminders(userId)
+    val addRequests = koinInject<ShoppingAddRequests>()
+    LaunchLinkEffect { target -> navController.open(target, addRequests) }
 }
 
 /** Recipe detail and Kitchen are reached from a tab, so they live in its graph and are not tabs. */

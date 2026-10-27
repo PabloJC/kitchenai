@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press on the launcher icon. Each one opens MainActivity on a kitchenai:// link the app routes itself. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="shopping_add"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_shopping"
+        android:shortcutShortLabel="@string/shortcut_shopping_add_short"
+        android:shortcutLongLabel="@string/shortcut_shopping_add_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="kitchenai://shopping/add"
+            android:targetClass="com.kitchenai.app.MainActivity"
+            android:targetPackage="com.kitchenai.app" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="pantry"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_pantry"
+        android:shortcutShortLabel="@string/shortcut_pantry">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="kitchenai://pantry"
+            android:targetClass="com.kitchenai.app.MainActivity"
+            android:targetPackage="com.kitchenai.app" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="ideas"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_ideas"
+        android:shortcutShortLabel="@string/shortcut_ideas">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="kitchenai://ideas"
+            android:targetClass="com.kitchenai.app.MainActivity"
+            android:targetPackage="com.kitchenai.app" />
+    </shortcut>
+</shortcuts>

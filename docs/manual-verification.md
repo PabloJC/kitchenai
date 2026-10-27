@@ -788,6 +788,17 @@ shared case, a second device joined to that kitchen (scenario 5).*
 6. With reminders on, use up or delete every dated item.
    - No notification arrives at 18:00.
 
+### 32. Android app shortcuts open the right place
+
+1. Long-press the KitchenAI icon on the launcher.
+   - Three shortcuts: "Add to shopping list", "Pantry" and "Get ideas", in the device language.
+2. With the app closed, tap "Add to shopping list".
+   - Shopping opens with the cursor in the add field and the keyboard up.
+3. With the app open on Profile, go home and tap "Get ideas", then "Pantry".
+   - Each opens its tab; going back from it leaves the app rather than returning to Profile.
+4. Rotate the device after one of them.
+   - The screen stays where it is; the shortcut is not followed a second time.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
