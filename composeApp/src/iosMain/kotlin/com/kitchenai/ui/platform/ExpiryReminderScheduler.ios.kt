@@ -20,8 +20,8 @@ internal class UserNotificationsExpiryReminderScheduler : ExpiryReminderSchedule
         reminders.take(HORIZON_DAYS).forEachIndexed { slot, reminder ->
             val content =
                 UNMutableNotificationContent().apply {
-                    title = reminder.title
-                    body = reminder.body
+                    setTitle(reminder.title)
+                    setBody(reminder.body)
                 }
             // An interval rather than calendar components: the instant was already worked out in the right zone.
             val seconds = (reminder.fireAt - now).inWholeSeconds.coerceAtLeast(1).toDouble()
