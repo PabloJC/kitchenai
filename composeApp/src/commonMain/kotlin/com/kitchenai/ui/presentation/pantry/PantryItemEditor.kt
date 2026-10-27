@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.shared.domain.model.expiryDate
 import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.QuantityFieldOptions
 import com.kitchenai.ui.designsystem.component.TermChip

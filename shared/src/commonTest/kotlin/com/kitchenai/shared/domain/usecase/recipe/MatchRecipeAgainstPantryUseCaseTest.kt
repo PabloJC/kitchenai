@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 class MatchRecipeAgainstPantryUseCaseTest {
@@ -38,9 +39,9 @@ class MatchRecipeAgainstPantryUseCaseTest {
         }
 
     @Test
-    fun `a holding that expired before now does not count`() =
+    fun `a holding past its date does not count`() =
         runTest {
-            val expired = pantryItem("item-1", "ing-1", Quantity(2.0, unit), expiresAt = Instant.fromEpochSeconds(1))
+            val expired = pantryItem("item-1", "ing-1", Quantity(2.0, unit), expiresAt = now - 1.days)
             val useCase = matcher(pantry = listOf(expired))
 
             assertEquals(0f, useCase(kitchen, stored.id).unwrap().coverage)

@@ -52,7 +52,7 @@ class PlanCookUseCase(
         held: List<PantryItem>,
         converter: UnitConverter,
     ): AppResult<CookPlan> {
-        val match = PantryMatcher.match(recipe, held, time.now(), converter)
+        val match = PantryMatcher.match(recipe, held, time.now(), converter, time.zone())
         val byId = held.associateBy { it.id }
         return when (val touched = consume.apply(held, match.consumptions(byId, converter), converter)) {
             is AppResult.Failure -> touched

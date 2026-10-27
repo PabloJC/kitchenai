@@ -3,7 +3,8 @@ package com.kitchenai.shared.domain.agent
 import com.kitchenai.shared.domain.model.Freshness
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.UserProfile
-import com.kitchenai.shared.domain.model.freshnessAt
+import com.kitchenai.shared.domain.model.freshnessOn
+import kotlinx.datetime.TimeZone
 import kotlin.time.Instant
 
 /**
@@ -24,6 +25,7 @@ object AgentContextBuilder {
         options: SuggestionOptions,
         languageTags: List<String>,
         now: Instant,
+        zone: TimeZone = TimeZone.UTC,
     ): AgentContext =
         AgentContext(
             languageTags = languageTags,
@@ -31,7 +33,7 @@ object AgentContextBuilder {
             constraints = profile.constraints,
             preferences = profile.preferences,
             avoidedIngredients = profile.avoidedIngredients,
-            pantry = entries(pantry, options, now),
+            pantry = entries(pantry, options, now, zone),
             options = options,
         )
 
@@ -43,9 +45,10 @@ object AgentContextBuilder {
         pantry: List<PantryItem>,
         options: SuggestionOptions,
         now: Instant,
+        zone: TimeZone,
     ): List<PantryEntry> =
         pantry
-            .map { it to it.freshnessAt(now, options.expiringSoonWindow) }
+            .map { it to it.freshnessOn(now, zone, options.expiringSoonDays) }
             .filterNot { (_, freshness) -> freshness == Freshness.Expired }
             .sortedBy { (item, _) -> item.expiresAt ?: Instant.DISTANT_FUTURE }
             // A free-text holding has no catalogue id for the agent to reason about, so it is

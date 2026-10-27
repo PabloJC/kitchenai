@@ -1,6 +1,9 @@
 package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.domain.model.Freshness
+import com.kitchenai.shared.domain.model.daysUntilExpiry
+import com.kitchenai.shared.domain.model.expiryDate
+import com.kitchenai.shared.domain.model.freshnessIn
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.pantry_expired_days_ago
@@ -53,9 +56,12 @@ class ExpiryDateTest {
         val lateTonight = LocalDateTime(2026, 10, 14, 23, 30).toInstant(madrid)
         val justAfterMidnight = LocalDateTime(2026, 10, 15, 0, 30).toInstant(madrid)
 
-        assertEquals(0, daysUntilExpiry(expiresAt, lateTonight, madrid))
-        assertEquals(Freshness.ExpiringSoon(1), freshnessIn(daysUntilExpiry(expiresAt, lateTonight, madrid)))
-        assertEquals(Freshness.Expired, freshnessIn(daysUntilExpiry(expiresAt, justAfterMidnight, madrid)))
+        val tonight = daysUntilExpiry(expiresAt, lateTonight, madrid)
+        val tomorrow = daysUntilExpiry(expiresAt, justAfterMidnight, madrid)
+
+        assertEquals(0, tonight)
+        assertEquals(Freshness.ExpiringSoon(1), freshnessIn(tonight, EXPIRING_SOON_DAYS))
+        assertEquals(Freshness.Expired, freshnessIn(tomorrow, EXPIRING_SOON_DAYS))
     }
 
     @Test
@@ -79,9 +85,9 @@ class ExpiryDateTest {
 
     @Test
     fun `soon covers today and the next two days only`() {
-        assertEquals(Freshness.ExpiringSoon(3), freshnessIn(2))
-        assertEquals(Freshness.Fresh, freshnessIn(3))
-        assertEquals(Freshness.Unknown, freshnessIn(null))
+        assertEquals(Freshness.ExpiringSoon(3), freshnessIn(2, EXPIRING_SOON_DAYS))
+        assertEquals(Freshness.Fresh, freshnessIn(3, EXPIRING_SOON_DAYS))
+        assertEquals(Freshness.Unknown, freshnessIn(null, EXPIRING_SOON_DAYS))
     }
 
     @Test

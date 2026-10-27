@@ -36,7 +36,7 @@ class DefaultAgentOrchestrator(
         val candidates = selection.select(AgentCapability.SUGGEST_FROM_PANTRY, registry.agents())
         if (candidates.isEmpty()) return AppResult.Failure(AppError.NotFound("agent"))
         val now = time.now()
-        val context = AgentContextBuilder.build(profile, pantry, options, languageTags, now)
+        val context = AgentContextBuilder.build(profile, pantry, options, languageTags, now, time.zone())
         return ask(candidates, context).map { answer -> verify(answer, profile, pantry, options, now, units) }
     }
 
@@ -80,7 +80,7 @@ class DefaultAgentOrchestrator(
             .map { recipe ->
                 RecipeSuggestion(
                     recipe = recipe,
-                    match = PantryMatcher.match(recipe, pantry, now, units),
+                    match = PantryMatcher.match(recipe, pantry, now, units, time.zone()),
                     source = RecipeSource.Agent(answer.agentId, answer.modelId, now),
                 )
             }

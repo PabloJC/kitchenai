@@ -29,8 +29,9 @@ class GetStoredSuggestionsUseCase(
             pantry.getPantry(kitchenId).flatMap { held ->
                 units().map { converter ->
                     val now = time.now()
+                    val zone = time.zone()
                     stored.map { recipe ->
-                        RecipeSuggestion(recipe, PantryMatcher.match(recipe, held, now, converter), recipe.source)
+                        RecipeSuggestion(recipe, PantryMatcher.match(recipe, held, now, converter, zone), recipe.source)
                     }
                 }
             }

@@ -58,7 +58,7 @@ class MatchRecipeAgainstPantryUseCase(
         scaled: Recipe,
     ): AppResult<PantryMatch> =
         pantry.getPantry(kitchenId).flatMap { held ->
-            units().map { converter -> PantryMatcher.match(scaled, held, time.now(), converter) }
+            units().map { converter -> PantryMatcher.match(scaled, held, time.now(), converter, time.zone()) }
         }
 
     private fun Recipe.at(servings: Int?): AppResult<Recipe> =

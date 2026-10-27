@@ -101,7 +101,7 @@ class AddMissingIngredientsToShoppingListUseCase(
         current: List<ShoppingItem>,
         converter: UnitConverter,
     ): AppResult<AddedToListSummary> {
-        val wanted = PantryMatcher.match(recipe, held, time.now(), converter).wanted(recipe.id, converter)
+        val wanted = PantryMatcher.match(recipe, held, time.now(), converter, time.zone()).wanted(recipe.id, converter)
         val summary = AddedToListSummary(added = wanted.size, skipped = recipe.ingredients.size - wanted.size)
         if (wanted.isEmpty()) return AppResult.Success(summary)
         return when (val drafted = draft(current, wanted, converter)) {
