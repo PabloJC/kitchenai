@@ -422,6 +422,8 @@ class ShoppingViewModel(
                 rebuildResolver()
                 val sections = published.filter { it.purpose == TaxonomyPurpose.SHOPPING_SECTIONS }
                 sectionTaxonomies.value = sections.map { it.id }.toSet()
+                // A catalogue that stops declaring them must not leave the old headers standing.
+                if (sections.isEmpty()) sectionTerms.value = emptyList()
                 coroutineScope {
                     published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
                         launch {

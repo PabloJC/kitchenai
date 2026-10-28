@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.shopping
 
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.designsystem.format.formatQuantity
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.wordFor
