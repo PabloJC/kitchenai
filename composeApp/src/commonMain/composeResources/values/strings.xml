@@ -155,6 +155,12 @@
     <string name="cooking_timer_done">Step %1$d: time is up</string>
     <string name="cooking_timer_stop">Stop timer</string>
     <string name="cooking_timer_dismiss">Dismiss</string>
+    <string name="cooking_timer_channel">Cooking timers</string>
+    <string name="cooking_timer_silent">Notifications are off, so timers only ring while KitchenAI is open.</string>
+    <plurals name="detail_timers_running">
+        <item quantity="one">%1$d timer running</item>
+        <item quantity="other">%1$d timers running</item>
+    </plurals>
     <string name="cooking_finish_title">Done cooking?</string>
     <string name="cooking_finish_body">Subtract the ingredients you used from your pantry? You can undo it right after.</string>
     <string name="cooking_finish_confirm">Subtract from pantry</string>

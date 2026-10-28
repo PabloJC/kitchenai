@@ -46,6 +46,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
@@ -56,6 +57,7 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.platform.KeepScreenOn
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.platform.rememberNotificationPermissionRequest
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailUiState
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailViewModel
@@ -68,9 +70,11 @@ import com.kitchenai.ui.resources.cooking_no_steps
 import com.kitchenai.ui.resources.cooking_previous
 import com.kitchenai.ui.resources.cooking_start_timer
 import com.kitchenai.ui.resources.cooking_step_counter
+import com.kitchenai.ui.resources.cooking_timer_channel
 import com.kitchenai.ui.resources.cooking_timer_dismiss
 import com.kitchenai.ui.resources.cooking_timer_done
 import com.kitchenai.ui.resources.cooking_timer_running
+import com.kitchenai.ui.resources.cooking_timer_silent
 import com.kitchenai.ui.resources.cooking_timer_stop
 import com.kitchenai.ui.resources.detail_steps
 import com.kitchenai.ui.resources.error_retry
@@ -104,6 +108,7 @@ fun CookingModeScreen(
     var finishing by rememberSaveable { mutableStateOf(false) }
     val lines = remember(recipe) { recipe.held + recipe.missing + recipe.unverifiable }
     val pager = rememberPagerState { recipe.steps.size }
+    val startTimer = rememberTimerStart(viewModel, snackbar)
     CookingEffects(userId, recipeId, detail, viewModel, snackbar)
     PublishTitle(recipe.title, detailTopBar)
 
@@ -141,8 +146,8 @@ fun CookingModeScreen(
                     recipe = recipe,
                     state = state,
                     pager = pager,
-                    lineCount = lines.size,
                     viewModel = viewModel,
+                    onStartTimer = startTimer,
                     onIngredients = { showingIngredients = true },
                     modifier = Modifier.padding(padding),
                 )
@@ -155,13 +160,17 @@ private fun Steps(
     recipe: RecipeDetailUiState,
     state: CookingModeUiState,
     pager: PagerState,
-    lineCount: Int,
     viewModel: CookingModeViewModel,
+    onStartTimer: (Int, Duration, CookingAlarmText) -> Unit,
     onIngredients: () -> Unit,
     modifier: Modifier,
 ) {
+    val lineCount = recipe.held.size + recipe.missing.size + recipe.unverifiable.size
     Column(modifier = modifier.fillMaxSize()) {
-        state.timer?.let { timer -> TimerBar(timer, viewModel::dismissTimer) }
+        // Several can run at once; past a few they scroll rather than push the step off screen.
+        Column(Modifier.heightIn(max = TimerBarsMaxHeight).verticalScroll(rememberScrollState())) {
+            state.timers.forEach { timer -> TimerBar(timer) { viewModel.dismissTimer(timer.step) } }
+        }
         Progress(
             step = pager.currentPage + 1,
             steps = recipe.steps.size,
@@ -170,7 +179,8 @@ private fun Steps(
             onIngredients = onIngredients,
         )
         HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
-            StepPage(recipe.steps[page]) { duration -> viewModel.startTimer(page + 1, duration) }
+            val alarm = alarmText(recipe.title, step = page + 1)
+            StepPage(recipe.steps[page]) { duration -> onStartTimer(page + 1, duration, alarm) }
         }
     }
 }
@@ -187,6 +197,7 @@ private fun CookingEffects(
     val defaultListName = stringResource(Res.string.shopping_default_list)
     // Idempotent: a no-op unless the process was restored straight into this screen.
     LaunchedEffect(userId, recipeId) { detail.start(userId, recipeId, platformLanguageTags(), defaultListName) }
+    LaunchedEffect(recipeId) { viewModel.open(recipeId) }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { done ->
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -200,6 +211,42 @@ private fun CookingEffects(
         }
     }
 }
+
+/**
+ * Starts a timer, and asks to notify the first time: a refusal is said once, since the timer then
+ * rings only while the app is open.
+ */
+@Composable
+private fun rememberTimerStart(
+    viewModel: CookingModeViewModel,
+    snackbar: SnackbarHostState,
+): (Int, Duration, CookingAlarmText) -> Unit {
+    val requestPermission = rememberNotificationPermissionRequest()
+    val scope = rememberCoroutineScope()
+    var warned by rememberSaveable { mutableStateOf(false) }
+    val silent = stringResource(Res.string.cooking_timer_silent)
+    return { step, duration, text ->
+        viewModel.startTimer(step, duration, text)
+        requestPermission { granted ->
+            if (!granted && !warned) {
+                warned = true
+                scope.launch { snackbar.showSnackbar(silent, duration = SnackbarDuration.Long) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun alarmText(
+    recipeTitle: String,
+    step: Int,
+): CookingAlarmText =
+    CookingAlarmText(
+        title = recipeTitle,
+        body = stringResource(Res.string.cooking_timer_done, step),
+        channelName = stringResource(Res.string.cooking_timer_channel),
+        stopLabel = stringResource(Res.string.cooking_timer_stop),
+    )
 
 /** The same ownership handshake recipe detail uses, so neither screen clears the other's title mid-transition. */
 @Composable
@@ -356,3 +403,5 @@ private fun StepNavigation(
         }
     }
 }
+
+private val TimerBarsMaxHeight = 176.dp

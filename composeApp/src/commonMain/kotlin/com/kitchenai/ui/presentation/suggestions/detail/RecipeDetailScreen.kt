@@ -25,6 +25,8 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -85,6 +87,7 @@ import com.kitchenai.ui.platform.rememberShareText
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
+import com.kitchenai.ui.presentation.suggestions.cooking.RunningTimers
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_add_missing
 import com.kitchenai.ui.resources.detail_candidate_prompt
@@ -103,6 +106,7 @@ import com.kitchenai.ui.resources.detail_servings_increase
 import com.kitchenai.ui.resources.detail_start_cooking
 import com.kitchenai.ui.resources.detail_step_spoken
 import com.kitchenai.ui.resources.detail_steps
+import com.kitchenai.ui.resources.detail_timers_running
 import com.kitchenai.ui.resources.detail_undo
 import com.kitchenai.ui.resources.detail_unverifiable
 import com.kitchenai.ui.resources.detail_unverifiable_body
@@ -121,6 +125,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -186,6 +191,7 @@ fun RecipeDetailScreen(
         // No top padding once there is a photo: it is what runs under the transparent bar.
         val top = if (loadFailed) padding.calculateTopPadding() else Dimens.none
         DetailBody(
+            recipeId = recipeId,
             sharedImageKey = recipeId.value.takeIf { detailTopBar != null },
             state = state,
             viewModel = viewModel,
@@ -198,6 +204,7 @@ fun RecipeDetailScreen(
 
 @Composable
 private fun DetailBody(
+    recipeId: RecipeId,
     sharedImageKey: String?,
     state: RecipeDetailUiState,
     viewModel: RecipeDetailViewModel,
@@ -230,7 +237,7 @@ private fun DetailBody(
             if (state.unverifiable.isNotEmpty()) {
                 UnverifiableCard(state.unverifiable, viewModel::confirmCandidate)
             }
-            StepsCard(state.steps, onStartCooking)
+            StepsCard(state.steps, runningTimerCount(recipeId), onStartCooking)
         }
     }
 }
@@ -503,8 +510,15 @@ private fun CandidateRow(
 }
 
 @Composable
+private fun runningTimerCount(recipeId: RecipeId): Int {
+    val timers by koinInject<RunningTimers>().running.collectAsStateWithLifecycle()
+    return timers.count { it.recipeId == recipeId }
+}
+
+@Composable
 private fun StepsCard(
     steps: List<String>,
+    runningTimers: Int,
     onStartCooking: () -> Unit,
 ) {
     if (steps.isEmpty()) return
@@ -528,6 +542,18 @@ private fun StepsCard(
                     Spacer(Modifier.width(Dimens.small))
                     Text(stringResource(Res.string.detail_start_cooking))
                 }
+            }
+            // Timers outlive cooking mode; this is the way back to them.
+            if (runningTimers > 0) {
+                AssistChip(
+                    onClick = onStartCooking,
+                    label = {
+                        Text(
+                            pluralStringResource(Res.plurals.detail_timers_running, runningTimers, runningTimers),
+                        )
+                    },
+                    leadingIcon = { Icon(Icons.Outlined.Timer, contentDescription = null) },
+                )
             }
             val ruleColor = MaterialTheme.colorScheme.outlineVariant
             Column(
