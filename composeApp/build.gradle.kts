@@ -65,6 +65,9 @@ kotlin {
 
             // The notification permission prompt: NotificationPermission.android.kt.
             implementation(libs.androidx.activity.compose)
+
+            // The home-screen shopping widget: widget/ShoppingListWidget.kt.
+            implementation(libs.androidx.glance.appwidget)
         }
         iosMain.dependencies {
             // Google Sign-In via Google's own iOS SDK, wrapped for Kotlin/Native rather than

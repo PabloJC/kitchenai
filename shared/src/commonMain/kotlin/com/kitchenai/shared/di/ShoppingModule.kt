@@ -3,6 +3,7 @@ package com.kitchenai.shared.di
 import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.GetShoppingSnapshotUseCase
 import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.RemoveShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.SetShoppingItemCheckedUseCase
@@ -16,6 +17,7 @@ val shoppingModule: Module =
         factory { AddShoppingItemUseCase(get(), get(), get(), get()) }
         factory { ClearCheckedItemsUseCase(get()) }
         factory { EnsureDefaultShoppingListUseCase(get(), get(), get()) }
+        factory { GetShoppingSnapshotUseCase(get(), get(), get(), get()) }
         factory { ObserveShoppingItemsUseCase(get()) }
         factory { RemoveShoppingItemUseCase(get()) }
         factory { SetShoppingItemCheckedUseCase(get(), get()) }

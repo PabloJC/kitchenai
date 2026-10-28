@@ -825,6 +825,21 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Rotate the device after one of them.
    - The screen stays where it is; the shortcut is not followed a second time.
 
+### 33. The Android shopping widget ticks lines without opening the app
+
+1. Signed in, with milk and bread unchecked and eggs ticked, add the KitchenAI widget to the home screen.
+   - It shows "Shopping list", an "Add" button and milk and bread, each with an empty box; eggs is not there.
+2. Tick milk on the widget.
+   - Milk leaves the widget; open the app and milk is ticked on the Shopping tab.
+3. In the app, add rice, then go home.
+   - Rice is on the widget within a few seconds.
+4. Tap "Add", then tap the title.
+   - "Add" opens Shopping with the cursor in the add field; the title opens Shopping.
+5. Turn on airplane mode and tick bread.
+   - The widget redraws; bread is ticked in the app once the device is back online.
+6. On a fresh install, before opening the app, add the widget.
+   - It says to open KitchenAI to start a list, and tapping it opens the app.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

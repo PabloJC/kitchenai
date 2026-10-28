@@ -30,6 +30,7 @@ import com.kitchenai.ui.navigation.ShellDestination
 import com.kitchenai.ui.navigation.ShoppingAddRequests
 import com.kitchenai.ui.navigation.open
 import com.kitchenai.ui.navigation.switchTo
+import com.kitchenai.ui.platform.HomeScreenWidgetsSync
 import com.kitchenai.ui.platform.LaunchLinkEffect
 import com.kitchenai.ui.platform.ReminderTapEffect
 import com.kitchenai.ui.presentation.common.AppearanceViewModel
@@ -108,6 +109,7 @@ private fun Shell(
         }
     }
     ExpiryReminders(userId)
+    HomeScreenWidgetsSync()
     val addRequests = koinInject<ShoppingAddRequests>()
     LaunchLinkEffect { target -> navController.open(target, addRequests) }
     ReminderTapEffect { navController.switchTo(Route.Pantry) }
