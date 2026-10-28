@@ -11,7 +11,7 @@ internal fun <T> exactCatalogueMatch(
 ): T? {
     val needle = normalised(text)
     if (needle.isEmpty()) return null
-    return options.filter { option -> normalised(label(option)) == needle }.singleOrNull()
+    return options.singleOrNull { option -> normalised(label(option)) == needle }
 }
 
 private val SPACES = Regex("\\s+")
