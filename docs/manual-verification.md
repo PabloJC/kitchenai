@@ -788,7 +788,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
      back on the next launch.
 3. Tap "Remind me". On Android 13+ and on iOS the system permission prompt follows.
    - Allow it. Set the device clock to 17:59 today and wait: at 18:00 one notification titled
-     "Use it before it goes" says how many items expire within a day and how many are past their
+     "Use it before it goes" names up to three items that expire today or tomorrow and counts those past their
      date. Tapping it opens the app on the Pantry tab, from another tab or with the app closed.
 4. Reinstall, repeat step 2 and tap "No, thanks", or deny the system prompt.
    - The dialog never returns and no notification arrives at 18:00.
@@ -884,6 +884,23 @@ shared case, a second device joined to that kitchen (scenario 5).*
      kitchen avoids …", naming the ingredient and never A.
 4. Remove A from the kitchen (or A leaves), then reopen the recipe on B.
    - The warning is gone, and new ideas may use the ingredient again.
+
+### 38. Reminders keep coming after a reboot or a quiet week, and never about food already used
+
+*Reminders on (scenario 30), set to a time a few minutes ahead.*
+
+1. Android: give an item a date tomorrow, close the app, reboot the phone and do not open the app.
+   - At the chosen time the reminder arrives and names the item. With the phone locked it shows
+     only the count; unlocked, the names.
+2. Android: set the device clock eight days ahead, with an item expiring the day after.
+   - The reminder still arrives at the chosen time without the app having been opened.
+3. With two devices in one kitchen (scenario 5), give an item a date tomorrow, then delete it on
+   the second device shortly before the time.
+   - Android: the first device says nothing about it. iOS: the same, if the app was opened in
+     between; otherwise the reminder may still name it, and Pantry shows the truth.
+4. Turn reminders on in Profile and refuse the system prompt.
+   - The note says notifications are off and offers "Open settings". It opens KitchenAI's
+     notification settings; allow them, come back, and the switch is on and the note gone.
 
 ## Results
 
