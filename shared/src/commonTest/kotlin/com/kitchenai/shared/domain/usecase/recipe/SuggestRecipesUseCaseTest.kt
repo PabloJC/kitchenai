@@ -7,6 +7,8 @@ import com.kitchenai.shared.domain.agent.SuggestionOptions
 import com.kitchenai.shared.domain.agent.profile
 import com.kitchenai.shared.domain.model.ConstraintStrength
 import com.kitchenai.shared.domain.model.DietaryConstraint
+import com.kitchenai.shared.domain.model.HouseholdAvoids
+import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.RecipeSuggestion
@@ -19,6 +21,9 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.UserProfile
 import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.service.UnitConverter
+import com.kitchenai.shared.domain.usecase.kitchen.FakeKitchenRepositoryContract
+import com.kitchenai.shared.domain.usecase.kitchen.kitchen
+import com.kitchenai.shared.domain.usecase.kitchen.otherUser
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
 import com.kitchenai.shared.domain.usecase.pantry.pantryItem
 import com.kitchenai.shared.domain.usecase.pantry.termRef
@@ -37,6 +42,7 @@ import kotlin.test.assertTrue
 
 class SuggestRecipesUseCaseTest {
     private val stored = profile()
+    private val kitchens = FakeKitchenRepositoryContract()
     private val held = listOf(pantryItem("item-1", "ing-1", Quantity(1.0, termRef("term-1"))))
 
     @Test
@@ -50,6 +56,7 @@ class SuggestRecipesUseCaseTest {
                     orchestrator,
                     noUnits(),
                     FakeTaxonomyRepositoryContract(),
+                    kitchens,
                 )
 
             val result = useCase(user, kitchen, listOf("en"), SuggestionOptions(useOnlyPantry = true))
@@ -72,6 +79,7 @@ class SuggestRecipesUseCaseTest {
                     orchestrator,
                     noUnits(),
                     FakeTaxonomyRepositoryContract(),
+                    kitchens,
                 )
 
             useCase(user, kitchen, listOf("es"))
@@ -110,6 +118,7 @@ class SuggestRecipesUseCaseTest {
                 orchestrator,
                 noUnits(),
                 catalogue,
+                kitchens,
             )(user, kitchen, listOf("en"))
 
             assertEquals(listOf(DietaryConstraint(diet, ConstraintStrength.AVOID)), orchestrator.profile?.constraints)
@@ -128,6 +137,7 @@ class SuggestRecipesUseCaseTest {
                     orchestrator,
                     noUnits(),
                     FakeTaxonomyRepositoryContract(taxonomiesError = AppError.Network()),
+                    kitchens,
                 )(user, kitchen, listOf("en"))
 
             assertTrue(result is AppResult.Failure)
@@ -145,6 +155,7 @@ class SuggestRecipesUseCaseTest {
                     RecordingOrchestrator(),
                     noUnits(),
                     FakeTaxonomyRepositoryContract(),
+                    kitchens,
                 )
 
             assertTrue(useCase(user, kitchen, listOf("en")) is AppResult.Failure)
@@ -160,6 +171,7 @@ class SuggestRecipesUseCaseTest {
                     RecordingOrchestrator(),
                     noUnits(),
                     FakeTaxonomyRepositoryContract(),
+                    kitchens,
                 )
 
             val result = useCase(user, kitchen, listOf("en"))
@@ -183,6 +195,7 @@ class SuggestRecipesUseCaseTest {
                     orchestrator,
                     broken,
                     FakeTaxonomyRepositoryContract(),
+                    kitchens,
                 )(
                     user,
                     kitchen,
@@ -204,12 +217,102 @@ class SuggestRecipesUseCaseTest {
                 orchestrator,
                 metricUnits("taxonomy-1"),
                 FakeTaxonomyRepositoryContract(),
+                kitchens,
             )(user, kitchen, listOf("en"))
 
             val converter = requireNotNull(orchestrator.units)
             assertEquals(0.5, converter.amountIn(Quantity(500.0, termRef("gram")), termRef("kilogram")))
         }
+
+    private fun suggestWith(
+        own: UserProfile,
+        kitchenPort: FakeKitchenRepositoryContract,
+        orchestrator: RecordingOrchestrator,
+    ) = SuggestRecipesUseCase(
+        FakeProfilePort(flowOf(own)),
+        FakePantryRepositoryContract(held),
+        orchestrator,
+        noUnits(),
+        FakeTaxonomyRepositoryContract(),
+        kitchenPort,
+    )
+
+    @Test
+    fun `another member's Avoid joins the request and overrides the requester's Prefer on it`() =
+        runTest {
+            val shared = termIn("taxonomy-1", "term-a")
+            val theirsOnly = termIn("taxonomy-1", "term-b")
+            val mine = termIn("taxonomy-1", "term-c")
+            val own =
+                stored.copy(
+                    constraints =
+                        listOf(
+                            DietaryConstraint(shared, ConstraintStrength.PREFER),
+                            DietaryConstraint(mine, ConstraintStrength.PREFER),
+                        ),
+                    avoidedIngredients = listOf(ingredientIdOf("ing-mine")),
+                )
+            val other = HouseholdAvoids(setOf(shared, theirsOnly), setOf(ingredientIdOf("ing-theirs")))
+            val household =
+                FakeKitchenRepositoryContract(
+                    kitchen(memberIds = setOf(user, otherUser)).copy(memberAvoids = mapOf(otherUser.value to other)),
+                )
+            val orchestrator = RecordingOrchestrator()
+
+            suggestWith(own, household, orchestrator)(user, kitchen, listOf("en"))
+
+            assertEquals(
+                listOf(
+                    DietaryConstraint(shared, ConstraintStrength.AVOID),
+                    DietaryConstraint(mine, ConstraintStrength.PREFER),
+                    DietaryConstraint(theirsOnly, ConstraintStrength.AVOID),
+                ),
+                orchestrator.profile?.constraints,
+            )
+            assertEquals(listOf("ing-mine", "ing-theirs"), orchestrator.profile?.avoidedIngredients?.map { it.value })
+        }
+
+    @Test
+    fun `past the callable's cap the requester's Prefers go and every Avoid stays`() =
+        runTest {
+            val avoids = (1..SuggestRecipesUseCase.MAX_CONSTRAINTS).map { termIn("taxonomy-1", "avoid-$it") }.toSet()
+            val own =
+                stored.copy(
+                    constraints = listOf(DietaryConstraint(termIn("taxonomy-1", "mine"), ConstraintStrength.PREFER)),
+                )
+            val household =
+                FakeKitchenRepositoryContract(
+                    kitchen(
+                        memberIds = setOf(user, otherUser),
+                    ).copy(memberAvoids = mapOf(otherUser.value to HouseholdAvoids(avoids))),
+                )
+            val orchestrator = RecordingOrchestrator()
+
+            suggestWith(own, household, orchestrator)(user, kitchen, listOf("en"))
+
+            val sent = requireNotNull(orchestrator.profile).constraints
+            assertEquals(SuggestRecipesUseCase.MAX_CONSTRAINTS, sent.size)
+            assertTrue(sent.all { it.strength == ConstraintStrength.AVOID })
+        }
+
+    @Test
+    fun `a kitchen that cannot be read is reported and the orchestrator is never asked`() =
+        runTest {
+            val orchestrator = RecordingOrchestrator()
+
+            val result =
+                suggestWith(stored, FakeKitchenRepositoryContract(readError = AppError.Network()), orchestrator)(
+                    user,
+                    kitchen,
+                    listOf("en"),
+                )
+
+            assertEquals(AppResult.Failure(AppError.Network()), result)
+            assertEquals(null, orchestrator.profile)
+        }
 }
+
+private fun ingredientIdOf(raw: String): IngredientId = (IngredientId.of(raw) as AppResult.Success).data
 
 private fun termIn(
     taxonomy: String,

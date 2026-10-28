@@ -855,6 +855,20 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Sign out in the app (or use a fresh install that was never opened) and repeat step 1.
    - Siri says to open KitchenAI once to set up the list, and nothing is added.
 
+### 36. Avoid applies to the whole kitchen
+
+*Two accounts, A and B, in one kitchen (scenario 5).*
+
+1. On A, in Profile › Food preferences, mark an allergen or diet term Avoid, and add an avoided ingredient.
+   - Under the group title: "Avoid also applies to ideas for everyone in your kitchen".
+2. On B, which avoids nothing, tap New ideas several times.
+   - No idea is tagged with A's term or uses A's ingredient.
+3. On B, save a recipe from the catalogue that uses A's ingredient (or that B saved before joining).
+   - Its Saved card says "Has something your kitchen avoids"; its detail says "Someone in your
+     kitchen avoids …", naming the ingredient and never A.
+4. Remove A from the kitchen (or A leaves), then reopen the recipe on B.
+   - The warning is gone, and new ideas may use the ingredient again.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

@@ -7,6 +7,8 @@ import com.kitchenai.shared.domain.model.AppleIdToken
 import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.GoogleAccessToken
 import com.kitchenai.shared.domain.model.GoogleIdToken
+import com.kitchenai.shared.domain.model.HouseholdAvoids
+import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Session
 import com.kitchenai.shared.domain.model.ShoppingList
@@ -22,6 +24,7 @@ import com.kitchenai.shared.domain.usecase.kitchen.KitchenMembershipLock
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.ShareMyAvoidsUseCase
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
@@ -29,6 +32,7 @@ import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.PendingDisplayName
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.kitchen
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_unauthorized_own_data
@@ -103,6 +107,27 @@ class SessionViewModelTest {
                 assertEquals(SessionUiState.Ready(userId), awaitItem())
                 cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    @Test
+    fun `the member's Avoid set reaches their kitchen once the profile loads and only once`() =
+        runTest(dispatcher) {
+            kitchens = FakeKitchenPort(initial = kitchen(memberIds = setOf(userId)))
+            val ingredient = (IngredientId.of("ing-1") as AppResult.Success).data
+            val viewModel = viewModel()
+
+            viewModel.start(listOf("aa"), "list")
+            advanceUntilIdle()
+            profiles.profiles.emit(
+                UserProfile.newFor(
+                    userId,
+                    listOf("aa"),
+                    Instant.fromEpochSeconds(0),
+                ).copy(avoidedIngredients = listOf(ingredient)),
+            )
+            advanceUntilIdle()
+
+            assertEquals(listOf(HouseholdAvoids(ingredients = setOf(ingredient))), kitchens.updatedAvoids)
         }
 
     @Test
@@ -659,6 +684,7 @@ class SessionViewModelTest {
                     ensure = EnsureKitchenUseCase(kitchens, KitchenMembershipLock()),
                     ensureDefaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
                     observe = ObserveKitchenUseCase(kitchens),
+                    shareAvoids = ShareMyAvoidsUseCase(kitchens),
                 ),
             observeSession = ObserveSessionUseCase(sessions),
             observeUserProfile = ObserveUserProfileUseCase(profiles),

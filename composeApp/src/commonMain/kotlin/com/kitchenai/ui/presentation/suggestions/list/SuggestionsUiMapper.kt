@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.suggestions.list
 
 import com.kitchenai.shared.domain.agent.SuggestionOptions
+import com.kitchenai.shared.domain.model.HouseholdAvoids
 import com.kitchenai.shared.domain.model.RecipeIngredient
 import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.RecipeSuggestion
@@ -15,7 +16,10 @@ internal fun SuggestionOptionsUi.toDomain(): SuggestionOptions =
         mealType = mealType,
     )
 
-internal fun RecipeSuggestion.toUi(resolver: LabelResolver): SuggestionUi {
+internal fun RecipeSuggestion.toUi(
+    resolver: LabelResolver,
+    avoids: HouseholdAvoids = HouseholdAvoids(),
+): SuggestionUi {
     val held = match.covered.count { !it.ingredient.optional }
     val short = match.missing.count { !it.ingredient.optional }
     return SuggestionUi(
@@ -31,6 +35,7 @@ internal fun RecipeSuggestion.toUi(resolver: LabelResolver): SuggestionUi {
         // Both ids travel as the response reported them; neither is named anywhere in this module.
         provenance = (source as? RecipeSource.Agent)?.let { ProvenanceUi(it.agentId.value, it.modelId) },
         tagRefs = recipe.tags,
+        conflictsWithHousehold = !avoids.hitsIn(recipe).isEmpty,
     )
 }
 

@@ -4,11 +4,13 @@ import com.kitchenai.shared.domain.usecase.onboarding.CompleteOnboardingUseCase
 import com.kitchenai.shared.domain.usecase.onboarding.ObserveOnboardingCompletedUseCase
 import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveAppearanceUseCase
+import com.kitchenai.shared.domain.usecase.profile.ObserveHouseholdAvoidsUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveAppearanceUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.ShareMyAvoidsUseCase
 import com.kitchenai.shared.domain.usecase.profile.ToggleDietaryConstraintUseCase
 import com.kitchenai.shared.domain.usecase.reminder.ObserveReminderSettingsUseCase
 import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestsUseCase
@@ -32,4 +34,6 @@ val profileModule: Module =
         factory { ObserveTaxonomiesUseCase(get()) }
         factory { SaveUserProfileUseCase(get(), get(), get(), get()) }
         factory { ToggleDietaryConstraintUseCase() }
+        factory { ShareMyAvoidsUseCase(get()) }
+        factory { ObserveHouseholdAvoidsUseCase(get()) }
     }

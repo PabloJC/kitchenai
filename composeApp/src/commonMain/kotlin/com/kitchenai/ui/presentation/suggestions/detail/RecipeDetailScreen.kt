@@ -92,6 +92,7 @@ import com.kitchenai.ui.resources.detail_cook
 import com.kitchenai.ui.resources.detail_cook_anyway
 import com.kitchenai.ui.resources.detail_cook_missing_hint
 import com.kitchenai.ui.resources.detail_have
+import com.kitchenai.ui.resources.detail_household_avoids
 import com.kitchenai.ui.resources.detail_in_pantry
 import com.kitchenai.ui.resources.detail_ingredients
 import com.kitchenai.ui.resources.detail_missing
@@ -223,6 +224,12 @@ private fun DetailBody(
                     ),
                 retryLabel = stringResource(Res.string.error_retry),
                 onRetry = viewModel::retry,
+            )
+        }
+        if (state.avoidedByHousehold.isNotEmpty()) {
+            ErrorBanner(
+                message = stringResource(Res.string.detail_household_avoids, state.avoidedByHousehold.joinToString()),
+                modifier = Modifier.padding(horizontal = Dimens.large),
             )
         }
         if (!loadFailed) {

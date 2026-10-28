@@ -34,6 +34,7 @@ import com.kitchenai.ui.designsystem.motion.sharedRecipeImage
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_unsave
+import com.kitchenai.ui.resources.saved_household_avoids
 import com.kitchenai.ui.resources.suggestions_coverage_count
 import com.kitchenai.ui.resources.suggestions_minutes
 import com.kitchenai.ui.resources.suggestions_saved_empty_body
@@ -142,6 +143,13 @@ private fun SavedRecipeCard(
                         stringResource(Res.string.suggestions_minutes, minutes),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (recipe.conflictsWithHousehold) {
+                    Text(
+                        stringResource(Res.string.saved_household_avoids),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
                 CoverageBar(fraction = recipe.coverage) {

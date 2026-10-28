@@ -50,6 +50,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_retry
+import com.kitchenai.ui.resources.profile_avoid_household
 import com.kitchenai.ui.resources.profile_delete_account
 import com.kitchenai.ui.resources.profile_delete_body
 import com.kitchenai.ui.resources.profile_delete_cancel
@@ -73,6 +74,7 @@ import com.kitchenai.ui.resources.profile_switch_confirm
 import com.kitchenai.ui.resources.profile_switch_title
 import com.kitchenai.ui.resources.profile_vocabulary_failed
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -140,13 +142,14 @@ private fun ProfileContent(
             item { GroupTitle(Res.string.profile_group_household) }
             item { KitchenRow(onOpenKitchen) }
             item { GroupTitle(Res.string.profile_group_food) }
+            item { NoteLine(Res.string.profile_avoid_household) }
             foodPreferences(state, viewModel) { term -> choosing = term }
             item { GroupTitle(Res.string.profile_group_appearance) }
             item { AppearanceChooser(appearance, onAppearance) }
             item { GroupTitle(Res.string.profile_group_reminders) }
             item { ReminderRows(reminderState, reminders) }
             item { GroupTitle(Res.string.profile_group_privacy) }
-            item { TransparencyLine() }
+            item { NoteLine(Res.string.profile_sent_summary) }
             if (state.hasAccount) {
                 item { DeleteAccountAction(enabled = !state.isAuthenticating, onDelete = viewModel::deleteAccount) }
             }
@@ -349,9 +352,9 @@ private suspend fun performAppleSignIn(
  * about the data rather than the data — this names the categories, not amounts.
  */
 @Composable
-private fun TransparencyLine() {
+private fun NoteLine(text: StringResource) {
     Text(
-        text = stringResource(Res.string.profile_sent_summary),
+        text = stringResource(text),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),

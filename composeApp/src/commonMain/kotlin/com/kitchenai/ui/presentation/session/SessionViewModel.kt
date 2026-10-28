@@ -23,8 +23,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -200,8 +202,13 @@ class SessionViewModel(
                 launch { observeUserProfile.errors(userId).collect { error -> onProfileError(userId, error) } }
                 // The error stream first, so it is subscribed before the data stream can report anything.
                 launch { kitchen.observe.errors(userId).collect { error -> onKitchenError(userId, error) } }
-                // Never read: collecting is what keeps the listener open to report its NotFound.
-                kitchen.observe(userId).launchIn(this)
+                // Collecting keeps the listener open to report its NotFound. Each kitchen, paired with the
+                // profile, shares this member's Avoid set; a failed write is retried on the next change.
+                kitchen
+                    .observe(userId)
+                    .combine(profile.filterNotNull()) { held, own -> held to own }
+                    .onEach { (held, own) -> if (own.userId == userId) kitchen.shareAvoids(held, own) }
+                    .launchIn(this)
             }
     }
 

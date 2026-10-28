@@ -143,6 +143,8 @@
     <string name="detail_in_pantry">%1$d of %2$d in your pantry</string>
     <string name="detail_share">Share recipe</string>
     <string name="snack_cook_undone">Put back in your pantry</string>
+    <string name="saved_household_avoids">Has something your kitchen avoids</string>
+    <string name="detail_household_avoids">Someone in your kitchen avoids %1$s.</string>
     <string name="detail_start_cooking">Start cooking</string>
     <string name="cooking_step_counter">Step %1$d of %2$d</string>
     <string name="cooking_previous">Previous</string>
@@ -204,6 +206,7 @@
     <string name="profile_group_account">Account</string>
     <string name="profile_group_household">Household</string>
     <string name="profile_group_food">Food preferences</string>
+    <string name="profile_avoid_household">Avoid also applies to ideas for everyone in your kitchen.</string>
     <string name="profile_group_appearance">Appearance</string>
     <string name="profile_group_privacy">Privacy</string>
     <string name="profile_group_about">About</string>
@@ -254,7 +257,7 @@
     <string name="strength_off">Off</string>
     <string name="strength_choose">Choose Prefer, Avoid or Off</string>
     <string name="strength_prefer_explained">Prefer: suggestions lean towards it.</string>
-    <string name="strength_avoid_explained">Avoid: recipes containing it are never suggested.</string>
+    <string name="strength_avoid_explained">Avoid: ideas containing it are never suggested, to anyone in your kitchen.</string>
     <plurals name="profile_selected_count">
         <item quantity="one">%1$d selected</item>
         <item quantity="other">%1$d selected</item>
@@ -326,7 +329,7 @@
     <string name="onboarding_staples_title">What is in your kitchen?</string>
     <string name="onboarding_staples_body">Tap what you have. Amounts can wait: you can set them later in Pantry.</string>
     <string name="onboarding_preferences_title">Anything you avoid?</string>
-    <string name="onboarding_preferences_body">Set your allergies and diets before your first ideas so every suggestion respects them. You can change them any time in Profile.</string>
+    <string name="onboarding_preferences_body">Set your allergies and diets before your first ideas. Ideas respect them for everyone in your kitchen, and you can change them any time in Profile.</string>
     <string name="onboarding_preferences_action">Set diet and allergies</string>
     <string name="onboarding_not_now">Not now, show me ideas</string>
     <plurals name="onboarding_add_count">

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.HouseholdAvoids
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.MealType
@@ -11,6 +12,7 @@ import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.model.householdAvoids
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
@@ -73,6 +75,9 @@ class SuggestionsViewModel(
     // catalogue answers, rather than only at the moment it was first shown.
     private var current: List<RecipeSuggestion> = emptyList()
     private var currentSaved: List<RecipeSuggestion> = emptyList()
+
+    // Every member's Avoid set, off the kitchen already watched: it flags a kept dish that conflicts.
+    private var avoids = HouseholdAvoids()
     private var user: UserId? = null
     private var languageTags: List<String> = emptyList()
     private var listLabels: Map<String, String> = emptyMap()
@@ -165,7 +170,13 @@ class SuggestionsViewModel(
     private fun watchKitchen(userId: UserId) {
         kitchenListener =
             viewModelScope.launch {
-                launch { reads.kitchen(userId).collect { kitchen -> kitchenId.value = kitchen.id } }
+                launch {
+                    reads.kitchen(userId).collect { kitchen ->
+                        kitchenId.value = kitchen.id
+                        avoids = kitchen.householdAvoids()
+                        reresolve()
+                    }
+                }
                 launch {
                     reads.kitchen.errors(userId).collect { error ->
                         val message = error.describe(Res.string.error_unauthorized_suggestions)
@@ -365,8 +376,8 @@ class SuggestionsViewModel(
         val resolver = LabelResolver(ingredients = ingredients.value, languageTags = languageTags)
         internalState.update { state ->
             state.copy(
-                suggestions = current.map { suggestion -> suggestion.toUi(resolver) },
-                savedRecipes = currentSaved.map { suggestion -> suggestion.toUi(resolver) },
+                suggestions = current.map { suggestion -> suggestion.toUi(resolver, avoids) },
+                savedRecipes = currentSaved.map { suggestion -> suggestion.toUi(resolver, avoids) },
             ).withVisibleSaved()
         }
     }

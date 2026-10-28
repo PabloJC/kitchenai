@@ -7,12 +7,14 @@ export interface KitchenDoc {
   memberIds?: string[];
   joinCode?: string;
   memberDisplayNames?: Record<string, string>;
+  /** Each member's Avoid set by uid; only its keys matter here. */
+  memberAvoids?: Record<string, unknown>;
 }
 
 /** What deleting one account does to one of its kitchens. */
 export type KitchenPlan =
   | { kind: 'delete'; joinCode: string | undefined }
-  | { kind: 'leave'; update: Required<Pick<KitchenDoc, 'ownerId' | 'memberIds' | 'memberDisplayNames'>> }
+  | { kind: 'leave'; update: Required<Pick<KitchenDoc, 'ownerId' | 'memberIds' | 'memberDisplayNames' | 'memberAvoids'>> }
   | { kind: 'skip' };
 
 /**
@@ -28,8 +30,11 @@ export function planKitchen(uid: string, kitchen: KitchenDoc | undefined): Kitch
 
   const names = { ...(kitchen.memberDisplayNames ?? {}) };
   delete names[uid];
+  // The account's Avoid set goes with it: it must stop filtering the others' ideas.
+  const avoids = { ...(kitchen.memberAvoids ?? {}) };
+  delete avoids[uid];
   const ownerId = kitchen.ownerId === uid || !kitchen.ownerId ? remaining[0]! : kitchen.ownerId;
-  return { kind: 'leave', update: { ownerId, memberIds: remaining, memberDisplayNames: names } };
+  return { kind: 'leave', update: { ownerId, memberIds: remaining, memberDisplayNames: names, memberAvoids: avoids } };
 }
 
 /** The slice of the Admin Auth SDK this needs, so a test can stand in for it. */

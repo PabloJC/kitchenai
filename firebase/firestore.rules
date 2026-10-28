@@ -81,6 +81,24 @@ service cloud.firestore {
       return after.get('memberDisplayNames', {}).diff(before.get('memberDisplayNames', {})).affectedKeys();
     }
 
+    // The same for memberAvoids: each write shape may touch only the entries its own rule names.
+    function touchedAvoidKeys(before, after) {
+      return after.get('memberAvoids', {}).diff(before.get('memberAvoids', {})).affectedKeys();
+    }
+
+    // One member's Avoid entry, as MemberAvoidsDto writes it. Checked for the caller's own entry,
+    // the only one any write may add or change.
+    function isValidOwnAvoids(after) {
+      let avoids = after.get('memberAvoids', {});
+      return !(request.auth.uid in avoids)
+             || (avoids[request.auth.uid] is map
+                 && avoids[request.auth.uid].keys().hasOnly(['terms', 'ingredients'])
+                 && avoids[request.auth.uid].get('terms', []) is list
+                 && avoids[request.auth.uid].get('terms', []).size() <= 100
+                 && avoids[request.auth.uid].get('ingredients', []) is list
+                 && avoids[request.auth.uid].get('ingredients', []).size() <= 100);
+    }
+
     // ---------------------------------------------------------------- //
     // Document guards
     //
@@ -163,13 +181,14 @@ service cloud.firestore {
     // removedMemberIds only ever grows (see isOwnerRemovingMember); its cap is looser than
     // memberIds' own because it is a history, not a current-membership count.
     function isValidKitchen(data) {
-      return data.keys().hasOnly(['ownerId', 'memberIds', 'joinCode', 'memberDisplayNames', 'removedMemberIds'])
+      return data.keys().hasOnly(['ownerId', 'memberIds', 'joinCode', 'memberDisplayNames', 'removedMemberIds', 'memberAvoids'])
              && data.keys().hasAll(['ownerId', 'memberIds', 'joinCode'])
              && isId(data.ownerId)
              && data.memberIds is list
              && data.memberIds.size() <= 20
              && isId(data.joinCode)
              && (!('memberDisplayNames' in data) || data.memberDisplayNames is map)
+             && (!('memberAvoids' in data) || data.memberAvoids is map)
              && (!('removedMemberIds' in data) || (data.removedMemberIds is list && data.removedMemberIds.size() <= 50));
     }
 
@@ -196,7 +215,9 @@ service cloud.firestore {
              && after.ownerId == before.ownerId
              && after.joinCode == before.joinCode
              && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
-             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
+             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid])
+             && touchedAvoidKeys(before, after).hasOnly([request.auth.uid])
+             && isValidOwnAvoids(after);
     }
 
     // Mirrors LeaveKitchenUseCase: the owner of a kitchen with other members cannot leave —
@@ -211,7 +232,9 @@ service cloud.firestore {
              && after.ownerId == before.ownerId
              && after.joinCode == before.joinCode
              && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
-             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
+             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid])
+             && touchedAvoidKeys(before, after).hasOnly([request.auth.uid])
+             && isValidOwnAvoids(after);
     }
 
     // removedMemberIds must grow by exactly the uids this write drops from memberIds: anything
@@ -226,7 +249,8 @@ service cloud.firestore {
              && removed.size() > 0
              && !(request.auth.uid in removed)
              && after.get('removedMemberIds', []) == before.get('removedMemberIds', []).concat(removed)
-             && touchedDisplayNameKeys(before, after).hasOnly(removed);
+             && touchedDisplayNameKeys(before, after).hasOnly(removed)
+             && touchedAvoidKeys(before, after).hasOnly(removed);
     }
 
     function isOwnerRegeneratingJoinCode(before, after) {
@@ -236,7 +260,8 @@ service cloud.firestore {
              && after.memberIds == before.memberIds
              && after.joinCode != before.joinCode
              && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
-             && touchedDisplayNameKeys(before, after).hasOnly([]);
+             && touchedDisplayNameKeys(before, after).hasOnly([])
+             && touchedAvoidKeys(before, after).hasOnly([]);
     }
 
     function isSelfDisplayNameUpdate(before, after) {
@@ -246,7 +271,9 @@ service cloud.firestore {
              && after.ownerId == before.ownerId
              && after.joinCode == before.joinCode
              && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
-             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid]);
+             && touchedDisplayNameKeys(before, after).hasOnly([request.auth.uid])
+             && touchedAvoidKeys(before, after).hasOnly([request.auth.uid])
+             && isValidOwnAvoids(after);
     }
 
     // ---------------------------------------------------------------- //
@@ -267,10 +294,13 @@ service cloud.firestore {
                     && request.resource.data.ownerId == request.auth.uid
                     && request.resource.data.memberIds == [request.auth.uid]
                     && request.resource.data.get('removedMemberIds', []) == []
+                    && request.resource.data.get('memberAvoids', {}).keys().hasOnly([request.auth.uid])
+                    && isValidOwnAvoids(request.resource.data)
                     && isValidKitchen(request.resource.data);
 
       // Exactly the shapes the repository ever writes: joining, leaving, the owner removing
-      // someone else, the owner rotating the join code, or a member renaming only themself.
+      // someone else, the owner rotating the join code, or a member updating only their own
+      // entries: their display name and their Avoid set.
       // Anything else — including handing the kitchen to a new owner — is denied.
       allow update: if isValidKitchen(request.resource.data)
                     && (

@@ -2,6 +2,7 @@ package com.kitchenai.shared.domain.usecase.kitchen
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.HouseholdAvoids
 import com.kitchenai.shared.domain.model.Kitchen
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.KitchenJoinCode
@@ -121,6 +122,22 @@ class FakeKitchenRepositoryContract(
     ): AppResult<Unit> {
         updatedDisplayNames += Triple(userId, kitchenId, displayName)
         return updateMyDisplayNameResult
+    }
+
+    val updatedAvoids = mutableListOf<HouseholdAvoids>()
+    var updateMyAvoidsResult: AppResult<Unit> = AppResult.Success(Unit)
+
+    /** Applied to the held kitchen, as the real write's listener echo would show it. */
+    override suspend fun updateMyAvoids(
+        userId: UserId,
+        kitchenId: KitchenId,
+        avoids: HouseholdAvoids,
+    ): AppResult<Unit> {
+        updatedAvoids += avoids
+        if (updateMyAvoidsResult is AppResult.Success) {
+            state.value = state.value?.let { it.copy(memberAvoids = it.memberAvoids + (userId.value to avoids)) }
+        }
+        return updateMyAvoidsResult
     }
 
     /** Pushes a new value to an already-active collector, for reactivity tests. */
