@@ -256,7 +256,8 @@ class MoveCheckedItemsToPantryUseCaseTest {
             useCase(items, pantry)(kitchenId(), list, options)
 
             val dates = pantry.items.associate { it.ingredient to it.expiresAt }
-            val expected = mapOf<IngredientId?, Instant?>(ingredientId("rice") to instant(9_000), ingredientId("pasta") to null)
+            val expected =
+                mapOf<IngredientId?, Instant?>(ingredientId("rice") to instant(9_000), ingredientId("pasta") to null)
             assertEquals(expected, dates)
         }
 
