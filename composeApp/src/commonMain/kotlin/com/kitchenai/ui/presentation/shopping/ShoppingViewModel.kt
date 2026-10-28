@@ -393,6 +393,7 @@ class ShoppingViewModel(
      * answers, the line shows no recipe rather than failing the list.
      */
     private suspend fun watchRecipeTitles(kitchen: KitchenId) {
+        recipeTitles.value = emptyMap()
         val stored = (reads.storedRecipes(kitchen) as? AppResult.Success)?.data.orEmpty()
         val generated = stored.associate { suggestion -> suggestion.recipe.id to suggestion.recipe.title }
         recipeTitles.value = generated
