@@ -2,10 +2,18 @@ package com.kitchenai.ui.platform
 
 import org.koin.core.scope.Scope
 
-/** Hands the planned reminders to the system so they fire with the app closed. */
+/** Keeps the daily expiry reminder going with the app closed. */
 interface ExpiryReminderScheduler {
-    /** Replaces every pending reminder with [reminders]. */
-    fun schedule(reminders: List<ScheduledReminder>)
+    /**
+     * Reminders are on at [hour]:[minute]. Android runs a daily job at that time that reads the
+     * pantry as it is then, and ignores [reminders]. iOS cannot run code on time, so it hands
+     * [reminders], worded from the latest snapshot, to the system.
+     */
+    fun schedule(
+        reminders: List<ScheduledReminder>,
+        hour: Int,
+        minute: Int,
+    )
 
     fun cancel()
 }

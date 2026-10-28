@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.reminder
 
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.reminder.ObserveReminderSettingsUseCase
 import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestsUseCase
@@ -11,4 +12,6 @@ class ExpiryReminderReadsDelegate(
     val pantry: ObservePantryUseCase,
     val settings: ObserveReminderSettingsUseCase,
     val plan: PlanExpiryDigestsUseCase,
+    /** Names the items a reminder lists, in the words the pantry shows them in. */
+    val ingredients: ObserveIngredientsUseCase,
 )

@@ -118,6 +118,10 @@
         <item quantity="other">%1$d líneas vaciadas</item>
     </plurals>
     <string name="shopping_undo">Deshacer</string>
+    <string name="shopping_move_review_hint">Con fecha, la comida aparece en Consumir pronto y en tus avisos de caducidad.</string>
+    <string name="shopping_move_same_date">La misma fecha para todo</string>
+    <string name="shopping_move_skip_dates">Sin fechas</string>
+    <string name="shopping_move_bare_amount">1 (sin cantidad)</string>
     <string name="shopping_amount">Cantidad</string>
     <string name="shopping_add_amount">Añadir cantidad</string>
     <string name="shopping_save">Guardar</string>
@@ -306,10 +310,6 @@
         <item quantity="one">Mover %1$d a la despensa</item>
         <item quantity="other">Mover %1$d a la despensa</item>
     </plurals>
-    <plurals name="shopping_need_amount_count">
-        <item quantity="one">%1$d necesita una cantidad</item>
-        <item quantity="other">%1$d necesitan una cantidad</item>
-    </plurals>
     <string name="shopping_all_in_cart_title">Todo está en el carro</string>
     <string name="shopping_all_in_cart_body">Muévelo a la despensa para que las sugerencias estén al día.</string>
     <string name="shopping_view_pantry">Ver despensa</string>
@@ -374,13 +374,24 @@
     <string name="reminder_setting_title">Avisos de caducidad</string>
     <string name="reminder_setting_body">Un aviso los días en que algo de tu cocina esté a punto de caducar.</string>
     <string name="reminder_setting_time">Hora</string>
-    <string name="reminder_setting_refused">Las notificaciones de KitchenAI están desactivadas. Actívalas en los ajustes del dispositivo y vuelve a encender esto.</string>
+    <string name="reminder_setting_refused">Las notificaciones de KitchenAI están desactivadas. Permítelas en los ajustes y los recordatorios se activarán al volver.</string>
     <string name="reminder_time_ok">Aceptar</string>
     <string name="reminder_time_cancel">Cancelar</string>
     <plurals name="reminder_expiring">
-        <item quantity="one">%1$d producto caduca en menos de un día</item>
-        <item quantity="other">%1$d productos caducan en menos de un día</item>
+        <item quantity="one">%1$d producto caduca hoy o mañana</item>
+        <item quantity="other">%1$d productos caducan hoy o mañana</item>
     </plurals>
+    <plurals name="reminder_expiring_named">
+        <item quantity="one">%1$s caduca hoy o mañana</item>
+        <item quantity="other">%1$s caducan hoy o mañana</item>
+    </plurals>
+    <string name="reminder_names_two">%1$s y %2$s</string>
+    <string name="reminder_names_three">%1$s, %2$s y %3$s</string>
+    <plurals name="reminder_names_more">
+        <item quantity="one">%1$s y %2$d más</item>
+        <item quantity="other">%1$s y %2$d más</item>
+    </plurals>
+    <string name="reminder_open_settings">Abrir ajustes</string>
     <plurals name="reminder_expired">
         <item quantity="one">%1$d producto ya ha caducado</item>
         <item quantity="other">%1$d productos ya han caducado</item>

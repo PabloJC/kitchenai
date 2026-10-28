@@ -2,6 +2,7 @@ package com.kitchenai.shared.domain.usecase.shopping
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.MoveToPantryOptions
 import com.kitchenai.shared.domain.model.PantryMoveRecord
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
@@ -34,6 +35,25 @@ class UndoMoveToPantryUseCaseTest {
             assertTrue(result is AppResult.Success)
             assertEquals(listOf(heldRice), pantry.items)
             assertEquals(setOf(rice, beans), items.itemsOf(list).toSet())
+        }
+
+    @Test
+    fun `undo of a dated move with a bare line puts back the bare line and the undated holding`() =
+        runTest {
+            val items = FakeShoppingItemRepositoryContract()
+            val rice = shoppingItem("rice", quantity = Quantity(200.0, unit)).copy(checked = true)
+            val milk = shoppingItem("milk", quantity = null).copy(checked = true)
+            items.seed(list, rice, milk)
+            val pantry = FakePantryRepositoryContract(listOf(heldRice))
+            val options =
+                MoveToPantryOptions(expiresAt = mapOf(rice.id to instant(9_000)), defaultAmountForBare = true)
+            val moved = move(items, pantry, options)
+            assertEquals(instant(9_000), pantry.items.first { it.id == heldRice.id }.expiresAt)
+
+            UndoMoveToPantryUseCase(items, pantry)(kitchenId(), moved)
+
+            assertEquals(listOf(heldRice), pantry.items)
+            assertEquals(setOf(rice, milk), items.itemsOf(list).toSet())
         }
 
     @Test
@@ -85,9 +105,18 @@ class UndoMoveToPantryUseCaseTest {
     private suspend fun move(
         items: FakeShoppingItemRepositoryContract,
         pantry: FakePantryRepositoryContract,
+        options: MoveToPantryOptions = MoveToPantryOptions(),
     ): PantryMoveRecord {
-        val useCase = MoveCheckedItemsToPantryUseCase(items, pantry, sequentialIds(), fixedTime(1_000), noUnits())
-        val result = useCase(kitchenId(), list)
+        val useCase =
+            MoveCheckedItemsToPantryUseCase(
+                items,
+                pantry,
+                sequentialIds(),
+                fixedTime(1_000),
+                noUnits(),
+                FakeIngredientRepositoryContract(),
+            )
+        val result = useCase(kitchenId(), list, options)
         return checkNotNull((result as AppResult.Success).data.undo)
     }
 }

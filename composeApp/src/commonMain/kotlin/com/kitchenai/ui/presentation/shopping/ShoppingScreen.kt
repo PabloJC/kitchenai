@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kitchenai.shared.domain.model.MoveToPantryOptions
 import com.kitchenai.shared.domain.model.PantryMoveRecord
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
@@ -120,7 +121,6 @@ fun ShoppingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    var confirmingClear by rememberSaveable { mutableStateOf(false) }
     var editingAmountOf by rememberSaveable { mutableStateOf<String?>(null) }
 
     val defaultListName = stringResource(Res.string.shopping_default_list)
@@ -155,13 +155,7 @@ fun ShoppingScreen(
             )
 
             if (state.tickedCount > 0) {
-                ShoppingCheckoutBar(
-                    movableCount = state.movableCount,
-                    missingAmountCount = state.ticksMissingAmount.size,
-                    onMoveToPantry = viewModel::moveCheckedToPantry,
-                    onFixAmounts = { state.ticksMissingAmount.firstOrNull()?.let { editingAmountOf = it.id.value } },
-                    onClear = { confirmingClear = true },
-                )
+                CheckoutArea(state.ticked, onMove = viewModel::moveCheckedToPantry, onClear = viewModel::clearChecked)
             }
 
             ShoppingAddField(
@@ -184,9 +178,34 @@ fun ShoppingScreen(
         onDelete = viewModel::remove,
         onClose = { editingAmountOf = null },
     )
+}
 
+/** The bar, and the two things it opens: the move's review sheet and the clear confirmation. */
+@Composable
+private fun CheckoutArea(
+    ticked: List<ShoppingItemUi>,
+    onMove: (MoveToPantryOptions) -> Unit,
+    onClear: () -> Unit,
+) {
+    var reviewingMove by rememberSaveable { mutableStateOf(false) }
+    var confirmingClear by rememberSaveable { mutableStateOf(false) }
+    ShoppingCheckoutBar(
+        movableCount = ticked.size,
+        onMoveToPantry = { reviewingMove = true },
+        onClear = { confirmingClear = true },
+    )
+    if (reviewingMove) {
+        MoveToPantrySheet(
+            lines = ticked,
+            onMove = { options ->
+                reviewingMove = false
+                onMove(options)
+            },
+            onDismiss = { reviewingMove = false },
+        )
+    }
     if (confirmingClear) {
-        ClearCheckedDialog(onConfirm = viewModel::clearChecked, onDismiss = { confirmingClear = false })
+        ClearCheckedDialog(onConfirm = onClear, onDismiss = { confirmingClear = false })
     }
 }
 

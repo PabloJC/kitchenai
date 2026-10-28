@@ -10,11 +10,20 @@ import kotlin.time.Clock
 
 actual fun Scope.platformExpiryReminderScheduler(): ExpiryReminderScheduler = UserNotificationsExpiryReminderScheduler()
 
-/** One identifier per day slot, so scheduling again replaces the pending reminders rather than adding to them. */
+/**
+ * One identifier per day slot, so scheduling again replaces the pending reminders rather than adding to them.
+ * A locked screen hides the body under iOS's default "Show previews: When unlocked".
+ */
 internal class UserNotificationsExpiryReminderScheduler : ExpiryReminderScheduler {
     private val center = UNUserNotificationCenter.currentNotificationCenter()
 
-    override fun schedule(reminders: List<ScheduledReminder>) {
+    // iOS runs no code at a set time, so the week ahead is handed over worded from the latest snapshot;
+    // every snapshot while the app runs replans it. The time itself is already in each fireAt.
+    override fun schedule(
+        reminders: List<ScheduledReminder>,
+        hour: Int,
+        minute: Int,
+    ) {
         cancel()
         val now = Clock.System.now()
         reminders.take(HORIZON_DAYS).forEachIndexed { slot, reminder ->

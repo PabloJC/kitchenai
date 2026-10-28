@@ -67,11 +67,7 @@ class PluralResourcesTest {
     fun `the check-off bar agrees with the count in both locales`() {
         assertEquals("Mover 1 a la despensa", spanish.form("shopping_move_count", 1))
         assertEquals("Mover 5 a la despensa", spanish.form("shopping_move_count", 5))
-        assertEquals("1 necesita una cantidad", spanish.form("shopping_need_amount_count", 1))
-        assertEquals("2 necesitan una cantidad", spanish.form("shopping_need_amount_count", 2))
         assertEquals("Move 5 to pantry", english.form("shopping_move_count", 5))
-        assertEquals("1 needs an amount", english.form("shopping_need_amount_count", 1))
-        assertEquals("2 need an amount", english.form("shopping_need_amount_count", 2))
     }
 
     @Test
