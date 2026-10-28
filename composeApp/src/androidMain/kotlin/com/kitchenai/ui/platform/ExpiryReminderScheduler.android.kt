@@ -12,6 +12,7 @@ import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.offsetAt
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
@@ -25,7 +26,8 @@ actual fun Scope.platformExpiryReminderScheduler(): ExpiryReminderScheduler =
 /**
  * A daily [ExpiryReminderWorker] at the chosen time. WorkManager keeps it across reboots and weeks
  * without a launch, and the worker reads the pantry when it runs, so a used-up item is never
- * announced. Re-queued only when the time changes: every pantry snapshot calls here.
+ * announced. Every pantry snapshot calls here: KEEP restores a job that went missing (a restored
+ * backup carries the prefs but not WorkManager's database), and a new time, zone or UTC offset re-queues.
  */
 internal class WorkExpiryReminderScheduler(
     private val context: Context,
@@ -39,27 +41,31 @@ internal class WorkExpiryReminderScheduler(
         minute: Int,
     ) {
         cancelLegacyAlarms()
-        val time = hour * MINUTES_PER_HOUR + minute
-        if (prefs.getInt(KEY_TIME, NONE) == time) return
+        val zone = TimeZone.currentSystemDefault()
+        // The period is a fixed 24 h: a DST change or a move shifts its wall-clock time, so they count.
+        val key = "${hour * MINUTES_PER_HOUR + minute}|${zone.id}|${zone.offsetAt(Clock.System.now())}"
+        val unchanged = prefs.getString(KEY_SCHEDULE, null) == key
         val request =
             PeriodicWorkRequestBuilder<ExpiryReminderWorker>(1, TimeUnit.DAYS)
-                .setInitialDelay(millisUntil(hour, minute), TimeUnit.MILLISECONDS)
+                .setInitialDelay(millisUntil(hour, minute, zone), TimeUnit.MILLISECONDS)
                 .build()
-        work.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, request)
-        prefs.edit().putInt(KEY_TIME, time).apply()
+        val policy =
+            if (unchanged) ExistingPeriodicWorkPolicy.KEEP else ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE
+        work.enqueueUniquePeriodicWork(WORK_NAME, policy, request)
+        if (!unchanged) prefs.edit().putString(KEY_SCHEDULE, key).apply()
     }
 
     override fun cancel() {
         cancelLegacyAlarms()
         work.cancelUniqueWork(WORK_NAME)
-        prefs.edit().remove(KEY_TIME).apply()
+        prefs.edit().remove(KEY_SCHEDULE).apply()
     }
 
     private fun millisUntil(
         hour: Int,
         minute: Int,
+        zone: TimeZone,
     ): Long {
-        val zone = TimeZone.currentSystemDefault()
         val now = Clock.System.now()
         val today = now.toLocalDateTime(zone).date
         val time = LocalTime(hour, minute)
@@ -87,8 +93,7 @@ internal class WorkExpiryReminderScheduler(
     private companion object {
         const val WORK_NAME = "expiry-reminder"
         const val PREFS = "expiry-reminder"
-        const val KEY_TIME = "minute-of-day"
-        const val NONE = -1
+        const val KEY_SCHEDULE = "schedule"
         const val MINUTES_PER_HOUR = 60
         const val LEGACY_REQUEST_CODE = 2760
     }

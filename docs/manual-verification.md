@@ -901,6 +901,10 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Turn reminders on in Profile and refuse the system prompt.
    - The note says notifications are off and offers "Open settings". It opens KitchenAI's
      notification settings; allow them, come back, and the switch is on and the note gone.
+5. Android: change the device time zone (or cross a DST change), open the app once, and wait for
+   the chosen time.
+   - The reminder arrives at the chosen local time, not shifted by the zone difference. Without
+     opening the app after the change it may arrive shifted until the next launch.
 
 ## Results
 

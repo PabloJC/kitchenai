@@ -58,7 +58,7 @@ object ResourceReminderWording : ReminderWording {
         val rest = all.size - shown.size
         return when {
             rest > 0 -> getPluralString(Res.plurals.reminder_names_more, rest, shown.joinToString(), rest)
-            shown.size == 3 -> getString(Res.string.reminder_names_three, shown[0], shown[1], shown[2])
+            shown.size == NAMED -> getString(Res.string.reminder_names_three, shown[0], shown[1], shown[2])
             shown.size == 2 -> getString(Res.string.reminder_names_two, shown[0], shown[1])
             else -> shown.single()
         }
