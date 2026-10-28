@@ -99,6 +99,10 @@
         <item quantity="other">%1$d lines cleared</item>
     </plurals>
     <string name="shopping_undo">Undo</string>
+    <string name="shopping_move_review_hint">A date puts food under Use soon and in your expiry reminders.</string>
+    <string name="shopping_move_same_date">Same date for all</string>
+    <string name="shopping_move_skip_dates">Skip dates</string>
+    <string name="shopping_move_bare_amount">1 (no amount)</string>
     <string name="shopping_amount">Amount</string>
     <string name="shopping_add_amount">Add amount</string>
     <string name="shopping_save">Save</string>
@@ -287,10 +291,6 @@
     <plurals name="shopping_move_count">
         <item quantity="one">Move %1$d to pantry</item>
         <item quantity="other">Move %1$d to pantry</item>
-    </plurals>
-    <plurals name="shopping_need_amount_count">
-        <item quantity="one">%1$d needs an amount</item>
-        <item quantity="other">%1$d need an amount</item>
     </plurals>
     <string name="shopping_all_in_cart_title">Everything is in the cart</string>
     <string name="shopping_all_in_cart_body">Move it to the pantry to keep your suggestions up to date.</string>

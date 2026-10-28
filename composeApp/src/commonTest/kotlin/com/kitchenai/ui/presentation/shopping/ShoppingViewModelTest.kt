@@ -6,6 +6,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
+import com.kitchenai.shared.domain.model.MoveToPantryOptions
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.ShoppingItem
@@ -207,8 +208,7 @@ class ShoppingViewModelTest {
             )
             advanceUntilIdle()
             assertEquals(2, viewModel.state.value.tickedCount)
-            assertEquals(1, viewModel.state.value.movableCount)
-            assertEquals(listOf("item-3"), viewModel.state.value.ticksMissingAmount.map { it.id.value })
+            assertEquals(listOf("item-2", "item-3"), viewModel.state.value.ticked.map { it.id.value })
 
             viewModel.setChecked(itemId("item-1"), checked = true)
             items.emit(
@@ -223,7 +223,6 @@ class ShoppingViewModelTest {
 
             // item-1 is still in "To buy" for the delay, and still counts as ticked.
             assertEquals(3, viewModel.state.value.tickedCount)
-            assertEquals(2, viewModel.state.value.movableCount)
         }
 
     @Test
@@ -234,8 +233,7 @@ class ShoppingViewModelTest {
             advanceUntilIdle()
 
             assertEquals(0, viewModel.state.value.tickedCount)
-            assertEquals(0, viewModel.state.value.movableCount)
-            assertTrue(viewModel.state.value.ticksMissingAmount.isEmpty())
+            assertTrue(viewModel.state.value.ticked.isEmpty())
         }
 
     @Test
@@ -312,6 +310,54 @@ class ShoppingViewModelTest {
                 assertEquals(ShoppingEvent.MovedToPantry(moved = 0, skipped = 1), awaitItem())
             }
             assertTrue(items.removedBatch.isEmpty())
+        }
+
+    @Test
+    fun `a reviewed move dates its lines and takes a bare line along as one`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(
+                listOf(
+                    line("item-1", checked = true, quantity = Quantity(200.0, gram)),
+                    line("item-2", freeText = "written by hand", checked = true),
+                ),
+            )
+            advanceUntilIdle()
+            val date = Instant.fromEpochSeconds(86_400)
+
+            viewModel.events.test {
+                viewModel.moveCheckedToPantry(
+                    MoveToPantryOptions(expiresAt = mapOf(itemId("item-1") to date), defaultAmountForBare = true),
+                )
+                advanceUntilIdle()
+
+                assertEquals(ShoppingEvent.MovedToPantry(moved = 2, skipped = 0), awaitMove().copy(undo = null))
+            }
+            assertEquals(setOf(itemId("item-1"), itemId("item-2")), items.removedBatch.toSet())
+            assertEquals(
+                mapOf("written by hand" to Quantity(1.0)),
+                pantry.held.filter { it.freeText != null }.associate { it.freeText to it.quantity },
+            )
+            assertEquals(date, pantry.held.single { it.ingredient != null }.expiresAt)
+        }
+
+    @Test
+    fun `undoing a reviewed move puts the bare line back as it was`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            val bare = line("item-1", freeText = "written by hand", checked = true)
+            items.emit(listOf(bare))
+            advanceUntilIdle()
+
+            viewModel.events.test {
+                viewModel.moveCheckedToPantry(MoveToPantryOptions(defaultAmountForBare = true))
+                advanceUntilIdle()
+                viewModel.undoMove(checkNotNull(awaitMove().undo))
+                advanceUntilIdle()
+            }
+
+            assertEquals(listOf(bare), items.upserts.last())
+            assertTrue(pantry.held.isEmpty())
         }
 
     @Test
@@ -734,6 +780,7 @@ class ShoppingViewModelTest {
                                 IdGenerator { "moved-${++generated}" },
                                 time,
                                 noUnits(),
+                                catalogue,
                             ),
                     ),
             )

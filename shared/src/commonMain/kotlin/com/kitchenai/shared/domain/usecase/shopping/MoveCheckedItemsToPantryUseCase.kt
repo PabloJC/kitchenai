@@ -1,30 +1,38 @@
 package com.kitchenai.shared.domain.usecase.shopping
 
+import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.core.map
+import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.KitchenId
+import com.kitchenai.shared.domain.model.MoveToPantryOptions
 import com.kitchenai.shared.domain.model.MovedToPantrySummary
 import com.kitchenai.shared.domain.model.PantryItem
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.PantryMoveRecord
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.ShoppingItem
+import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.port.IdGenerator
+import com.kitchenai.shared.domain.port.IngredientRepositoryContract
 import com.kitchenai.shared.domain.port.PantryRepositoryContract
 import com.kitchenai.shared.domain.port.ShoppingItemRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.service.UnitConverter
 import com.kitchenai.shared.domain.usecase.pantry.draftPantryHolding
 import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
+import kotlin.time.Instant
 
 /**
  * Moves what is ticked in the cart into the pantry — the same claim a checked line and a pantry
  * row both make, closed in one action instead of typed twice.
  *
- * A line with no stated amount stays on the list rather than inventing one: "milk" with no
- * quantity is a normal shopping line and not a normal pantry row.
+ * A line with no stated amount stays on the list unless [MoveToPantryOptions.defaultAmountForBare]
+ * says it moves as one. A date from [MoveToPantryOptions.expiresAt] that merges into a dated holding
+ * keeps the earlier of the two, so the older food is used first.
  *
  * Every touched holding is folded against one pantry snapshot before anything is written, then
  * committed with a single [PantryRepositoryContract.upsertAllConfirmed] rather than
@@ -43,20 +51,59 @@ class MoveCheckedItemsToPantryUseCase(
     private val ids: IdGenerator,
     private val time: TimeProvider,
     private val units: GetUnitConverterUseCase,
+    private val ingredients: IngredientRepositoryContract,
 ) {
     suspend operator fun invoke(
         kitchenId: KitchenId,
         listId: ShoppingListId,
+        options: MoveToPantryOptions = MoveToPantryOptions(),
     ): AppResult<MovedToPantrySummary> {
         val current = shoppingItems.getItems(kitchenId, listId)
         if (current is AppResult.Failure) return current
         val checked = (current as AppResult.Success).data.filter { it.checked }
-        val withQuantity = checked.mapNotNull { item -> item.quantity?.let { quantity -> item to quantity } }
-        val skipped = checked.size - withQuantity.size
-        if (withQuantity.isEmpty()) return AppResult.Success(MovedToPantrySummary(0, skipped))
-        val held = pantry.getPantry(kitchenId)
-        if (held is AppResult.Failure) return held
-        return commit(kitchenId, listId, (held as AppResult.Success).data, withQuantity, skipped)
+        return sized(checked, options).flatMap { moving ->
+            val skipped = checked.size - moving.size
+            if (moving.isEmpty()) {
+                AppResult.Success(MovedToPantrySummary(0, skipped))
+            } else {
+                when (val held = pantry.getPantry(kitchenId)) {
+                    is AppResult.Failure -> held
+                    is AppResult.Success -> commit(kitchenId, listId, held.data, moving, skipped, options.expiresAt)
+                }
+            }
+        }
+    }
+
+    /** The lines that move, each with the amount it moves with. */
+    private suspend fun sized(
+        checked: List<ShoppingItem>,
+        options: MoveToPantryOptions,
+    ): AppResult<List<Pair<ShoppingItem, Quantity>>> {
+        val moving = mutableListOf<Pair<ShoppingItem, Quantity>>()
+        for (item in checked) {
+            val quantity =
+                item.quantity
+                    ?: if (options.defaultAmountForBare) {
+                        when (val unit = defaultUnitOf(item.ingredient)) {
+                            is AppResult.Failure -> return unit
+                            is AppResult.Success ->
+                                Quantity(options.bareAmounts[item.id] ?: MoveToPantryOptions.BARE_AMOUNT, unit.data)
+                        }
+                    } else {
+                        null
+                    }
+            if (quantity != null) moving += item to quantity
+        }
+        return AppResult.Success(moving)
+    }
+
+    /** An ingredient the catalogue no longer lists has no default unit: it moves as a plain count. */
+    private suspend fun defaultUnitOf(ingredient: IngredientId?): AppResult<TermRef?> {
+        if (ingredient == null) return AppResult.Success(null)
+        return when (val found = ingredients.getIngredient(ingredient)) {
+            is AppResult.Success -> AppResult.Success(found.data.defaultUnit)
+            is AppResult.Failure -> if (found.error is AppError.NotFound) AppResult.Success(null) else found
+        }
     }
 
     private suspend fun commit(
@@ -65,11 +112,12 @@ class MoveCheckedItemsToPantryUseCase(
         held: List<PantryItem>,
         withQuantity: List<Pair<ShoppingItem, Quantity>>,
         skipped: Int,
+        expiresAt: Map<ShoppingItemId, Instant>,
     ): AppResult<MovedToPantrySummary> =
         when (val converter = units()) {
             is AppResult.Failure -> converter
             is AppResult.Success ->
-                when (val touched = plan(held, withQuantity, converter.data)) {
+                when (val touched = plan(held, withQuantity, expiresAt, converter.data)) {
                     is AppResult.Failure -> touched
                     is AppResult.Success ->
                         pantry
@@ -103,6 +151,7 @@ class MoveCheckedItemsToPantryUseCase(
     private fun plan(
         held: List<PantryItem>,
         lines: List<Pair<ShoppingItem, Quantity>>,
+        expiresAt: Map<ShoppingItemId, Instant>,
         converter: UnitConverter,
     ): AppResult<List<PantryItem>> {
         val working = held.toMutableList()
@@ -118,7 +167,7 @@ class MoveCheckedItemsToPantryUseCase(
                             item.freeText,
                             quantity,
                             null,
-                            null,
+                            expiresAt[item.id],
                             ids,
                             now,
                             converter,

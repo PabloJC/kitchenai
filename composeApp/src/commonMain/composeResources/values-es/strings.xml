@@ -96,6 +96,10 @@
         <item quantity="other">%1$d líneas vaciadas</item>
     </plurals>
     <string name="shopping_undo">Deshacer</string>
+    <string name="shopping_move_review_hint">Con fecha, la comida aparece en Consumir pronto y en tus avisos de caducidad.</string>
+    <string name="shopping_move_same_date">La misma fecha para todo</string>
+    <string name="shopping_move_skip_dates">Sin fechas</string>
+    <string name="shopping_move_bare_amount">1 (sin cantidad)</string>
     <string name="shopping_amount">Cantidad</string>
     <string name="shopping_add_amount">Añadir cantidad</string>
     <string name="shopping_save">Guardar</string>
@@ -283,10 +287,6 @@
     <plurals name="shopping_move_count">
         <item quantity="one">Mover %1$d a la despensa</item>
         <item quantity="other">Mover %1$d a la despensa</item>
-    </plurals>
-    <plurals name="shopping_need_amount_count">
-        <item quantity="one">%1$d necesita una cantidad</item>
-        <item quantity="other">%1$d necesitan una cantidad</item>
     </plurals>
     <string name="shopping_all_in_cart_title">Todo está en el carro</string>
     <string name="shopping_all_in_cart_body">Muévelo a la despensa para que las sugerencias estén al día.</string>
