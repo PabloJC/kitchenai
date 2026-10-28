@@ -855,6 +855,22 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Sign out in the app (or use a fresh install that was never opened) and repeat step 1.
    - Siri says to open KitchenAI once to set up the list, and nothing is added.
 
+### 35. Cooking timers ring with the phone locked, run together and outlive cooking mode
+
+1. Open a recipe whose steps name a time, start cooking and tap a step's timer. Allow notifications if asked.
+   - A bar shows the step and the countdown.
+2. Start a one-minute timer, lock the phone and wait.
+   - It rings with sound and shows a notification with Stop, on Android and on iOS. Android keeps
+     ringing until Stop is tapped.
+3. Start timers on two different steps.
+   - Two bars, each counting on its own; each rings when it ends.
+4. With one running, go back to the recipe.
+   - "1 timer running" sits under Steps; tapping it returns to cooking mode with the bar still counting.
+5. Dismiss a running timer.
+   - It disappears and never rings.
+6. Deny notifications (or turn them off for the app) and start a timer.
+   - The app says once that timers only ring while KitchenAI is open.
+
 ### 36. Avoid applies to the whole kitchen
 
 *Two accounts, A and B, in one kitchen (scenario 5).*

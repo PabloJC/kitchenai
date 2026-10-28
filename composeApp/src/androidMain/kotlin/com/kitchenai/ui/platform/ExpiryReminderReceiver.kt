@@ -25,7 +25,7 @@ class ExpiryReminderReceiver : BroadcastReceiver() {
         val notification =
             Notification
                 .Builder(context, CHANNEL_ID)
-                .setSmallIcon(smallIcon(context))
+                .setSmallIcon(notificationSmallIcon(context))
                 .setContentTitle(title)
                 .setContentText(body)
                 .setContentIntent(openApp(context))
@@ -50,12 +50,6 @@ class ExpiryReminderReceiver : BroadcastReceiver() {
             )
         }
 
-    /** The white launcher glyph, looked up by name because its resource lives in :androidApp. */
-    private fun smallIcon(context: Context): Int =
-        context.resources
-            .getIdentifier(SMALL_ICON, "drawable", context.packageName)
-            .takeIf { it != 0 } ?: context.applicationInfo.icon
-
     internal companion object {
         const val EXTRA_TITLE = "com.kitchenai.reminder.TITLE"
         const val EXTRA_BODY = "com.kitchenai.reminder.BODY"
@@ -63,6 +57,5 @@ class ExpiryReminderReceiver : BroadcastReceiver() {
         const val EXTRA_OPEN_PANTRY = "com.kitchenai.reminder.OPEN_PANTRY"
         private const val CHANNEL_ID = "expiry-reminders"
         private const val NOTIFICATION_ID = 276
-        private const val SMALL_ICON = "ic_launcher_foreground"
     }
 }

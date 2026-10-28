@@ -1,7 +1,9 @@
 package com.kitchenai.ui.di
 
+import com.kitchenai.ui.platform.CookingTimerScheduler
 import com.kitchenai.ui.platform.ExpiryReminderScheduler
 import com.kitchenai.ui.platform.NetworkMonitor
+import com.kitchenai.ui.platform.platformCookingTimerScheduler
 import com.kitchenai.ui.platform.platformExpiryReminderScheduler
 import com.kitchenai.ui.platform.platformNetworkMonitor
 import org.koin.core.module.Module
@@ -23,4 +25,5 @@ fun platformModule(googleWebClientId: String): Module =
         single(GOOGLE_WEB_CLIENT_ID) { googleWebClientId }
         single<NetworkMonitor> { platformNetworkMonitor() }
         single<ExpiryReminderScheduler> { platformExpiryReminderScheduler() }
+        single<CookingTimerScheduler> { platformCookingTimerScheduler() }
     }

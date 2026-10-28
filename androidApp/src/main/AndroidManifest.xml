@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Expiry reminders; asked for in context, after the first dated pantry item. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Cooking timers ring on time when the user allows it; without it they fall back to inexact. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".KitchenAiApplication"
@@ -37,6 +39,11 @@
         <!-- Posts the expiry reminder its alarm carries; only this app's own alarm sends to it. -->
         <receiver
             android:name="com.kitchenai.ui.platform.ExpiryReminderReceiver"
+            android:exported="false" />
+
+        <!-- Rings a cooking timer, and stops it from its notification; only this app's own intents reach it. -->
+        <receiver
+            android:name="com.kitchenai.ui.platform.CookingTimerReceiver"
             android:exported="false" />
 
         <!-- Exported for the launcher. It only redraws: ticks arrive through Glance's own receiver. -->
