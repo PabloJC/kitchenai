@@ -6,6 +6,7 @@ import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.core.map
 import com.kitchenai.shared.domain.model.CookPlan
+import com.kitchenai.shared.domain.model.HouseholdAvoids
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
@@ -18,6 +19,7 @@ import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.model.householdAvoids
 import com.kitchenai.shared.domain.service.PantryCandidateMatcher
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
@@ -75,6 +77,9 @@ class RecipeDetailViewModel(
     // read falls back to the tag its taxonomy declares, and that tag lives here.
     private val vocabularies = MutableStateFlow<List<Taxonomy>>(emptyList())
     private val recipe = MutableStateFlow<Recipe?>(null)
+
+    // Every member's Avoid set, read off the kitchen this screen already watches.
+    private val avoids = MutableStateFlow(HouseholdAvoids())
     private val currentMatch = MutableStateFlow<PantryMatch?>(null)
 
     // For candidate matching only — PantryMatcher already read the pantry to build the match
@@ -148,6 +153,7 @@ class RecipeDetailViewModel(
                     observeKitchen(userId).collect { kitchen ->
                         val firstKitchen = kitchenId.value == null
                         kitchenId.value = kitchen.id
+                        avoids.value = kitchen.householdAvoids()
                         if (firstKitchen) load(kitchen.id, recipeId, servings = null) else refreshMatch(kitchen.id)
                     }
                 }
@@ -409,6 +415,14 @@ class RecipeDetailViewModel(
                 steps = found.steps,
                 tags = found.tags.map(resolver::wordFor),
                 tagRefs = found.tags,
+                avoidedByHousehold =
+                    avoids.value.hitsIn(found).let { hits ->
+                        hits.terms.map(resolver::wordFor) +
+                            hits.ingredients.map {
+                                    id ->
+                                resolver.label(id) ?: id.value
+                            }
+                    },
                 isLoading = false,
                 error = null,
             )

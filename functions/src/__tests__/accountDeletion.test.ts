@@ -14,10 +14,16 @@ test('a shared kitchen the account owned passes to the member who joined first',
     ownerId: 'ana',
     memberIds: ['ana', 'bea', 'carl'],
     memberDisplayNames: { ana: 'Ana', bea: 'Bea' },
+    memberAvoids: { ana: { terms: [], ingredients: ['ing-1'] }, carl: { terms: [], ingredients: ['ing-2'] } },
   });
   assert.deepEqual(plan, {
     kind: 'leave',
-    update: { ownerId: 'bea', memberIds: ['bea', 'carl'], memberDisplayNames: { bea: 'Bea' } },
+    update: {
+      ownerId: 'bea',
+      memberIds: ['bea', 'carl'],
+      memberDisplayNames: { bea: 'Bea' },
+      memberAvoids: { carl: { terms: [], ingredients: ['ing-2'] } },
+    },
   });
 });
 
@@ -25,7 +31,7 @@ test('a shared kitchen the account only belonged to keeps its owner', () => {
   const plan = planKitchen('bea', { ownerId: 'ana', memberIds: ['ana', 'bea'], memberDisplayNames: { bea: 'Bea' } });
   assert.deepEqual(plan, {
     kind: 'leave',
-    update: { ownerId: 'ana', memberIds: ['ana'], memberDisplayNames: {} },
+    update: { ownerId: 'ana', memberIds: ['ana'], memberDisplayNames: {}, memberAvoids: {} },
   });
 });
 

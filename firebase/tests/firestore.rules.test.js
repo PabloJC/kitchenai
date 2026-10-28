@@ -424,6 +424,53 @@ describe('kitchen document', () => {
     await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { 'memberDisplayNames.user-alice': 'Not Bob' }));
   });
 
+  it('lets a member write only their own memberAvoids entry, and only in its shape', async () => {
+    const avoids = { terms: [{ taxonomy: 'taxonomy-1', term: 'term-1' }], ingredients: ['ingredient-1'] };
+    await assertSucceeds(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { [`memberAvoids.${BOB}`]: avoids }));
+    await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { [`memberAvoids.${ALICE}`]: avoids }));
+    await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { [`memberAvoids.${BOB}`]: { terms: 'term-1' } }));
+    await assertFails(
+      updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { [`memberAvoids.${BOB}`]: { ...avoids, extra: ['x'] } }),
+    );
+  });
+
+  it('lets the owner drop a removed member\'s memberAvoids entry, and nobody else\'s', async () => {
+    const avoids = { terms: [], ingredients: ['ingredient-1'] };
+    await seed(async (db) => {
+      await setDoc(
+        doc(db, `kitchens/${KITCHEN_1}`),
+        kitchen({ memberIds: [ALICE, BOB, CAROL], memberAvoids: { [BOB]: avoids, [CAROL]: avoids } }),
+      );
+    });
+
+    await assertFails(
+      updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), {
+        memberIds: [ALICE, CAROL],
+        removedMemberIds: [BOB],
+        memberAvoids: {},
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), {
+        memberIds: [ALICE, CAROL],
+        removedMemberIds: [BOB],
+        memberAvoids: { [CAROL]: avoids },
+      }),
+    );
+  });
+
+  it('lets a member leave taking their memberAvoids entry, never another member\'s', async () => {
+    const avoids = { terms: [], ingredients: ['ingredient-1'] };
+    await seed(async (db) => {
+      await setDoc(doc(db, `kitchens/${KITCHEN_1}`), kitchen({ memberAvoids: { [ALICE]: avoids, [BOB]: avoids } }));
+    });
+
+    await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE], memberAvoids: {} }));
+    await assertSucceeds(
+      updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { memberIds: [ALICE], memberAvoids: { [ALICE]: avoids } }),
+    );
+  });
+
   it('is never deletable through client rules', async () => {
     await assertFails(deleteDoc(doc(alice, `kitchens/${KITCHEN_1}`)));
   });

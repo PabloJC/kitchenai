@@ -11,6 +11,7 @@ import com.kitchenai.shared.domain.usecase.kitchen.KitchenMembershipLock
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.shared.domain.usecase.profile.SaveUserProfileUseCase
+import com.kitchenai.shared.domain.usecase.profile.ShareMyAvoidsUseCase
 import com.kitchenai.shared.domain.usecase.session.EnsureSessionUseCase
 import com.kitchenai.shared.domain.usecase.session.ObserveSessionUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
@@ -199,6 +200,7 @@ class SessionKitchenProvisioningTest {
                     ensure = EnsureKitchenUseCase(kitchens, KitchenMembershipLock()),
                     ensureDefaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
                     observe = ObserveKitchenUseCase(kitchens),
+                    shareAvoids = ShareMyAvoidsUseCase(kitchens),
                 ),
             observeSession = ObserveSessionUseCase(sessions),
             observeUserProfile = ObserveUserProfileUseCase(profiles),

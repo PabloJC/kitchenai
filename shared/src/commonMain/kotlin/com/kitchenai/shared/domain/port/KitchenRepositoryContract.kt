@@ -2,6 +2,7 @@ package com.kitchenai.shared.domain.port
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.HouseholdAvoids
 import com.kitchenai.shared.domain.model.Kitchen
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.KitchenJoinCode
@@ -61,5 +62,12 @@ interface KitchenRepositoryContract {
         userId: UserId,
         kitchenId: KitchenId,
         displayName: String,
+    ): AppResult<Unit>
+
+    /** Replaces the caller's own entry in [Kitchen.memberAvoids]; never another member's. */
+    suspend fun updateMyAvoids(
+        userId: UserId,
+        kitchenId: KitchenId,
+        avoids: HouseholdAvoids,
     ): AppResult<Unit>
 }

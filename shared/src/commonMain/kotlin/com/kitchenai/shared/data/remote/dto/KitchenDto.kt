@@ -21,4 +21,5 @@ data class KitchenDto(
     val joinCode: String? = null,
     val memberDisplayNames: Map<String, String> = emptyMap(),
     val removedMemberIds: List<String> = emptyList(),
+    val memberAvoids: Map<String, MemberAvoidsDto> = emptyMap(),
 )

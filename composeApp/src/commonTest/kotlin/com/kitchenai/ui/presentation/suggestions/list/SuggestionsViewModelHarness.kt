@@ -101,6 +101,7 @@ open class SuggestionsViewModelHarness {
                     agent,
                     noUnits(),
                     FakeTaxonomyPort(),
+                    kitchens,
                 ),
             getStoredSuggestions =
                 GetStoredSuggestionsUseCase(

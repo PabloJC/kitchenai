@@ -14,6 +14,7 @@ import com.kitchenai.shared.data.remote.firebase.FirestorePaths
 import com.kitchenai.shared.data.remote.firebase.firestoreCall
 import com.kitchenai.shared.data.remote.firebase.reportingErrorsTo
 import com.kitchenai.shared.data.remote.firebase.toAppError
+import com.kitchenai.shared.domain.model.HouseholdAvoids
 import com.kitchenai.shared.domain.model.Kitchen
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.KitchenJoinCode
@@ -133,6 +134,22 @@ class FirestoreKitchenRepository(
         firestoreCall(dispatchers) {
             paths.kitchen(kitchenId).updateFields { "$MEMBER_DISPLAY_NAMES.${userId.value}" to displayName }
         }
+
+    /** Read and written back whole, like every membership write, so the entry encodes as one DTO. */
+    override suspend fun updateMyAvoids(
+        userId: UserId,
+        kitchenId: KitchenId,
+        avoids: HouseholdAvoids,
+    ): AppResult<Unit> =
+        firestoreCall(dispatchers) {
+            firestore.runTransaction {
+                val dto = getKitchenDto(kitchenId).getOrElse { return@runTransaction AppResult.Failure(it) }
+                if (userId.value !in dto.memberIds) return@runTransaction AppResult.Failure(AppError.Unauthorized())
+                val updated = dto.copy(memberAvoids = dto.memberAvoids + (userId.value to avoids.toDto()))
+                set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
+                AppResult.Success(Unit)
+            }
+        }.flatMap { it }
 
     /**
      * Leaving and joining are one commit, each write in a shape `isSelfLeave` / `isSelfJoin` already
@@ -264,6 +281,8 @@ class FirestoreKitchenRepository(
         copy(
             memberIds = memberIds - memberId.value,
             memberDisplayNames = memberDisplayNames - memberId.value,
+            // A member who leaves takes their Avoid set with them: it no longer filters this kitchen's ideas.
+            memberAvoids = memberAvoids - memberId.value,
         )
 
     /** A code already stored is already valid; this only guards a document written by hand. */

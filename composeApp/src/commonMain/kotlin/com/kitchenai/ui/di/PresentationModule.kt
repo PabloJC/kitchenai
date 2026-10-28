@@ -21,7 +21,7 @@ val presentationModule: Module =
         single { LaunchLinks() }
         viewModel { ConnectivityViewModel(get()) }
         viewModel { AppearanceViewModel(get(), get()) }
-        factory { SessionKitchenDelegate(get(), get(), get()) }
+        factory { SessionKitchenDelegate(get(), get(), get(), get()) }
         viewModel { SessionViewModel(get(), get(), get(), get(), get(), get(), get()) }
         includes(kitchenPresentationModule)
         includes(onboardingPresentationModule)

@@ -140,6 +140,8 @@
     <string name="detail_in_pantry">%1$d de %2$d en tu despensa</string>
     <string name="detail_share">Compartir receta</string>
     <string name="snack_cook_undone">Devuelto a tu despensa</string>
+    <string name="saved_household_avoids">Lleva algo que tu cocina evita</string>
+    <string name="detail_household_avoids">Alguien de tu cocina evita: %1$s.</string>
     <string name="detail_start_cooking">Empezar a cocinar</string>
     <string name="cooking_step_counter">Paso %1$d de %2$d</string>
     <string name="cooking_previous">Anterior</string>
@@ -207,6 +209,7 @@
     <string name="profile_group_account">Cuenta</string>
     <string name="profile_group_household">Hogar</string>
     <string name="profile_group_food">Preferencias de comida</string>
+    <string name="profile_avoid_household">Evitar también se aplica a las ideas de todos los de tu cocina.</string>
     <string name="profile_group_appearance">Apariencia</string>
     <string name="profile_group_privacy">Privacidad</string>
     <string name="profile_group_about">Acerca de</string>
@@ -257,7 +260,7 @@
     <string name="strength_off">Nada</string>
     <string name="strength_choose">Elegir Prefiero, Evitar o Nada</string>
     <string name="strength_prefer_explained">Prefiero: las sugerencias tienden a incluirlo.</string>
-    <string name="strength_avoid_explained">Evitar: nunca se sugieren recetas que lo lleven.</string>
+    <string name="strength_avoid_explained">Evitar: nunca se sugieren ideas que lo lleven a nadie de tu cocina.</string>
     <plurals name="profile_selected_count">
         <item quantity="one">%1$d elegido</item>
         <item quantity="other">%1$d elegidos</item>
@@ -328,7 +331,7 @@
     <string name="onboarding_staples_title">¿Qué hay en tu cocina?</string>
     <string name="onboarding_staples_body">Toca lo que tengas. Las cantidades pueden esperar: puedes ponerlas luego en Despensa.</string>
     <string name="onboarding_preferences_title">¿Hay algo que evites?</string>
-    <string name="onboarding_preferences_body">Indica tus alergias y dietas antes de tus primeras ideas para que todas las sugerencias las respeten. Puedes cambiarlas cuando quieras en Perfil.</string>
+    <string name="onboarding_preferences_body">Indica tus alergias y dietas antes de tus primeras ideas. Las ideas las respetan para todos los de tu cocina, y puedes cambiarlas cuando quieras en Perfil.</string>
     <string name="onboarding_preferences_action">Indicar dieta y alergias</string>
     <string name="onboarding_not_now">Ahora no, enséñame ideas</string>
     <plurals name="onboarding_add_count">

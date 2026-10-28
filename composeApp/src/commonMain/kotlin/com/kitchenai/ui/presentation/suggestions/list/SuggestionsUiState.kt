@@ -62,6 +62,8 @@ data class SuggestionUi(
     val provenance: ProvenanceUi?,
     /** Unresolved, unlike everything above: `RecipeImage` reads it itself, the screen does not. */
     val tagRefs: List<TermRef> = emptyList(),
+    /** Someone in the kitchen avoids something in it: kept from before they joined, or saved by another member. */
+    val conflictsWithHousehold: Boolean = false,
 ) {
     val shownMissing: List<String> get() = missing.take(MAX_SHOWN_MISSING)
     val hiddenMissingCount: Int get() = missing.size - shownMissing.size

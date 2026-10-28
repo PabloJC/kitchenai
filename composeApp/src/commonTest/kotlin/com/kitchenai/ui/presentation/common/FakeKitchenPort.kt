@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.common
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.HouseholdAvoids
 import com.kitchenai.shared.domain.model.Kitchen
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.KitchenJoinCode
@@ -132,6 +133,19 @@ class FakeKitchenPort(
         kitchenId: KitchenId,
         displayName: String,
     ): AppResult<Unit> = AppResult.Success(Unit)
+
+    val updatedAvoids = mutableListOf<HouseholdAvoids>()
+
+    /** Applied to the held kitchen, as the real write's listener echo would show it. */
+    override suspend fun updateMyAvoids(
+        userId: UserId,
+        kitchenId: KitchenId,
+        avoids: HouseholdAvoids,
+    ): AppResult<Unit> {
+        updatedAvoids += avoids
+        state.value = state.value?.let { it.copy(memberAvoids = it.memberAvoids + (userId.value to avoids)) }
+        return AppResult.Success(Unit)
+    }
 
     /** The viewer is no longer in any kitchen: the listener goes quiet and then reports it, like the real query. */
     suspend fun dropKitchen() {

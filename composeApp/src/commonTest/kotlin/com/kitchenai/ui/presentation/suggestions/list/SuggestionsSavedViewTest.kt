@@ -1,10 +1,15 @@
 package com.kitchenai.ui.presentation.suggestions.list
 
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.HouseholdAvoids
 import com.kitchenai.shared.domain.model.RecipeId
+import com.kitchenai.shared.domain.model.TaxonomyId
+import com.kitchenai.shared.domain.model.TermId
+import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.defaultKitchenId
+import com.kitchenai.ui.presentation.common.kitchen
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.snack_unsaved
 import kotlinx.coroutines.Dispatchers
@@ -122,4 +127,23 @@ class SuggestionsSavedViewTest : SuggestionsViewModelHarness() {
     fun `an unsave reads as removed from saved`() {
         assertEquals(UiText.of(Res.string.snack_unsaved), SuggestionsEvent.Unsaved(dish("recipe-1")).sentence())
     }
+
+    @Test
+    fun `a kept dish with something another member avoids is flagged and the rest are not`() =
+        runTest(dispatcher) {
+            val avoided = TermRef(TaxonomyId.of("taxonomy-1").orFail(), TermId.of("term-1").orFail())
+            kitchens.emit(kitchen().copy(memberAvoids = mapOf("user-2" to HouseholdAvoids(setOf(avoided)))))
+            val recipes = FakeRecipePort()
+            recipes.saveRecipe(defaultKitchenId, dish("recipe-1").copy(tags = listOf(avoided)))
+            recipes.saveRecipe(defaultKitchenId, dish("recipe-2"))
+            agent.answer = AppResult.Success(emptyList())
+
+            val viewModel = started(recipes = recipes)
+            advanceUntilIdle()
+
+            assertEquals(
+                mapOf("recipe-1" to true, "recipe-2" to false),
+                viewModel.state.value.savedRecipes.associate { it.id.value to it.conflictsWithHousehold },
+            )
+        }
 }

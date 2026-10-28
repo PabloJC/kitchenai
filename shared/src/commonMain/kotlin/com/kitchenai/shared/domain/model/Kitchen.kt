@@ -20,7 +20,12 @@ data class Kitchen(
     val memberIds: Set<UserId>,
     val joinCode: KitchenJoinCode,
     val memberDisplayNames: Map<String, String>,
+    /** Each member's Avoid set by uid, mirrored like [memberDisplayNames] so profiles stay owner-only. */
+    val memberAvoids: Map<String, HouseholdAvoids> = emptyMap(),
 )
+
+/** Every member's Avoid set in one: what no idea for this kitchen may contain. */
+fun Kitchen.householdAvoids(): HouseholdAvoids = memberAvoids.values.fold(HouseholdAvoids()) { all, one -> all + one }
 
 /** An owner leaving with others inside would strand the kitchen: nobody left could manage it. */
 fun Kitchen.isStrandedIfLeftBy(userId: UserId): Boolean = ownerId == userId && memberIds.size > 1
