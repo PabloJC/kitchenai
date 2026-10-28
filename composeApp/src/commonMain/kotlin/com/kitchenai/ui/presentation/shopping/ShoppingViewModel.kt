@@ -476,11 +476,12 @@ class ShoppingViewModel(
         draft: ShoppingDraftUi,
         listName: String,
         writeFailure: UiText?,
-    ): ShoppingUiState =
-        ShoppingUiState(
+    ): ShoppingUiState {
+        val toBuy = lines.toBuy()
+        return ShoppingUiState(
             listName = listName,
-            unchecked = lines.toBuy(),
-            toBuy = lines.toBuy().inSections(lines.sections),
+            unchecked = toBuy,
+            toBuy = toBuy.inSections(lines.sections),
             grouped = lines.sections.isNotEmpty(),
             checked = lines.lines.filter { line -> line.checked && line.id !in lines.settling },
             draft = draft,
@@ -492,6 +493,7 @@ class ShoppingViewModel(
             // Listening again cannot help a refused write, so only a listener failure offers it.
             canRetry = writeFailure == null && (lines.error ?: catalogueError) != null,
         )
+    }
 
     private fun suggest(query: String): List<IngredientSuggestion> {
         val needle = foldForSearch(query).trim()
