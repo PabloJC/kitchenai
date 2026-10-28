@@ -1,5 +1,6 @@
 package com.kitchenai.shared.di
 
+import com.kitchenai.shared.domain.usecase.shopping.AddPantryItemsToShoppingListUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
@@ -15,6 +16,7 @@ import org.koin.dsl.module
 val shoppingModule: Module =
     module {
         factory { AddShoppingItemUseCase(get(), get(), get(), get()) }
+        factory { AddPantryItemsToShoppingListUseCase(get(), get()) }
         factory { ClearCheckedItemsUseCase(get()) }
         factory { EnsureDefaultShoppingListUseCase(get(), get(), get()) }
         factory { GetShoppingSnapshotUseCase(get(), get(), get(), get()) }

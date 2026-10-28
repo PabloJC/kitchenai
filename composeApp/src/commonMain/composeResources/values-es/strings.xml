@@ -39,7 +39,29 @@
     <string name="pantry_no_expiry">Sin fecha de caducidad</string>
     <string name="pantry_add">Añadir</string>
     <string name="pantry_undo">Deshacer</string>
-    <string name="pantry_removed">Eliminado</string>
+    <string name="pantry_removed_named">%1$s eliminado</string>
+    <string name="pantry_add_to_list">Añadir a la lista de la compra</string>
+    <string name="pantry_add_to_list_short">A la lista</string>
+    <string name="pantry_added_to_list_named">%1$s añadido a la lista</string>
+    <string name="pantry_view_list">Ver lista</string>
+    <string name="pantry_get_ideas">Ver ideas</string>
+    <string name="pantry_remove_all">Quitar todo</string>
+    <plurals name="pantry_remove_expired_title">
+        <item quantity="one">¿Quitar %1$d producto caducado?</item>
+        <item quantity="other">¿Quitar %1$d productos caducados?</item>
+    </plurals>
+    <string name="pantry_remove_expired_body">Podrás deshacerlo desde el mensaje que aparece después.</string>
+    <string name="pantry_remove_expired_confirm">Quitar</string>
+    <string name="pantry_cancel">Cancelar</string>
+    <plurals name="pantry_expired_removed">
+        <item quantity="one">%1$d producto caducado quitado</item>
+        <item quantity="other">%1$d productos caducados quitados</item>
+    </plurals>
+    <string name="detail_add_used_up">A la lista</string>
+    <plurals name="snack_used_up_added">
+        <item quantity="one">%1$d producto agotado añadido a la lista</item>
+        <item quantity="other">%1$d productos agotados añadidos a la lista</item>
+    </plurals>
     <string name="pantry_delete">Eliminar</string>
     <string name="pantry_empty_title">La despensa está vacía</string>
     <string name="pantry_empty_body">Añade lo que ya tienes y las sugerencias empiezan a funcionar</string>

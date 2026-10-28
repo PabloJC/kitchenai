@@ -58,6 +58,7 @@ import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.component.tonalCardColors
 import com.kitchenai.ui.designsystem.motion.sharedRecipeImage
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.navigation.IdeasRequests
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.text
@@ -97,6 +98,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val QUICK_MINUTES = 30
@@ -118,6 +120,7 @@ fun SuggestionsScreen(
     val defaultListName = stringResource(Res.string.shopping_default_list)
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
+    UseExpiringRequests(viewModel)
     LaunchedEffect(viewModel) {
         // Launched apart so the collector keeps draining while an Undo waits; the host still shows them in order.
         viewModel.events.collect { event -> launch { snackbar.announce(event, viewModel::undoUnsave) } }
@@ -506,4 +509,16 @@ private fun missingSentence(suggestion: SuggestionUi): String {
     val hidden = suggestion.hiddenMissingCount
     if (hidden == 0) return shown
     return "$shown ${pluralStringResource(Res.plurals.suggestions_missing_more, hidden, hidden)}"
+}
+
+/** From Pantry's Use soon: the filter is chosen and the ideas view shown; generating stays a tap. */
+@Composable
+private fun UseExpiringRequests(viewModel: SuggestionsViewModel) {
+    val requests = koinInject<IdeasRequests>()
+    LaunchedEffect(requests) {
+        requests.useExpiring.collect {
+            viewModel.showSaved(false)
+            viewModel.setUseExpiringSoon(true)
+        }
+    }
 }

@@ -66,6 +66,8 @@ import com.kitchenai.ui.navigation.PublishTabTitle
 import com.kitchenai.ui.navigation.Route
 import com.kitchenai.ui.navigation.ShoppingAddRequests
 import com.kitchenai.ui.platform.platformLanguageTags
+import com.kitchenai.ui.presentation.common.TwoActionSnackbarHost
+import com.kitchenai.ui.presentation.common.TwoActionSnackbarVisuals
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
@@ -138,7 +140,7 @@ fun ShoppingScreen(
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { ShoppingSnackbarHost(snackbar) },
+        snackbarHost = { TwoActionSnackbarHost(snackbar) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
             state.error?.let { message -> ShoppingErrorBanner(message, state.bannerOffersRetry, viewModel::retry) }
@@ -548,7 +550,7 @@ private suspend fun SnackbarHostState.announceMove(
                 showSnackbar(message, getString(Res.string.shopping_undo), duration = SnackbarDuration.Long)
             else ->
                 showSnackbar(
-                    MovedToPantryVisuals(
+                    TwoActionSnackbarVisuals(
                         message = message,
                         actionLabel = getString(Res.string.shopping_undo),
                         secondaryLabel = getString(Res.string.shopping_view_pantry),

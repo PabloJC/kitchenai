@@ -1,6 +1,7 @@
 package com.kitchenai.ui.di
 
 import com.kitchenai.shared.di.initKoin
+import com.kitchenai.ui.navigation.IdeasRequests
 import com.kitchenai.ui.navigation.LaunchLinks
 import com.kitchenai.ui.navigation.ShoppingAddRequests
 import com.kitchenai.ui.presentation.common.AppearanceViewModel
@@ -18,6 +19,7 @@ val presentationModule: Module =
     module {
         single { PendingDisplayName() }
         single { ShoppingAddRequests() }
+        single { IdeasRequests() }
         single { LaunchLinks() }
         viewModel { ConnectivityViewModel(get()) }
         viewModel { AppearanceViewModel(get(), get()) }

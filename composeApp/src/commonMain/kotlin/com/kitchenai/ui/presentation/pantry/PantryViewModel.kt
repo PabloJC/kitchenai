@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.Freshness
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.PantryItem
@@ -76,6 +77,9 @@ class PantryViewModel(
 
     private var started = false
     private var languageTags: List<String> = emptyList()
+
+    // Names the default list only if adding to it has to create it.
+    private var listLabels: Map<String, String> = emptyMap()
     private var userId: UserId? = null
 
     // Every listener but the projection, so a retry restarts them together.
@@ -89,10 +93,12 @@ class PantryViewModel(
     fun start(
         userId: UserId,
         languageTags: List<String>,
+        defaultListName: String,
     ) {
         if (started) return
         started = true
         this.languageTags = languageTags
+        listLabels = languageTags.take(1).associateWith { defaultListName }
         this.userId = userId
         subscribe(userId)
         watchProjection()
@@ -230,6 +236,61 @@ class PantryViewModel(
         val kitchen = kitchenId.value ?: return
         viewModelScope.launch {
             writes.update(kitchen, item).reportFailure()
+        }
+    }
+
+    /** Run out, so buy again: from a row's actions or its sheet. */
+    fun addToList(item: PantryItemUi) {
+        val original = held.value?.firstOrNull { candidate -> candidate.id == item.id } ?: return
+        addRemovedToList(original, item.name)
+    }
+
+    /** From the removal snackbar: the row is gone, so it travels with the offer. */
+    fun addRemovedToList(
+        removed: PantryItem,
+        name: String,
+    ) {
+        val kitchen = kitchenId.value ?: return
+        viewModelScope.launch {
+            when (val result = writes.addToList(kitchen, listLabels, listOf(removed))) {
+                is AppResult.Failure -> result.reportFailure()
+                is AppResult.Success -> _events.send(PantryEvent.AddedToList(name))
+            }
+        }
+    }
+
+    /** The editor's own Add to shopping list; the sheet closes, as after a delete. */
+    fun addEditingToList() {
+        val item = _state.value.editing ?: return
+        closeEditor()
+        addToList(item)
+    }
+
+    /**
+     * Every expired row in one go, after a holiday. Rows removed before a failure still count:
+     * the snackbar offers them back even when a later one was refused.
+     */
+    fun removeAllExpired() {
+        val kitchen = kitchenId.value ?: return
+        val expired = _state.value.items.filter { it.freshness == Freshness.Expired }.map { it.id }.toSet()
+        val originals = held.value.orEmpty().filter { it.id in expired }
+        if (originals.isEmpty()) return
+        viewModelScope.launch {
+            val removed = mutableListOf<PantryItem>()
+            for (item in originals) {
+                when (val result = writes.remove(kitchen, item.id)) {
+                    is AppResult.Failure -> result.reportFailure()
+                    is AppResult.Success -> removed += item
+                }
+            }
+            if (removed.isNotEmpty()) _events.send(PantryEvent.ExpiredRemoved(removed))
+        }
+    }
+
+    fun undoRemoveAll(items: List<PantryItem>) {
+        val kitchen = kitchenId.value ?: return
+        viewModelScope.launch {
+            items.forEach { item -> writes.update(kitchen, item).reportFailure() }
         }
     }
 

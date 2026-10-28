@@ -18,6 +18,7 @@ import com.kitchenai.ui.presentation.kitchen.KitchenScreen
 import com.kitchenai.ui.presentation.pantry.PantryScreen
 import com.kitchenai.ui.presentation.profile.ProfileScreen
 import com.kitchenai.ui.presentation.shopping.ShoppingScreen
+import org.koin.compose.koinInject
 
 /**
  * The whole graph. [userId] travels as a parameter rather than in a singleton: a uid kept in
@@ -34,6 +35,12 @@ fun KitchenAiNavHost(
     // NavHost's own cross-fade, cut to nothing when the system asks for less motion.
     val reduced = LocalReducedMotion.current
     val viewPantry = { navController.switchTo(Route.Pantry) }
+    val viewList = { navController.switchTo(Route.ShoppingList) }
+    val ideasRequests = koinInject<IdeasRequests>()
+    val ideasOnExpiring = {
+        ideasRequests.requestUseExpiring()
+        navController.switchTo(Route.SuggestionsGraph)
+    }
     // Around the host, so a recipe photograph can move from one destination into the next.
     SharedTransitions {
         NavHost(
@@ -45,7 +52,9 @@ fun KitchenAiNavHost(
             enterTransition = { if (reduced) EnterTransition.None else fadeIn(tween(FADE_MILLIS)) },
             exitTransition = { if (reduced) ExitTransition.None else fadeOut(tween(FADE_MILLIS)) },
         ) {
-            composable<Route.Pantry> { Readable { PantryScreen(userId) } }
+            composable<Route.Pantry> {
+                Readable { PantryScreen(userId, onViewList = viewList, onGetIdeas = ideasOnExpiring) }
+            }
             composable<Route.ShoppingList> {
                 Readable { ShoppingScreen(userId, onViewPantry = viewPantry, topBar = detailTopBar) }
             }
