@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlin.time.Instant
 
 /**
  * Every step timer in the app, held outside cooking mode's ViewModel so leaving the screen does not
@@ -24,3 +25,9 @@ class RunningTimers {
 
     fun of(recipeId: RecipeId): List<RunningTimer> = timers.value.filter { it.recipeId == recipeId }
 }
+
+/** Still counting at [now]: one that ended stays held until dismissed, but is no longer running. */
+fun List<RunningTimer>.runningAt(
+    recipeId: RecipeId,
+    now: Instant,
+): List<RunningTimer> = filter { it.recipeId == recipeId && it.endsAt > now }

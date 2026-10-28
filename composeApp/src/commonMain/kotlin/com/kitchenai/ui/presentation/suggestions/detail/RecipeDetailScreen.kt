@@ -50,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,6 +74,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.RecipeImage
@@ -88,6 +90,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.presentation.suggestions.cooking.RunningTimers
+import com.kitchenai.ui.presentation.suggestions.cooking.runningAt
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_add_missing
 import com.kitchenai.ui.resources.detail_candidate_prompt
@@ -121,6 +124,7 @@ import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_saved
 import com.kitchenai.ui.resources.snack_unsaved
 import com.kitchenai.ui.resources.suggestions_minutes
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
@@ -512,7 +516,17 @@ private fun CandidateRow(
 @Composable
 private fun runningTimerCount(recipeId: RecipeId): Int {
     val timers by koinInject<RunningTimers>().running.collectAsStateWithLifecycle()
-    return timers.count { it.recipeId == recipeId }
+    val time = koinInject<TimeProvider>()
+    var now by remember { mutableStateOf(time.now()) }
+    // Wakes when the next timer ends, so a finished one leaves the chip without a tick every second.
+    LaunchedEffect(timers) {
+        while (true) {
+            now = time.now()
+            val next = timers.runningAt(recipeId, now).minOfOrNull { it.endsAt } ?: break
+            delay(next - now)
+        }
+    }
+    return timers.runningAt(recipeId, now).size
 }
 
 @Composable

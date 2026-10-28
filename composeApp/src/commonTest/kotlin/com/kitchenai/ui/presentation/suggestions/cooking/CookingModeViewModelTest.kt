@@ -58,7 +58,7 @@ class CookingModeViewModelTest {
     }
 
     @Test
-    fun `a timer counts down, hands its alarm to the system and says so once at zero`() =
+    fun `a timer counts down and hands its alarm to the system and says so once at zero`() =
         runTest(dispatcher) {
             val viewModel = opened()
             val seen = mutableListOf<TimerDone>()
@@ -129,7 +129,7 @@ class CookingModeViewModelTest {
         }
 
     @Test
-    fun `leaving cooking mode keeps the timer, and coming back shows it without a second alert`() =
+    fun `leaving cooking mode keeps the timer and coming back shows it without a second alert`() =
         runTest(dispatcher) {
             val first = opened()
             first.startTimer(step = 1, duration = 3.seconds, text)
@@ -156,6 +156,19 @@ class CookingModeViewModelTest {
             runCurrent()
 
             assertTrue(viewModel.state.value.timers.isEmpty())
+        }
+
+    @Test
+    fun `a timer that ended is held but no longer counts as running`() =
+        runTest(dispatcher) {
+            opened().startTimer(step = 1, duration = 3.seconds, text)
+            opened(soup).startTimer(step = 1, duration = 30.seconds, text)
+            runCurrent()
+
+            assertEquals(1, timers.running.value.runningAt(pasta, time.now()).size)
+            advanceTimeBy(5.seconds)
+            assertTrue(timers.running.value.runningAt(pasta, time.now()).isEmpty())
+            assertEquals(1, timers.of(pasta).size)
         }
 
     @Test
