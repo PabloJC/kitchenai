@@ -7,6 +7,8 @@ import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.KitchenJoinCode
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.describeJoinError
+import com.kitchenai.ui.presentation.common.describeKitchenError
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_invalid_input
 import com.kitchenai.ui.resources.error_unauthorized_action

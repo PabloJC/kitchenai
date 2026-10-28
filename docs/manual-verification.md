@@ -885,6 +885,21 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Remove A from the kitchen (or A leaves), then reopen the recipe on B.
    - The warning is gone, and new ideas may use the ingredient again.
 
+### 37. The first run lets a returning user sign in and a partner join with a code
+
+1. Use an account (Google, or Apple on iOS) that already has items in its pantry. Reinstall the
+   app (or clear its data) and open it.
+   - The first page shows Next, the sign-in button(s) and "I have an invite code".
+2. Sign in from that page.
+   - The app opens on that account's Pantry with its items. No "what you added as a guest stays
+     behind" dialog appears, and onboarding does not come back on the next launch.
+3. On a second fresh install, tap "I have an invite code" and paste the whole invite message
+   from scenario 5.
+   - The field keeps only the code. Join opens the shared kitchen's Pantry, with no "you will
+     leave your current kitchen" warning.
+4. On a third fresh install, enter a code that matches no kitchen.
+   - "That code does not match any kitchen" shows under the field, and the page stays put.
+
 ### 38. Reminders keep coming after a reboot or a quiet week, and never about food already used
 
 *Reminders on (scenario 30), set to a time a few minutes ahead.*

@@ -1,4 +1,4 @@
-package com.kitchenai.ui.presentation.kitchen
+package com.kitchenai.ui.presentation.common
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

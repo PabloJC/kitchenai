@@ -13,12 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
@@ -30,7 +27,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -47,18 +43,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
@@ -69,7 +60,9 @@ import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.platform.rememberShareText
+import com.kitchenai.ui.presentation.common.JoinCodeField
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.displayJoinCode
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
@@ -94,14 +87,12 @@ import com.kitchenai.ui.resources.kitchen_invite_action
 import com.kitchenai.ui.resources.kitchen_invite_message
 import com.kitchenai.ui.resources.kitchen_join_action
 import com.kitchenai.ui.resources.kitchen_join_label
-import com.kitchenai.ui.resources.kitchen_join_placeholder
 import com.kitchenai.ui.resources.kitchen_joined
 import com.kitchenai.ui.resources.kitchen_leave_action
 import com.kitchenai.ui.resources.kitchen_left
 import com.kitchenai.ui.resources.kitchen_member_removed
 import com.kitchenai.ui.resources.kitchen_members_title
 import com.kitchenai.ui.resources.kitchen_owner
-import com.kitchenai.ui.resources.kitchen_paste
 import com.kitchenai.ui.resources.kitchen_regenerate_action
 import com.kitchenai.ui.resources.kitchen_remove_action
 import com.kitchenai.ui.resources.kitchen_title
@@ -451,53 +442,17 @@ private fun JoinField(
     onPaste: (String) -> Unit,
     onJoin: () -> Unit,
 ) {
-    val canJoin = !isBusy && value.isNotBlank()
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
         SectionHeader(title = stringResource(Res.string.kitchen_join_label))
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
-            horizontalArrangement = Arrangement.spacedBy(Dimens.medium),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onChange,
-                placeholder = { Text(stringResource(Res.string.kitchen_join_placeholder)) },
-                trailingIcon = { if (value.isEmpty()) PasteAction(onPaste) },
-                singleLine = true,
-                keyboardOptions =
-                    KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Characters,
-                        autoCorrectEnabled = false,
-                        keyboardType = KeyboardType.Ascii,
-                        imeAction = ImeAction.Go,
-                    ),
-                keyboardActions = KeyboardActions(onGo = { if (canJoin) onJoin() }),
-                modifier = Modifier.weight(1f).focusRequester(focus),
-            )
-            Button(onClick = onJoin, enabled = canJoin) {
-                Text(stringResource(Res.string.kitchen_join_action))
-            }
-        }
-    }
-}
-
-/**
- * Offered only while the clipboard holds text, checked on every resume. Only asking whether there
- * is text, not reading it, keeps iOS from showing its paste prompt until the user taps.
- */
-@Composable
-private fun PasteAction(onPaste: (String) -> Unit) {
-    val clipboard = LocalClipboardManager.current
-    var hasText by remember { mutableStateOf(false) }
-    LifecycleResumeEffect(clipboard) {
-        hasText = clipboard.hasText()
-        onPauseOrDispose {}
-    }
-    if (hasText) {
-        IconButton(onClick = { clipboard.getText()?.text?.let(onPaste) }) {
-            Icon(Icons.Outlined.ContentPaste, contentDescription = stringResource(Res.string.kitchen_paste))
-        }
+        JoinCodeField(
+            value = value,
+            isBusy = isBusy,
+            onChange = onChange,
+            onPaste = onPaste,
+            onJoin = onJoin,
+            modifier = Modifier.padding(horizontal = Dimens.large),
+            focus = focus,
+        )
     }
 }
 

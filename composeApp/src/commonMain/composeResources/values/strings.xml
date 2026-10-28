@@ -334,6 +334,10 @@
     <string name="onboarding_value_body">Tell KitchenAI what is in your kitchen and it suggests dishes you can cook now, with a shopping list for anything missing. Share one kitchen with your household.</string>
     <string name="onboarding_staples_title">What is in your kitchen?</string>
     <string name="onboarding_staples_body">Tap what you have. Amounts can wait: you can set them later in Pantry.</string>
+    <string name="onboarding_sign_in_google">I have an account: sign in with Google</string>
+    <string name="onboarding_have_code">I have an invite code</string>
+    <string name="onboarding_join_title">Join a kitchen</string>
+    <string name="onboarding_join_body">Enter the code from the invite you were sent, or paste the whole message. You will share its pantry, list and recipes.</string>
     <string name="onboarding_preferences_title">Anything you avoid?</string>
     <string name="onboarding_preferences_body">Set your allergies and diets before your first ideas. Ideas respect them for everyone in your kitchen, and you can change them any time in Profile.</string>
     <string name="onboarding_preferences_action">Set diet and allergies</string>

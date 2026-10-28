@@ -1,5 +1,6 @@
 package com.kitchenai.ui.di
 
+import com.kitchenai.ui.presentation.onboarding.OnboardingAccountDelegate
 import com.kitchenai.ui.presentation.onboarding.OnboardingReadsDelegate
 import com.kitchenai.ui.presentation.onboarding.OnboardingViewModel
 import com.kitchenai.ui.presentation.onboarding.OnboardingWritesDelegate
@@ -11,6 +12,7 @@ import org.koin.dsl.module
 val onboardingPresentationModule: Module =
     module {
         factory { OnboardingReadsDelegate(get(), get(), get(), get()) }
-        factory { OnboardingWritesDelegate(get(), get()) }
-        viewModel { OnboardingViewModel(get(), get()) }
+        factory { OnboardingWritesDelegate(get(), get(), get()) }
+        factory { OnboardingAccountDelegate(get(), get(), get(), get(), get()) }
+        viewModel { OnboardingViewModel(get(), get(), get()) }
     }
