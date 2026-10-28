@@ -76,6 +76,20 @@ class ShareMyAvoidsUseCaseTest {
         }
 
     @Test
+    fun `past the rules' cap the entry is cut to it rather than refused whole`() =
+        runTest {
+            val port = FakeKitchenRepositoryContract(shared)
+            val many =
+                (1..ShareMyAvoidsUseCase.MAX_SHARED + 5).map {
+                    DietaryConstraint(termRef("taxonomy-1", "t-$it"), ConstraintStrength.AVOID)
+                }
+
+            ShareMyAvoidsUseCase(port)(shared, profile.copy(constraints = many))
+
+            assertEquals(ShareMyAvoidsUseCase.MAX_SHARED, port.updatedAvoids.single().terms.size)
+        }
+
+    @Test
     fun `a refused write is passed on`() =
         runTest {
             val port =

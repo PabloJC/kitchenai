@@ -18,9 +18,18 @@ class ShareMyAvoidsUseCase(
         kitchen: Kitchen,
         profile: UserProfile,
     ): AppResult<Unit> {
-        val mine = HouseholdAvoids.of(profile)
+        val mine = HouseholdAvoids.of(profile).capped()
         val shared = kitchen.memberAvoids[profile.userId.value] ?: HouseholdAvoids()
         if (profile.userId !in kitchen.memberIds || shared == mine) return AppResult.Success(Unit)
         return kitchens.updateMyAvoids(profile.userId, kitchen.id, mine)
+    }
+
+    // The rules refuse a longer entry outright, which would share none of them; the callable reads no more either.
+    private fun HouseholdAvoids.capped(): HouseholdAvoids =
+        HouseholdAvoids(terms.take(MAX_SHARED).toSet(), ingredients.take(MAX_SHARED).toSet())
+
+    companion object {
+        /** `isValidOwnAvoids` in `firebase/firestore.rules`: at most this many of each. */
+        const val MAX_SHARED = 100
     }
 }
