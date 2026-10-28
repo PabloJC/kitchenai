@@ -82,38 +82,18 @@ class SuggestRecipesUseCase(
     }
 
     /**
-     * The household's Avoid terms join the requester's constraints, replacing a Prefer on the same
-     * term. Past the callable's cap, Prefers go first: an Avoid is never the one dropped.
+     * The household's Avoid terms join the requester's constraints, turning a Prefer on the same
+     * term into Avoid. Nothing is cut here: the client-side gate must see every Avoid. The callable
+     * slices each list at [MAX_CONSTRAINTS], so past it Avoids go first and Prefers are what it drops.
      */
     private fun UserProfile.withHousehold(household: HouseholdAvoids): UserProfile {
-        val own =
-            constraints.map {
-                if (it.term in household.terms) {
-                    it.copy(
-                        strength = ConstraintStrength.AVOID,
-                    )
-                } else {
-                    it
-                }
-            }
-        val added =
-            (
-                household.terms -
-                    constraints.map {
-                        it.term
-                    }.toSet()
-            ).map { DietaryConstraint(it, ConstraintStrength.AVOID) }
+        val avoid = ConstraintStrength.AVOID
+        val own = constraints.map { if (it.term in household.terms) it.copy(strength = avoid) else it }
+        val ownTerms = constraints.map { it.term }.toSet()
+        val added = (household.terms - ownTerms).map { DietaryConstraint(it, avoid) }
         val merged = own + added
-        val capped =
-            if (merged.size > MAX_CONSTRAINTS) {
-                merged.sortedBy { it.strength != ConstraintStrength.AVOID }.take(MAX_CONSTRAINTS)
-            } else {
-                merged
-            }
-        return copy(
-            constraints = capped,
-            avoidedIngredients = (avoidedIngredients + household.ingredients).distinct().take(MAX_CONSTRAINTS),
-        )
+        val ordered = if (merged.size > MAX_CONSTRAINTS) merged.sortedBy { it.strength != avoid } else merged
+        return copy(constraints = ordered, avoidedIngredients = (avoidedIngredients + household.ingredients).distinct())
     }
 
     /**
@@ -129,7 +109,7 @@ class SuggestRecipesUseCase(
     }
 
     companion object {
-        /** The callable's own cap on each list (`functions/src/contract.ts`); it slices past it. */
+        /** The callable's own cap on each list (`functions/src/contract.ts`): it slices past it. */
         const val MAX_CONSTRAINTS = 100
     }
 }

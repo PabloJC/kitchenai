@@ -273,26 +273,24 @@ class SuggestRecipesUseCaseTest {
         }
 
     @Test
-    fun `past the callable's cap the requester's Prefers go and every Avoid stays`() =
+    fun `past the callable's cap every Avoid is sent ahead of the requester's Prefers and none is cut`() =
         runTest {
-            val avoids = (1..SuggestRecipesUseCase.MAX_CONSTRAINTS).map { termIn("taxonomy-1", "avoid-$it") }.toSet()
-            val own =
-                stored.copy(
-                    constraints = listOf(DietaryConstraint(termIn("taxonomy-1", "mine"), ConstraintStrength.PREFER)),
-                )
+            val count = SuggestRecipesUseCase.MAX_CONSTRAINTS + 5
+            val avoids = (1..count).map { termIn("taxonomy-1", "avoid-$it") }.toSet()
+            val mine = DietaryConstraint(termIn("taxonomy-1", "mine"), ConstraintStrength.PREFER)
             val household =
                 FakeKitchenRepositoryContract(
-                    kitchen(
-                        memberIds = setOf(user, otherUser),
-                    ).copy(memberAvoids = mapOf(otherUser.value to HouseholdAvoids(avoids))),
+                    kitchen(memberIds = setOf(user, otherUser))
+                        .copy(memberAvoids = mapOf(otherUser.value to HouseholdAvoids(avoids))),
                 )
             val orchestrator = RecordingOrchestrator()
 
-            suggestWith(own, household, orchestrator)(user, kitchen, listOf("en"))
+            suggestWith(stored.copy(constraints = listOf(mine)), household, orchestrator)(user, kitchen, listOf("en"))
 
             val sent = requireNotNull(orchestrator.profile).constraints
-            assertEquals(SuggestRecipesUseCase.MAX_CONSTRAINTS, sent.size)
-            assertTrue(sent.all { it.strength == ConstraintStrength.AVOID })
+            assertEquals(avoids.size + 1, sent.size)
+            assertTrue(sent.dropLast(1).all { it.strength == ConstraintStrength.AVOID })
+            assertEquals(mine, sent.last())
         }
 
     @Test
