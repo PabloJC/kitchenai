@@ -28,6 +28,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- No kitchenai:// filter: browsers and implicit intents never reach it. Links are still untrusted input. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- Posts the expiry reminder its alarm carries; only this app's own alarm sends to it. -->

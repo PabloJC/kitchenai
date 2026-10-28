@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -62,6 +63,7 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.PublishTabTitle
 import com.kitchenai.ui.navigation.Route
+import com.kitchenai.ui.navigation.ShoppingAddRequests
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
@@ -97,6 +99,7 @@ import com.kitchenai.ui.resources.snack_left_no_amount_count
 import com.kitchenai.ui.resources.snack_moved_count
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -119,7 +122,7 @@ fun ShoppingScreen(
     var editingAmountOf by rememberSaveable { mutableStateOf<String?>(null) }
 
     val defaultListName = stringResource(Res.string.shopping_default_list)
-    val addField = remember { FocusRequester() }
+    val addField = rememberAddFieldFocus()
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     // The list's name is the tab's title: a second heading under the bar said the same thing twice.
@@ -183,6 +186,21 @@ fun ShoppingScreen(
     if (confirmingClear) {
         ClearCheckedDialog(onConfirm = viewModel::clearChecked, onDismiss = { confirmingClear = false })
     }
+}
+
+/** The add field's requester; a shortcut's "Add to shopping list" puts the cursor straight into it. */
+@Composable
+private fun rememberAddFieldFocus(): FocusRequester {
+    val addField = remember { FocusRequester() }
+    val requests = koinInject<ShoppingAddRequests>()
+    LaunchedEffect(requests) {
+        requests.requests.collect {
+            // A frame first: the field's requester attaches during the composition that follows.
+            withFrameNanos { frameTime -> frameTime }
+            addField.requestFocus()
+        }
+    }
+    return addField
 }
 
 /** The part of the screen that depends on whether the list loaded, failed or is empty. */
