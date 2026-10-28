@@ -426,6 +426,7 @@ class ShoppingViewModel(
                 sectionTaxonomies.value = setOfNotNull(section?.id)
                 // A catalogue that stops declaring it, or swaps it, must not leave old headers standing.
                 sectionTerms.value = emptyList()
+                rebuildResolver()
                 coroutineScope {
                     published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
                         launch {
