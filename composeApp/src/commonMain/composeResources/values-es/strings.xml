@@ -309,6 +309,8 @@
     <string name="suggestions_add_to_pantry">Añadir a la despensa</string>
     <string name="suggestions_pantry_empty_title">Tu despensa está vacía</string>
     <string name="suggestions_pantry_empty_body">Las ideas salen de lo que ya tienes. Añade algunas cosas primero.</string>
+    <string name="suggestions_pane_empty_title">Elige una idea</string>
+    <string name="suggestions_pane_empty_body">Su receta se abre aquí, junto a la lista.</string>
     <string name="suggestions_see_ideas">Ver ideas</string>
     <string name="kitchen_empty_action">Introducir un código</string>
     <string name="onboarding_step">Paso %1$d de %2$d</string>

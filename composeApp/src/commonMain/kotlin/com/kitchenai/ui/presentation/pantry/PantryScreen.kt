@@ -48,6 +48,8 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
 import com.kitchenai.ui.designsystem.component.Tag
+import com.kitchenai.ui.designsystem.motion.PhaseCrossfade
+import com.kitchenai.ui.designsystem.motion.ScreenPhase
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.UiText
@@ -163,43 +165,62 @@ private fun PantryList(
     modifier: Modifier = Modifier,
 ) {
     val error = state.error
-
-    when {
-        state.isLoading -> LoadingState(modifier)
-        state.items.isEmpty() && error != null ->
-            ErrorState(
-                message = error.resolve(),
-                modifier = modifier,
-                retryLabel = stringResource(Res.string.error_retry),
-                onRetry = actions.onRetry,
-            )
-        state.items.isEmpty() ->
-            EmptyState(
-                title = stringResource(Res.string.pantry_empty_title),
-                body = stringResource(Res.string.pantry_empty_body),
-                modifier = modifier,
-                icon = Icons.Outlined.Kitchen,
-                actionLabel = stringResource(Res.string.pantry_empty_action),
-                onAction = actions.onAdd,
-            )
-        else ->
-            Column(modifier = modifier) {
-                PantrySearchBar(
-                    query = state.query,
-                    onQuery = actions.onQuery,
-                    locations = state.filterLocations,
-                    selected = state.locationFilter,
-                    onLocation = actions.onLocation,
-                    modifier = Modifier.padding(vertical = Dimens.small),
+    val phase =
+        when {
+            state.isLoading -> ScreenPhase.LOADING
+            state.items.isEmpty() && error != null -> ScreenPhase.FAILED
+            state.items.isEmpty() -> ScreenPhase.EMPTY
+            else -> ScreenPhase.CONTENT
+        }
+    // The fading-out phase draws with the newest state, so a failure it showed may already be gone.
+    PhaseCrossfade(phase, modifier) { shown ->
+        val fill = Modifier.fillMaxSize()
+        when (shown) {
+            ScreenPhase.LOADING -> LoadingState(fill)
+            ScreenPhase.FAILED ->
+                ErrorState(
+                    message = error?.resolve().orEmpty(),
+                    modifier = fill,
+                    retryLabel = stringResource(Res.string.error_retry),
+                    onRetry = actions.onRetry,
                 )
-                if (state.visible.isEmpty()) {
-                    // The rows' list carries the banner otherwise; a filter that empties it must not hide it.
-                    error?.let { message -> PantryErrorBanner(message, actions.onRetry) }
-                    NoMatches(query = state.query, onAddTyped = actions.onAddTyped)
-                } else {
-                    SectionedRows(state, listState, actions)
-                }
-            }
+            ScreenPhase.EMPTY ->
+                EmptyState(
+                    title = stringResource(Res.string.pantry_empty_title),
+                    body = stringResource(Res.string.pantry_empty_body),
+                    modifier = fill,
+                    icon = Icons.Outlined.Kitchen,
+                    actionLabel = stringResource(Res.string.pantry_empty_action),
+                    onAction = actions.onAdd,
+                )
+            ScreenPhase.CONTENT -> PantryContent(state, listState, actions, fill)
+        }
+    }
+}
+
+@Composable
+private fun PantryContent(
+    state: PantryUiState,
+    listState: LazyListState,
+    actions: PantryListActions,
+    modifier: Modifier,
+) {
+    Column(modifier = modifier) {
+        PantrySearchBar(
+            query = state.query,
+            onQuery = actions.onQuery,
+            locations = state.filterLocations,
+            selected = state.locationFilter,
+            onLocation = actions.onLocation,
+            modifier = Modifier.padding(vertical = Dimens.small),
+        )
+        if (state.visible.isEmpty()) {
+            // The rows' list carries the banner otherwise; a filter that empties it must not hide it.
+            state.error?.let { message -> PantryErrorBanner(message, actions.onRetry) }
+            NoMatches(query = state.query, onAddTyped = actions.onAddTyped)
+        } else {
+            SectionedRows(state, listState, actions)
+        }
     }
 }
 
