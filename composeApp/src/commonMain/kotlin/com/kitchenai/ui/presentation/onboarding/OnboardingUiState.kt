@@ -9,6 +9,11 @@ data class OnboardingUiState(
     val staples: List<StapleUi> = emptyList(),
     /** The chosen staples are being written; Next is ignored meanwhile. */
     val isAdding: Boolean = false,
+    val joinCode: String = "",
+    /** A sign-in or a join is running; their buttons wait meanwhile. */
+    val isBusy: Boolean = false,
+    /** Apple refused the link and spent its nonce: the sheet must answer once more, for the switch. */
+    val appleSwitchPending: Boolean = false,
     val error: UiText? = null,
 ) {
     val chosenCount: Int get() = staples.count { it.isChosen }
