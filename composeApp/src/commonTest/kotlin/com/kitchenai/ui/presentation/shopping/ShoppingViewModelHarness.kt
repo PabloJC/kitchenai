@@ -49,7 +49,7 @@ import kotlin.time.Instant
 
 /** The ViewModel wired to fakes, shared by the shopping tests so each class stays one subject. */
 @OptIn(ExperimentalCoroutinesApi::class)
-abstract class ShoppingViewModelHarness {
+open class ShoppingViewModelHarness {
     // Everything on the one test dispatcher, so `advanceUntilIdle` drives the whole ViewModel.
     protected val dispatcher = StandardTestDispatcher()
     protected val lists = FakeShoppingListPort()
