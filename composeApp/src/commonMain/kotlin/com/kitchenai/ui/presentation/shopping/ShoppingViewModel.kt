@@ -423,10 +423,14 @@ class ShoppingViewModel(
                 // One shop-section vocabulary is what the catalogue ships: the first is the one used,
                 // and the tags read and the terms loaded always come from that same one.
                 val section = published.firstOrNull { it.purpose == TaxonomyPurpose.SHOPPING_SECTIONS }
-                sectionTaxonomies.value = setOfNotNull(section?.id)
-                // A catalogue that stops declaring it, or swaps it, must not leave old headers standing.
-                sectionTerms.value = emptyList()
-                rebuildResolver()
+                val declared = setOfNotNull(section?.id)
+                // Only a vocabulary that went or changed drops its terms: clearing on every republish
+                // flattened the list for a frame.
+                if (declared != sectionTaxonomies.value) {
+                    sectionTaxonomies.value = declared
+                    sectionTerms.value = emptyList()
+                    rebuildResolver()
+                }
                 coroutineScope {
                     published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
                         launch {
