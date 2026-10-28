@@ -42,7 +42,29 @@
     <string name="pantry_no_expiry">No expiry date</string>
     <string name="pantry_add">Add</string>
     <string name="pantry_undo">Undo</string>
-    <string name="pantry_removed">Removed</string>
+    <string name="pantry_removed_named">%1$s removed</string>
+    <string name="pantry_add_to_list">Add to shopping list</string>
+    <string name="pantry_add_to_list_short">Add to list</string>
+    <string name="pantry_added_to_list_named">%1$s added to the list</string>
+    <string name="pantry_view_list">View list</string>
+    <string name="pantry_get_ideas">Get ideas</string>
+    <string name="pantry_remove_all">Remove all</string>
+    <plurals name="pantry_remove_expired_title">
+        <item quantity="one">Remove %1$d expired item?</item>
+        <item quantity="other">Remove %1$d expired items?</item>
+    </plurals>
+    <string name="pantry_remove_expired_body">You can undo it from the message that follows.</string>
+    <string name="pantry_remove_expired_confirm">Remove</string>
+    <string name="pantry_cancel">Cancel</string>
+    <plurals name="pantry_expired_removed">
+        <item quantity="one">%1$d expired item removed</item>
+        <item quantity="other">%1$d expired items removed</item>
+    </plurals>
+    <string name="detail_add_used_up">Add to list</string>
+    <plurals name="snack_used_up_added">
+        <item quantity="one">%1$d used up item added to the list</item>
+        <item quantity="other">%1$d used up items added to the list</item>
+    </plurals>
     <string name="pantry_delete">Delete</string>
     <string name="pantry_empty_title">The pantry is empty</string>
     <string name="pantry_empty_body">Add what you already have and the suggestions start working</string>

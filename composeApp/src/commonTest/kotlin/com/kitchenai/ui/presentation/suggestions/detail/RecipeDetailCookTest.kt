@@ -129,6 +129,29 @@ class RecipeDetailCookTest : RecipeDetailViewModelHarness() {
         }
 
     @Test
+    fun `a cook that empties a row offers it back to the list as a bare line`() =
+        runTest(dispatcher) {
+            val pantry = FakePantryPort(listOf(holding(200.0)))
+            val viewModel = started(pantry = listOf(holding(200.0)), pantryPort = pantry)
+            advanceUntilIdle()
+            val seen = mutableListOf<RecipeDetailEvent>()
+            val collector = launch { viewModel.events.toList(seen) }
+
+            viewModel.cook()
+            advanceUntilIdle()
+            val cooked = seen.filterIsInstance<RecipeDetailEvent.Cooked>().single().cooked
+            assertEquals(listOf(holding(200.0)), cooked.usedUp)
+            viewModel.addUsedUpToList(cooked)
+            advanceUntilIdle()
+            collector.cancel()
+
+            assertEquals(RecipeDetailEvent.UsedUpAddedToList(1), seen.last())
+            val line = items.upserts.last().single()
+            assertEquals(holding(200.0).ingredient, line.ingredient)
+            assertNull(line.quantity)
+        }
+
+    @Test
     fun `cooking takes the ingredients out of the pantry`() =
         runTest(dispatcher) {
             val pantry = FakePantryPort(listOf(holding(500.0)))

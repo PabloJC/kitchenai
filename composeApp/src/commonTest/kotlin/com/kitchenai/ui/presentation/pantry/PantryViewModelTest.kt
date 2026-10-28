@@ -27,8 +27,13 @@ import com.kitchenai.shared.domain.usecase.pantry.RemovePantryItemUseCase
 import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItemUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddPantryItemsToShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
+import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
+import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
+import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.noUnits
@@ -64,6 +69,7 @@ class PantryViewModelTest {
     private val catalogue = FakeIngredientPort()
     private val taxonomies = FakeTaxonomyPort()
     private val kitchens = FakeKitchenPort()
+    private val shoppingItems = FakeShoppingItemPort()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -83,7 +89,7 @@ class PantryViewModelTest {
 
             viewModel.state.test {
                 assertTrue(awaitItem().isLoading)
-                viewModel.start(userId, languageTags)
+                viewModel.start(userId, languageTags, "List")
                 advanceUntilIdle()
                 // Subscribing emits nothing: a listener that has not spoken yet is still loading,
                 // and an unchanged state is not a new emission.
@@ -118,7 +124,7 @@ class PantryViewModelTest {
             // Nothing held, so nothing to derive a location taxonomy from: the catalogue
             // declaring one is the only reason this picker has anything in it.
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId, languageTags, "List")
             taxonomies.taxonomies.emit(
                 listOf(
                     Taxonomy(
@@ -139,7 +145,7 @@ class PantryViewModelTest {
     fun `an identifier the catalogue cannot name is rendered as itself`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId, languageTags, "List")
             pantry.items.emit(listOf(item))
             advanceUntilIdle()
 
@@ -150,7 +156,7 @@ class PantryViewModelTest {
     fun `a listener that fails before its first emission stops the spinner`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId, languageTags, "List")
             advanceUntilIdle()
 
             // Cold start with no cache and no network: nothing has ever been emitted.
@@ -166,7 +172,7 @@ class PantryViewModelTest {
     fun `retry listens again after a failed first load and the rows arrive`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId, languageTags, "List")
             advanceUntilIdle()
             pantry.errors.emit(AppError.Network())
             advanceUntilIdle()
@@ -352,6 +358,87 @@ class PantryViewModelTest {
         }
 
     @Test
+    fun `a row put on the list from its actions goes on as a bare line and is confirmed`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            val row = viewModel.state.value.items.single()
+
+            viewModel.events.test {
+                viewModel.addToList(row)
+                advanceUntilIdle()
+                assertEquals(PantryEvent.AddedToList(INGREDIENT_LABEL), awaitItem())
+            }
+            val line = shoppingItems.upserts.last().single()
+            assertEquals(ingredientId, line.ingredient)
+            assertNull(line.quantity)
+            assertTrue(pantry.removed.isEmpty())
+        }
+
+    @Test
+    fun `a removed row can still be put on the list from its snackbar`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            val row = viewModel.state.value.items.single()
+
+            viewModel.events.test {
+                viewModel.remove(row)
+                advanceUntilIdle()
+                val removed = awaitItem() as PantryEvent.ItemRemoved
+                viewModel.addRemovedToList(removed.restore, removed.name)
+                advanceUntilIdle()
+                assertEquals(PantryEvent.AddedToList(INGREDIENT_LABEL), awaitItem())
+            }
+            assertEquals(ingredientId, shoppingItems.upserts.last().single().ingredient)
+        }
+
+    @Test
+    fun `the editor's add to list closes the sheet and adds the row it was opened on`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            viewModel.openEditor(viewModel.state.value.items.single())
+
+            viewModel.addEditingToList()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.isEditorOpen)
+            assertEquals(ingredientId, shoppingItems.upserts.last().single().ingredient)
+        }
+
+    @Test
+    fun `remove all takes every expired row and one undo puts them all back`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+            val expiredAt = Instant.fromEpochSeconds(-3 * SECONDS_PER_DAY)
+            val stale = item.copy(id = PantryItemId.of("item-2").value(), expiresAt = expiredAt)
+            val staler = item.copy(id = PantryItemId.of("item-3").value(), expiresAt = expiredAt)
+            pantry.items.emit(listOf(item, stale, staler))
+            advanceUntilIdle()
+
+            viewModel.events.test {
+                viewModel.removeAllExpired()
+                advanceUntilIdle()
+                val removed = awaitItem() as PantryEvent.ExpiredRemoved
+                assertEquals(listOf(stale, staler), removed.restore)
+
+                viewModel.undoRemoveAll(removed.restore)
+                advanceUntilIdle()
+            }
+            assertEquals(listOf(stale.id, staler.id), pantry.removed)
+            assertEquals(listOf(stale, staler), pantry.upserted)
+        }
+
+    @Test
+    fun `remove all with nothing expired does nothing`() =
+        runTest(dispatcher) {
+            val viewModel = loadedViewModel()
+
+            viewModel.removeAllExpired()
+            advanceUntilIdle()
+
+            assertTrue(pantry.removed.isEmpty())
+        }
+
+    @Test
     fun `a rejected write is announced as an event and never as state`() =
         runTest(dispatcher) {
             val viewModel = loadedViewModel()
@@ -378,7 +465,7 @@ class PantryViewModelTest {
     fun `recent lists what the pantry touched last and nothing the catalogue lacks`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId, languageTags, "List")
             catalogue.emit(listOf(ingredient, otherIngredient))
             taxonomies.terms.emit(listOf(unitTerm, locationTerm))
             pantry.items.emit(
@@ -501,7 +588,7 @@ class PantryViewModelTest {
         runTest(dispatcher) {
             val viewModel = loadedViewModel()
 
-            viewModel.start(userId, languageTags)
+            viewModel.start(userId, languageTags, "List")
             advanceUntilIdle()
 
             assertEquals(1, pantry.items.subscriptionCount.value)
@@ -584,7 +671,7 @@ class PantryViewModelTest {
 
     private suspend fun TestScope.loadedViewModel(): PantryViewModel {
         val viewModel = viewModel()
-        viewModel.start(userId, languageTags)
+        viewModel.start(userId, languageTags, "List")
         seed()
         advanceUntilIdle()
         return viewModel
@@ -612,6 +699,11 @@ class PantryViewModelTest {
                     update = UpdatePantryItemUseCase(pantry, time),
                     remove = RemovePantryItemUseCase(pantry),
                     time = time,
+                    addToList =
+                        AddPantryItemsToShoppingListUseCase(
+                            EnsureDefaultShoppingListUseCase(FakeShoppingListPort(), IdGenerator { "list-1" }, time),
+                            AddShoppingItemUseCase(shoppingItems, IdGenerator { "line-1" }, time, noUnits()),
+                        ),
                 ),
             observeKitchen = ObserveKitchenUseCase(kitchens),
         )
@@ -619,6 +711,7 @@ class PantryViewModelTest {
 }
 
 private const val INGREDIENT_LABEL = "ingredient-label"
+private const val SECONDS_PER_DAY = 86_400L
 private const val UNIT_LABEL = "unit-label"
 private const val LOCATION_LABEL = "location-label"
 private val UNAUTHORIZED_MESSAGE = UiText.of(Res.string.error_unauthorized_own_data)

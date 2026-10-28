@@ -7,6 +7,7 @@ import com.kitchenai.ui.resources.snack_cook_undone
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_unsaved
+import com.kitchenai.ui.resources.snack_used_up_added
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -40,6 +41,10 @@ class RecipeDetailSentenceTest {
     @Test
     fun `an undone cook says the pantry got it back`() {
         assertEquals(UiText.of(Res.string.snack_cook_undone), RecipeDetailEvent.CookUndone.sentence())
+        assertEquals(
+            UiText.Plural(Res.plurals.snack_used_up_added, 2),
+            RecipeDetailEvent.UsedUpAddedToList(2).sentence(),
+        )
     }
 
     @Test
