@@ -843,6 +843,18 @@ shared case, a second device joined to that kitchen (scenario 5).*
 6. On a fresh install, before opening the app, add the widget.
    - It says to open KitchenAI to start a list, and tapping it opens the app.
 
+### 34. Siri adds to the shopping list without opening the app
+
+1. On an iPhone signed in to the app, say "Hey Siri, add to my KitchenAI list".
+   - Siri asks what to add. Answer "milk".
+   - Siri says it added milk; open the app and milk is on the Shopping tab as typed.
+2. Open the Shortcuts app and search for KitchenAI.
+   - "Add to list" is there without any setup and runs the same way.
+3. With the device language set to Spanish, say "Oye Siri, añadir a mi lista de KitchenAI".
+   - The question and the answer are in Spanish.
+4. Sign out in the app (or use a fresh install that was never opened) and repeat step 1.
+   - Siri says to open KitchenAI once to set up the list, and nothing is added.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

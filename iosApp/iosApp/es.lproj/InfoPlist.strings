@@ -1,4 +1,4 @@
-/* Acciones rápidas del icono. */
+/* Home-screen quick actions. Their types are the app's own kitchenai:// links. */
 "shortcut.shopping.add" = "Añadir a la lista de la compra";
 "shortcut.pantry" = "Despensa";
 "shortcut.ideas" = "Ver ideas";
