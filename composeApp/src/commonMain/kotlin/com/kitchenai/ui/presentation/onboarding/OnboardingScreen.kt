@@ -84,34 +84,7 @@ fun OnboardingScreen(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(Dimens.large),
             verticalArrangement = Arrangement.spacedBy(Dimens.large),
         ) {
-            when (state.step) {
-                OnboardingStep.VALUE ->
-                    Page(Icons.Filled.AutoAwesome, Res.string.onboarding_value_title, Res.string.onboarding_value_body)
-                OnboardingStep.STAPLES -> {
-                    Page(
-                        Icons.Outlined.Kitchen,
-                        Res.string.onboarding_staples_title,
-                        Res.string.onboarding_staples_body,
-                    )
-                    Staples(state.staples, onToggle = viewModel::toggle)
-                }
-                OnboardingStep.PREFERENCES ->
-                    Page(
-                        Icons.Outlined.NoFood,
-                        Res.string.onboarding_preferences_title,
-                        Res.string.onboarding_preferences_body,
-                    )
-                OnboardingStep.JOIN -> {
-                    Page(Icons.Outlined.Group, Res.string.onboarding_join_title, Res.string.onboarding_join_body)
-                    JoinCodeField(
-                        value = state.joinCode,
-                        isBusy = state.isBusy,
-                        onChange = viewModel::onJoinCodeChange,
-                        onPaste = viewModel::pasteJoinCode,
-                        onJoin = viewModel::join,
-                    )
-                }
-            }
+            StepContent(state, viewModel)
             state.error?.let { message ->
                 Text(
                     message.resolve(),
@@ -121,6 +94,42 @@ fun OnboardingScreen(
             }
         }
         Actions(state, viewModel)
+    }
+}
+
+/** What the current page shows above the error line. */
+@Composable
+private fun StepContent(
+    state: OnboardingUiState,
+    viewModel: OnboardingViewModel,
+) {
+    when (state.step) {
+        OnboardingStep.VALUE ->
+            Page(Icons.Filled.AutoAwesome, Res.string.onboarding_value_title, Res.string.onboarding_value_body)
+        OnboardingStep.STAPLES -> {
+            Page(
+                Icons.Outlined.Kitchen,
+                Res.string.onboarding_staples_title,
+                Res.string.onboarding_staples_body,
+            )
+            Staples(state.staples, onToggle = viewModel::toggle)
+        }
+        OnboardingStep.PREFERENCES ->
+            Page(
+                Icons.Outlined.NoFood,
+                Res.string.onboarding_preferences_title,
+                Res.string.onboarding_preferences_body,
+            )
+        OnboardingStep.JOIN -> {
+            Page(Icons.Outlined.Group, Res.string.onboarding_join_title, Res.string.onboarding_join_body)
+            JoinCodeField(
+                value = state.joinCode,
+                isBusy = state.isBusy,
+                onChange = viewModel::onJoinCodeChange,
+                onPaste = viewModel::pasteJoinCode,
+                onJoin = viewModel::join,
+            )
+        }
     }
 }
 
