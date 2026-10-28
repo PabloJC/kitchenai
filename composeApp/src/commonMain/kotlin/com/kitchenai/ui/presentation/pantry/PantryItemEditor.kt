@@ -123,14 +123,7 @@ private fun EditorFields(
     val separator = remember { decimalSeparatorFor(platformLanguageTags()) }
     val focus = remember { FocusRequester() }
     val picked = pickedOption(form.pickedId.value, state.ingredients, editing)
-    val saved =
-        remember(picked, form.query.value, state.ingredients) {
-            savedOption(picked, form.query.value, state.ingredients)
-        }
-    // An exact name brings its unit like a pick does, so what is saved is what the field shows.
-    LaunchedEffect(saved?.id) {
-        if (picked == null) saved?.let { match -> form.preferredUnitId.value = match.defaultUnit?.term?.value }
-    }
+    val saved = rememberSavedOption(picked, form, state.ingredients, editing)
 
     // Back to the search after "save and add another", so the next item is typed at once.
     LaunchedEffect(revision) { if (revision > 0) focus.requestFocus() }
@@ -171,6 +164,28 @@ private fun EditorFields(
         onSubmit = onSubmit,
         onSubmitAndAddAnother = onSubmitAndAddAnother,
     )
+}
+
+/**
+ * [savedOption] for the sheet. An exact name brings its unit like a pick does, but only once
+ * typed: a row opened for editing keeps the unit it was stored with.
+ */
+@Composable
+private fun rememberSavedOption(
+    picked: IngredientOption?,
+    form: EditorForm,
+    catalogue: List<IngredientOption>,
+    editing: PantryItemUi?,
+): IngredientOption? {
+    val query = form.query.value
+    val saved = remember(picked, query, catalogue) { savedOption(picked, query, catalogue) }
+    val typedSinceOpening = editing == null || query != editing.name
+    LaunchedEffect(saved?.id) {
+        if (picked == null && typedSinceOpening) {
+            saved?.let { match -> form.preferredUnitId.value = match.defaultUnit?.term?.value }
+        }
+    }
+    return saved
 }
 
 /**
