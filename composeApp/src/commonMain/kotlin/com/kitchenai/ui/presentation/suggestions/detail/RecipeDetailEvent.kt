@@ -13,6 +13,9 @@ sealed interface RecipeDetailEvent {
 
     data object CookUndone : RecipeDetailEvent
 
+    /** The rows a cook emptied, put back on the list from the cook's snackbar. */
+    data class UsedUpAddedToList(val count: Int) : RecipeDetailEvent
+
     data object Saved : RecipeDetailEvent
 
     /** Offers an undo, which saves the dish still on screen again. */

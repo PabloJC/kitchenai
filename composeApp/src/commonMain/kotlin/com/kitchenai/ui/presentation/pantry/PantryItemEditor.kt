@@ -51,6 +51,7 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.ExpiryField
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.pantry_add_to_list
 import com.kitchenai.ui.resources.pantry_amount
 import com.kitchenai.ui.resources.pantry_delete
 import com.kitchenai.ui.resources.pantry_editor_added
@@ -84,7 +85,7 @@ fun PantryItemEditor(
     onDismiss: () -> Unit,
     onSubmit: (PantryItemDraft) -> Unit,
     onSubmitAndAddAnother: (PantryItemDraft) -> Unit,
-    onDelete: () -> Unit,
+    rowActions: EditingRowActions,
     modifier: Modifier = Modifier,
 ) {
     val form = rememberEditorForm(state.editing, state.editorRevision, state.prefill)
@@ -103,7 +104,7 @@ fun PantryItemEditor(
                     .padding(bottom = Dimens.extraLarge),
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
         ) {
-            EditorFields(state, form, onSubmit, onSubmitAndAddAnother, onDelete)
+            EditorFields(state, form, onSubmit, onSubmitAndAddAnother, rowActions)
         }
     }
 }
@@ -114,7 +115,7 @@ private fun EditorFields(
     form: EditorForm,
     onSubmit: (PantryItemDraft) -> Unit,
     onSubmitAndAddAnother: (PantryItemDraft) -> Unit,
-    onDelete: () -> Unit,
+    rowActions: EditingRowActions,
 ) {
     val editing = state.editing
     val revision = state.editorRevision
@@ -125,7 +126,11 @@ private fun EditorFields(
     // Back to the search after "save and add another", so the next item is typed at once.
     LaunchedEffect(revision) { if (revision > 0) focus.requestFocus() }
 
-    EditorHeader(editedName = editing?.name, onDelete = onDelete)
+    EditorHeader(editedName = editing?.name, onDelete = rowActions.onDelete)
+    // Run out of it: one tap puts it on the list, without leaving for Shopping and typing it.
+    if (editing != null) {
+        TextButton(onClick = rowActions.onAddToList) { Text(stringResource(Res.string.pantry_add_to_list)) }
+    }
     AddedConfirmation(name = state.lastAdded, revision = revision)
     IngredientPicker(state = state, form = form, picked = picked, focusRequester = focus)
     // Keyed: the field keeps its raw text locally and must start empty after an add.

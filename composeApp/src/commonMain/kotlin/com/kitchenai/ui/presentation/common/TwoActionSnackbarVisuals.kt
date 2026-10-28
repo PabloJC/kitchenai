@@ -1,4 +1,4 @@
-package com.kitchenai.ui.presentation.shopping
+package com.kitchenai.ui.presentation.common
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -16,10 +16,10 @@ import androidx.compose.ui.Modifier
 import com.kitchenai.ui.designsystem.theme.Dimens
 
 /**
- * The snackbar after a move, with two actions where Material gives one: [actionLabel] (Undo) is
- * the standard action, so `showSnackbar` still reports it; [secondaryLabel] runs [onSecondary].
+ * A snackbar with two actions where Material gives one: [actionLabel] (usually Undo) is the
+ * standard action, so `showSnackbar` still reports it; [secondaryLabel] runs [onSecondary].
  */
-internal class MovedToPantryVisuals(
+internal class TwoActionSnackbarVisuals(
     override val message: String,
     override val actionLabel: String,
     val secondaryLabel: String,
@@ -29,12 +29,12 @@ internal class MovedToPantryVisuals(
     override val duration: SnackbarDuration = SnackbarDuration.Long
 }
 
-/** Draws [MovedToPantryVisuals] with both buttons and every other snackbar as Material does. */
+/** Draws [TwoActionSnackbarVisuals] with both buttons and every other snackbar as Material does. */
 @Composable
-internal fun ShoppingSnackbarHost(state: SnackbarHostState) {
+internal fun TwoActionSnackbarHost(state: SnackbarHostState) {
     SnackbarHost(state) { data ->
         val visuals = data.visuals
-        if (visuals !is MovedToPantryVisuals) {
+        if (visuals !is TwoActionSnackbarVisuals) {
             Snackbar(data)
             return@SnackbarHost
         }

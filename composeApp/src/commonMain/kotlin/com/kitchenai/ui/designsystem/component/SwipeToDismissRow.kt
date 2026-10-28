@@ -34,12 +34,14 @@ import com.kitchenai.ui.designsystem.theme.Dimens
  * is out of reach for TalkBack, VoiceOver and Switch Access, so the same delete is also offered
  * as an accessibility action named [deleteLabel]. [content] gets it as a modifier to put on its
  * own focusable node: a screen reader lists only the actions of the node it lands on.
+ * [extraActions] join Delete there, for a row that can do more than go away.
  */
 @Composable
 fun SwipeToDismissRow(
     onDismiss: () -> Unit,
     deleteLabel: String,
     modifier: Modifier = Modifier,
+    extraActions: List<CustomAccessibilityAction> = emptyList(),
     content: @Composable (deleteAction: Modifier) -> Unit,
 ) {
     val state = rememberSwipeToDismissBoxState()
@@ -86,12 +88,11 @@ fun SwipeToDismissRow(
             val deleteAction =
                 Modifier.semantics {
                     customActions =
-                        listOf(
-                            CustomAccessibilityAction(deleteLabel) {
-                                dismiss()
-                                true
-                            },
-                        )
+                        extraActions +
+                        CustomAccessibilityAction(deleteLabel) {
+                            dismiss()
+                            true
+                        }
                 }
             Box(Modifier.background(MaterialTheme.colorScheme.background)) { content(deleteAction) }
         },

@@ -16,4 +16,10 @@ sealed interface PantryEvent {
     ) : PantryEvent
 
     data class SaveFailed(val message: UiText) : PantryEvent
+
+    /** [name] is the row put on the list, for the confirmation that offers to go there. */
+    data class AddedToList(val name: String) : PantryEvent
+
+    /** Every row Remove all took, so one Undo puts all of them back. */
+    data class ExpiredRemoved(val restore: List<PantryItem>) : PantryEvent
 }

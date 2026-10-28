@@ -6,6 +6,7 @@ import com.kitchenai.shared.domain.usecase.recipe.RemoveSavedRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SaveRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.UndoCookUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddPantryItemsToShoppingListUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 
 /** What the detail screen changes. Like [RecipeDetailReadsDelegate], it holds no logic. */
@@ -18,4 +19,5 @@ class RecipeDetailWritesDelegate(
     val undoCook: UndoCookUseCase,
     val addMissing: AddMissingIngredientsToShoppingListUseCase,
     val defaultList: EnsureDefaultShoppingListUseCase,
+    val addToList: AddPantryItemsToShoppingListUseCase,
 )

@@ -4,6 +4,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.pantry.AddPantryItemUseCase
 import com.kitchenai.shared.domain.usecase.pantry.RemovePantryItemUseCase
 import com.kitchenai.shared.domain.usecase.pantry.UpdatePantryItemUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddPantryItemsToShoppingListUseCase
 
 /**
  * What the pantry screen changes. [time] belongs here rather than on the ViewModel because the
@@ -14,4 +15,5 @@ class PantryWritesDelegate(
     val update: UpdatePantryItemUseCase,
     val remove: RemovePantryItemUseCase,
     val time: TimeProvider,
+    val addToList: AddPantryItemsToShoppingListUseCase,
 )

@@ -37,6 +37,8 @@ import com.kitchenai.shared.domain.usecase.recipe.RemoveSavedRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SaveRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.UndoCookUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddPantryItemsToShoppingListUseCase
+import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
@@ -145,6 +147,11 @@ open class RecipeDetailViewModelHarness {
                         noUnits(),
                     ),
                 defaultList = EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
+                addToList =
+                    AddPantryItemsToShoppingListUseCase(
+                        EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, time),
+                        AddShoppingItemUseCase(items, sequentialIds(), time, noUnits()),
+                    ),
             )
         return RecipeDetailViewModel(reads, writes, ObserveKitchenUseCase(kitchens))
             .also { it.start(user, recipeId, listOf("en"), "List") }
