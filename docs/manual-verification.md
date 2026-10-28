@@ -409,7 +409,7 @@ something to work from. Run on both platforms.*
 6. Console: set `term` to each of a few known values in turn (`pasta`, `soup`, `dessert`).
    - The photograph changes to match each.
 
-### 11. A hand-typed shopping line carries an amount and moves to the pantry
+### 11. Moving the cart to the pantry, with dates and bare lines
 
 *Run on both platforms. Check the keyboard in steps 1 and 5.*
 
@@ -419,19 +419,27 @@ something to work from. Run on both platforms.*
      the name field, the amount field and "Add" are all visible and tappable.
 2. Type `2` in "Amount", choose "kg" in the unit selector and tap "Add".
    - The line appears in "To buy" with "2 kg" on its right. The amount field is empty again.
-3. Add a second line with no amount.
-   - It shows an "Add amount" button where the amount would be.
-4. Tick both lines, then tap "Move to pantry".
-   - The message is "1 moved to the pantry, 1 has no amount and stays on the list". The "2 kg"
-     line is gone from the list and the Pantry tab holds it with "2 kg".
-5. Tap "Add amount" on the remaining line.
-   - A dialog with the amount field and the unit selector opens and stays usable with the keyboard
-     open. "Save" stays disabled until the amount is a number above zero.
-6. Enter `500`, choose "g", tap "Save", then tick the line and tap "Move to pantry".
-   - The line shows "500 g" and moves; the Pantry tab holds it.
-7. Add another line with no amount, tick only it, tap "Move to pantry".
-   - The message says nothing moved because the line has no amount and points at "Add amount";
-     the line stays on the list.
+3. Add a second line with no amount, and a catalogue line such as "Milk" with no amount.
+   - Each shows an "Add amount" button where the amount would be.
+4. Tick all three, then tap "Move 3 to pantry".
+   - A sheet opens listing the three lines, each with "No expiry date" on its right. The two bare
+     lines have an "Amount" field showing "1 (no amount)". No dialog asks for an amount.
+5. Tap "+1 week" under "Same date for all", then tap the date on the "2 kg" line and pick "+3 days".
+   Type `3` in the hand-typed bare line's "Amount" field.
+   - Every line shows the date a week from today except the "2 kg" one, which shows three days from
+     today. Typing `0` or `abc` in the field disables both buttons; `3` enables them again.
+6. Tap "Move 3 to pantry".
+   - The message is "3 moved to the pantry", with "Undo" and "View pantry". In the Pantry tab the
+     "2 kg" line is under "Use soon"; the bare line holds "3"; "Milk" holds 1 in its default unit.
+     The expiry reminder (scenario 38) counts the "2 kg" line when it fires on its expiry day.
+7. Tap "Undo" on the message instead, from a fresh repeat of steps 3–6.
+   - The three lines come back to the cart exactly as they were (the bare ones still bare) and the
+     pantry loses the rows the move added.
+8. Pantry already holds the "2 kg" item with a date two days away. Add the same item to the list
+   with an amount, tick it, open the sheet, give it "+1 month" and move it.
+   - The pantry row adds the amounts and keeps the earlier date (two days away).
+9. Tick a line, open the sheet, give it a date and tap "Skip dates".
+   - The line moves with no date and appears under "No expiry date".
 
 ---
 

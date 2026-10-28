@@ -29,15 +29,10 @@ data class ShoppingUiState(
     /** A list that never loaded already offers Try again in its own empty state: one button per failure. */
     val bannerOffersRetry: Boolean get() = canRetry && !failedToLoad
 
-    // A line just ticked still sits in `unchecked` for a moment, so the ticked set spans both lists.
-    private val ticked: List<ShoppingItemUi> get() = unchecked.filter(ShoppingItemUi::checked) + checked
+    /** What a move takes, bare lines too. A just-ticked line still sits in `unchecked`, so both lists count. */
+    val ticked: List<ShoppingItemUi> get() = unchecked.filter(ShoppingItemUi::checked) + checked
 
     val tickedCount: Int get() = ticked.size
-
-    /** Only a line with an amount can move to the pantry. */
-    val movableCount: Int get() = ticked.count { line -> line.amount != null }
-
-    val ticksMissingAmount: List<ShoppingItemUi> get() = ticked.filter { line -> line.amount == null }
 }
 
 /**

@@ -16,6 +16,6 @@ val crossFeatureModule: Module =
         factory { PlanCookUseCase(get(), get(), get(), get()) }
         factory { CookRecipeUseCase(get(), get(), get()) }
         factory { UndoCookUseCase(get(), get(), get()) }
-        factory { MoveCheckedItemsToPantryUseCase(get(), get(), get(), get(), get()) }
+        factory { MoveCheckedItemsToPantryUseCase(get(), get(), get(), get(), get(), get()) }
         factory { UndoMoveToPantryUseCase(get(), get()) }
     }
