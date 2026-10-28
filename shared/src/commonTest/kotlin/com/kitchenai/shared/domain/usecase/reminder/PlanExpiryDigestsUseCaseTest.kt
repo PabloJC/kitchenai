@@ -104,6 +104,42 @@ class PlanExpiryDigestsUseCaseTest {
         assertEquals(LocalDateTime(2026, 10, 21, 7, 30).toInstant(zone), digest.fireAt)
     }
 
+    @Test
+    fun `the expiring items travel with the digest soonest first`() {
+        val now = at(2026, 10, 20, 9)
+        val items = listOf(item("tomorrow", at(2026, 10, 21, 12)), item("today", at(2026, 10, 20, 22)))
+
+        val first = plan(items, ReminderSettings(), now, zone).first()
+
+        assertEquals(listOf("today", "tomorrow"), first.expiring.map { it.id.value })
+    }
+
+    @Test
+    fun `today reads the pantry as it is now and says nothing when nothing is due`() {
+        val now = at(2026, 10, 20, 18)
+
+        val due =
+            plan.today(
+                listOf(item("a", at(2026, 10, 21, 9)), item("gone", at(2026, 10, 18, 9))),
+                ReminderSettings(),
+                now,
+                zone,
+            )
+        val quiet = plan.today(listOf(item("later", at(2026, 10, 25, 9))), ReminderSettings(), now, zone)
+
+        assertEquals(now, due?.fireAt)
+        assertEquals(1, due?.expiringCount)
+        assertEquals(1, due?.expiredCount)
+        assertEquals(null, quiet)
+    }
+
+    @Test
+    fun `today with reminders off says nothing`() {
+        val items = listOf(item("a", at(2026, 10, 21, 9)))
+
+        assertEquals(null, plan.today(items, ReminderSettings(enabled = false), at(2026, 10, 20, 18), zone))
+    }
+
     private fun at(
         year: Int,
         month: Int,

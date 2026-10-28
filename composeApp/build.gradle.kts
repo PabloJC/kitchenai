@@ -68,6 +68,9 @@ kotlin {
 
             // The home-screen shopping widget: widget/ShoppingListWidget.kt.
             implementation(libs.androidx.glance.appwidget)
+
+            // The daily expiry reminder: platform/ExpiryReminderWorker.kt.
+            implementation(libs.androidx.work.runtime)
         }
         iosMain.dependencies {
             // Google Sign-In via Google's own iOS SDK, wrapped for Kotlin/Native rather than

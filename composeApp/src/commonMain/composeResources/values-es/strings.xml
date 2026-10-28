@@ -352,13 +352,24 @@
     <string name="reminder_setting_title">Avisos de caducidad</string>
     <string name="reminder_setting_body">Un aviso los días en que algo de tu cocina esté a punto de caducar.</string>
     <string name="reminder_setting_time">Hora</string>
-    <string name="reminder_setting_refused">Las notificaciones de KitchenAI están desactivadas. Actívalas en los ajustes del dispositivo y vuelve a encender esto.</string>
+    <string name="reminder_setting_refused">Las notificaciones de KitchenAI están desactivadas. Permítelas en los ajustes y los recordatorios se activarán al volver.</string>
     <string name="reminder_time_ok">Aceptar</string>
     <string name="reminder_time_cancel">Cancelar</string>
     <plurals name="reminder_expiring">
-        <item quantity="one">%1$d producto caduca en menos de un día</item>
-        <item quantity="other">%1$d productos caducan en menos de un día</item>
+        <item quantity="one">%1$d producto caduca hoy o mañana</item>
+        <item quantity="other">%1$d productos caducan hoy o mañana</item>
     </plurals>
+    <plurals name="reminder_expiring_named">
+        <item quantity="one">%1$s caduca hoy o mañana</item>
+        <item quantity="other">%1$s caducan hoy o mañana</item>
+    </plurals>
+    <string name="reminder_names_two">%1$s y %2$s</string>
+    <string name="reminder_names_three">%1$s, %2$s y %3$s</string>
+    <plurals name="reminder_names_more">
+        <item quantity="one">%1$s y %2$d más</item>
+        <item quantity="other">%1$s y %2$d más</item>
+    </plurals>
+    <string name="reminder_open_settings">Abrir ajustes</string>
     <plurals name="reminder_expired">
         <item quantity="one">%1$d producto ya ha caducado</item>
         <item quantity="other">%1$d productos ya han caducado</item>
