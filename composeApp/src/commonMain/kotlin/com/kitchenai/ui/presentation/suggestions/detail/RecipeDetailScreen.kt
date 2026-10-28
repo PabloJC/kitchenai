@@ -39,7 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -86,6 +85,8 @@ import com.kitchenai.ui.designsystem.theme.PillShape
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.platform.rememberShareText
+import com.kitchenai.ui.presentation.common.TwoActionSnackbarHost
+import com.kitchenai.ui.presentation.common.TwoActionSnackbarVisuals
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
@@ -93,6 +94,7 @@ import com.kitchenai.ui.presentation.suggestions.cooking.RunningTimers
 import com.kitchenai.ui.presentation.suggestions.cooking.runningAt
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.detail_add_missing
+import com.kitchenai.ui.resources.detail_add_used_up
 import com.kitchenai.ui.resources.detail_candidate_prompt
 import com.kitchenai.ui.resources.detail_cook
 import com.kitchenai.ui.resources.detail_cook_anyway
@@ -124,6 +126,7 @@ import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
 import com.kitchenai.ui.resources.snack_saved
 import com.kitchenai.ui.resources.snack_unsaved
+import com.kitchenai.ui.resources.snack_used_up_added
 import com.kitchenai.ui.resources.suggestions_minutes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -174,7 +177,7 @@ fun RecipeDetailScreen(
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { TwoActionSnackbarHost(snackbar) },
         topBar = {
             RecipeDetailTopBar(
                 solid || loadFailed,
@@ -695,6 +698,19 @@ private suspend fun SnackbarHostState.announce(
     viewModel: RecipeDetailViewModel,
     onViewShoppingList: () -> Unit,
 ) {
+    if (event is RecipeDetailEvent.Cooked && event.cooked.usedUp.isNotEmpty()) {
+        val outcome =
+            showSnackbar(
+                TwoActionSnackbarVisuals(
+                    message = event.sentence().text(),
+                    actionLabel = getString(Res.string.detail_undo),
+                    secondaryLabel = getString(Res.string.detail_add_used_up),
+                    onSecondary = { viewModel.addUsedUpToList(event.cooked) },
+                ),
+            )
+        if (outcome == SnackbarResult.ActionPerformed) viewModel.undoCook(event.cooked)
+        return
+    }
     // Bounded: with an action, Material's default is Indefinite and the snackbar would never go away.
     val action: Pair<String?, (() -> Unit)?> =
         when (event) {
@@ -709,6 +725,7 @@ private suspend fun SnackbarHostState.announce(
                 }
             is RecipeDetailEvent.AddedToList ->
                 if (event.added == 0) null to null else getString(Res.string.detail_view_list) to onViewShoppingList
+            is RecipeDetailEvent.UsedUpAddedToList -> getString(Res.string.detail_view_list) to onViewShoppingList
             else -> null to null
         }
     val (label, onAction) = action
@@ -739,6 +756,7 @@ internal fun RecipeDetailEvent.sentence(): UiText =
             )
         is RecipeDetailEvent.Cooked -> UiText.of(Res.string.snack_cooked)
         RecipeDetailEvent.CookUndone -> UiText.of(Res.string.snack_cook_undone)
+        is RecipeDetailEvent.UsedUpAddedToList -> UiText.Plural(Res.plurals.snack_used_up_added, count)
         RecipeDetailEvent.Saved -> UiText.of(Res.string.snack_saved)
         RecipeDetailEvent.Unsaved -> UiText.of(Res.string.snack_unsaved)
         is RecipeDetailEvent.Failed -> message

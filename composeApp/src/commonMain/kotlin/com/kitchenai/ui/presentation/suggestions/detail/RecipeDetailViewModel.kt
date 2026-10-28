@@ -303,6 +303,12 @@ class RecipeDetailViewModel(
     fun undoCook(cooked: CookPlan) =
         act { kitchen -> writes.undoCook(kitchen, cooked).map { RecipeDetailEvent.CookUndone } }
 
+    /** The cook's snackbar offers this when the cook emptied rows: they are what to buy again. */
+    fun addUsedUpToList(cooked: CookPlan) =
+        act { kitchen ->
+            writes.addToList(kitchen, listLabels, cooked.usedUp).map { RecipeDetailEvent.UsedUpAddedToList(it) }
+        }
+
     /**
      * One match at a time, whoever asked for it. A slower earlier read landing last would put
      * the buckets back to a count the stepper has already left — the same disagreement the

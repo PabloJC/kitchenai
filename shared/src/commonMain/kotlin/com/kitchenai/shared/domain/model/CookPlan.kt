@@ -10,4 +10,7 @@ data class CookPlan(
     val missing: List<MissingIngredient>,
 ) {
     val isComplete: Boolean get() = missing.none { !it.ingredient.optional }
+
+    /** Rows this cook empties, as they were before it: what there is to buy again. */
+    val usedUp: List<PantryItem> get() = deductions.filter { it.after.quantity.amount <= 0.0 }.map { it.before }
 }

@@ -939,6 +939,24 @@ shared case, a second device joined to that kitchen (scenario 5).*
 3. Shopping: type `2 milk` in the add field and send without tapping the chip.
    - The line is "Milk" with "2", not italic. Moving it to the pantry merges with step 1's row.
 
+### 40. Acting on the pantry: buy again, cook what expires, clear the expired
+
+1. Pantry: with TalkBack or VoiceOver on, focus a row and open its actions.
+   - "Add to shopping list" is listed next to "Delete". Choosing it shows "Eggs added to the list"
+     with "View list", which opens Shopping with an "Eggs" line and no amount.
+2. Open a row's sheet and tap "Add to shopping list".
+   - The sheet closes and the same confirmation shows.
+3. Swipe a row away.
+   - The message reads "Eggs removed", with "Add to list" and "Undo". "Add to list" puts it on the list;
+     "Undo" brings the row back.
+4. Cook a recipe that uses a whole row up.
+   - The message offers "Add to list" next to "Undo"; tapping it says the used up item was added.
+5. With items under "Use soon", tap "Get ideas" on that header.
+   - Ideas opens with "Use what expires soon" selected and nothing generated yet.
+6. With three items under "Expired", tap "Remove all".
+   - The dialog says "Remove 3 expired items?". Removing empties the section; the message's "Undo"
+     brings all three back.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
