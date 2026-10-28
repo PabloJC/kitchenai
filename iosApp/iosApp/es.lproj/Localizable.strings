@@ -1,0 +1,10 @@
+/* The Siri and Shortcuts intent that adds a line to the shopping list. */
+"intent.add.title" = "Añadir a la lista de la compra";
+"intent.add.short" = "Añadir a la lista";
+"intent.add.description" = "Añade una línea a tu lista de la compra de KitchenAI.";
+"intent.add.item" = "Artículo";
+"intent.add.ask" = "¿Qué añado?";
+"intent.add.done %@" = "He añadido %@ a tu lista.";
+"intent.add.nothing" = "No he entendido qué añadir.";
+"intent.add.no_list" = "Abre KitchenAI una vez para preparar tu lista.";
+"intent.add.failed" = "No he podido añadirlo ahora. Inténtalo de nuevo en un momento.";

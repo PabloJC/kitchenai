@@ -1,5 +1,6 @@
 package com.kitchenai.ui.di
 
+import com.kitchenai.ui.presentation.quickadd.QuickAddToList
 import com.kitchenai.ui.presentation.shopping.ShoppingReadsDelegate
 import com.kitchenai.ui.presentation.shopping.ShoppingViewModel
 import com.kitchenai.ui.presentation.shopping.ShoppingWritesDelegate
@@ -15,4 +16,5 @@ val shoppingPresentationModule: Module =
         factory { ShoppingWritesDelegate(get(), get(), get(), get(), get(), get(), get()) }
         viewModel { ShoppingViewModel(get(), get(), get(), get()) }
         factory { ShoppingWidgetLoader(get(), get(), get()) }
+        factory { QuickAddToList(get(), get()) }
     }

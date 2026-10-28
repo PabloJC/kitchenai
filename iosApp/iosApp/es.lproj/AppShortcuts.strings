@@ -1,0 +1,3 @@
+/* Siri phrases. ${applicationName} is the app's name as the user says it. */
+"Add to my ${applicationName} list" = "Añadir a mi lista de ${applicationName}";
+"Add to ${applicationName}" = "Añadir a ${applicationName}";
