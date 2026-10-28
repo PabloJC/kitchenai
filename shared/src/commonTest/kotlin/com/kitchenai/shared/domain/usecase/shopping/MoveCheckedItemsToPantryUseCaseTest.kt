@@ -2,6 +2,7 @@ package com.kitchenai.shared.domain.usecase.shopping
 
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.shared.core.AppResult
+import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.MoveToPantryOptions
 import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.usecase.pantry.FakePantryRepositoryContract
@@ -15,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class MoveCheckedItemsToPantryUseCaseTest {
     private val list = listId()
@@ -253,10 +255,9 @@ class MoveCheckedItemsToPantryUseCaseTest {
 
             useCase(items, pantry)(kitchenId(), list, options)
 
-            assertEquals(
-                mapOf(ingredientId("rice") to instant(9_000), ingredientId("pasta") to null),
-                pantry.items.associate { it.ingredient to it.expiresAt },
-            )
+            val dates = pantry.items.associate { it.ingredient to it.expiresAt }
+            val expected = mapOf<IngredientId?, Instant?>(ingredientId("rice") to instant(9_000), ingredientId("pasta") to null)
+            assertEquals(expected, dates)
         }
 
     @Test

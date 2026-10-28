@@ -334,10 +334,7 @@ class ShoppingViewModelTest {
                 assertEquals(ShoppingEvent.MovedToPantry(moved = 2, skipped = 0), awaitMove().copy(undo = null))
             }
             assertEquals(setOf(itemId("item-1"), itemId("item-2")), items.removedBatch.toSet())
-            assertEquals(
-                mapOf("written by hand" to Quantity(1.0)),
-                pantry.held.filter { it.freeText != null }.associate { it.freeText to it.quantity },
-            )
+            assertEquals(Quantity(1.0), pantry.held.single { it.freeText == "written by hand" }.quantity)
             assertEquals(date, pantry.held.single { it.ingredient != null }.expiresAt)
         }
 
