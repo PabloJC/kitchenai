@@ -36,4 +36,15 @@ class LaunchTargetTest {
 
             assertEquals(Unit, requests.requests.first())
         }
+
+    @Test
+    fun `a quick action handed in before the shell composes is the one it follows`() =
+        runTest {
+            val links = LaunchLinks()
+
+            links.open("kitchenai://pantry")
+            links.open("kitchenai://ideas")
+
+            assertEquals(LaunchTarget.IDEAS, LaunchTarget.parse(links.links.first()))
+        }
 }

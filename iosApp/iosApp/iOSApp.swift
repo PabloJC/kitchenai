@@ -6,6 +6,9 @@ import ComposeApp   // the framework also exports the :shared types
 
 @main
 struct iOSApp: App {
+    // Quick actions arrive through a scene delegate, which only an app delegate can install.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         // App Check before configure(): the factory is consulted during configuration.
         // #if DEBUG, not a build type as on Android: the iOS SDK is a single product, so the
