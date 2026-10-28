@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
+import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.MoveToPantryOptions
 import com.kitchenai.shared.domain.model.PantryMoveRecord
@@ -21,6 +22,7 @@ import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUse
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
+import com.kitchenai.ui.presentation.common.exactCatalogueMatch
 import com.kitchenai.ui.presentation.common.foldForSearch
 import com.kitchenai.ui.presentation.common.wordFor
 import com.kitchenai.ui.resources.Res
@@ -346,13 +348,15 @@ class ShoppingViewModel(
         val unit = if (current.amount != null) current.unit else typed.unit
         // Zero or less is not an amount: it would be refused downstream, so the line goes in bare.
         val quantity = amount?.takeIf { it > 0.0 }?.let { held -> Quantity(held, unit) }
+        // "milk" typed and sent is the catalogue's Milk: a free-text line never matches a recipe.
+        val ingredient = picked?.id ?: namedExactly(text)
         val dispatched =
             edit { kitchen, list ->
                 writes.add(
                     kitchenId = kitchen,
                     listId = list,
-                    ingredient = picked?.id,
-                    freeText = if (picked == null) text else null,
+                    ingredient = ingredient,
+                    freeText = if (ingredient == null) text else null,
                     quantity = quantity,
                 )
             }
@@ -360,6 +364,9 @@ class ShoppingViewModel(
         // the default list was still resolving.
         if (dispatched) draft.value = ShoppingDraftUi(revision = current.revision + 1)
     }
+
+    private fun namedExactly(text: String): IngredientId? =
+        exactCatalogueMatch(text, catalogue.value) { ingredient -> resolver.value.label(ingredient.id).orEmpty() }?.id
 
     /** Rebuilt from every source at once: a resolver missing one of them answers with an id. */
     private fun rebuildResolver() {
