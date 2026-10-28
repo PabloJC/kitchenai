@@ -87,6 +87,21 @@ class PantryDraftBuilderTest {
         assertNull(pickedOption("other", listOf(salt), null))
     }
 
+    @Test
+    fun `typed text that is exactly a catalogue name is saved as that entry`() {
+        val milk = IngredientOption(ingredient("milk"), "Milk", litre)
+        val catalogue = listOf(salt, milk, IngredientOption(ingredient("milk-oat"), "Oat milk", litre))
+
+        assertEquals(milk, savedOption(null, " milk ", catalogue))
+        assertNull(savedOption(null, "mil", catalogue))
+        assertNull(savedOption(null, "fresh milk", catalogue))
+        assertEquals(salt, savedOption(salt, "milk", catalogue))
+
+        val draft = draftOf(savedOption(null, "milk", catalogue), "milk", null, false, litre, null, null)
+        assertEquals(milk.id, draft?.ingredient)
+        assertNull(draft?.freeText)
+    }
+
     private fun ref(term: String) = TermRef(TaxonomyId.of("units").value(), TermId.of(term).value())
 
     private fun ingredient(id: String) = IngredientId.of(id).value()

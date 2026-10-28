@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.ui.presentation.common.exactCatalogueMatch
 import kotlin.time.Instant
 
 /** What a blank amount means: the sheet is for "I have some", not for counting salt. */
@@ -32,6 +33,16 @@ internal fun draftOf(
         expiresAt = expiresAt,
     )
 }
+
+/**
+ * What the sheet saves as the ingredient: the pick, else the one catalogue entry the text names
+ * exactly. "milk" typed and saved is the catalogue's Milk, which the recipe matcher can reason about.
+ */
+internal fun savedOption(
+    picked: IngredientOption?,
+    text: String,
+    catalogue: List<IngredientOption>,
+): IngredientOption? = picked ?: exactCatalogueMatch(text, catalogue) { option -> option.label }
 
 /**
  * The unit the sheet shows: the one reported, else the ingredient's own, else the first on offer.

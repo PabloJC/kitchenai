@@ -307,6 +307,7 @@
     <string name="pantry_editor_title_add">Añadir a la despensa</string>
     <string name="pantry_editor_title_edit">Editar %1$s</string>
     <string name="pantry_editor_recent">Recientes</string>
+    <string name="pantry_editor_will_save">Se guardará como este del catálogo</string>
     <string name="pantry_editor_free_text_hint">No está en el catálogo: se guardará tal como lo escribes</string>
     <string name="pantry_editor_clear_search">Borrar búsqueda</string>
     <string name="pantry_editor_amount_malformed">Introduce un número</string>

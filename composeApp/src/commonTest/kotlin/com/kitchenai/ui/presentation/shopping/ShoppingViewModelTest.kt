@@ -535,6 +535,41 @@ class ShoppingViewModelTest {
         }
 
     @Test
+    fun `a typed name that is exactly a catalogue entry is added as that entry`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(emptyList())
+            catalogue.emit(listOf(Ingredient(ingredientId, mapOf("en" to "Catalogued"), null, emptyList())))
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("2 catalogued")
+            viewModel.add()
+            advanceUntilIdle()
+
+            val added = items.upserts.last().single()
+            assertEquals(ingredientId, added.ingredient)
+            assertNull(added.freeText)
+            assertEquals(Quantity(2.0, null), added.quantity)
+        }
+
+    @Test
+    fun `a typed name that only starts like a catalogue entry stays free text`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(emptyList())
+            catalogue.emit(listOf(Ingredient(ingredientId, mapOf("en" to "Catalogued"), null, emptyList())))
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("catalog")
+            viewModel.add()
+            advanceUntilIdle()
+
+            val added = items.upserts.last().single()
+            assertNull(added.ingredient)
+            assertEquals("catalog", added.freeText)
+        }
+
+    @Test
     fun `a suggestion already on the list says so`() =
         runTest(dispatcher) {
             val viewModel = started()
