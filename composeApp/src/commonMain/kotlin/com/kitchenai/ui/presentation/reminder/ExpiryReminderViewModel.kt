@@ -9,6 +9,7 @@ import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.reminder.SaveReminderSettingsUseCase
 import com.kitchenai.ui.platform.ExpiryReminderScheduler
 import com.kitchenai.ui.platform.ScheduledReminder
+import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.clockTime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -36,6 +38,7 @@ class ExpiryReminderViewModel(
     private val time: TimeProvider,
     private val wording: ReminderWording = ResourceReminderWording,
     private val zone: () -> TimeZone = { TimeZone.currentSystemDefault() },
+    private val languageTags: () -> List<String> = { platformLanguageTags() },
 ) : ViewModel() {
     private val internalState = MutableStateFlow(ExpiryReminderUiState())
     val state: StateFlow<ExpiryReminderUiState> = internalState.asStateFlow()
@@ -56,7 +59,9 @@ class ExpiryReminderViewModel(
 
     private suspend fun follow(userId: UserId) {
         val pantry = reads.kitchen(userId).flatMapLatest { kitchen -> reads.pantry(kitchen.id) }
-        combine(pantry, reads.settings(), ::Pair).collectLatest { (items, settings) ->
+        // The catalogue only names lines: it starts empty so the first plan never waits on it.
+        val catalogue = reads.ingredients().onStart { emit(emptyList()) }
+        combine(pantry, reads.settings(), catalogue, ::Triple).collectLatest { (items, settings, known) ->
             val dated = items.any { item -> item.expiresAt != null }
             internalState.update {
                 it.copy(
@@ -64,17 +69,18 @@ class ExpiryReminderViewModel(
                     time = clockTime(settings.hour, settings.minute),
                 )
             }
-            val digests = if (settings.offered) reads.plan(items, settings, time.now(), zone()) else emptyList()
-            if (digests.isEmpty()) {
+            // Kept going while reminders are on, even on a quiet day: Android's job reads the pantry itself.
+            if (!settings.offered || !settings.enabled) {
                 scheduler.cancel()
-            } else {
-                scheduler.schedule(
-                    digests.map { digest ->
-                        val text = wording.describe(digest)
-                        ScheduledReminder(digest.fireAt, text.title, text.body, text.channelName)
-                    },
-                )
+                return@collectLatest
             }
+            val names = namesFrom(known, languageTags())
+            val reminders =
+                reads.plan(items, settings, time.now(), zone()).map { digest ->
+                    val text = wording.describe(digest, names)
+                    ScheduledReminder(digest.fireAt, text.title, text.body, text.publicBody, text.channelName)
+                }
+            scheduler.schedule(reminders, settings.hour, settings.minute)
         }
     }
 

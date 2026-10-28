@@ -16,7 +16,8 @@ import kotlin.time.Instant
 
 /**
  * Plans the daily reminders for the next [HORIZON_DAYS] from a pantry snapshot, so they keep coming
- * with the app closed. A day gets one when something expires that day or the next; the first also
+ * with the app closed where the platform cannot run code at the time (iOS). A day gets one when
+ * something expires that day or the next; the first also
  * when something is already past its date. Empty means nothing to say, or reminders are off.
  */
 class PlanExpiryDigestsUseCase {
@@ -27,18 +28,39 @@ class PlanExpiryDigestsUseCase {
         zone: TimeZone,
     ): List<ExpiryDigest> {
         if (!settings.enabled) return emptyList()
-        val dated = items.mapNotNull { it.expiresAt }
         val time = LocalTime(settings.hour, settings.minute)
         val first = firstDay(time, now, zone)
         return (0 until HORIZON_DAYS).mapNotNull { day ->
             // A DST gap moves the time to the next valid instant.
             val fireAt = LocalDateTime(first.plus(DatePeriod(days = day)), time).toInstant(zone)
-            // Calendar days, as the pantry counts them: today and tomorrow are soon, yesterday is gone.
-            val days = dated.map { expiry -> daysUntilExpiry(expiry, fireAt, zone) }
-            val expired = days.count { it < 0 }
-            val expiring = days.count { it in 0..SOON_DAYS }
-            if (expiring > 0 || (day == 0 && expired > 0)) ExpiryDigest(fireAt, expiring, expired) else null
+            digestAt(fireAt, items, zone, countExpired = day == 0)
         }
+    }
+
+    /**
+     * The reminder as of [now], for a job that wakes at the chosen time and reads the pantry as it
+     * is then: it can never announce what someone else already used. Null means nothing to say.
+     */
+    fun today(
+        items: List<PantryItem>,
+        settings: ReminderSettings,
+        now: Instant,
+        zone: TimeZone,
+    ): ExpiryDigest? = if (settings.enabled) digestAt(now, items, zone, countExpired = true) else null
+
+    // Calendar days, as the pantry counts them: today and tomorrow are soon, yesterday is gone.
+    private fun digestAt(
+        fireAt: Instant,
+        items: List<PantryItem>,
+        zone: TimeZone,
+        countExpired: Boolean,
+    ): ExpiryDigest? {
+        val dated = items.mapNotNull { item -> item.expiresAt?.let { item to daysUntilExpiry(it, fireAt, zone) } }
+        val expired = dated.count { (_, days) -> days < 0 }
+        val expiring =
+            dated.filter { (_, days) -> days in 0..SOON_DAYS }.sortedBy { (_, days) -> days }.map { it.first }
+        val worthSaying = expiring.isNotEmpty() || (countExpired && expired > 0)
+        return if (worthSaying) ExpiryDigest(fireAt, expiring, expired) else null
     }
 
     /** Today if the time is still ahead, tomorrow otherwise. */

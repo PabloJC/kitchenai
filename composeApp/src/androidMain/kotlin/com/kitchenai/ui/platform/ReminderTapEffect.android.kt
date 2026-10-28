@@ -16,8 +16,8 @@ actual fun ReminderTapEffect(onOpen: () -> Unit) {
     DisposableEffect(activity) {
         // The extra is removed once read, so a rotation does not open the pantry a second time.
         fun handle(intent: Intent) {
-            if (intent.getBooleanExtra(ExpiryReminderReceiver.EXTRA_OPEN_PANTRY, false)) {
-                intent.removeExtra(ExpiryReminderReceiver.EXTRA_OPEN_PANTRY)
+            if (intent.getBooleanExtra(ExpiryReminderNotifier.EXTRA_OPEN_PANTRY, false)) {
+                intent.removeExtra(ExpiryReminderNotifier.EXTRA_OPEN_PANTRY)
                 open()
             }
         }

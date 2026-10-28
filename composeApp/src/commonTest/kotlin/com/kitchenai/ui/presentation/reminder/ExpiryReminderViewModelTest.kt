@@ -10,12 +10,14 @@ import com.kitchenai.shared.domain.model.ReminderSettings
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.port.TimeProvider
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
+import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.reminder.ObserveReminderSettingsUseCase
 import com.kitchenai.shared.domain.usecase.reminder.PlanExpiryDigestsUseCase
 import com.kitchenai.shared.domain.usecase.reminder.SaveReminderSettingsUseCase
 import com.kitchenai.ui.platform.ExpiryReminderScheduler
 import com.kitchenai.ui.platform.ScheduledReminder
+import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
 import com.kitchenai.ui.presentation.common.FakeReminderSettingsPort
@@ -89,7 +91,10 @@ class ExpiryReminderViewModelTest {
             assertFalse(viewModel.state.value.offering)
             assertEquals(ReminderSettings(enabled = true, offered = true), settings.current.value)
             assertEquals(LocalDateTime(2026, 10, 20, 18, 0).toInstant(zone), scheduler.next?.fireAt)
-            assertEquals("1 expiring, 0 expired", scheduler.next?.body)
+            // The catalogue never answered, so the line falls back to its id rather than to silence.
+            assertEquals("1 expiring (ing-a), 0 expired", scheduler.next?.body)
+            assertEquals("public", scheduler.next?.publicBody)
+            assertEquals(18 to 0, scheduler.time)
             // Today, the evening before, and tomorrow, its own day.
             assertEquals(2, scheduler.pending.size)
         }
@@ -167,6 +172,19 @@ class ExpiryReminderViewModelTest {
         }
 
     @Test
+    fun `a quiet day keeps the daily job at the chosen time`() =
+        runTest(dispatcher) {
+            settings.current.value = ReminderSettings(offered = true, hour = 9, minute = 30)
+            started(FakePantryPort(listOf(item("a", null))))
+            advanceUntilIdle()
+
+            assertEquals(1, scheduler.scheduledCount)
+            assertTrue(scheduler.pending.isEmpty())
+            assertEquals(9 to 30, scheduler.time)
+            assertEquals(0, scheduler.cancelled)
+        }
+
+    @Test
     fun `another user replaces the previous listener instead of adding one`() =
         runTest(dispatcher) {
             settings.current.value = ReminderSettings(offered = true)
@@ -193,15 +211,22 @@ class ExpiryReminderViewModelTest {
                     pantry = ObservePantryUseCase(pantry),
                     settings = ObserveReminderSettingsUseCase(settings),
                     plan = PlanExpiryDigestsUseCase(),
+                    ingredients = ObserveIngredientsUseCase(FakeIngredientPort()),
                 ),
             save = SaveReminderSettingsUseCase(settings),
             scheduler = scheduler,
             time = TimeProvider { now },
-            wording = {
-                    digest ->
-                ReminderText("title", "${digest.expiringCount} expiring, ${digest.expiredCount} expired", "channel")
+            wording = { digest, nameOf ->
+                val names = digest.expiring.joinToString(transform = nameOf)
+                ReminderText(
+                    "title",
+                    "${digest.expiringCount} expiring ($names), ${digest.expiredCount} expired",
+                    "public",
+                    "channel",
+                )
             },
             zone = { zone },
+            languageTags = { listOf("en") },
         ).also { it.start(user) }
 
     private fun item(
@@ -228,8 +253,16 @@ private class RecordingScheduler : ExpiryReminderScheduler {
     var cancelled = 0
         private set
 
-    override fun schedule(reminders: List<ScheduledReminder>) {
+    var time: Pair<Int, Int>? = null
+        private set
+
+    override fun schedule(
+        reminders: List<ScheduledReminder>,
+        hour: Int,
+        minute: Int,
+    ) {
         pending = reminders
+        time = hour to minute
         scheduledCount++
     }
 

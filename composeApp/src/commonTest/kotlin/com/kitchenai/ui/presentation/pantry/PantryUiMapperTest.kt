@@ -15,6 +15,7 @@ import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.endOfDay
 import com.kitchenai.ui.presentation.common.nameOf
 import com.kitchenai.ui.presentation.common.wordFor
 import com.kitchenai.ui.resources.Res

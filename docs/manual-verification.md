@@ -409,7 +409,7 @@ something to work from. Run on both platforms.*
 6. Console: set `term` to each of a few known values in turn (`pasta`, `soup`, `dessert`).
    - The photograph changes to match each.
 
-### 11. A hand-typed shopping line carries an amount and moves to the pantry
+### 11. Moving the cart to the pantry, with dates and bare lines
 
 *Run on both platforms. Check the keyboard in steps 1 and 5.*
 
@@ -419,19 +419,27 @@ something to work from. Run on both platforms.*
      the name field, the amount field and "Add" are all visible and tappable.
 2. Type `2` in "Amount", choose "kg" in the unit selector and tap "Add".
    - The line appears in "To buy" with "2 kg" on its right. The amount field is empty again.
-3. Add a second line with no amount.
-   - It shows an "Add amount" button where the amount would be.
-4. Tick both lines, then tap "Move to pantry".
-   - The message is "1 moved to the pantry, 1 has no amount and stays on the list". The "2 kg"
-     line is gone from the list and the Pantry tab holds it with "2 kg".
-5. Tap "Add amount" on the remaining line.
-   - A dialog with the amount field and the unit selector opens and stays usable with the keyboard
-     open. "Save" stays disabled until the amount is a number above zero.
-6. Enter `500`, choose "g", tap "Save", then tick the line and tap "Move to pantry".
-   - The line shows "500 g" and moves; the Pantry tab holds it.
-7. Add another line with no amount, tick only it, tap "Move to pantry".
-   - The message says nothing moved because the line has no amount and points at "Add amount";
-     the line stays on the list.
+3. Add a second line with no amount, and a catalogue line such as "Milk" with no amount.
+   - Each shows an "Add amount" button where the amount would be.
+4. Tick all three, then tap "Move 3 to pantry".
+   - A sheet opens listing the three lines, each with "No expiry date" on its right. The two bare
+     lines have an "Amount" field showing "1 (no amount)". No dialog asks for an amount.
+5. Tap "+1 week" under "Same date for all", then tap the date on the "2 kg" line and pick "+3 days".
+   Type `3` in the hand-typed bare line's "Amount" field.
+   - Every line shows the date a week from today except the "2 kg" one, which shows three days from
+     today. Typing `0` or `abc` in the field disables both buttons; `3` enables them again.
+6. Tap "Move 3 to pantry".
+   - The message is "3 moved to the pantry", with "Undo" and "View pantry". In the Pantry tab the
+     "2 kg" line is under "Use soon"; the bare line holds "3"; "Milk" holds 1 in its default unit.
+     The expiry reminder (scenario 38) counts the "2 kg" line when it fires on its expiry day.
+7. Tap "Undo" on the message instead, from a fresh repeat of steps 3–6.
+   - The three lines come back to the cart exactly as they were (the bare ones still bare) and the
+     pantry loses the rows the move added.
+8. Pantry already holds the "2 kg" item with a date two days away. Add the same item to the list
+   with an amount, tick it, open the sheet, give it "+1 month" and move it.
+   - The pantry row adds the amounts and keeps the earlier date (two days away).
+9. Tick a line, open the sheet, give it a date and tap "Skip dates".
+   - The line moves with no date and appears under "No expiry date".
 
 ---
 
@@ -788,7 +796,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
      back on the next launch.
 3. Tap "Remind me". On Android 13+ and on iOS the system permission prompt follows.
    - Allow it. Set the device clock to 17:59 today and wait: at 18:00 one notification titled
-     "Use it before it goes" says how many items expire within a day and how many are past their
+     "Use it before it goes" names up to three items that expire today or tomorrow and counts those past their
      date. Tapping it opens the app on the Pantry tab, from another tab or with the app closed.
 4. Reinstall, repeat step 2 and tap "No, thanks", or deny the system prompt.
    - The dialog never returns and no notification arrives at 18:00.
@@ -899,6 +907,27 @@ shared case, a second device joined to that kitchen (scenario 5).*
      leave your current kitchen" warning.
 4. On a third fresh install, enter a code that matches no kitchen.
    - "That code does not match any kitchen" shows under the field, and the page stays put.
+
+### 38. Reminders keep coming after a reboot or a quiet week, and never about food already used
+
+*Reminders on (scenario 30), set to a time a few minutes ahead.*
+
+1. Android: give an item a date tomorrow, close the app, reboot the phone and do not open the app.
+   - At the chosen time the reminder arrives and names the item. With the phone locked it shows
+     only the count; unlocked, the names.
+2. Android: set the device clock eight days ahead, with an item expiring the day after.
+   - The reminder still arrives at the chosen time without the app having been opened.
+3. With two devices in one kitchen (scenario 5), give an item a date tomorrow, then delete it on
+   the second device shortly before the time.
+   - Android: the first device says nothing about it. iOS: the same, if the app was opened in
+     between; otherwise the reminder may still name it, and Pantry shows the truth.
+4. Turn reminders on in Profile and refuse the system prompt.
+   - The note says notifications are off and offers "Open settings". It opens KitchenAI's
+     notification settings; allow them, come back, and the switch is on and the note gone.
+5. Android: change the device time zone (or cross a DST change), open the app once, and wait for
+   the chosen time.
+   - The reminder arrives at the chosen local time, not shifted by the zone difference. Without
+     opening the app after the change it may arrive shifted until the next launch.
 
 ### 39. A typed catalogue name is saved as the catalogue entry
 

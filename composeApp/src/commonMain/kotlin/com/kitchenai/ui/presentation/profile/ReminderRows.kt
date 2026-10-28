@@ -21,11 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.rememberNotificationPermissionRequest
+import com.kitchenai.ui.platform.rememberOpenNotificationSettings
 import com.kitchenai.ui.presentation.common.clockTime
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.reminder_open_settings
 import com.kitchenai.ui.resources.reminder_setting_body
 import com.kitchenai.ui.resources.reminder_setting_refused
 import com.kitchenai.ui.resources.reminder_setting_time
@@ -63,7 +66,7 @@ internal fun ReminderRows(
                         .semantics { stateDescription = time },
             )
         }
-        if (state.permissionRefused) Note(stringResource(Res.string.reminder_setting_refused))
+        if (state.permissionRefused) RefusedNote(onCameBack = { onToggle(true) })
         state.error?.let { message -> Note(message.resolve()) }
     }
     if (choosingTime) {
@@ -98,6 +101,32 @@ private fun TimeDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.reminder_time_cancel)) } },
         text = { TimePicker(state = picker) },
     )
+}
+
+/**
+ * The way out of a refusal: the app's own notification settings. Coming back asks again, which
+ * the system answers at once now that the choice is made, so allowing them turns this note off.
+ */
+@Composable
+private fun RefusedNote(onCameBack: () -> Unit) {
+    val openSettings = rememberOpenNotificationSettings()
+    var opened by remember { mutableStateOf(false) }
+    // Keyed on nothing: a key change would run this at once, before the person has even left.
+    LifecycleResumeEffect(Unit) {
+        if (opened) {
+            opened = false
+            onCameBack()
+        }
+        onPauseOrDispose {}
+    }
+    Note(stringResource(Res.string.reminder_setting_refused))
+    TextButton(
+        onClick = {
+            opened = true
+            openSettings()
+        },
+        modifier = Modifier.padding(horizontal = Dimens.small),
+    ) { Text(stringResource(Res.string.reminder_open_settings)) }
 }
 
 @Composable
