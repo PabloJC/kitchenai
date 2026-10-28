@@ -52,6 +52,7 @@ import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
+import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.SectionHeader
@@ -68,6 +69,7 @@ import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.presentation.common.text
 import com.kitchenai.ui.resources.Res
+import com.kitchenai.ui.resources.error_retry
 import com.kitchenai.ui.resources.not_in_catalogue
 import com.kitchenai.ui.resources.shopping_add_amount
 import com.kitchenai.ui.resources.shopping_add_field
@@ -120,8 +122,7 @@ fun ShoppingScreen(
     var editingAmountOf by rememberSaveable { mutableStateOf<String?>(null) }
 
     val defaultListName = stringResource(Res.string.shopping_default_list)
-    val addField = remember { FocusRequester() }
-    FocusOnAddRequest(addField)
+    val addField = rememberAddFieldFocus()
 
     LaunchedEffect(userId) { viewModel.start(userId, platformLanguageTags(), defaultListName) }
     // The list's name is the tab's title: a second heading under the bar said the same thing twice.
@@ -140,7 +141,7 @@ fun ShoppingScreen(
         snackbarHost = { ShoppingSnackbarHost(snackbar) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
-            state.error?.let { message -> ErrorBanner(message) }
+            state.error?.let { message -> ShoppingErrorBanner(message, state.bannerOffersRetry, viewModel::retry) }
 
             ShoppingBody(
                 state = state,
@@ -148,6 +149,7 @@ fun ShoppingScreen(
                 onRemove = viewModel::remove,
                 onEditAmount = { id -> editingAmountOf = id.value },
                 onStartAdding = { addField.requestFocus() },
+                onRetry = viewModel::retry,
             )
 
             if (state.tickedCount > 0) {
@@ -186,9 +188,10 @@ fun ShoppingScreen(
     }
 }
 
-/** A shortcut's "Add to shopping list" lands here: the cursor goes straight into the add field. */
+/** The add field's requester; a shortcut's "Add to shopping list" puts the cursor straight into it. */
 @Composable
-private fun FocusOnAddRequest(addField: FocusRequester) {
+private fun rememberAddFieldFocus(): FocusRequester {
+    val addField = remember { FocusRequester() }
     val requests = koinInject<ShoppingAddRequests>()
     LaunchedEffect(requests) {
         requests.requests.collect {
@@ -197,6 +200,7 @@ private fun FocusOnAddRequest(addField: FocusRequester) {
             addField.requestFocus()
         }
     }
+    return addField
 }
 
 /** The part of the screen that depends on whether the list loaded, failed or is empty. */
@@ -207,6 +211,7 @@ private fun ColumnScope.ShoppingBody(
     onRemove: (ShoppingItemId) -> Unit,
     onEditAmount: (ShoppingItemId) -> Unit,
     onStartAdding: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     when {
         state.isLoading -> LoadingState(Modifier.weight(1f))
@@ -217,6 +222,8 @@ private fun ColumnScope.ShoppingBody(
                 title = stringResource(Res.string.shopping_failed_title),
                 body = stringResource(Res.string.shopping_failed_body),
                 modifier = Modifier.weight(1f),
+                actionLabel = stringResource(Res.string.error_retry),
+                onAction = onRetry,
             )
 
         state.unchecked.isEmpty() && state.checked.isEmpty() ->
@@ -467,14 +474,21 @@ private fun ClearCheckedDialog(
     )
 }
 
-/** Above the list rather than replacing it: a failed listener leaves the last good lines standing. */
+/**
+ * Above the list rather than replacing it: a failed listener leaves the last good lines standing.
+ * A refused write offers no Try again, since listening again would not change the answer.
+ */
 @Composable
-private fun ErrorBanner(message: UiText) {
-    Text(
-        text = message.resolve(),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.large),
+private fun ShoppingErrorBanner(
+    message: UiText,
+    canRetry: Boolean,
+    onRetry: () -> Unit,
+) {
+    ErrorBanner(
+        message = message.resolve(),
+        modifier = Modifier.padding(horizontal = Dimens.large, vertical = Dimens.small),
+        retryLabel = if (canRetry) stringResource(Res.string.error_retry) else null,
+        onRetry = onRetry.takeIf { canRetry },
     )
 }
 

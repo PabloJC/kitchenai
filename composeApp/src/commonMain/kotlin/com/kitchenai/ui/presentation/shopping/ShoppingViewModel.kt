@@ -24,6 +24,7 @@ import com.kitchenai.ui.presentation.common.foldForSearch
 import com.kitchenai.ui.presentation.common.wordFor
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_list
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -62,6 +63,11 @@ class ShoppingViewModel(
     val events: Flow<ShoppingEvent> = _events.receiveAsFlow()
 
     private var started = false
+    private var userId: UserId? = null
+    private var defaultListName = ""
+
+    // Every listener, so a retry restarts them together.
+    private var listeners: Job? = null
 
     // Written by the bootstrap coroutine and read by every public method, so not plain fields.
     // The kitchen can change while this screen is open (joining another one), so it is a
@@ -143,17 +149,37 @@ class ShoppingViewModel(
         this.languageTags = languageTags
         rebuildResolver()
         listName.value = defaultListName
-        watchCatalogue()
-        watchUnits()
-        watchKitchen(userId)
-        watchDefaultList(defaultListName)
+        this.userId = userId
+        this.defaultListName = defaultListName
+        subscribe(userId)
     }
 
-    private fun watchKitchen(userId: UserId) {
-        viewModelScope.launch {
+    /** Re-subscribes after a listener failed; lines already on screen stay there meanwhile. */
+    fun retry() {
+        val uid = userId ?: return
+        itemsError.value = null
+        catalogueError.value = null
+        // Back to loading only when nothing ever arrived: a list on screen stays a list.
+        itemsAnswered.value = items.value != null
+        listeners?.cancel()
+        subscribe(uid)
+    }
+
+    private fun subscribe(userId: UserId) {
+        listeners =
+            viewModelScope.launch {
+                watchCatalogue()
+                watchUnits()
+                watchKitchen(userId)
+                watchDefaultList(defaultListName)
+            }
+    }
+
+    private fun CoroutineScope.watchKitchen(userId: UserId) {
+        launch {
             observeKitchen(userId).collect { kitchen -> kitchenId.value = kitchen.id }
         }
-        viewModelScope.launch {
+        launch {
             observeKitchen.errors(userId).collect { error ->
                 itemsError.value = error.describe(Res.string.error_unauthorized_list)
                 itemsAnswered.value = true
@@ -166,8 +192,8 @@ class ShoppingViewModel(
      * the user is in over the life of the screen. [collectLatest] cancels the previous kitchen's
      * item listeners (started inside the same [coroutineScope]) before this runs for the new one.
      */
-    private fun watchDefaultList(defaultListName: String) {
-        viewModelScope.launch {
+    private fun CoroutineScope.watchDefaultList(defaultListName: String) {
+        launch {
             kitchenId.filterNotNull().collectLatest { kitchen ->
                 val labels = languageTags.take(1).associateWith { defaultListName }
                 when (val list = ensureDefaultShoppingList(kitchen, labels)) {
@@ -345,8 +371,8 @@ class ShoppingViewModel(
     }
 
     /** The unit vocabulary, as the detail screen watches it: a quantity is not a bare number. */
-    private fun watchUnits() {
-        viewModelScope.launch {
+    private fun CoroutineScope.watchUnits() {
+        launch {
             // collectLatest and coroutineScope: a re-emission replaces the per-taxonomy
             // collectors rather than adding a second one for the same taxonomy.
             reads.taxonomies().collectLatest { published ->
@@ -366,15 +392,15 @@ class ShoppingViewModel(
         }
     }
 
-    private fun watchCatalogue() {
-        viewModelScope.launch {
+    private fun CoroutineScope.watchCatalogue() {
+        launch {
             reads.ingredients().collect { loaded ->
                 catalogue.value = loaded
                 rebuildResolver()
                 catalogueError.value = null
             }
         }
-        viewModelScope.launch {
+        launch {
             reads.ingredients.errors().collect { error ->
                 catalogueError.value = error.describe(Res.string.error_unauthorized_list)
             }
@@ -399,6 +425,8 @@ class ShoppingViewModel(
             failedToLoad = lines.failedToLoad,
             // A write that was rejected is the newest thing that happened, so it speaks first.
             error = writeFailure ?: lines.error ?: catalogueError,
+            // Listening again cannot help a refused write, so only a listener failure offers it.
+            canRetry = writeFailure == null && (lines.error ?: catalogueError) != null,
         )
 
     private fun suggest(query: String): List<IngredientSuggestion> {

@@ -27,6 +27,8 @@ data class SuggestOptionsDto(
     val maxResults: Int,
     val maxMinutes: Int?,
     val useOnlyPantry: Boolean,
+    val useExpiringSoon: Boolean = false,
+    val mealType: String? = null,
 )
 
 @Serializable

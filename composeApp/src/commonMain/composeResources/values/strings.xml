@@ -160,6 +160,11 @@
     <string name="detail_optional_suffix"> (optional)</string>
     <string name="suggestions_only_pantry">Only what I have</string>
     <string name="suggestions_quick">Under 30 minutes</string>
+    <string name="suggestions_use_expiring">Use what expires soon</string>
+    <string name="suggestions_meal_breakfast">Breakfast</string>
+    <string name="suggestions_meal_lunch">Lunch</string>
+    <string name="suggestions_meal_dinner">Dinner</string>
+    <string name="suggestions_meal_snack">Snack</string>
     <string name="suggestions_empty_title">No suggestions yet</string>
     <string name="suggestions_nothing_title">Nothing to suggest</string>
     <string name="suggestions_working">Reading your pantry and thinking of dishes. This takes a moment.</string>
@@ -304,6 +309,8 @@
     <string name="suggestions_add_to_pantry">Add to pantry</string>
     <string name="suggestions_pantry_empty_title">Your pantry is empty</string>
     <string name="suggestions_pantry_empty_body">Ideas are built from what you already have. Add a few things first.</string>
+    <string name="suggestions_pane_empty_title">Pick an idea</string>
+    <string name="suggestions_pane_empty_body">Its recipe opens here, beside the list.</string>
     <string name="suggestions_see_ideas">See ideas</string>
     <string name="kitchen_empty_action">Enter a code</string>
     <string name="onboarding_step">Step %1$d of %2$d</string>

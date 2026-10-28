@@ -31,6 +31,7 @@ import com.kitchenai.ui.navigation.ShoppingAddRequests
 import com.kitchenai.ui.navigation.open
 import com.kitchenai.ui.navigation.switchTo
 import com.kitchenai.ui.platform.LaunchLinkEffect
+import com.kitchenai.ui.platform.ReminderTapEffect
 import com.kitchenai.ui.presentation.common.AppearanceViewModel
 import com.kitchenai.ui.presentation.common.ConnectivityViewModel
 import com.kitchenai.ui.presentation.onboarding.OnboardingExit
@@ -109,6 +110,7 @@ private fun Shell(
     ExpiryReminders(userId)
     val addRequests = koinInject<ShoppingAddRequests>()
     LaunchLinkEffect { target -> navController.open(target, addRequests) }
+    ReminderTapEffect { navController.switchTo(Route.Pantry) }
 }
 
 /** Recipe detail and Kitchen are reached from a tab, so they live in its graph and are not tabs. */

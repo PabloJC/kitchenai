@@ -7,7 +7,13 @@ import com.kitchenai.shared.domain.model.RecipeSuggestion
 import com.kitchenai.ui.presentation.common.LabelResolver
 
 internal fun SuggestionOptionsUi.toDomain(): SuggestionOptions =
-    SuggestionOptions(maxResults = maxResults, maxMinutes = maxMinutes, useOnlyPantry = useOnlyPantry)
+    SuggestionOptions(
+        maxResults = maxResults,
+        maxMinutes = maxMinutes,
+        useOnlyPantry = useOnlyPantry,
+        useExpiringSoon = useExpiringSoon,
+        mealType = mealType,
+    )
 
 internal fun RecipeSuggestion.toUi(resolver: LabelResolver): SuggestionUi {
     val held = match.covered.count { !it.ingredient.optional }
