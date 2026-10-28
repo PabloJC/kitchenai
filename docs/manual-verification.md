@@ -900,6 +900,16 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. On a third fresh install, enter a code that matches no kitchen.
    - "That code does not match any kitchen" shows under the field, and the page stays put.
 
+### 39. A typed catalogue name is saved as the catalogue entry
+
+1. Pantry → add. Type `milk` (lower case, no accents) and do not tap a suggestion.
+   - The first match row, "Milk", says "Saved as this catalogue item" with a check, and the "Not in
+     the catalogue" hint is not shown. Save: the row shows "Milk" and is not marked as free text.
+2. Type `mil` and save.
+   - The hint shows; the row is saved as "mil", marked as not in the catalogue.
+3. Shopping: type `2 milk` in the add field and send without tapping the chip.
+   - The line is "Milk" with "2", not italic. Moving it to the pantry merges with step 1's row.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
