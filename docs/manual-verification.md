@@ -736,6 +736,12 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The bottom bar and full-width screens exactly as before.
 4. On a phone in landscape, open Shopping and tap the add field.
    - A rail on the left; the field stays visible above the keyboard and adding works.
+5. On the tablet in landscape (840 dp or wider), open Ideas and tap a suggestion.
+   - The recipe opens on the right, beside the list, with "Pick an idea" there before any tap.
+     Tapping another card replaces it; the back arrow on the recipe empties the right pane.
+   - "Start cooking" from the right pane opens cooking mode full screen; back returns to the recipe.
+6. Rotate that tablet to portrait, below 840 dp.
+   - Ideas is one list again, and a tap opens the recipe on its own screen.
 
 ### 28. Motion and haptics, and less of both when the system asks
 
@@ -751,10 +757,14 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Recipe detail: tap − and + on servings; save the recipe; confirm a cook.
    - A small tick per servings step; a firmer confirmation on save and on cooking. Unsaving gives
      none.
-5. Turn on Reduce Motion (iOS: Settings → Accessibility → Motion) or Remove animations (Android:
+5. Ideas: tap a suggestion card, then go back. Do the same from Saved.
+   - The card's photograph grows into the recipe's header and shrinks back into its card.
+6. Pantry, on a cold start and after deleting the last item.
+   - The loading spinner fades into the rows, and the last row going fades into the empty state.
+7. Turn on Reduce Motion (iOS: Settings → Accessibility → Motion) or Remove animations (Android:
    Settings → Accessibility), then reopen the app.
    - Ideas' loading skeleton stays still instead of pulsing, and moving between screens cuts
-     instead of cross-fading.
+     instead of cross-fading. The photograph does not travel, and Pantry's states cut.
 
 ### 29. Large tab titles that fold away, one title per screen, one card surface
 
@@ -779,7 +789,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
 3. Tap "Remind me". On Android 13+ and on iOS the system permission prompt follows.
    - Allow it. Set the device clock to 17:59 today and wait: at 18:00 one notification titled
      "Use it before it goes" says how many items expire within a day and how many are past their
-     date. Tapping it opens the app.
+     date. Tapping it opens the app on the Pantry tab, from another tab or with the app closed.
 4. Reinstall, repeat step 2 and tap "No, thanks", or deny the system prompt.
    - The dialog never returns and no notification arrives at 18:00.
 5. With reminders on, give one item a date three days ahead and close the app without opening it
