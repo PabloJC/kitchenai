@@ -13,6 +13,10 @@ test('dish types are declared as describing recipes, which keeps them off the pr
   assert.equal(taxonomies['dish-types'].purpose, 'RECIPE_CLASSIFICATION');
 });
 
+test('food groups order the shopping list and stay on the profile as a taste', () => {
+  assert.equal(taxonomies['food-groups'].purpose, 'SHOPPING_SECTIONS');
+});
+
 test('a purpose the client has no name for is reported by taxonomy id', () => {
   const typo = { ...taxonomies, cuisines: { ...taxonomies.cuisines, purpose: 'RECIPE_CLASIFICATION' } };
   assert.deepEqual(unknownPurposes(typo), ['cuisines']);

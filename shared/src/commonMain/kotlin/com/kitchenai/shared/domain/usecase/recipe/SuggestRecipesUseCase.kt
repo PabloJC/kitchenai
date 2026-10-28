@@ -97,11 +97,11 @@ class SuggestRecipesUseCase(
     }
 
     /**
-     * A term from a taxonomy that declares a purpose is not a taste, whatever an older build let
-     * the user tap: it never reaches the agent as a constraint or a preference.
+     * A term from a taxonomy whose purpose is structural is not a taste, whatever an older build
+     * let the user tap: it never reaches the agent as a constraint or a preference.
      */
     private fun UserProfile.withoutStructuralTerms(catalogue: List<Taxonomy>): UserProfile {
-        val structural = catalogue.filter { it.purpose != null }.map { it.id }.toSet()
+        val structural = catalogue.filter { it.purpose?.isStructural == true }.map { it.id }.toSet()
         return copy(
             constraints = constraints.filterNot { it.term.taxonomy in structural },
             preferences = preferences.filterNot { it.taxonomy in structural },

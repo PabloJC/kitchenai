@@ -47,6 +47,16 @@ class TaxonomyMapperTest {
     }
 
     @Test
+    fun `the shopping sections purpose decodes and stays a preference`() {
+        val dto = TaxonomyDto(labels = mapOf("xx" to "Label"), purpose = "SHOPPING_SECTIONS")
+
+        val purpose = (dto.toDomain("food-groups") as AppResult.Success).data.purpose
+
+        assertEquals(TaxonomyPurpose.SHOPPING_SECTIONS, purpose)
+        assertEquals(false, purpose?.isStructural)
+    }
+
+    @Test
     fun `a purpose this version does not know is null rather than a failure`() {
         // A newer catalogue must not break an older app: what it cannot place, it can still show.
         val dto = TaxonomyDto(labels = mapOf("xx" to "Label"), purpose = "SOMETHING_LATER")

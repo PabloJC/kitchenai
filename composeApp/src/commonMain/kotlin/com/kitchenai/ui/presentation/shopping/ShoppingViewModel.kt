@@ -8,10 +8,12 @@ import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.MoveToPantryOptions
 import com.kitchenai.shared.domain.model.PantryMoveRecord
 import com.kitchenai.shared.domain.model.Quantity
+import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.ShoppingListId
 import com.kitchenai.shared.domain.model.Taxonomy
+import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TaxonomyPurpose
 import com.kitchenai.shared.domain.model.Term
 import com.kitchenai.shared.domain.model.TermRef
@@ -91,6 +93,13 @@ class ShoppingViewModel(
     // Units are terms and their fallback language lives on the taxonomy, so the resolver needs
     // all three alongside the catalogue. Without them a quantity renders its bare term id.
     private val units = MutableStateFlow<List<Term>>(emptyList())
+
+    // The vocabulary that orders the list by shop section, if the catalogue declares one.
+    private val sectionTaxonomies = MutableStateFlow<Set<TaxonomyId>>(emptySet())
+    private val sectionTerms = MutableStateFlow<List<Term>>(emptyList())
+
+    // Saved recipes and the last generated set: the only places a line's recipe has a title.
+    private val recipeTitles = MutableStateFlow<Map<RecipeId, String>>(emptyMap())
     private val vocabularies = MutableStateFlow<List<Taxonomy>>(emptyList())
     private var languageTags: List<String> = emptyList()
     private val resolver = MutableStateFlow(LabelResolver())
@@ -113,11 +122,28 @@ class ShoppingViewModel(
     /** A rejected write outlives the next emission: the listener echo must not wipe the reason. */
     private val writeFailure = MutableStateFlow<UiText?>(null)
 
+    private val labelling =
+        combine(
+            resolver,
+            catalogue,
+            sectionTaxonomies,
+            sectionTerms,
+            recipeTitles,
+        ) { labels, ingredients, ids, terms, titles ->
+            Labelling(
+                labels = labels,
+                context = ShoppingLineContext.of(ingredients, ids, titles),
+                sections = terms.titled(labels),
+            )
+        }
+
     private val lines =
-        combine(items, itemsError, itemsAnswered, resolver, units) { loaded, error, answered, labels, unitTerms ->
+        combine(items, itemsError, itemsAnswered, labelling, units) { loaded, error, answered, labelled, unitTerms ->
+            val labels = labelled.labels
             LinesState(
-                lines = loaded.orEmpty().map { item -> item.toUi(labels) },
+                lines = loaded.orEmpty().map { item -> item.toUi(labels, labelled.context) },
                 units = unitTerms.map { term -> term.ref to labels.wordFor(term.ref) },
+                sections = labelled.sections,
                 error = error,
                 isLoading = !answered,
                 failedToLoad = error != null && loaded == null,
@@ -212,6 +238,7 @@ class ShoppingViewModel(
                                     itemsAnswered.value = true
                                 }
                             }
+                            launch { watchRecipeTitles(kitchen) }
                             launch {
                                 reads.items.errors(kitchen, list.data).collect { error ->
                                     itemsError.value = error.describe(Res.string.error_unauthorized_list)
@@ -361,11 +388,24 @@ class ShoppingViewModel(
         if (dispatched) draft.value = ShoppingDraftUi(revision = current.revision + 1)
     }
 
+    /**
+     * The titles a line's recipe can be shown with. A title is decoration: when neither source
+     * answers, the line shows no recipe rather than failing the list.
+     */
+    private suspend fun watchRecipeTitles(kitchen: KitchenId) {
+        val stored = (reads.storedRecipes(kitchen) as? AppResult.Success)?.data.orEmpty()
+        val generated = stored.associate { suggestion -> suggestion.recipe.id to suggestion.recipe.title }
+        recipeTitles.value = generated
+        reads.savedRecipes(kitchen).collect { saved ->
+            recipeTitles.value = generated + saved.associate { recipe -> recipe.id to recipe.title }
+        }
+    }
+
     /** Rebuilt from every source at once: a resolver missing one of them answers with an id. */
     private fun rebuildResolver() {
         resolver.value =
             LabelResolver(
-                terms = units.value,
+                terms = units.value + sectionTerms.value,
                 ingredients = catalogue.value,
                 taxonomies = vocabularies.value,
                 languageTags = languageTags,
@@ -380,11 +420,22 @@ class ShoppingViewModel(
             reads.taxonomies().collectLatest { published ->
                 vocabularies.value = published
                 rebuildResolver()
+                val sections = published.filter { it.purpose == TaxonomyPurpose.SHOPPING_SECTIONS }
+                sectionTaxonomies.value = sections.map { it.id }.toSet()
                 coroutineScope {
                     published.filter { it.purpose == TaxonomyPurpose.UNITS }.forEach { unit ->
                         launch {
                             reads.taxonomy(unit.id).collect { terms ->
                                 units.value = terms
+                                rebuildResolver()
+                            }
+                        }
+                    }
+                    // One shop-section vocabulary is what the catalogue ships; a second would replace it.
+                    sections.firstOrNull()?.let { section ->
+                        launch {
+                            reads.taxonomy(section.id).collect { terms ->
+                                sectionTerms.value = terms
                                 rebuildResolver()
                             }
                         }
@@ -419,7 +470,9 @@ class ShoppingViewModel(
     ): ShoppingUiState =
         ShoppingUiState(
             listName = listName,
-            unchecked = lines.lines.filterNot(ShoppingItemUi::checked).withSettling(lines),
+            unchecked = lines.toBuy(),
+            toBuy = lines.toBuy().inSections(lines.sections),
+            grouped = lines.sections.isNotEmpty(),
             checked = lines.lines.filter { line -> line.checked && line.id !in lines.settling },
             draft = draft,
             units = lines.units,
@@ -507,6 +560,21 @@ private data class LinesState(
     val isLoading: Boolean = true,
     val failedToLoad: Boolean = false,
     val settling: Map<ShoppingItemId, Int> = emptyMap(),
+    // Shop sections as `ref to title`, in the catalogue's order; empty when it declares none.
+    val sections: List<Pair<TermRef, String>> = emptyList(),
+) {
+    fun toBuy(): List<ShoppingItemUi> = lines.filterNot(ShoppingItemUi::checked).withSettling(this)
+}
+
+/** In the catalogue's own order: no section is named or ranked in code. */
+private fun List<Term>.titled(labels: LabelResolver): List<Pair<TermRef, String>> =
+    sortedBy { it.order }.map { term -> term.ref to (labels.label(term.ref) ?: term.ref.term.value) }
+
+/** The resolver with what a line needs beyond it, so the line combine stays at five sources. */
+private class Labelling(
+    val labels: LabelResolver,
+    val context: ShoppingLineContext,
+    val sections: List<Pair<TermRef, String>>,
 )
 
 /** Puts the just-ticked lines back at the row they held, in the order they held it. */

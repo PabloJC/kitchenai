@@ -4,6 +4,7 @@ import com.kitchenai.shared.core.AppResult
 import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.Quantity
+import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.TaxonomyId
@@ -13,6 +14,7 @@ import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.LabelResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.time.Instant
 
 class ShoppingUiMapperTest {
@@ -77,10 +79,77 @@ class ShoppingUiMapperTest {
         assertEquals("2", item.toUi(LabelResolver()).quantity)
     }
 
+    @Test
+    fun `lines group by shop section in the catalogue's order with the unclaimed ones last`() {
+        val fruit = section("fruit")
+        val dairy = section("dairy")
+        val lines =
+            listOf(
+                ui("milk", dairy),
+                ui("bread", null),
+                ui("apple", fruit),
+                ui("yogurt", dairy),
+                ui("stray", section("retired")),
+            )
+
+        val groups = lines.inSections(listOf(fruit to "Fruit", dairy to "Dairy"))
+
+        assertEquals(listOf("Fruit", "Dairy", null), groups.map { it.title })
+        assertEquals(
+            listOf(listOf("apple"), listOf("milk", "yogurt"), listOf("bread", "stray")),
+            groups.map { group -> group.lines.map { it.label } },
+        )
+    }
+
+    @Test
+    fun `with no sections declared every line is one untitled group`() {
+        val groups = listOf(ui("milk", null), ui("bread", null)).inSections(emptyList())
+
+        assertEquals(listOf(null), groups.map { it.title })
+        assertEquals(2, groups.single().lines.size)
+    }
+
+    @Test
+    fun `a line takes its ingredient's first tag from the shop sections and its recipe's title`() {
+        val dairy = section("dairy")
+        val diet = TermRef(TaxonomyId.of("diets").value(), TermId.of("vegan").value())
+        val milk = Ingredient(ingredientId, mapOf("en" to "Milk"), null, listOf(diet, dairy))
+        val dish = RecipeId.of("recipe-1").value()
+        val context = ShoppingLineContext.of(listOf(milk), setOf(dairy.taxonomy), mapOf(dish to "Pasta alla Norma"))
+
+        val ui = item(ingredient = ingredientId, sourceRecipe = dish).toUi(LabelResolver(), context)
+
+        assertEquals(dairy, ui.section)
+        assertEquals("Pasta alla Norma", ui.forRecipe)
+    }
+
+    @Test
+    fun `a recipe with no known title shows nothing rather than its identifier`() {
+        val ui = item(freeText = "coconut milk", sourceRecipe = RecipeId.of("uuid-1").value()).toUi(LabelResolver())
+
+        assertNull(ui.forRecipe)
+        assertNull(ui.section)
+    }
+
+    private fun section(term: String) = TermRef(TaxonomyId.of("food-groups").value(), TermId.of(term).value())
+
+    private fun ui(
+        label: String,
+        section: TermRef?,
+    ) = ShoppingItemUi(
+        id = ShoppingItemId.of(label).value(),
+        label = label,
+        quantity = null,
+        fromCatalogue = section != null,
+        checked = false,
+        section = section,
+    )
+
     private fun item(
         ingredient: IngredientId? = null,
         freeText: String? = null,
         quantity: Quantity? = null,
+        sourceRecipe: RecipeId? = null,
     ): ShoppingItem =
         ShoppingItem(
             id = ShoppingItemId.of("item-1").value(),
@@ -88,7 +157,7 @@ class ShoppingUiMapperTest {
             freeText = freeText,
             quantity = quantity,
             checked = false,
-            sourceRecipe = null,
+            sourceRecipe = sourceRecipe,
             updatedAt = now,
         )
 

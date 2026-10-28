@@ -8,7 +8,9 @@ import com.kitchenai.shared.domain.model.Ingredient
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.shared.domain.model.MoveToPantryOptions
 import com.kitchenai.shared.domain.model.Quantity
+import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
+import com.kitchenai.shared.domain.model.RecipeSource
 import com.kitchenai.shared.domain.model.ShoppingItem
 import com.kitchenai.shared.domain.model.ShoppingItemId
 import com.kitchenai.shared.domain.model.Taxonomy
@@ -24,6 +26,8 @@ import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
@@ -36,10 +40,12 @@ import com.kitchenai.shared.domain.usecase.shopping.UndoMoveToPantryUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
+import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
 import com.kitchenai.ui.presentation.common.UiText
+import com.kitchenai.ui.presentation.common.defaultKitchenId
 import com.kitchenai.ui.presentation.common.noUnits
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_no_connection
@@ -70,6 +76,7 @@ class ShoppingViewModelTest {
     private val catalogue = FakeIngredientPort()
     private val pantry = FakePantryPort()
     private val kitchens = FakeKitchenPort()
+    private val recipes = FakeRecipePort()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -482,17 +489,39 @@ class ShoppingViewModelTest {
         }
 
     @Test
-    fun `a line from a dish is indistinguishable from one added by hand`() =
+    fun `a line from a dish nobody kept is indistinguishable from one added by hand`() =
         runTest(dispatcher) {
             val viewModel = started()
             items.emit(listOf(line("item-1", sourceRecipe = recipeId), line("item-2")))
             advanceUntilIdle()
 
-            // The recipe id is a uuid minted on the device and resolves to no title anywhere, so
-            // nothing about it may reach the row. Compared whole rather than field by field: any
-            // future field carrying it would fail here rather than reach a reader.
+            // A recipe neither saved nor stored has no title anywhere, so nothing about it may reach
+            // the row. Compared whole rather than field by field: any future field carrying the id
+            // would fail here rather than reach a reader.
             val (fromDish, byHand) = viewModel.state.value.unchecked
             assertEquals(byHand, fromDish.copy(id = byHand.id))
+        }
+
+    @Test
+    fun `a line from a saved recipe says which recipe it is for`() =
+        runTest(dispatcher) {
+            recipes.saveRecipe(defaultKitchenId, savedDish)
+            val viewModel = started()
+            items.emit(listOf(line("item-1", sourceRecipe = savedDish.id)))
+            advanceUntilIdle()
+
+            assertEquals("Pasta alla Norma", viewModel.state.value.unchecked.single().forRecipe)
+        }
+
+    @Test
+    fun `with no shop sections in the catalogue the list stays one group`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(listOf(line("item-1"), line("item-2")))
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.grouped)
+            assertEquals(listOf(2), viewModel.state.value.toBuy.map { it.lines.size })
         }
 
     @Test
@@ -761,6 +790,8 @@ class ShoppingViewModelTest {
                         ingredients = ObserveIngredientsUseCase(catalogue),
                         taxonomies = ObserveTaxonomiesUseCase(taxonomies),
                         taxonomy = ObserveTaxonomyUseCase(taxonomies),
+                        savedRecipes = ObserveSavedRecipesUseCase(recipes),
+                        storedRecipes = GetStoredSuggestionsUseCase(recipes, pantry, time, noUnits()),
                     ),
                 writes =
                     ShoppingWritesDelegate(
@@ -790,6 +821,18 @@ class ShoppingViewModelTest {
 private val userId = unwrap(UserId.of("user-1"))
 private val ingredientId = unwrap(IngredientId.of("ing-1"))
 private val recipeId = unwrap(RecipeId.of("recipe-1"))
+private val savedDish =
+    Recipe(
+        id = unwrap(RecipeId.of("recipe-saved")),
+        title = "Pasta alla Norma",
+        summary = null,
+        servings = 2,
+        totalMinutes = null,
+        ingredients = emptyList(),
+        steps = emptyList(),
+        tags = emptyList(),
+        source = RecipeSource.Catalogue,
+    )
 private val gram = TermRef(unwrap(TaxonomyId.of("units")), unwrap(TermId.of("gram")))
 private val gramTerm = Term(gram, mapOf("en" to "g"), null, 0)
 private val unitsTaxonomy = Taxonomy(gram.taxonomy, mapOf("en" to "Units"), "en", TaxonomyPurpose.UNITS)

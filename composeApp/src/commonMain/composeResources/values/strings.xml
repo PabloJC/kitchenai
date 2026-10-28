@@ -82,6 +82,8 @@
     <string name="widget_shopping_empty">Nothing left to buy. Tap to open the list.</string>
     <string name="widget_shopping_nothing_yet">Open KitchenAI to start your list.</string>
     <string name="widget_shopping_failed">Couldn\'t load the list. Tap to open it.</string>
+    <string name="shopping_section_other">Other</string>
+    <string name="shopping_for_recipe">For %1$s</string>
     <string name="shopping_to_buy">To buy</string>
     <string name="shopping_in_cart">In the cart</string>
     <string name="shopping_clear">Clear</string>

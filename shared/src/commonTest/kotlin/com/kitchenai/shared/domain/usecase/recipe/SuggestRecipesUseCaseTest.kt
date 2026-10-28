@@ -126,6 +126,30 @@ class SuggestRecipesUseCaseTest {
         }
 
     @Test
+    fun `a term from the shopping sections is a taste and still reaches the agent`() =
+        runTest {
+            val orchestrator = RecordingOrchestrator()
+            val dairy = termIn("food-groups", "dairy")
+            val avoidingDairy =
+                stored.copy(constraints = listOf(DietaryConstraint(dairy, ConstraintStrength.AVOID)))
+            val catalogue =
+                FakeTaxonomyRepositoryContract(
+                    others = listOf(Taxonomy(dairy.taxonomy, emptyMap(), purpose = TaxonomyPurpose.SHOPPING_SECTIONS)),
+                )
+
+            SuggestRecipesUseCase(
+                FakeProfilePort(flowOf(avoidingDairy)),
+                FakePantryRepositoryContract(held),
+                orchestrator,
+                noUnits(),
+                catalogue,
+                kitchens,
+            )(user, kitchen, listOf("en"))
+
+            assertEquals(listOf(DietaryConstraint(dairy, ConstraintStrength.AVOID)), orchestrator.profile?.constraints)
+        }
+
+    @Test
     fun `a catalogue that cannot be read is reported and the orchestrator is never asked`() =
         runTest {
             val orchestrator = RecordingOrchestrator()

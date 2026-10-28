@@ -38,7 +38,10 @@ import com.kitchenai.ui.presentation.shoppingwidget.ShoppingWidgetState
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-/** The shopping list on the home screen: the next unchecked lines, a tick for each and a way to add. */
+/**
+ * The shopping list on the home screen: the next unchecked lines, a tick for each and a way to add.
+ * Flat on purpose: grouping by shop section is the app's, and a few rows have nothing to group.
+ */
 class ShoppingListWidget :
     GlanceAppWidget(),
     KoinComponent {

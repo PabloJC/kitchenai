@@ -61,6 +61,7 @@
   "food-groups": {
     "labels": { "en": "Food group", "es": "Grupo de alimentos" },
     "defaultLanguageTag": "en",
+    "purpose": "SHOPPING_SECTIONS",
     "terms": {
       "vegetable": { "labels": { "en": "Vegetable", "es": "Verdura" }, "order": 1 },
       "fruit": { "labels": { "en": "Fruit", "es": "Fruta" }, "order": 2 },

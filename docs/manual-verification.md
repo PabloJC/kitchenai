@@ -929,6 +929,21 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The reminder arrives at the chosen local time, not shifted by the zone difference. Without
      opening the app after the change it may arrive shifted until the next launch.
 
+### 41. The shopping list in the shop's order, and which recipe a line is for
+
+*After re-seeding the catalogue (`node tools/seed.mjs`), so `food-groups` declares `SHOPPING_SECTIONS`.*
+
+1. Shopping: add milk, an apple, bread typed as free text, and yogurt, in that order.
+   - "To buy" is replaced by section headers in the catalogue's order (Fruit before Dairy), each
+     with a count; milk and yogurt sit together under Dairy; the bread is under "Other", last.
+2. Tick the yogurt.
+   - It stays in place for a moment, then moves into "In the cart".
+3. From a saved recipe, tap Add missing.
+   - Each added line shows "For <recipe title>" under its name. A line from a recipe nobody saved
+     and that is no longer among the last ideas shows nothing there, never an identifier.
+4. Profile → preferences.
+   - "Food group" is still offered, so "avoid dairy" still works.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
