@@ -330,6 +330,10 @@
     <string name="onboarding_value_body">Cuéntale a KitchenAI qué hay en tu cocina y te sugerirá platos que puedes cocinar ya, con una lista de la compra para lo que falte. Comparte una cocina con tu hogar.</string>
     <string name="onboarding_staples_title">¿Qué hay en tu cocina?</string>
     <string name="onboarding_staples_body">Toca lo que tengas. Las cantidades pueden esperar: puedes ponerlas luego en Despensa.</string>
+    <string name="onboarding_sign_in_google">Ya tengo cuenta: entrar con Google</string>
+    <string name="onboarding_have_code">Tengo un código de invitación</string>
+    <string name="onboarding_join_title">Únete a una cocina</string>
+    <string name="onboarding_join_body">Escribe el código de la invitación que te enviaron, o pega el mensaje entero. Compartirás su despensa, su lista y sus recetas.</string>
     <string name="onboarding_preferences_title">¿Hay algo que evites?</string>
     <string name="onboarding_preferences_body">Indica tus alergias y dietas antes de tus primeras ideas. Las ideas las respetan para todos los de tu cocina, y puedes cambiarlas cuando quieras en Perfil.</string>
     <string name="onboarding_preferences_action">Indicar dieta y alergias</string>

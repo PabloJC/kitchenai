@@ -1,4 +1,4 @@
-package com.kitchenai.ui.presentation.kitchen
+package com.kitchenai.ui.presentation.common
 
 /** Codes are UUIDs, so one can be picked out of a whole pasted invite message. */
 private val CODE_PATTERN = Regex("[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")

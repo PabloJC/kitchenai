@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.onboarding
 
+import com.kitchenai.shared.domain.usecase.kitchen.JoinKitchenUseCase
 import com.kitchenai.shared.domain.usecase.onboarding.CompleteOnboardingUseCase
 import com.kitchenai.shared.domain.usecase.pantry.AddStaplesUseCase
 
@@ -7,4 +8,5 @@ import com.kitchenai.shared.domain.usecase.pantry.AddStaplesUseCase
 class OnboardingWritesDelegate(
     val complete: CompleteOnboardingUseCase,
     val addStaples: AddStaplesUseCase,
+    val join: JoinKitchenUseCase,
 )

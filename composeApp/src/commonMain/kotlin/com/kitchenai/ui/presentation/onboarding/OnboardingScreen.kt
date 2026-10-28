@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material.icons.outlined.NoFood
 import androidx.compose.material3.Button
@@ -32,10 +33,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kitchenai.shared.domain.model.IngredientId
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.presentation.common.JoinCodeField
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.onboarding_add_count
 import com.kitchenai.ui.resources.onboarding_back
+import com.kitchenai.ui.resources.onboarding_have_code
+import com.kitchenai.ui.resources.onboarding_join_body
+import com.kitchenai.ui.resources.onboarding_join_title
 import com.kitchenai.ui.resources.onboarding_next
 import com.kitchenai.ui.resources.onboarding_not_now
 import com.kitchenai.ui.resources.onboarding_preferences_action
@@ -66,8 +71,9 @@ fun OnboardingScreen(
             if (state.step != OnboardingStep.VALUE) {
                 TextButton(onClick = viewModel::back) { Text(stringResource(Res.string.onboarding_back)) }
             }
+            val page = OnboardingStep.pages.indexOf(state.step)
             Text(
-                stringResource(Res.string.onboarding_step, state.step.ordinal + 1, OnboardingStep.entries.size),
+                if (page >= 0) stringResource(Res.string.onboarding_step, page + 1, OnboardingStep.pages.size) else "",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f).padding(horizontal = Dimens.small),
@@ -95,6 +101,16 @@ fun OnboardingScreen(
                         Res.string.onboarding_preferences_title,
                         Res.string.onboarding_preferences_body,
                     )
+                OnboardingStep.JOIN -> {
+                    Page(Icons.Outlined.Group, Res.string.onboarding_join_title, Res.string.onboarding_join_body)
+                    JoinCodeField(
+                        value = state.joinCode,
+                        isBusy = state.isBusy,
+                        onChange = viewModel::onJoinCodeChange,
+                        onPaste = viewModel::pasteJoinCode,
+                        onJoin = viewModel::join,
+                    )
+                }
             }
             state.error?.let { message ->
                 Text(
@@ -117,6 +133,7 @@ private fun Actions(
         modifier = Modifier.fillMaxWidth().padding(Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),
     ) {
+        if (state.step == OnboardingStep.JOIN) return@Column
         if (state.step == OnboardingStep.PREFERENCES) {
             Button(onClick = viewModel::setPreferences, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(Res.string.onboarding_preferences_action))
@@ -133,6 +150,13 @@ private fun Actions(
                 }
             Button(onClick = viewModel::next, enabled = !state.isAdding, modifier = Modifier.fillMaxWidth()) {
                 Text(label)
+            }
+        }
+        // The first page only: someone with an account or an invite has no staples to add here.
+        if (state.step == OnboardingStep.VALUE) {
+            OnboardingSignIn(state, viewModel)
+            TextButton(onClick = viewModel::showJoin, enabled = !state.isBusy, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(Res.string.onboarding_have_code))
             }
         }
     }

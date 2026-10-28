@@ -7,4 +7,7 @@ enum class OnboardingExit {
 
     /** Profile, so diets and allergies are set before any suggestion is generated. */
     PREFERENCES,
+
+    /** The pantry of the kitchen just joined, or of the account just signed in to. */
+    PANTRY,
 }
