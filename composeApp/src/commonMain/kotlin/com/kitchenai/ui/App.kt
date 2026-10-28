@@ -85,6 +85,7 @@ private fun Shell(
         when (landing) {
             OnboardingExit.IDEAS -> navController.switchTo(Route.SuggestionsGraph)
             OnboardingExit.PREFERENCES -> navController.switchTo(Route.ProfileGraph)
+            OnboardingExit.PANTRY -> navController.switchTo(Route.Pantry)
             null -> return@LaunchedEffect
         }
         onLanded()
