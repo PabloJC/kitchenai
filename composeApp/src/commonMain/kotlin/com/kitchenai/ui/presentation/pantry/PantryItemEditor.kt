@@ -111,7 +111,8 @@ fun PantryItemEditor(
         // The sheet holds focus itself when no field does, so Escape reaches it from the start and
         // after a background tap; a field inside still passes its keys up through here.
         val sheetFocus = remember { FocusRequester() }
-        LaunchedEffect(sheetFocus) { sheetFocus.requestFocus() }
+        // Not when the name field is about to take it: after "save and add another" it does.
+        LaunchedEffect(sheetFocus) { if (state.editorRevision == 0) sheetFocus.requestFocus() }
         Column(
             modifier =
                 Modifier
