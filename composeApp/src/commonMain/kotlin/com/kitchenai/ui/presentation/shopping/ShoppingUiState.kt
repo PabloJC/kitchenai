@@ -25,6 +25,9 @@ data class ShoppingUiState(
     val error: UiText? = null,
     // The error is a listener's, so listening again may fix it; a refused write is not.
     val canRetry: Boolean = false,
+    // [unchecked] in the shop's order. One untitled group when the catalogue has no shop sections.
+    val toBuy: List<ShoppingSectionUi> = emptyList(),
+    val grouped: Boolean = false,
 ) {
     /** A list that never loaded already offers Try again in its own empty state: one button per failure. */
     val bannerOffersRetry: Boolean get() = canRetry && !failedToLoad
@@ -46,11 +49,20 @@ data class ShoppingItemUi(
     // The parts behind [quantity], so the amount editor opens on what the line holds.
     val amount: Double? = null,
     val unit: TermRef? = null,
-    // No provenance field on purpose. The item carries a recipe id and nothing can turn it into
-    // a title — a generated dish exists in no repository — so a line from a dish and a line
-    // typed by hand are the same line here, and the screen must not invent a difference.
     val fromCatalogue: Boolean,
     val checked: Boolean,
+    // The shop section of its ingredient, for grouping; null for free text and untagged lines.
+    val section: TermRef? = null,
+    // The title of the recipe it was added for, when a saved or stored recipe still has it. A
+    // generated dish nobody kept has no title anywhere, and then nothing is shown, never its id.
+    val forRecipe: String? = null,
+)
+
+/** One group of [ShoppingUiState.toBuy]. A null [title] is the lines no section claims. */
+data class ShoppingSectionUi(
+    val section: TermRef?,
+    val title: String?,
+    val lines: List<ShoppingItemUi>,
 )
 
 /**

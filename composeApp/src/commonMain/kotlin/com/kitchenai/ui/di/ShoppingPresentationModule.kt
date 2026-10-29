@@ -12,7 +12,7 @@ import org.koin.dsl.module
 /** The shopping screen's own bindings, so the shared presentation module grows by one line. */
 val shoppingPresentationModule: Module =
     module {
-        factory { ShoppingReadsDelegate(get(), get(), get(), get()) }
+        factory { ShoppingReadsDelegate(get(), get(), get(), get(), get(), get()) }
         factory { ShoppingWritesDelegate(get(), get(), get(), get(), get(), get(), get()) }
         viewModel { ShoppingViewModel(get(), get(), get(), get()) }
         factory { ShoppingWidgetLoader(get(), get(), get()) }

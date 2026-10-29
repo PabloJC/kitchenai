@@ -95,16 +95,19 @@ import com.kitchenai.ui.resources.shopping_empty_body
 import com.kitchenai.ui.resources.shopping_empty_title
 import com.kitchenai.ui.resources.shopping_failed_body
 import com.kitchenai.ui.resources.shopping_failed_title
+import com.kitchenai.ui.resources.shopping_for_recipe
 import com.kitchenai.ui.resources.shopping_in_cart
 import com.kitchenai.ui.resources.shopping_nothing_moved_no_amount
 import com.kitchenai.ui.resources.shopping_removed
 import com.kitchenai.ui.resources.shopping_save
+import com.kitchenai.ui.resources.shopping_section_other
 import com.kitchenai.ui.resources.shopping_to_buy
 import com.kitchenai.ui.resources.shopping_undo
 import com.kitchenai.ui.resources.shopping_view_pantry
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_left_no_amount_count
 import com.kitchenai.ui.resources.snack_moved_count
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -285,11 +288,18 @@ private fun ShoppingItems(
         if (state.unchecked.isEmpty()) {
             item(key = ALL_IN_CART_KEY) { AllInCart(Modifier.animateItem()) }
         } else {
-            item(key = TO_BUY_KEY) {
-                SectionHeader(title = stringResource(Res.string.shopping_to_buy), modifier = Modifier.animateItem())
-            }
-            items(state.unchecked, key = { line -> line.id.value }) { line ->
-                ShoppingRow(line, onCheck, onRemove, onEditAmount)
+            // In the shop's order, so the list is walked once; one "To buy" when there are no sections.
+            state.toBuy.forEach { group ->
+                item(key = group.key()) {
+                    SectionHeader(
+                        title = group.title ?: stringResource(groupFallback(state.grouped)),
+                        trailing = { if (state.grouped) LineCount(group.lines.size) },
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+                items(group.lines, key = { line -> line.id.value }) { line ->
+                    ShoppingRow(line, onCheck, onRemove, onEditAmount)
+                }
             }
         }
 
@@ -306,6 +316,24 @@ private fun ShoppingItems(
 
 // Not valid line ids: the section items share the list's key space with the lines.
 private const val TO_BUY_KEY = "section:to-buy"
+private const val SHOP_SECTION_KEY = "section:shop:"
+
+private fun ShoppingSectionUi.key(): String =
+    section?.let { ref -> SHOP_SECTION_KEY + ref.taxonomy.value + "/" + ref.term.value } ?: TO_BUY_KEY
+
+/** The untitled group is everything when nothing is grouped, and the leftovers when it is. */
+private fun groupFallback(grouped: Boolean): StringResource =
+    if (grouped) Res.string.shopping_section_other else Res.string.shopping_to_buy
+
+@Composable
+private fun LineCount(count: Int) {
+    Text(
+        text = count.toString(),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
 private const val IN_CART_KEY = "section:in-cart"
 private const val ALL_IN_CART_KEY = "section:all-in-cart"
 
@@ -388,6 +416,14 @@ private fun ShoppingItemRow(
                 if (!item.fromCatalogue) {
                     Text(
                         text = stringResource(Res.string.not_in_catalogue),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // Says why it is on the list, which in a shared kitchen is the question.
+                item.forRecipe?.let { title ->
+                    Text(
+                        text = stringResource(Res.string.shopping_for_recipe, title),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

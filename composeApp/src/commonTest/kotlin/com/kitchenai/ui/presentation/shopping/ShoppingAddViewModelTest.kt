@@ -143,20 +143,6 @@ class ShoppingAddViewModelTest : ShoppingViewModelHarness() {
         }
 
     @Test
-    fun `a line from a dish is indistinguishable from one added by hand`() =
-        runTest(dispatcher) {
-            val viewModel = started()
-            items.emit(listOf(line("item-1", sourceRecipe = recipeId), line("item-2")))
-            advanceUntilIdle()
-
-            // The recipe id is a uuid minted on the device and resolves to no title anywhere, so
-            // nothing about it may reach the row. Compared whole rather than field by field: any
-            // future field carrying it would fail here rather than reach a reader.
-            val (fromDish, byHand) = viewModel.state.value.unchecked
-            assertEquals(byHand, fromDish.copy(id = byHand.id))
-        }
-
-    @Test
     fun `a quantity shows its unit rather than the term's identifier`() =
         runTest(dispatcher) {
             val viewModel = started()

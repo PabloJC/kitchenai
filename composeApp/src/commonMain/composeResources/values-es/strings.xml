@@ -101,6 +101,8 @@
     <string name="widget_shopping_empty">No queda nada por comprar. Toca para abrir la lista.</string>
     <string name="widget_shopping_nothing_yet">Abre KitchenAI para empezar tu lista.</string>
     <string name="widget_shopping_failed">No se pudo cargar la lista. Toca para abrirla.</string>
+    <string name="shopping_section_other">Otros</string>
+    <string name="shopping_for_recipe">Para %1$s</string>
     <string name="shopping_to_buy">Por comprar</string>
     <string name="shopping_in_cart">En el carro</string>
     <string name="shopping_clear">Vaciar</string>

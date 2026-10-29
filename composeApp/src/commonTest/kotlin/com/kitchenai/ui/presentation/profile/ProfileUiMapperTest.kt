@@ -122,6 +122,16 @@ class ProfileUiMapperTest {
     }
 
     @Test
+    fun `the food groups that order the shopping list are still offered as a preference`() {
+        val groups =
+            Taxonomy(taxonomyId, mapOf("en" to "Food group"), purpose = TaxonomyPurpose.SHOPPING_SECTIONS)
+
+        val result = sections(CatalogueState(taxonomies = listOf(groups)), profile())
+
+        assertEquals(listOf(taxonomyId), result.map { it.taxonomy })
+    }
+
+    @Test
     fun `a term resolves selected against the profile's own constraints`() {
         val taxonomy = Taxonomy(taxonomyId, mapOf("en" to "Diets"), purpose = null)
         val term = Term(termRef, mapOf("en" to "Vegan"), null, 0)

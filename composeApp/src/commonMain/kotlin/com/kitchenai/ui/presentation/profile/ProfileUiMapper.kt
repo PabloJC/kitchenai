@@ -55,8 +55,8 @@ internal fun sections(
     val strengths = profile?.constraints.orEmpty().associate { it.term to it.strength }
     // A vocabulary the app reads structurally — units, storage places — is not a matter of taste,
     // and offering it here let a user avoid a freezer. Which ones those are is the catalogue's
-    // to say, so nothing is named: they are the ones that declare a purpose.
-    return catalogue.taxonomies.filter { taxonomy -> taxonomy.purpose == null }.map { taxonomy ->
+    // to say, so nothing is named: they are the ones whose declared purpose is structural.
+    return catalogue.taxonomies.filter { taxonomy -> taxonomy.purpose?.isStructural != true }.map { taxonomy ->
         ConstraintSectionUi(
             taxonomy = taxonomy.id,
             title = taxonomy.labels.resolve(tags, taxonomy.defaultLanguageTag) ?: taxonomy.id.value,
