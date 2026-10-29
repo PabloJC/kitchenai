@@ -20,6 +20,8 @@ import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddShoppingItemUseCase
 import com.kitchenai.shared.domain.usecase.shopping.ClearCheckedItemsUseCase
 import com.kitchenai.shared.domain.usecase.shopping.EnsureDefaultShoppingListUseCase
@@ -32,6 +34,7 @@ import com.kitchenai.shared.domain.usecase.shopping.UndoMoveToPantryUseCase
 import com.kitchenai.ui.presentation.common.FakeIngredientPort
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.FakePantryPort
+import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
@@ -57,6 +60,7 @@ open class ShoppingViewModelHarness {
     protected val catalogue = FakeIngredientPort()
     protected val pantry = FakePantryPort()
     protected val kitchens = FakeKitchenPort()
+    protected val recipes = FakeRecipePort()
 
     // `viewModelScope` runs on Dispatchers.Main, absent outside an app.
     @BeforeTest
@@ -84,6 +88,8 @@ open class ShoppingViewModelHarness {
                         ingredients = ObserveIngredientsUseCase(catalogue),
                         taxonomies = ObserveTaxonomiesUseCase(taxonomies),
                         taxonomy = ObserveTaxonomyUseCase(taxonomies),
+                        savedRecipes = ObserveSavedRecipesUseCase(recipes),
+                        storedRecipes = GetStoredSuggestionsUseCase(recipes, pantry, time, noUnits()),
                     ),
                 writes =
                     ShoppingWritesDelegate(

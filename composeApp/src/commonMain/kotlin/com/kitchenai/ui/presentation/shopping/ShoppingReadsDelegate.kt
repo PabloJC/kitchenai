@@ -3,6 +3,8 @@ package com.kitchenai.ui.presentation.shopping
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
+import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
 import com.kitchenai.shared.domain.usecase.shopping.ObserveShoppingItemsUseCase
 
 /**
@@ -16,4 +18,7 @@ class ShoppingReadsDelegate(
     /** Units are terms, not ingredients: without these a quantity renders as a bare identifier. */
     val taxonomies: ObserveTaxonomiesUseCase,
     val taxonomy: ObserveTaxonomyUseCase,
+    /** Where the titles of the recipes a line was added for come from; nothing else is read. */
+    val savedRecipes: ObserveSavedRecipesUseCase,
+    val storedRecipes: GetStoredSuggestionsUseCase,
 )

@@ -69,7 +69,7 @@ internal fun List<Ingredient>.unitTaxonomies(): Set<TaxonomyId> =
 
 /** The vocabularies the catalogue declares a use for, whatever the user happens to hold. */
 internal fun List<Taxonomy>.purposeful(): Set<TaxonomyId> =
-    mapNotNullTo(mutableSetOf()) { taxonomy -> taxonomy.id.takeIf { taxonomy.purpose != null } }
+    mapNotNullTo(mutableSetOf()) { taxonomy -> taxonomy.id.takeIf { taxonomy.purpose?.isStructural == true } }
 
 internal fun List<Taxonomy>.of(purpose: TaxonomyPurpose): Set<TaxonomyId> =
     mapNotNullTo(mutableSetOf()) { taxonomy -> taxonomy.id.takeIf { taxonomy.purpose == purpose } }
