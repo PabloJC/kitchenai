@@ -247,6 +247,16 @@
     <string name="profile_kitchen_title">Your kitchen</string>
     <string name="profile_kitchen_body">Members, the join code and sharing</string>
     <string name="profile_version">Version</string>
+    <string name="profile_privacy_policy">Privacy policy</string>
+    <string name="profile_privacy_policy_body">What KitchenAI keeps and what it sends</string>
+    <string name="profile_photo_credits">Photo credits</string>
+    <string name="profile_photo_credits_body">Who took the dish photographs</string>
+    <string name="profile_licences">Open-source licences</string>
+    <string name="profile_licences_body">The libraries KitchenAI is built with</string>
+    <string name="credits_intro">The dish photographs come from Wikimedia Commons. Tap one to open its page, or its licence to read it.</string>
+    <string name="credits_by">By %1$s</string>
+    <string name="credits_failed">The photo credits could not be read.</string>
+    <string name="licences_close">Close</string>
     <string name="appearance_system">System</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>

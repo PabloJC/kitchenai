@@ -49,6 +49,8 @@
 	</array>
 	<key>FunctionsRegion</key>
 	<string>$(FUNCTIONS_REGION)</string>
+	<key>PrivacyPolicyUrl</key>
+	<string>$(PRIVACY_POLICY_URL)</string>
 	<key>GIDClientID</key>
 	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
 	<key>UILaunchScreen</key>

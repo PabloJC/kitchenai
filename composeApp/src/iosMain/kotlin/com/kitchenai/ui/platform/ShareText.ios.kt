@@ -8,11 +8,6 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGRectMake
 import platform.UIKit.UIActivityViewController
-import platform.UIKit.UIApplication
-import platform.UIKit.UISceneActivationStateForegroundActive
-import platform.UIKit.UIViewController
-import platform.UIKit.UIWindow
-import platform.UIKit.UIWindowScene
 import platform.UIKit.popoverPresentationController
 
 /**
@@ -48,17 +43,4 @@ actual fun rememberShareText(): (text: String, anchor: Rect?) -> Unit {
             }
         }
     }
-}
-
-// `UIApplication.keyWindow` is deprecated and ambiguous with several scenes; ask the foreground one.
-private fun keyWindow(): UIWindow? =
-    UIApplication.sharedApplication.connectedScenes
-        .filterIsInstance<UIWindowScene>()
-        .firstOrNull { it.activationState == UISceneActivationStateForegroundActive }
-        ?.keyWindow
-
-private fun topController(window: UIWindow?): UIViewController? {
-    var top = window?.rootViewController
-    while (top?.presentedViewController != null) top = top.presentedViewController
-    return top
 }

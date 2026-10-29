@@ -23,3 +23,8 @@ GOOGLE_IOS_CLIENT_ID=
 // compute it from GOOGLE_IOS_CLIENT_ID, so it is filled in beside it; the app stops at launch if
 // the two disagree.
 GOOGLE_IOS_REVERSED_CLIENT_ID=
+
+// Where the privacy policy is published, shown in Profile › About; blank hides the row until
+// the policy has a home (#355). An xcconfig reads `//` as a comment, so write the scheme as
+// https:/$()/example.com/privacy — `$()` expands to nothing and keeps the slashes.
+PRIVACY_POLICY_URL=

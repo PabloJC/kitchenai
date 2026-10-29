@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     // Type-safe navigation routes are @Serializable: the library reads them through their serializer.
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.aboutLibraries)
 }
 
 kotlin {
@@ -52,6 +53,9 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.aboutlibraries.core)
+            implementation(libs.aboutlibraries.compose.m3)
         }
         androidMain.dependencies {
             // The @Preview annotation only, not the tooling runtime: Compose Multiplatform
@@ -71,6 +75,9 @@ kotlin {
 
             // The daily expiry reminder: platform/ExpiryReminderWorker.kt.
             implementation(libs.androidx.work.runtime)
+
+            // The privacy policy and photo sources: platform/OpenUrl.android.kt.
+            implementation(libs.androidx.browser)
         }
         iosMain.dependencies {
             // Google Sign-In via Google's own iOS SDK, wrapped for Kotlin/Native rather than
@@ -103,8 +110,32 @@ tasks.matching { task ->
     enabled = false
 }
 
+// ---------------------------------------------------------------------------
+// Open-source licences (#347).
+//
+// Collected from this build's own dependencies on every build, never committed, so the list
+// cannot fall behind the catalog. Offline: the build must not depend on GitHub's API. The JSON
+// joins the hand-written resources in one generated folder, which Compose then packages.
+// ---------------------------------------------------------------------------
+aboutLibraries {
+    offlineMode = true
+    collect { fetchRemoteLicense = false }
+    export { excludeFields.addAll("developers", "funding") }
+}
+
+val commonResourcesDir = layout.buildDirectory.dir("generated/commonComposeResources")
+
+val commonComposeResources =
+    tasks.register<Sync>("assembleCommonComposeResources") {
+        from("src/commonMain/composeResources")
+        from(tasks.named("exportLibraryDefinitions")) { into("files") }
+        into(commonResourcesDir)
+    }
+
 // The generated class defaults to a package derived from the module name, which is neither this
 // module's package nor anything a reader would guess.
 compose.resources {
     packageOfResClass = "com.kitchenai.ui.resources"
+    // Through the task, so Compose waits for it; a plain directory would skip the dependency.
+    customDirectory("commonMain", commonComposeResources.map { commonResourcesDir.get() })
 }

@@ -16,6 +16,9 @@ import com.kitchenai.ui.designsystem.motion.SharedTransitions
 import com.kitchenai.ui.designsystem.theme.LocalReducedMotion
 import com.kitchenai.ui.presentation.kitchen.KitchenScreen
 import com.kitchenai.ui.presentation.pantry.PantryScreen
+import com.kitchenai.ui.presentation.profile.LicencesScreen
+import com.kitchenai.ui.presentation.profile.PhotoCreditsScreen
+import com.kitchenai.ui.presentation.profile.ProfileNavigation
 import com.kitchenai.ui.presentation.profile.ProfileScreen
 import com.kitchenai.ui.presentation.shopping.ShoppingScreen
 import org.koin.compose.koinInject
@@ -61,9 +64,17 @@ fun KitchenAiNavHost(
             suggestionsGraph(navController, userId, detailTopBar)
             navigation<Route.ProfileGraph>(startDestination = Route.Profile) {
                 composable<Route.Profile> {
-                    Readable { ProfileScreen(userId, onOpenKitchen = { navController.navigate(Route.Kitchen) }) }
+                    val navigation =
+                        ProfileNavigation(
+                            onOpenKitchen = { navController.navigate(Route.Kitchen) },
+                            onOpenPhotoCredits = { navController.navigate(Route.PhotoCredits) },
+                            onOpenLicences = { navController.navigate(Route.Licences) },
+                        )
+                    Readable { ProfileScreen(userId, navigation) }
                 }
                 composable<Route.Kitchen> { Readable { KitchenScreen(userId, detailTopBar) } }
+                composable<Route.PhotoCredits> { Readable { PhotoCreditsScreen(detailTopBar) } }
+                composable<Route.Licences> { Readable { LicencesScreen(detailTopBar) } }
             }
         }
     }

@@ -32,6 +32,10 @@ android {
         // so a missing value here must not fail every build the way a missing region does.
         val googleWebClientId = providers.gradleProperty("kitchenai.googleWebClientId").orNull.orEmpty()
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+
+        // Blank-tolerant too: About hides its Privacy policy row until a policy is published (#355).
+        val privacyPolicyUrl = providers.gradleProperty("kitchenai.privacyPolicyUrl").orNull.orEmpty()
+        buildConfigField("String", "PRIVACY_POLICY_URL", "\"$privacyPolicyUrl\"")
     }
 
     buildFeatures {
