@@ -9,14 +9,39 @@ import kotlin.test.assertTrue
 
 class StoreSuggestionsUseCaseTest {
     @Test
-    fun `replaces the stored generation wholesale`() =
+    fun `a new generation is stored beside the earlier one`() =
         runTest {
             val recipes = FakeRecipeRepositoryContract(stored = listOf(recipe(id = "recipe-1")))
             val useCase = StoreSuggestionsUseCase(recipes)
 
             useCase(listOf(recipe(id = "recipe-2")))
 
-            assertEquals(listOf(recipe(id = "recipe-2")), recipes.getAll().let { (it as AppResult.Success).data })
+            assertEquals(
+                listOf(listOf(recipe(id = "recipe-2")), listOf(recipe(id = "recipe-1"))),
+                (recipes.getGenerations() as AppResult.Success).data,
+            )
+        }
+
+    @Test
+    fun `only the newest generations are kept`() =
+        runTest {
+            val recipes = FakeRecipeRepositoryContract()
+            val useCase = StoreSuggestionsUseCase(recipes)
+
+            (1..StoreSuggestionsUseCase.KEPT_GENERATIONS + 1).forEach { n -> useCase(listOf(recipe(id = "recipe-$n"))) }
+
+            val kept = (recipes.getGenerations() as AppResult.Success).data.map { it.single().id.value }
+            assertEquals(listOf("recipe-4", "recipe-3", "recipe-2"), kept)
+        }
+
+    @Test
+    fun `a run that found nothing leaves the earlier generations alone`() =
+        runTest {
+            val recipes = FakeRecipeRepositoryContract(stored = listOf(recipe(id = "recipe-1")))
+
+            StoreSuggestionsUseCase(recipes)(emptyList())
+
+            assertEquals(listOf(listOf(recipe(id = "recipe-1"))), (recipes.getGenerations() as AppResult.Success).data)
         }
 
     @Test

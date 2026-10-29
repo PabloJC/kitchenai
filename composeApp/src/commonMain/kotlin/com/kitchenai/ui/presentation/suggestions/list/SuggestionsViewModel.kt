@@ -76,6 +76,9 @@ class SuggestionsViewModel(
     private var current: List<RecipeSuggestion> = emptyList()
     private var currentSaved: List<RecipeSuggestion> = emptyList()
 
+    // The generations before [current], newest first: New ideas must not cost the ones still wanted.
+    private var earlier: List<List<RecipeSuggestion>> = emptyList()
+
     // Every member's Avoid set, off the kitchen already watched: it flags a kept dish that conflicts.
     private var avoids = HouseholdAvoids()
     private var user: UserId? = null
@@ -239,7 +242,7 @@ class SuggestionsViewModel(
     fun addMissingToList(id: RecipeId) {
         val kitchen = kitchenId.value ?: return
         if (internalState.value.addingMissingFor != null) return
-        val recipe = (current + currentSaved).firstOrNull { it.recipe.id == id }?.recipe ?: return
+        val recipe = (current + earlier.flatten() + currentSaved).firstOrNull { it.recipe.id == id }?.recipe ?: return
         internalState.update { it.copy(addingMissingFor = id) }
         viewModelScope.launch {
             val outcome =
@@ -260,6 +263,26 @@ class SuggestionsViewModel(
     }
 
     fun showSaved(showing: Boolean) = internalState.update { it.copy(showingSaved = showing) }
+
+    /** Which earlier generation is on screen, 0 the newest of them; null is back to the latest. */
+    fun browseEarlier(index: Int?) =
+        internalState.update { it.copy(browsingEarlier = index?.takeIf { shown -> shown in earlier.indices }) }
+
+    /** The card's heart: the same save as the detail screen's, and an unsave with the same undo. */
+    fun toggleSaved(id: RecipeId) {
+        if (currentSaved.any { it.recipe.id == id }) return unsave(id)
+        val kitchen = kitchenId.value ?: return
+        val recipe = (current + earlier.flatten()).firstOrNull { it.recipe.id == id }?.recipe ?: return
+        viewModelScope.launch {
+            when (val outcome = writes.save(kitchen, recipe)) {
+                is AppResult.Failure ->
+                    eventChannel.send(
+                        SuggestionsEvent.Failed(outcome.error.describe(Res.string.error_unauthorized_action)),
+                    )
+                is AppResult.Success -> eventChannel.send(SuggestionsEvent.Saved)
+            }
+        }
+    }
 
     fun searchSaved(query: String) = internalState.update { it.copy(savedQuery = query).withVisibleSaved() }
 
@@ -295,10 +318,11 @@ class SuggestionsViewModel(
     private suspend fun showStored(kitchenId: KitchenId) {
         val stored = (getStoredSuggestions(kitchenId) as? AppResult.Success)?.data
         if (stored.isNullOrEmpty()) return
-        render(stored)
+        earlier = stored.drop(1)
+        render(stored.first())
     }
 
-    /** A new generation replaces what was stored, on screen and on disk. */
+    /** A new generation takes the screen; the one it replaces becomes the newest earlier one, on screen and on disk. */
     private suspend fun generated(
         kitchenId: KitchenId,
         suggestions: List<RecipeSuggestion>,
@@ -307,11 +331,20 @@ class SuggestionsViewModel(
         // The write's own failure does not undo a run the user already sees the result of: it
         // only costs the next launch its head start.
         storeSuggestions(suggestions.map { it.recipe })
+        // What was on screen becomes the newest earlier set, as many as the store keeps. A run that
+        // found nothing still moves it back, so "nothing to suggest" never hides what came before.
+        earlier = (listOf(current) + earlier).filter { it.isNotEmpty() }.take(EARLIER_KEPT)
         // The pantry may have changed during the minute-long call, and its emission found the
         // previous list on screen. A stamped match is only as fresh as the model call's start.
         render(withFreshMatch(kitchenId, suggestions))
         internalState.update {
-            it.copy(isGenerating = false, hasGenerated = true, error = null, appliedOptions = sent)
+            it.copy(
+                isGenerating = false,
+                hasGenerated = true,
+                error = null,
+                appliedOptions = sent,
+                browsingEarlier = null,
+            )
         }
     }
 
@@ -328,10 +361,13 @@ class SuggestionsViewModel(
      */
     private suspend fun rematchGenerated(kitchenId: KitchenId) {
         val snapshot = current
-        if (snapshot.isEmpty()) return
+        val earlierSnapshot = earlier
+        if (snapshot.isEmpty() && earlierSnapshot.isEmpty()) return
         val fresh = withFreshMatch(kitchenId, snapshot)
-        if (current !== snapshot || this.kitchenId.value != kitchenId) return
+        val freshEarlier = earlierSnapshot.map { generation -> withFreshMatch(kitchenId, generation) }
+        if (current !== snapshot || earlier !== earlierSnapshot || this.kitchenId.value != kitchenId) return
         current = fresh
+        earlier = freshEarlier
         reresolve()
     }
 
@@ -377,7 +413,15 @@ class SuggestionsViewModel(
         internalState.update { state ->
             state.copy(
                 suggestions = current.map { suggestion -> suggestion.toUi(resolver, avoids) },
+                earlier =
+                    earlier.map {
+                            generation ->
+                        generation.map { suggestion -> suggestion.toUi(resolver, avoids) }
+                    },
+                // A kitchen change can leave fewer earlier generations than the one being browsed.
+                browsingEarlier = state.browsingEarlier?.takeIf { it in earlier.indices },
                 savedRecipes = currentSaved.map { suggestion -> suggestion.toUi(resolver, avoids) },
+                savedIds = currentSaved.map { it.recipe.id }.toSet(),
             ).withVisibleSaved()
         }
     }
@@ -398,3 +442,6 @@ class SuggestionsViewModel(
         internalState.update { it.copy(isGenerating = false, hasGenerated = true, error = message) }
     }
 }
+
+/** Every kept generation but the one on screen. */
+private const val EARLIER_KEPT = StoreSuggestionsUseCase.KEPT_GENERATIONS - 1

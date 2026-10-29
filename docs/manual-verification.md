@@ -1016,6 +1016,24 @@ hardware keyboard.*
    - The libraries the app is built with are listed (Koin, Compose, Firebase…). Tapping one shows
      its licence text; its dialog closes with "Close" ("Cerrar" in Spanish).
 
+### 44. Saving from an idea card, and the earlier ideas after New ideas
+
+*One device with a few things in the pantry, online.*
+
+1. Ideas: wait for a set of cards, then tap the heart on one.
+   - It fills, the phone confirms with a tap, and "Saved" shows. Saved (n) counts it. TalkBack or
+     VoiceOver reads the heart as an on/off button ("Remove from saved" once it is on).
+2. Tap the same heart again.
+   - It empties and the message offers "Undo"; Undo saves it again.
+3. Tap New ideas and wait for the new set.
+   - Above the cards, "Earlier ideas (n)" shows, n the number of cards in the set before.
+4. Tap it.
+   - The earlier cards replace the new ones, under "Earlier ideas, 1 of 1". Opening one, adding its
+     missing items to the list and its heart all work as on the latest set. "Latest ideas" returns.
+5. Tap New ideas twice more, then open Earlier ideas.
+   - "1 of 2", with "Older" leading to "2 of 2": only the last three sets are kept. Close and
+     reopen the app: the earlier ideas are still there.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

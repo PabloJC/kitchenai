@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.flowOf
 
 /**
  * A catalogue that can also refuse, because a fake that only succeeds tests only success.
- * [stored] seeds the local generation cache.
+ * [stored] seeds the local generation cache as one generation.
  */
 class FakeRecipePort(
     private val catalogue: List<Recipe> = emptyList(),
@@ -21,7 +21,9 @@ class FakeRecipePort(
     private val readError: AppError? = null,
 ) : RecipeRepositoryContract {
     private val state = MutableStateFlow<List<Recipe>>(emptyList())
-    private val cache = MutableStateFlow(stored)
+
+    // Newest first, like the real cache.
+    private val generations = MutableStateFlow(listOf(stored).filter { it.isNotEmpty() })
 
     val saved: List<Recipe> get() = state.value
 
@@ -52,8 +54,22 @@ class FakeRecipePort(
         return AppResult.Success(Unit)
     }
 
-    override suspend fun getAll(): AppResult<List<Recipe>> = AppResult.Success(cache.value)
+    override suspend fun getAll(): AppResult<List<Recipe>> = AppResult.Success(generations.value.flatten())
 
-    override suspend fun replaceAll(recipes: List<Recipe>): AppResult<Unit> =
-        AppResult.Success(Unit).also { cache.value = recipes }
+    override suspend fun getGenerations(): AppResult<List<List<Recipe>>> = AppResult.Success(generations.value)
+
+    /** A recipe stored again moves to the newest generation, as a row replaced by id does in the real table. */
+    override suspend fun addGeneration(
+        recipes: List<Recipe>,
+        keep: Int,
+    ): AppResult<Unit> {
+        val ids = recipes.map { it.id }.toSet()
+        val older =
+            generations.value.map {
+                    generation ->
+                generation.filterNot { it.id in ids }
+            }.filter { it.isNotEmpty() }
+        generations.value = (listOf(recipes) + older).take(keep)
+        return AppResult.Success(Unit)
+    }
 }

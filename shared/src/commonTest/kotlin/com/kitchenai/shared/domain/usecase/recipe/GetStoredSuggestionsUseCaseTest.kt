@@ -34,10 +34,33 @@ class GetStoredSuggestionsUseCaseTest {
                     noUnits(),
                 )
 
-            val result = (useCase(kitchen) as AppResult.Success).data
+            val result = (useCase(kitchen) as AppResult.Success).data.single()
 
             assertEquals(1f, result.single().match.coverage)
             assertEquals(stored, result.single().recipe)
+        }
+
+    @Test
+    fun `every kept generation comes back newest first and matched`() =
+        runTest {
+            val recipes = FakeRecipeRepositoryContract(stored = listOf(stored))
+            val newer = recipe(id = "recipe-2")
+            recipes.addGeneration(listOf(newer), keep = 3)
+            val useCase =
+                GetStoredSuggestionsUseCase(
+                    recipes,
+                    FakePantryRepositoryContract(listOf(pantryItem("item-1", "ing-1", Quantity(2.0, unit)))),
+                    TimeProvider { now },
+                    noUnits(),
+                )
+
+            val result = (useCase(kitchen) as AppResult.Success).data
+
+            assertEquals(
+                listOf(listOf(newer), listOf(stored)),
+                result.map { generation -> generation.map { it.recipe } },
+            )
+            assertEquals(1f, result.last().single().match.coverage)
         }
 
     @Test
@@ -99,7 +122,7 @@ class GetStoredSuggestionsUseCaseTest {
                     metricUnits("taxonomy-1"),
                 )
 
-            assertEquals(1f, (useCase(kitchen) as AppResult.Success).data.single().match.coverage)
+            assertEquals(1f, (useCase(kitchen) as AppResult.Success).data.single().single().match.coverage)
         }
 
     @Test
