@@ -273,7 +273,7 @@
     <string name="kitchen_member_unnamed">Kitchen member</string>
     <string name="kitchen_remove_action">Remove</string>
     <string name="kitchen_leave_action">Leave this kitchen</string>
-    <string name="kitchen_leave_disabled_owner">As the owner, you cannot leave while others are still in this kitchen. Remove them first.</string>
+    <string name="kitchen_leave_disabled_owner">Make someone else the owner to leave this kitchen.</string>
     <string name="kitchen_join_label">Join a kitchen</string>
     <string name="kitchen_join_placeholder">Enter a join code</string>
     <string name="kitchen_join_action">Join</string>
@@ -292,6 +292,18 @@
     <string name="kitchen_confirm_regenerate_body">The current code stops working at once. Anyone you sent it to will need the new one.</string>
     <string name="kitchen_left">You left the kitchen</string>
     <string name="kitchen_member_removed">%1$s was removed</string>
+    <string name="kitchen_make_owner">Make owner</string>
+    <string name="kitchen_member_actions">More for %1$s</string>
+    <string name="kitchen_edit_name">Edit name</string>
+    <string name="kitchen_confirm_owner_title">Make %1$s the owner?</string>
+    <string name="kitchen_confirm_owner_body">They will manage who is in this kitchen and its code, and you will be able to leave it. Only they can make you the owner again.</string>
+    <string name="kitchen_owner_changed">%1$s is now the owner</string>
+    <string name="display_name_title">Your name</string>
+    <string name="display_name_body">Shown to the people in your kitchen.</string>
+    <string name="display_name_label">Name</string>
+    <string name="display_name_save">Save</string>
+    <string name="display_name_cancel">Cancel</string>
+    <string name="display_name_unset">Not set: your kitchen sees \"Kitchen member\"</string>
     <string name="kitchen_joined">You joined the kitchen</string>
     <string name="kitchen_code_regenerated">New code ready</string>
     <string name="kitchen_invite_action">Invite</string>

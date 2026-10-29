@@ -14,6 +14,7 @@ import com.kitchenai.shared.domain.usecase.kitchen.LeaveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.RegenerateKitchenJoinCodeUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.RemoveKitchenMemberUseCase
+import com.kitchenai.shared.domain.usecase.kitchen.TransferKitchenOwnershipUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveUserProfileUseCase
 import com.kitchenai.ui.presentation.common.FakeKitchenPort
 import com.kitchenai.ui.presentation.common.UiText
@@ -522,6 +523,7 @@ class KitchenViewModelTest {
                     leave = LeaveKitchenUseCase(kitchens, lock),
                     removeMember = RemoveKitchenMemberUseCase(kitchens),
                     regenerateJoinCode = RegenerateKitchenJoinCodeUseCase(kitchens),
+                    transferOwnership = TransferKitchenOwnershipUseCase(kitchens, lock),
                 ),
         )
     }

@@ -264,6 +264,20 @@ service cloud.firestore {
              && touchedAvoidKeys(before, after).hasOnly([]);
     }
 
+    // The owner hands the kitchen to someone already in it, changing nothing else (#351): what
+    // lets an owner leave without removing everyone first.
+    function isOwnerTransferring(before, after) {
+      return isSignedIn()
+             && before.ownerId == request.auth.uid
+             && after.ownerId != before.ownerId
+             && after.ownerId in before.memberIds
+             && after.memberIds == before.memberIds
+             && after.joinCode == before.joinCode
+             && after.get('removedMemberIds', []) == before.get('removedMemberIds', [])
+             && touchedDisplayNameKeys(before, after).hasOnly([])
+             && touchedAvoidKeys(before, after).hasOnly([]);
+    }
+
     function isSelfDisplayNameUpdate(before, after) {
       return isSignedIn()
              && request.auth.uid in before.memberIds
@@ -299,15 +313,16 @@ service cloud.firestore {
                     && isValidKitchen(request.resource.data);
 
       // Exactly the shapes the repository ever writes: joining, leaving, the owner removing
-      // someone else, the owner rotating the join code, or a member updating only their own
-      // entries: their display name and their Avoid set.
-      // Anything else — including handing the kitchen to a new owner — is denied.
+      // someone else, the owner rotating the join code, the owner handing the kitchen to another
+      // member, or a member updating only their own entries: their display name and their Avoid
+      // set. Anything else is denied.
       allow update: if isValidKitchen(request.resource.data)
                     && (
                          isSelfJoin(resource.data, request.resource.data)
                          || isSelfLeave(resource.data, request.resource.data)
                          || isOwnerRemovingMember(resource.data, request.resource.data)
                          || isOwnerRegeneratingJoinCode(resource.data, request.resource.data)
+                         || isOwnerTransferring(resource.data, request.resource.data)
                          || isSelfDisplayNameUpdate(resource.data, request.resource.data)
                        );
 

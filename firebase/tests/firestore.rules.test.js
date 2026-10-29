@@ -414,6 +414,36 @@ describe('kitchen document', () => {
     );
   });
 
+  it('lets the owner hand the kitchen to a member, who then manages it while the old owner can leave', async () => {
+    await assertSucceeds(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { ownerId: BOB }));
+
+    await assertSucceeds(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { joinCode: 'bob-new-code' }));
+    await assertSucceeds(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { memberIds: [BOB] }));
+  });
+
+  it('rejects a member who is not the owner taking or handing out ownership', async () => {
+    await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { ownerId: BOB }));
+    await assertFails(updateDoc(doc(carol, `kitchens/${KITCHEN_1}`), { ownerId: CAROL }));
+  });
+
+  it('rejects the owner handing the kitchen to someone who is not in it', async () => {
+    await assertFails(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { ownerId: CAROL }));
+  });
+
+  it('rejects a hand-over that also changes the members, the code or a name', async () => {
+    await assertFails(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { ownerId: BOB, memberIds: [BOB] }));
+    await assertFails(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { ownerId: BOB, joinCode: 'changed' }));
+    await assertFails(
+      updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { ownerId: BOB, 'memberDisplayNames.user-bob': 'Renamed' }),
+    );
+  });
+
+  it('lets a member set their own display name but never another member\'s', async () => {
+    await assertSucceeds(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { 'memberDisplayNames.user-bob': 'Bob' }));
+    await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { 'memberDisplayNames.user-alice': 'Not Alice' }));
+    await assertFails(updateDoc(doc(carol, `kitchens/${KITCHEN_1}`), { 'memberDisplayNames.user-carol': 'Carol' }));
+  });
+
   it('lets only the owner regenerate the join code', async () => {
     await assertSucceeds(updateDoc(doc(alice, `kitchens/${KITCHEN_1}`), { joinCode: 'alice-new-code' }));
     await assertFails(updateDoc(doc(bob, `kitchens/${KITCHEN_1}`), { joinCode: 'bob-forged-code' }));

@@ -30,7 +30,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.core.AppResult
-import com.kitchenai.shared.domain.model.Appearance
 import com.kitchenai.shared.domain.model.AppleIdToken
 import com.kitchenai.shared.domain.model.AppleRawNonce
 import com.kitchenai.shared.domain.model.TermRef
@@ -42,10 +41,12 @@ import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.AppleSignInLauncher
 import com.kitchenai.ui.platform.GoogleSignInLauncher
+import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.platform.rememberAppleSignInLauncher
 import com.kitchenai.ui.platform.rememberGoogleSignInLauncher
-import com.kitchenai.ui.presentation.common.AppearanceUiState
 import com.kitchenai.ui.presentation.common.AppearanceViewModel
+import com.kitchenai.ui.presentation.common.DisplayNameDialog
+import com.kitchenai.ui.presentation.common.DisplayNameViewModel
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.resolve
 import com.kitchenai.ui.resources.Res
@@ -90,11 +91,12 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = koinViewModel(),
     appearanceViewModel: AppearanceViewModel = koinViewModel(),
     reminderViewModel: ReminderSettingsViewModel = koinViewModel(),
+    displayNameViewModel: DisplayNameViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val appearance by appearanceViewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(userId) { viewModel.start(userId) }
+    LaunchedEffect(userId) { displayNameViewModel.start(userId, platformLanguageTags()) }
 
     val error = state.error
     when {
@@ -102,9 +104,9 @@ fun ProfileScreen(
             ProfileContent(
                 state = state,
                 viewModel = viewModel,
-                appearance = appearance,
-                onAppearance = appearanceViewModel::choose,
+                appearanceViewModel = appearanceViewModel,
                 reminders = reminderViewModel,
+                displayName = displayNameViewModel,
                 navigation = navigation,
                 modifier = modifier,
             )
@@ -127,25 +129,28 @@ fun ProfileScreen(
 private fun ProfileContent(
     state: ProfileUiState,
     viewModel: ProfileViewModel,
-    appearance: AppearanceUiState,
-    onAppearance: (Appearance) -> Unit,
+    appearanceViewModel: AppearanceViewModel,
     reminders: ReminderSettingsViewModel,
+    displayName: DisplayNameViewModel,
     navigation: ProfileNavigation,
     modifier: Modifier = Modifier,
 ) {
     val reminderState by reminders.state.collectAsStateWithLifecycle()
+    val appearance by appearanceViewModel.state.collectAsStateWithLifecycle()
+    val nameState by displayName.state.collectAsStateWithLifecycle()
     var choosing by remember { mutableStateOf<TermRef?>(null) }
     Column(modifier = modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
             item { GroupTitle(Res.string.profile_group_account) }
             item { AccountArea(state, viewModel) }
+            item { DisplayNameRow(nameState.name, onEdit = displayName::edit) }
             item { GroupTitle(Res.string.profile_group_household) }
             item { KitchenRow(navigation.onOpenKitchen) }
             item { GroupTitle(Res.string.profile_group_food) }
             item { NoteLine(Res.string.profile_avoid_household) }
             foodPreferences(state, viewModel) { term -> choosing = term }
             item { GroupTitle(Res.string.profile_group_appearance) }
-            item { AppearanceChooser(appearance, onAppearance) }
+            item { AppearanceChooser(appearance, appearanceViewModel::choose) }
             item { GroupTitle(Res.string.profile_group_reminders) }
             item { ReminderRows(reminderState, reminders) }
             item { GroupTitle(Res.string.profile_group_privacy) }
@@ -165,6 +170,7 @@ private fun ProfileContent(
         )
         Spacer(Modifier.height(Dimens.large))
     }
+    DisplayNameDialog(nameState, onSave = displayName::save, onDismiss = displayName::cancel)
     // Read from state each time, so the sheet shows the strength just chosen rather than the one it opened with.
     val chip = choosing?.let { term -> state.sections.flatMap { it.terms }.firstOrNull { it.term == term } }
     if (chip != null) {

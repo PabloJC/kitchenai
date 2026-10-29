@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Policy
@@ -35,6 +37,8 @@ import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.appearance_dark
 import com.kitchenai.ui.resources.appearance_light
 import com.kitchenai.ui.resources.appearance_system
+import com.kitchenai.ui.resources.display_name_title
+import com.kitchenai.ui.resources.display_name_unset
 import com.kitchenai.ui.resources.profile_kitchen_body
 import com.kitchenai.ui.resources.profile_kitchen_title
 import com.kitchenai.ui.resources.profile_licences
@@ -72,6 +76,21 @@ internal fun KitchenRow(onOpen: () -> Unit) {
         leadingContent = { Icon(Icons.Outlined.Groups, contentDescription = null) },
         trailingContent = { Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null) },
         modifier = Modifier.clickable(role = Role.Button, onClick = onOpen),
+    )
+}
+
+/** For guests too: the name is what the rest of the kitchen sees, whoever signed in or not. */
+@Composable
+internal fun DisplayNameRow(
+    name: String?,
+    onEdit: () -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(stringResource(Res.string.display_name_title)) },
+        supportingContent = { Text(name ?: stringResource(Res.string.display_name_unset)) },
+        leadingContent = { Icon(Icons.Outlined.Badge, contentDescription = null) },
+        trailingContent = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+        modifier = Modifier.clickable(role = Role.Button, onClick = onEdit),
     )
 }
 

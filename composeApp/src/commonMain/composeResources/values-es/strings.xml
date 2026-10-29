@@ -270,7 +270,7 @@
     <string name="kitchen_member_unnamed">Miembro de la cocina</string>
     <string name="kitchen_remove_action">Eliminar</string>
     <string name="kitchen_leave_action">Salir de esta cocina</string>
-    <string name="kitchen_leave_disabled_owner">Como propietario, no puedes salir mientras haya otras personas en esta cocina. Elimínalas primero.</string>
+    <string name="kitchen_leave_disabled_owner">Para salir de esta cocina, haz propietaria a otra persona.</string>
     <string name="kitchen_join_label">Unirse a una cocina</string>
     <string name="kitchen_join_placeholder">Introduce un código para unirte</string>
     <string name="kitchen_join_action">Unirse</string>
@@ -289,6 +289,18 @@
     <string name="kitchen_confirm_regenerate_body">El código actual deja de funcionar al momento. Quien lo tenga necesitará el nuevo.</string>
     <string name="kitchen_left">Has salido de la cocina</string>
     <string name="kitchen_member_removed">%1$s ya no está en la cocina</string>
+    <string name="kitchen_make_owner">Hacer propietario</string>
+    <string name="kitchen_member_actions">Más opciones para %1$s</string>
+    <string name="kitchen_edit_name">Cambiar nombre</string>
+    <string name="kitchen_confirm_owner_title">¿Hacer propietario a %1$s?</string>
+    <string name="kitchen_confirm_owner_body">Decidirá quién está en esta cocina y cuál es su código, y tú podrás salir. Solo esa persona podrá volver a hacerte propietario.</string>
+    <string name="kitchen_owner_changed">%1$s es ahora el propietario</string>
+    <string name="display_name_title">Tu nombre</string>
+    <string name="display_name_body">Lo ven las personas de tu cocina.</string>
+    <string name="display_name_label">Nombre</string>
+    <string name="display_name_save">Guardar</string>
+    <string name="display_name_cancel">Cancelar</string>
+    <string name="display_name_unset">Sin nombre: tu cocina ve «Miembro de la cocina»</string>
     <string name="kitchen_joined">Te has unido a la cocina</string>
     <string name="kitchen_code_regenerated">Código nuevo listo</string>
     <string name="kitchen_invite_action">Invitar</string>
