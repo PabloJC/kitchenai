@@ -102,6 +102,17 @@ class PantryDraftBuilderTest {
         assertNull(draft?.freeText)
     }
 
+    @Test
+    fun `return picks the exact name or a top match that starts with the text and nothing looser`() {
+        val milk = IngredientOption(ingredient("milk"), "Milk", litre)
+        val oatMilk = IngredientOption(ingredient("milk-oat"), "Oat milk", litre)
+
+        assertEquals(milk, returnPick(milk, listOf(oatMilk), "milk"))
+        assertEquals(milk, returnPick(null, listOf(milk, oatMilk), "mil"))
+        assertNull(returnPick(null, listOf(oatMilk), "milk"))
+        assertNull(returnPick(null, emptyList(), "milk"))
+    }
+
     private fun ref(term: String) = TermRef(TaxonomyId.of("units").value(), TermId.of(term).value())
 
     private fun ingredient(id: String) = IngredientId.of(id).value()

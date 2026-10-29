@@ -386,12 +386,13 @@ private fun IngredientPicker(
             form.pickedId.value = null
         },
         label = { Text(stringResource(Res.string.pantry_search)) },
-        // Return takes the obvious row, the exact name or else the top match, and moves on to the amount.
+        // Return takes the obvious row, the exact name or a top match that starts with what was typed,
+        // and moves on to the amount. Anything looser stays as written, as the hint promises.
         keyboardOptions =
             KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
         keyboardActions =
             KeyboardActions(onNext = {
-                if (picked == null) (saved ?: matches.firstOrNull())?.let(pick)
+                if (picked == null) returnPick(saved, matches, query)?.let(pick)
                 focusManager.moveFocus(FocusDirection.Down)
             }),
         // Said while it is true: what is typed, not picked and not a catalogue name is saved as written.
