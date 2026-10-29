@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -63,6 +64,7 @@ import com.kitchenai.ui.resources.pantry_editor_save_and_add
 import com.kitchenai.ui.resources.pantry_editor_title_add
 import com.kitchenai.ui.resources.pantry_editor_title_edit
 import com.kitchenai.ui.resources.pantry_editor_unit
+import com.kitchenai.ui.resources.pantry_editor_will_save
 import com.kitchenai.ui.resources.pantry_save
 import com.kitchenai.ui.resources.pantry_search
 import kotlinx.coroutines.delay
@@ -122,6 +124,7 @@ private fun EditorFields(
     val separator = remember { decimalSeparatorFor(platformLanguageTags()) }
     val focus = remember { FocusRequester() }
     val picked = pickedOption(form.pickedId.value, state.ingredients, editing)
+    val saved = rememberSavedOption(picked, form, state.ingredients, editing)
 
     // Back to the search after "save and add another", so the next item is typed at once.
     LaunchedEffect(revision) { if (revision > 0) focus.requestFocus() }
@@ -132,7 +135,7 @@ private fun EditorFields(
         TextButton(onClick = rowActions.onAddToList) { Text(stringResource(Res.string.pantry_add_to_list)) }
     }
     AddedConfirmation(name = state.lastAdded, revision = revision)
-    IngredientPicker(state = state, form = form, picked = picked, focusRequester = focus)
+    IngredientPicker(state = state, form = form, picked = picked, saved = saved, focusRequester = focus)
     // Keyed: the field keeps its raw text locally and must start empty after an add.
     key(revision) {
         QuantityField(
@@ -161,11 +164,33 @@ private fun EditorFields(
     )
     ExpiryField(value = form.expiresAt.value, onChange = { date -> form.expiresAt.value = date })
     EditorActions(
-        draft = form.draft(state, picked),
+        draft = form.draft(state, saved),
         canAddAnother = editing == null,
         onSubmit = onSubmit,
         onSubmitAndAddAnother = onSubmitAndAddAnother,
     )
+}
+
+/**
+ * [savedOption] for the sheet. An exact name brings its unit like a pick does, but only once
+ * typed: a row opened for editing keeps the unit it was stored with.
+ */
+@Composable
+private fun rememberSavedOption(
+    picked: IngredientOption?,
+    form: EditorForm,
+    catalogue: List<IngredientOption>,
+    editing: PantryItemUi?,
+): IngredientOption? {
+    val query = form.query.value
+    val saved = remember(picked, query, catalogue) { savedOption(picked, query, catalogue) }
+    val typedSinceOpening = editing == null || query != editing.name
+    LaunchedEffect(saved?.id) {
+        if (picked == null && typedSinceOpening) {
+            saved?.let { match -> form.preferredUnitId.value = match.defaultUnit?.term?.value }
+        }
+    }
+    return saved
 }
 
 /**
@@ -298,6 +323,7 @@ private fun IngredientPicker(
     state: PantryUiState,
     form: EditorForm,
     picked: IngredientOption?,
+    saved: IngredientOption?,
     focusRequester: FocusRequester,
 ) {
     val query = form.query.value
@@ -319,9 +345,9 @@ private fun IngredientPicker(
             form.pickedId.value = null
         },
         label = { Text(stringResource(Res.string.pantry_search)) },
-        // Said while it is true: what is typed and not picked is saved as the user wrote it.
+        // Said while it is true: what is typed, not picked and not a catalogue name is saved as written.
         supportingText =
-            if (searching) {
+            if (searching && saved == null) {
                 { Text(stringResource(Res.string.pantry_editor_free_text_hint)) }
             } else {
                 null
@@ -343,19 +369,41 @@ private fun IngredientPicker(
         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
     )
     if (searching) {
-        // A plain column: the sheet already scrolls, and six rows need no lazy list inside it.
-        Column {
-            matches.forEach { option ->
-                key(option.id.value) {
-                    ListItem(
-                        headlineContent = { Text(option.label) },
-                        modifier = Modifier.clickable { pick(option) },
-                    )
-                }
-            }
-        }
+        MatchRows(matches = matches, saved = saved, onPick = pick)
     } else if (picked == null && state.recent.isNotEmpty()) {
         RecentChips(options = state.recent, onPick = pick)
+    }
+}
+
+/** The first rows the text finds; the one that will be saved as typed, if any, says so. */
+@Composable
+private fun MatchRows(
+    matches: List<IngredientOption>,
+    saved: IngredientOption?,
+    onPick: (IngredientOption) -> Unit,
+) {
+    // A plain column: the sheet already scrolls, and six rows need no lazy list inside it.
+    Column {
+        matches.forEach { option ->
+            key(option.id.value) {
+                ListItem(
+                    headlineContent = { Text(option.label) },
+                    supportingContent =
+                        if (option == saved) {
+                            { Text(stringResource(Res.string.pantry_editor_will_save)) }
+                        } else {
+                            null
+                        },
+                    trailingContent =
+                        if (option == saved) {
+                            { Icon(Icons.Filled.Check, contentDescription = null) }
+                        } else {
+                            null
+                        },
+                    modifier = Modifier.clickable { onPick(option) },
+                )
+            }
+        }
     }
 }
 

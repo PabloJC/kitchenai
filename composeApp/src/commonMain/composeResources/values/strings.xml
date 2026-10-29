@@ -335,6 +335,7 @@
     <string name="pantry_editor_title_add">Add to pantry</string>
     <string name="pantry_editor_title_edit">Edit %1$s</string>
     <string name="pantry_editor_recent">Recent</string>
+    <string name="pantry_editor_will_save">Saved as this catalogue item</string>
     <string name="pantry_editor_free_text_hint">Not in the catalogue: it will be saved as typed</string>
     <string name="pantry_editor_clear_search">Clear search</string>
     <string name="pantry_editor_amount_malformed">Enter a number</string>

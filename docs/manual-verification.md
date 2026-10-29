@@ -929,6 +929,16 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The reminder arrives at the chosen local time, not shifted by the zone difference. Without
      opening the app after the change it may arrive shifted until the next launch.
 
+### 39. A typed catalogue name is saved as the catalogue entry
+
+1. Pantry → add. Type `milk` (lower case, no accents) and do not tap a suggestion.
+   - The first match row, "Milk", says "Saved as this catalogue item" with a check, and the "Not in
+     the catalogue" hint is not shown. Save: the row shows "Milk" and is not marked as free text.
+2. Type `mil` and save.
+   - The hint shows; the row is saved as "mil", marked as not in the catalogue.
+3. Shopping: type `2 milk` in the add field and send without tapping the chip.
+   - The line is "Milk" with "2", not italic. Moving it to the pantry merges with step 1's row.
+
 ### 40. Acting on the pantry: buy again, cook what expires, clear the expired
 
 1. Pantry: with TalkBack or VoiceOver on, focus a row and open its actions.
