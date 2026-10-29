@@ -257,6 +257,7 @@
     <string name="credits_intro">The dish photographs come from Wikimedia Commons. Tap one to open its page, or its licence to read it.</string>
     <string name="credits_by">By %1$s</string>
     <string name="credits_failed">The photo credits could not be read.</string>
+    <string name="licences_failed">The licences could not be read.</string>
     <string name="licences_close">Close</string>
     <string name="appearance_system">System</string>
     <string name="appearance_light">Light</string>

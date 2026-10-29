@@ -254,6 +254,7 @@
     <string name="credits_intro">Las fotos de los platos vienen de Wikimedia Commons. Toca una para abrir su página, o su licencia para leerla.</string>
     <string name="credits_by">De %1$s</string>
     <string name="credits_failed">No se han podido leer los créditos de las fotos.</string>
+    <string name="licences_failed">No se han podido leer las licencias.</string>
     <string name="licences_close">Cerrar</string>
     <string name="appearance_system">Sistema</string>
     <string name="appearance_light">Claro</string>

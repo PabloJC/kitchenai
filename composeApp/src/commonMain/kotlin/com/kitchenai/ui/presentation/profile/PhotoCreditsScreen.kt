@@ -20,6 +20,7 @@ import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.platform.rememberOpenUrl
 import com.kitchenai.ui.presentation.common.PublishDetailTitle
+import com.kitchenai.ui.presentation.common.readBundledText
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.credits_by
 import com.kitchenai.ui.resources.credits_failed
@@ -37,9 +38,9 @@ fun PhotoCreditsScreen(
     modifier: Modifier = Modifier,
 ) {
     PublishDetailTitle(stringResource(Res.string.profile_photo_credits), detailTopBar)
-    // Loaded once from the bundle; an empty list stands for a file that failed to parse.
+    // Loaded once from the bundle; an empty list stands for a file that is missing or fails to parse.
     val credits by produceState<List<PhotoCredit>?>(null) {
-        value = parsePhotoCredits(Res.readBytes(PHOTO_CREDITS_FILE).decodeToString()).orEmpty()
+        value = readBundledText(PHOTO_CREDITS_FILE)?.let(::parsePhotoCredits).orEmpty()
     }
     val loaded = credits
     when {
