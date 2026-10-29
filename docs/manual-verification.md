@@ -603,7 +603,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
 *Run on both platforms, device language Spanish.*
 
 1. Profile tab: tap an allergen term.
-   - A sheet titled with the term offers "Prefiero · Evitar · Nada", with the lines "Prefiero: las
+   - A sheet titled with the term offers "Preferir · Evitar · No", with the lines "Preferir: las
      sugerencias tienden a incluirlo." and, in red, "Evitar: nunca se sugieren recetas que lo
      lleven." There is no Save button anywhere on the profile.
 2. Choose "Evitar".
@@ -611,9 +611,9 @@ shared case, a second device joined to that kitchen (scenario 5).*
      and the bottom of the profile reads "Guardando" then "Guardado".
 3. Switch to another tab straight away, then back; then close the app fully and reopen it.
    - The chip is still "Evitar" both times.
-4. Turn on airplane mode and choose "Prefiero" on another term.
+4. Turn on airplane mode and choose "Preferir" on another term.
    - Once the save fails, that chip goes back to unselected and an error with "Inténtalo de nuevo"
-     appears at the bottom. Turn airplane mode off and tap it: the chip is "Prefiero" again and
+     appears at the bottom. Turn airplane mode off and tap it: the chip is "Preferir" again and
      "Guardado" shows.
 
 ### 21. Appearance follows the system, or is forced light or dark
