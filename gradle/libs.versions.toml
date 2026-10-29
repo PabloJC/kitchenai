@@ -35,8 +35,9 @@ kotlinxSerialization = "1.9.0"
 # iOS-only: no GitLive wrapper exists for Google Sign-In. Bundles Google's own iOS SDK via
 # Kotlin's Swift Package Manager interop, so :composeApp writes no cinterop of its own.
 kmpauth             = "3.0.6"
-# The open-source licences screen. 15.1.1 is built against this Kotlin and Compose (15.2 needs Compose 1.12).
-aboutLibraries      = "15.1.1"
+# The open-source licences screen. 14.x, not 15: every 15.x AAR demands compileSdk 37 and, through
+# core-ktx 1.19, AGP 9.1. Move to 15 together with those.
+aboutLibraries      = "14.2.1"
 
 # --- Test --------------------------------------------------------------------
 turbine             = "1.2.1"
