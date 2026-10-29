@@ -36,13 +36,6 @@ import com.kitchenai.ui.resources.suggestions_missing_more
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** What a card's taps do, the same for the latest ideas and an earlier set. */
-internal class SuggestionCardActions(
-    val onOpen: (RecipeId) -> Unit,
-    val onAddMissing: (RecipeId) -> Unit,
-    val onToggleSaved: (RecipeId) -> Unit,
-)
-
 @Composable
 internal fun SuggestionCard(
     suggestion: SuggestionUi,
