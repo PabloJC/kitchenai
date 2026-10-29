@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -89,8 +90,13 @@ import org.koin.compose.viewmodel.koinViewModel
 private const val QUICK_MINUTES = 30
 private const val SKELETON_CARDS = 3
 
-// Not a recipe id, so it can never collide with a card's key.
+// Not recipe ids, so they can never collide with a card's key.
 private const val EARLIER_ROW_KEY = "earlier-ideas"
+private const val OPTIONS_KEY = "options"
+private const val OFFLINE_KEY = "offline"
+private const val FILTERS_CHANGED_KEY = "filters-changed"
+private const val GENERATING_KEY = "generating"
+private const val ERROR_KEY = "error"
 
 // Room under the list for the floating button, so it never hides the last card's content.
 private val FAB_CLEARANCE = 88.dp
@@ -145,19 +151,27 @@ fun SuggestionsScreen(
                     onSeeIdeas = { viewModel.showSaved(false) },
                 )
             } else {
-                Options(state, viewModel)
-                if (!state.isOnline) OfflineNote()
-                if (state.optionsChanged && !state.isGenerating && state.isOnline) {
-                    FiltersChangedBanner(onUpdate = viewModel::generate)
-                }
-                if (state.isGenerating) GeneratingStrip(onCancel = viewModel::cancelGeneration)
-                state.error?.let { message -> SuggestionsErrorBanner(message, viewModel::retry, state.isOnline) }
+                // The filters and banners scroll with the cards: fixed above them, they could
+                // leave a phone in landscape or at large text a sliver for the list.
                 Results(
                     state,
                     SuggestionCardActions(onOpen, viewModel::addMissingToList, viewModel::toggleSaved),
                     onRefresh = viewModel::generate,
                     onGoToPantry = onGoToPantry,
                     onBrowseEarlier = viewModel::browseEarlier,
+                    header = {
+                        item(key = OPTIONS_KEY) { Options(state, viewModel) }
+                        if (!state.isOnline) item(key = OFFLINE_KEY) { OfflineNote() }
+                        if (state.optionsChanged && !state.isGenerating && state.isOnline) {
+                            item(key = FILTERS_CHANGED_KEY) { FiltersChangedBanner(onUpdate = viewModel::generate) }
+                        }
+                        if (state.isGenerating) {
+                            item(key = GENERATING_KEY) { GeneratingStrip(onCancel = viewModel::cancelGeneration) }
+                        }
+                        state.error?.let { message ->
+                            item(key = ERROR_KEY) { SuggestionsErrorBanner(message, viewModel::retry, state.isOnline) }
+                        }
+                    },
                 )
             }
         }
@@ -292,6 +306,7 @@ private fun Results(
     onRefresh: () -> Unit,
     onGoToPantry: () -> Unit,
     onBrowseEarlier: (Int?) -> Unit,
+    header: LazyListScope.() -> Unit,
 ) {
     // Pulling down is the secondary trigger for the button's own generate(), guarded the same
     // way. The strip above shows progress, so the pull indicator is not held open for it.
@@ -304,6 +319,7 @@ private fun Results(
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
             contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
         ) {
+            header()
             if (state.earlier.isNotEmpty()) {
                 item(key = EARLIER_ROW_KEY) { EarlierIdeasRow(state.earlier, state.browsingEarlier, onBrowseEarlier) }
             }

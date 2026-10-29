@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -439,7 +441,11 @@ private fun IngredientsCard(state: RecipeDetailUiState) {
             modifier = Modifier.padding(Dimens.large),
             verticalArrangement = Arrangement.spacedBy(Dimens.small),
         ) {
-            Text(stringResource(Res.string.detail_ingredients), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(Res.string.detail_ingredients),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
             // One list, not two: a section header per bucket read like a shopping list. The
             // status now travels with each row instead, as a chip.
             state.held.forEach { line -> StatusRow(line, held = true) }
@@ -485,7 +491,11 @@ private fun UnverifiableCard(
         ) {
             // Its own section with its own sentence: this is not "missing", and a reader who
             // took it for missing would go shopping for something they may already own.
-            Text(stringResource(Res.string.detail_unverifiable), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(Res.string.detail_unverifiable),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
             Text(stringResource(Res.string.detail_unverifiable_body), style = MaterialTheme.typography.bodySmall)
             lines.forEach { line ->
                 Column(verticalArrangement = Arrangement.spacedBy(Dimens.extraSmall)) {
@@ -555,7 +565,8 @@ private fun StepsCard(
                 Text(
                     stringResource(Res.string.detail_steps),
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
+                    // Headings are how a screen reader jumps from the ingredients to the steps.
+                    modifier = Modifier.weight(1f).semantics { heading() },
                 )
                 FilledTonalButton(onClick = onStartCooking, modifier = Modifier.heightIn(min = Dimens.touchTarget)) {
                     Icon(
@@ -614,7 +625,13 @@ private fun StepRow(
     val colors = MaterialTheme.colorScheme
     val fill = if (isFirst) colors.primaryContainer else colors.surfaceContainerHighest
     val onFill = if (isFirst) colors.onPrimaryContainer else colors.onSurfaceVariant
-    var circle = Modifier.size(Dimens.huge).clip(CircleShape).background(fill)
+    // A minimum rather than a fixed size: at large font scales a two-digit number widens the circle.
+    var circle =
+        Modifier
+            .defaultMinSize(minWidth = Dimens.huge, minHeight = Dimens.huge)
+            .aspectRatio(1f)
+            .clip(CircleShape)
+            .background(fill)
     if (!isFirst) circle = circle.border(DividerDefaults.Thickness, colors.outlineVariant, CircleShape)
     val spoken = stringResource(Res.string.detail_step_spoken, number, total, step)
     // One node per step: the number in its circle and the text would otherwise be read apart.
@@ -623,7 +640,12 @@ private fun StepRow(
         modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
     ) {
         Box(modifier = circle, contentAlignment = Alignment.Center) {
-            Text(number.toString(), style = MaterialTheme.typography.titleMedium, color = onFill)
+            Text(
+                number.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                color = onFill,
+                modifier = Modifier.padding(Dimens.extraSmall),
+            )
         }
         Text(step, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = Dimens.small))
     }
