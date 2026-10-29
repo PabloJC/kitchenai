@@ -125,6 +125,7 @@
     <string name="shopping_move_same_date">Same date for all</string>
     <string name="shopping_move_skip_dates">Skip dates</string>
     <string name="shopping_move_bare_amount">1 (no amount)</string>
+    <string name="shopping_done">Done</string>
     <string name="shopping_amount">Amount</string>
     <string name="shopping_add_amount">Add amount</string>
     <string name="shopping_save">Save</string>

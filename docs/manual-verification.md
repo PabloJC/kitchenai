@@ -957,6 +957,28 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The dialog says "Remove 3 expired items?". Removing empties the section; the message's "Undo"
      brings all three back.
 
+### 42. The keyboard: iPhone number pad, the Return chain, capitals and hardware keys
+
+*iPhone first (the number pad has no Return key there), then an iPad or Android tablet with a
+hardware keyboard.*
+
+1. Pantry → add. Type `milk` and press Return.
+   - The row "Milk" is picked and the cursor moves to "Amount".
+2. Type `2` in "Amount".
+   - On iPhone a "Done" button sits beside the field; tapping it closes the number pad and Save is
+     in view. Tapping an empty part of the sheet also closes the keyboard.
+3. Type `2` again and press the keyboard's Done (Android) or Return (hardware keyboard).
+   - The item is saved and the sheet closes.
+4. Open the sheet again and press Escape on the hardware keyboard.
+   - The sheet closes.
+5. Shopping: type `olive oil` and send it.
+   - The keyboard started in capitals: the line reads "Olive oil". Opening the amount row, typing
+     `1` and pressing Done adds the line.
+6. Tap "Add amount" on a line, type `3`, press Enter on the hardware keyboard.
+   - The amount is saved. Opening it again and pressing Escape closes the dialog unchanged.
+7. Ideas → Saved, type in the search and press the keyboard's Search key.
+   - The keyboard closes and the filtered cards stay.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

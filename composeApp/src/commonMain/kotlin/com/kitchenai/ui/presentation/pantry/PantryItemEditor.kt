@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -36,18 +38,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.QuantityFieldOptions
 import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.format.decimalSeparatorFor
 import com.kitchenai.ui.designsystem.format.formatAmount
+import com.kitchenai.ui.designsystem.input.closeKeyboardOnTap
+import com.kitchenai.ui.designsystem.input.onEscape
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.presentation.common.ExpiryField
@@ -55,6 +63,7 @@ import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.pantry_add_to_list
 import com.kitchenai.ui.resources.pantry_amount
 import com.kitchenai.ui.resources.pantry_delete
+import com.kitchenai.ui.resources.pantry_done
 import com.kitchenai.ui.resources.pantry_editor_added
 import com.kitchenai.ui.resources.pantry_editor_amount_malformed
 import com.kitchenai.ui.resources.pantry_editor_clear_search
@@ -101,6 +110,8 @@ fun PantryItemEditor(
         Column(
             modifier =
                 Modifier
+                    .onEscape(onDismiss)
+                    .closeKeyboardOnTap()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = Dimens.large)
                     .padding(bottom = Dimens.extraLarge),
@@ -121,7 +132,6 @@ private fun EditorFields(
 ) {
     val editing = state.editing
     val revision = state.editorRevision
-    val separator = remember { decimalSeparatorFor(platformLanguageTags()) }
     val focus = remember { FocusRequester() }
     val picked = pickedOption(form.pickedId.value, state.ingredients, editing)
     val saved = rememberSavedOption(picked, form, state.ingredients, editing)
@@ -136,6 +146,35 @@ private fun EditorFields(
     }
     AddedConfirmation(name = state.lastAdded, revision = revision)
     IngredientPicker(state = state, form = form, picked = picked, saved = saved, focusRequester = focus)
+    AmountField(state, form, revision) { form.draft(state, saved)?.let(onSubmit) }
+    LocationChips(
+        options = state.locations,
+        selected = form.location.value,
+        onToggle = { ref -> form.location.value = if (form.location.value == ref) null else ref },
+    )
+    ExpiryField(value = form.expiresAt.value, onChange = { date -> form.expiresAt.value = date })
+    EditorActions(
+        draft = form.draft(state, saved),
+        canAddAnother = editing == null,
+        onSubmit = onSubmit,
+        onSubmitAndAddAnother = onSubmitAndAddAnother,
+    )
+}
+
+/**
+ * The amount, ending the keyboard's run through the sheet: Done saves a draft that can be saved,
+ * and otherwise just closes the keyboard so the buttons below are in reach.
+ */
+@Composable
+private fun AmountField(
+    state: PantryUiState,
+    form: EditorForm,
+    revision: Int,
+    onSave: () -> Unit,
+) {
+    val editing = state.editing
+    val separator = remember { decimalSeparatorFor(platformLanguageTags()) }
+    val focusManager = LocalFocusManager.current
     // Keyed: the field keeps its raw text locally and must start empty after an add.
     key(revision) {
         QuantityField(
@@ -154,21 +193,15 @@ private fun EditorFields(
                     malformedMessage = stringResource(Res.string.pantry_editor_amount_malformed),
                     preferredUnitId = form.preferredUnitId.value,
                     onMalformedChange = { wrong -> form.malformed.value = wrong },
+                    imeAction = ImeAction.Done,
+                    onImeAction = {
+                        focusManager.clearFocus()
+                        onSave()
+                    },
+                    doneLabel = stringResource(Res.string.pantry_done),
                 ),
         )
     }
-    LocationChips(
-        options = state.locations,
-        selected = form.location.value,
-        onToggle = { ref -> form.location.value = if (form.location.value == ref) null else ref },
-    )
-    ExpiryField(value = form.expiresAt.value, onChange = { date -> form.expiresAt.value = date })
-    EditorActions(
-        draft = form.draft(state, saved),
-        canAddAnother = editing == null,
-        onSubmit = onSubmit,
-        onSubmitAndAddAnother = onSubmitAndAddAnother,
-    )
 }
 
 /**
@@ -329,7 +362,7 @@ private fun IngredientPicker(
     val query = form.query.value
     val matches = remember(state.ingredients, query) { state.ingredients.rankedMatches(query) }
     val searching = picked == null && query.isNotBlank()
-    val clearLabel = stringResource(Res.string.pantry_editor_clear_search)
+    val focusManager = LocalFocusManager.current
     val pick: (IngredientOption) -> Unit = { chosen ->
         form.query.value = chosen.label
         form.pickedId.value = chosen.id.value
@@ -345,6 +378,14 @@ private fun IngredientPicker(
             form.pickedId.value = null
         },
         label = { Text(stringResource(Res.string.pantry_search)) },
+        // Return takes the obvious row, the exact name or else the top match, and moves on to the amount.
+        keyboardOptions =
+            KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+        keyboardActions =
+            KeyboardActions(onNext = {
+                if (picked == null) (saved ?: matches.firstOrNull())?.let(pick)
+                focusManager.moveFocus(FocusDirection.Down)
+            }),
         // Said while it is true: what is typed, not picked and not a catalogue name is saved as written.
         supportingText =
             if (searching && saved == null) {
@@ -354,14 +395,7 @@ private fun IngredientPicker(
             },
         trailingIcon =
             if (query.isNotEmpty()) {
-                {
-                    IconButton(
-                        onClick = {
-                            form.query.value = ""
-                            form.pickedId.value = null
-                        },
-                    ) { Icon(Icons.Filled.Close, contentDescription = clearLabel) }
-                }
+                { ClearQueryButton(form) }
             } else {
                 null
             },
@@ -373,6 +407,16 @@ private fun IngredientPicker(
     } else if (picked == null && state.recent.isNotEmpty()) {
         RecentChips(options = state.recent, onPick = pick)
     }
+}
+
+@Composable
+private fun ClearQueryButton(form: EditorForm) {
+    IconButton(
+        onClick = {
+            form.query.value = ""
+            form.pickedId.value = null
+        },
+    ) { Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.pantry_editor_clear_search)) }
 }
 
 /** The first rows the text finds; the one that will be saved as typed, if any, says so. */

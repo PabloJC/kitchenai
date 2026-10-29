@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.MoveToPantryOptions
@@ -56,10 +57,13 @@ import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.QuantityField
+import com.kitchenai.ui.designsystem.component.QuantityFieldOptions
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
 import com.kitchenai.ui.designsystem.format.decimalSeparatorFor
 import com.kitchenai.ui.designsystem.format.formatAmount
+import com.kitchenai.ui.designsystem.input.closeKeyboardOnTap
+import com.kitchenai.ui.designsystem.input.onEscape
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
 import com.kitchenai.ui.navigation.PublishTabTitle
@@ -86,6 +90,7 @@ import com.kitchenai.ui.resources.shopping_clear_title
 import com.kitchenai.ui.resources.shopping_cleared_count
 import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.shopping_delete
+import com.kitchenai.ui.resources.shopping_done
 import com.kitchenai.ui.resources.shopping_empty_body
 import com.kitchenai.ui.resources.shopping_empty_title
 import com.kitchenai.ui.resources.shopping_failed_body
@@ -142,7 +147,7 @@ fun ShoppingScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { TwoActionSnackbarHost(snackbar) },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding()) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding).imePadding().closeKeyboardOnTap()) {
             state.error?.let { message -> ShoppingErrorBanner(message, state.bannerOffersRetry, viewModel::retry) }
 
             ShoppingBody(
@@ -451,6 +456,14 @@ private fun EditAmountDialog(
                 },
                 initialAmount = line.amount?.let { held -> formatAmount(held, separator) }.orEmpty(),
                 initialUnitId = line.unit?.term?.value,
+                // Enter or Done saves a valid amount, and Escape closes, as on any dialog with a keyboard.
+                modifier = Modifier.onEscape(onDismiss),
+                options =
+                    QuantityFieldOptions(
+                        imeAction = ImeAction.Done,
+                        onImeAction = { amount?.takeIf { valid }?.let { typed -> onSave(typed, unit) } },
+                        doneLabel = stringResource(Res.string.shopping_done),
+                    ),
             )
         },
         confirmButton = {
