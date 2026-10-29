@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -23,6 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kitchenai.shared.domain.model.RecipeId
@@ -71,6 +75,7 @@ internal fun SavedRecipesView(
         )
         return
     }
+    val focusManager = LocalFocusManager.current
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Dimens.medium)) {
         if (state.offersSavedSearch) {
             OutlinedTextField(
@@ -79,6 +84,9 @@ internal fun SavedRecipesView(
                 placeholder = { Text(stringResource(Res.string.suggestions_saved_search)) },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 singleLine = true,
+                // The list filters as it is typed, so Search only has the keyboard to put away.
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 modifier = Modifier.fillMaxWidth(),
             )
         }

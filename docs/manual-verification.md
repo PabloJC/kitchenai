@@ -972,6 +972,29 @@ shared case, a second device joined to that kitchen (scenario 5).*
 4. Profile → preferences.
    - "Food group" is still offered, so "avoid dairy" still works.
 
+### 42. The keyboard: iPhone number pad, the Return chain, capitals and hardware keys
+
+*iPhone first (the number pad has no Return key there), then an iPad or Android tablet with a
+hardware keyboard.*
+
+1. Pantry → add. Type `milk` and press Return.
+   - The row "Milk" is picked and the cursor moves to "Amount".
+2. Type `2` in "Amount".
+   - On iPhone a "Done" button sits beside the field; tapping it closes the number pad and Save is
+     in view. Tapping an empty part of the sheet also closes the keyboard.
+3. Type `2` again and press the keyboard's Done (Android) or Return (hardware keyboard).
+   - The item is saved and the sheet closes.
+4. Open the sheet again and press Escape on the hardware keyboard without touching a field; then
+   reopen it, tap a field, tap the sheet's background and press Escape.
+   - The sheet closes both times.
+5. Shopping: type `olive oil` and send it.
+   - The keyboard started in capitals: the line reads "Olive oil". Opening the amount row, typing
+     `1` and pressing Done adds the line.
+6. Tap "Add amount" on a line, type `3`, press Enter on the hardware keyboard.
+   - The amount is saved. Opening it again and pressing Escape closes the dialog unchanged.
+7. Ideas → Saved, type in the search and press the keyboard's Search key.
+   - The keyboard closes and the filtered cards stay.
+
 ### 43. About: privacy policy, photo credits and open-source licences
 
 *On both platforms. Build once with `kitchenai.privacyPolicyUrl` (Android) and `PRIVACY_POLICY_URL`

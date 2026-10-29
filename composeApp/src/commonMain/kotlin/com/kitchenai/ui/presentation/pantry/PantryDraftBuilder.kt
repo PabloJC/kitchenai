@@ -2,6 +2,7 @@ package com.kitchenai.ui.presentation.pantry
 
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.presentation.common.exactCatalogueMatch
+import com.kitchenai.ui.presentation.common.foldForSearch
 import kotlin.time.Instant
 
 /** What a blank amount means: the sheet is for "I have some", not for counting salt. */
@@ -43,6 +44,17 @@ internal fun savedOption(
     text: String,
     catalogue: List<IngredientOption>,
 ): IngredientOption? = picked ?: exactCatalogueMatch(text, catalogue) { option -> option.label }
+
+/**
+ * What Return on the name field picks: the exact name, else a top match that starts with what was
+ * typed. A looser match is left alone, since the field promises to save what was written.
+ */
+internal fun returnPick(
+    saved: IngredientOption?,
+    matches: List<IngredientOption>,
+    text: String,
+): IngredientOption? =
+    saved ?: matches.firstOrNull()?.takeIf { top -> foldForSearch(top.label).startsWith(foldForSearch(text).trim()) }
 
 /**
  * The unit the sheet shows: the one reported, else the ingredient's own, else the first on offer.

@@ -36,8 +36,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.designsystem.component.QuantityField
+import com.kitchenai.ui.designsystem.component.QuantityFieldOptions
 import com.kitchenai.ui.designsystem.component.TermChip
 import com.kitchenai.ui.designsystem.format.formatAmount
 import com.kitchenai.ui.designsystem.theme.Dimens
@@ -45,6 +47,7 @@ import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.shopping_add
 import com.kitchenai.ui.resources.shopping_add_field
 import com.kitchenai.ui.resources.shopping_amount
+import com.kitchenai.ui.resources.shopping_done
 import com.kitchenai.ui.resources.shopping_on_list
 import com.kitchenai.ui.resources.shopping_quantity_toggle
 import com.kitchenai.ui.resources.shopping_unpick
@@ -94,7 +97,8 @@ fun ShoppingAddField(
                     placeholder = { Text(stringResource(Res.string.shopping_add_field)) },
                     leadingIcon = { Icon(Icons.Outlined.Add, contentDescription = null) },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardOptions =
+                        KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
                     // Handled here, so the keyboard does not close: the next item follows.
                     keyboardActions = KeyboardActions(onSend = { onAdd() }),
                     modifier = Modifier.weight(1f).focusRequester(focus),
@@ -123,6 +127,13 @@ fun ShoppingAddField(
                     initialAmount = draft.amount?.let(::formatAmount).orEmpty(),
                     initialUnitId = draft.unit?.term?.value ?: units.firstOrNull()?.first?.term?.value,
                     modifier = Modifier.fillMaxWidth(),
+                    // Done adds the line, as Send does in the name field.
+                    options =
+                        QuantityFieldOptions(
+                            imeAction = ImeAction.Done,
+                            onImeAction = onAdd,
+                            doneLabel = stringResource(Res.string.shopping_done),
+                        ),
                 )
             }
         }
