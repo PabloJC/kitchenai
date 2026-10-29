@@ -368,7 +368,7 @@ something to work from. Run on both platforms.*
    - A line "Reading your pantry and thinking of dishes. This takes a moment." and three skeleton
      cards, each with a grey placeholder block holding an image icon.
 2. When results arrive, each card has a **photograph** in the top 16:9 slot, then the title, a
-   "Generated" badge and a minutes badge.
+   "AI idea" badge and a minutes badge.
    - The photograph depends on the recipe's `dish-types` tag. Compare it to the dish: a pasta dish
      shows a pasta photo, a soup a soup photo, and so on.
    - No card keeps a grey placeholder block unless its recipe has no usable `dish-types` tag
@@ -497,7 +497,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
 
 1. Pantry tab, with at least one item from the catalogue and one typed by hand.
    - Moving by headings lands on each section header ("Use soon", "Fresh"…).
-   - The hand-typed row reads "Not in catalogue" before its name.
+   - The hand-typed row reads "Added by hand" before its name.
    - On a row, the actions menu (TalkBack: actions; VoiceOver: swipe up or down) offers "Delete",
      and choosing it removes the row and offers "Undo".
 2. Open a row's editor.
@@ -603,7 +603,7 @@ shared case, a second device joined to that kitchen (scenario 5).*
 *Run on both platforms, device language Spanish.*
 
 1. Profile tab: tap an allergen term.
-   - A sheet titled with the term offers "Prefiero · Evitar · Nada", with the lines "Prefiero: las
+   - A sheet titled with the term offers "Preferir · Evitar · No", with the lines "Preferir: las
      sugerencias tienden a incluirlo." and, in red, "Evitar: nunca se sugieren recetas que lo
      lleven." There is no Save button anywhere on the profile.
 2. Choose "Evitar".
@@ -611,9 +611,9 @@ shared case, a second device joined to that kitchen (scenario 5).*
      and the bottom of the profile reads "Guardando" then "Guardado".
 3. Switch to another tab straight away, then back; then close the app fully and reopen it.
    - The chip is still "Evitar" both times.
-4. Turn on airplane mode and choose "Prefiero" on another term.
+4. Turn on airplane mode and choose "Preferir" on another term.
    - Once the save fails, that chip goes back to unselected and an error with "Inténtalo de nuevo"
-     appears at the bottom. Turn airplane mode off and tap it: the chip is "Prefiero" again and
+     appears at the bottom. Turn airplane mode off and tap it: the chip is "Preferir" again and
      "Guardado" shows.
 
 ### 21. Appearance follows the system, or is forced light or dark
@@ -932,10 +932,10 @@ shared case, a second device joined to that kitchen (scenario 5).*
 ### 39. A typed catalogue name is saved as the catalogue entry
 
 1. Pantry → add. Type `milk` (lower case, no accents) and do not tap a suggestion.
-   - The first match row, "Milk", says "Saved as this catalogue item" with a check, and the "Not in
-     the catalogue" hint is not shown. Save: the row shows "Milk" and is not marked as free text.
+   - The first match row, "Milk", says "Saved as this ingredient" with a check, and the "Not in
+     our list" hint is not shown. Save: the row shows "Milk" and is not marked as free text.
 2. Type `mil` and save.
-   - The hint shows; the row is saved as "mil", marked as not in the catalogue.
+   - The hint shows; the row is saved as "mil", marked "Added by hand".
 3. Shopping: type `2 milk` in the add field and send without tapping the chip.
    - The line is "Milk" with "2", not italic. Moving it to the pantry merges with step 1's row.
 
