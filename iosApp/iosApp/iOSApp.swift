@@ -34,7 +34,14 @@ struct iOSApp: App {
         // PresentationModuleKt, not SharedModuleKt: `initKoin` lives in :shared, which
         // cannot see :composeApp. googleWebClientId is Android-only (Credential Manager);
         // iOS sources its own Google client id from Info.plist's GIDClientID instead.
-        PresentationModuleKt.doInitKoinUi(functionsRegion: region, googleWebClientId: "", appDeclaration: { _ in })
+        // Optional, unlike the region: a blank address only hides About's Privacy policy row.
+        let privacyPolicyUrl = Bundle.main.object(forInfoDictionaryKey: "PrivacyPolicyUrl") as? String ?? ""
+        PresentationModuleKt.doInitKoinUi(
+            functionsRegion: region,
+            googleWebClientId: "",
+            privacyPolicyUrl: privacyPolicyUrl,
+            appDeclaration: { _ in }
+        )
     }
 
     var body: some Scene {

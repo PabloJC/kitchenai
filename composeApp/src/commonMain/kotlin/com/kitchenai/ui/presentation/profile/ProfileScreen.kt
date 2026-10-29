@@ -85,7 +85,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ProfileScreen(
     userId: UserId,
-    onOpenKitchen: () -> Unit = {},
+    navigation: ProfileNavigation = ProfileNavigation(),
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = koinViewModel(),
     appearanceViewModel: AppearanceViewModel = koinViewModel(),
@@ -105,7 +105,7 @@ fun ProfileScreen(
                 appearance = appearance,
                 onAppearance = appearanceViewModel::choose,
                 reminders = reminderViewModel,
-                onOpenKitchen = onOpenKitchen,
+                navigation = navigation,
                 modifier = modifier,
             )
         error == null -> LoadingState(modifier)
@@ -130,7 +130,7 @@ private fun ProfileContent(
     appearance: AppearanceUiState,
     onAppearance: (Appearance) -> Unit,
     reminders: ReminderSettingsViewModel,
-    onOpenKitchen: () -> Unit,
+    navigation: ProfileNavigation,
     modifier: Modifier = Modifier,
 ) {
     val reminderState by reminders.state.collectAsStateWithLifecycle()
@@ -140,7 +140,7 @@ private fun ProfileContent(
             item { GroupTitle(Res.string.profile_group_account) }
             item { AccountArea(state, viewModel) }
             item { GroupTitle(Res.string.profile_group_household) }
-            item { KitchenRow(onOpenKitchen) }
+            item { KitchenRow(navigation.onOpenKitchen) }
             item { GroupTitle(Res.string.profile_group_food) }
             item { NoteLine(Res.string.profile_avoid_household) }
             foodPreferences(state, viewModel) { term -> choosing = term }
@@ -154,6 +154,7 @@ private fun ProfileContent(
                 item { DeleteAccountAction(enabled = !state.isAuthenticating, onDelete = viewModel::deleteAccount) }
             }
             item { GroupTitle(Res.string.profile_group_about) }
+            item { AboutRows(navigation) }
             item { VersionRow() }
         }
         SaveStatus(

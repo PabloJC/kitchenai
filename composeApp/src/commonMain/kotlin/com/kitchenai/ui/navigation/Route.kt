@@ -32,6 +32,12 @@ sealed interface Route {
     data object Kitchen : Route
 
     @Serializable
+    data object PhotoCredits : Route
+
+    @Serializable
+    data object Licences : Route
+
+    @Serializable
     data object SuggestionsGraph : Route
 
     @Serializable

@@ -995,6 +995,27 @@ hardware keyboard.*
 7. Ideas → Saved, type in the search and press the keyboard's Search key.
    - The keyboard closes and the filtered cards stay.
 
+### 43. About: privacy policy, photo credits and open-source licences
+
+*On both platforms. Build once with `kitchenai.privacyPolicyUrl` (Android) and `PRIVACY_POLICY_URL`
+(iOS, written `https:/$()/…`) set, and once with both blank.*
+
+1. Profile → About, with the policy address set.
+   - "Privacy policy", "Photo credits" and "Open-source licences" sit above "Version". With the
+     address blank, "Privacy policy" is not there at all.
+2. Tap "Privacy policy".
+   - The page opens over the app (Custom Tabs on Android, Safari's sheet on iOS); closing it
+     returns to Profile.
+3. Tap "Photo credits".
+   - The bar reads "Photo credits" with a back arrow. Every photograph is listed with "By <author>";
+     a CC BY or CC BY-SA one shows its licence as a link, a CC0 or public-domain one as plain text.
+4. Tap a row, then a licence link.
+   - The row opens its Wikimedia Commons page and the link opens the Creative Commons deed, both
+     over the app.
+5. Back, then "Open-source licences".
+   - The libraries the app is built with are listed (Koin, Compose, Firebase…). Tapping one shows
+     its licence text; its dialog closes with "Close" ("Cerrar" in Spanish).
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

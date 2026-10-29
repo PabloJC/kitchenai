@@ -6,7 +6,11 @@ reuse. Each was resized to a 1280px-wide JPEG for the app bundle; no other edits
 made. One line per image below: file, license, author, and the Commons page to verify
 it against.
 
-- `dish_pasta.jpg` — **CC BY-SA 2.5**, by The original uploader was Noblige at English Wikipedia.. Source: https://commons.wikimedia.org/wiki/File:Spaghetti_bolognese.jpg
+The app shows these credits in Profile › About › Photo credits, read from
+`../files/photo_credits.json`. Change both together: `tools/__tests__/photo-credits.test.mjs`
+fails when they disagree or when a `dish_*.jpg` has no credit.
+
+- `dish_pasta.jpg` — **CC BY-SA 2.5**, by Noblige at English Wikipedia. Source: https://commons.wikimedia.org/wiki/File:Spaghetti_bolognese.jpg
 - `dish_soup.jpg` — **CC BY-SA 4.0**, by JIP. Source: https://commons.wikimedia.org/wiki/File:Tomato_soup,_rye_bread_and_white_wine.jpg
 - `dish_salad.jpg` — **CC0**, by fireskystudios.com asthetik. Source: https://commons.wikimedia.org/wiki/File:Fresh_Salad_(Unsplash).jpg
 - `dish_stew.jpg` — **CC0**, by El Nuevo Doge. Source: https://commons.wikimedia.org/wiki/File:Estofado_goulash,_Mazatl%C3%A1n,_9_de_enero_de_2022.jpg

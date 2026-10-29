@@ -245,6 +245,17 @@
     <string name="profile_kitchen_title">Tu cocina</string>
     <string name="profile_kitchen_body">Miembros, código para unirse y compartir</string>
     <string name="profile_version">Versión</string>
+    <string name="profile_privacy_policy">Política de privacidad</string>
+    <string name="profile_privacy_policy_body">Qué guarda KitchenAI y qué envía</string>
+    <string name="profile_photo_credits">Créditos de las fotos</string>
+    <string name="profile_photo_credits_body">Quién hizo las fotos de los platos</string>
+    <string name="profile_licences">Licencias de código abierto</string>
+    <string name="profile_licences_body">Las librerías con las que está hecha KitchenAI</string>
+    <string name="credits_intro">Las fotos de los platos vienen de Wikimedia Commons. Toca una para abrir su página, o su licencia para leerla.</string>
+    <string name="credits_by">De %1$s</string>
+    <string name="credits_failed">No se han podido leer los créditos de las fotos.</string>
+    <string name="licences_failed">No se han podido leer las licencias.</string>
+    <string name="licences_close">Cerrar</string>
     <string name="appearance_system">Sistema</string>
     <string name="appearance_light">Claro</string>
     <string name="appearance_dark">Oscuro</string>
