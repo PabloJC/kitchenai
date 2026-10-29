@@ -1,6 +1,7 @@
 package com.kitchenai.ui.presentation.pantry
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -107,11 +108,17 @@ fun PantryItemEditor(
         modifier = modifier,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
+        // The sheet holds focus itself when no field does, so Escape reaches it from the start and
+        // after a background tap; a field inside still passes its keys up through here.
+        val sheetFocus = remember { FocusRequester() }
+        LaunchedEffect(sheetFocus) { sheetFocus.requestFocus() }
         Column(
             modifier =
                 Modifier
+                    .focusRequester(sheetFocus)
                     .onEscape(onDismiss)
-                    .closeKeyboardOnTap()
+                    .focusable()
+                    .closeKeyboardOnTap(sheetFocus)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = Dimens.large)
                     .padding(bottom = Dimens.extraLarge),

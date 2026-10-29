@@ -969,8 +969,9 @@ hardware keyboard.*
      in view. Tapping an empty part of the sheet also closes the keyboard.
 3. Type `2` again and press the keyboard's Done (Android) or Return (hardware keyboard).
    - The item is saved and the sheet closes.
-4. Open the sheet again and press Escape on the hardware keyboard.
-   - The sheet closes.
+4. Open the sheet again and press Escape on the hardware keyboard without touching a field; then
+   reopen it, tap a field, tap the sheet's background and press Escape.
+   - The sheet closes both times.
 5. Shopping: type `olive oil` and send it.
    - The keyboard started in capitals: the line reads "Olive oil". Opening the amount row, typing
      `1` and pressing Done adds the line.
