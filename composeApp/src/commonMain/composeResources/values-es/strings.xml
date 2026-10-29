@@ -27,11 +27,11 @@
         <item quantity="other">%1$d no tienen cantidad y se quedan en la lista</item>
     </plurals>
     <string name="snack_cooked">Descontado de tu despensa</string>
-    <string name="snack_saved">Guardado</string>
+    <string name="snack_saved">Guardada</string>
     <string name="snack_unsaved">Quitada de guardadas</string>
 
     <!-- Screens -->
-    <string name="pantry_search">Buscar en el catálogo</string>
+    <string name="pantry_search">Buscar ingredientes</string>
     <string name="pantry_amount">Cantidad</string>
     <string name="pantry_save">Guardar</string>
     <string name="pantry_done">Hecho</string>
@@ -39,7 +39,7 @@
     <string name="pantry_no_expiry">Sin fecha de caducidad</string>
     <string name="pantry_add">Añadir</string>
     <string name="pantry_undo">Deshacer</string>
-    <string name="pantry_removed_named">%1$s eliminado</string>
+    <string name="pantry_removed_named">Se ha quitado: %1$s</string>
     <string name="pantry_add_to_list">Añadir a la lista de la compra</string>
     <string name="pantry_add_to_list_short">A la lista</string>
     <string name="pantry_added_to_list_named">%1$s añadido a la lista</string>
@@ -71,11 +71,11 @@
     <string name="pantry_no_matches">Nada coincide con «%1$s»</string>
     <string name="pantry_no_matches_location">No hay nada guardado aquí</string>
     <string name="pantry_add_named">Añadir «%1$s»</string>
-    <string name="pantry_section_expired">Caducado</string>
+    <string name="pantry_section_expired">Caducados</string>
     <string name="pantry_section_soon">Consumir pronto</string>
-    <string name="pantry_section_fresh">Fresco</string>
+    <string name="pantry_section_fresh">En buen estado</string>
     <string name="pantry_section_undated">Sin fecha de caducidad</string>
-    <string name="not_in_catalogue">No está en el catálogo</string>
+    <string name="not_in_catalogue">Añadido a mano</string>
     <string name="pantry_expires_today">Caduca hoy</string>
     <string name="pantry_expires_tomorrow">Caduca mañana</string>
     <string name="pantry_expired_yesterday">Caducó ayer</string>
@@ -137,8 +137,8 @@
     <string name="detail_ingredients">Ingredientes</string>
     <string name="detail_have">En despensa</string>
     <string name="detail_missing">Hay que comprar</string>
-    <string name="detail_unverifiable">Compruébalo tú</string>
-    <string name="detail_unverifiable_body">Tu despensa no puede decir ni que sí ni que no de estos</string>
+    <string name="detail_unverifiable">Comprueba si los tienes</string>
+    <string name="detail_unverifiable_body">Tu despensa no nos dice si los tienes</string>
     <string name="detail_candidate_prompt">En tu despensa como</string>
     <string name="detail_steps">Pasos</string>
     <string name="detail_servings">Raciones</string>
@@ -206,7 +206,7 @@
     <string name="suggestions_empty_title">Todavía no hay sugerencias</string>
     <string name="suggestions_nothing_title">Nada que sugerir</string>
     <string name="suggestions_working">Leyendo tu despensa y pensando platos. Esto tarda un momento.</string>
-    <string name="suggestions_generated">Generado</string>
+    <string name="suggestions_generated">Idea de IA</string>
     <string name="suggestions_view_ideas">Ideas</string>
     <string name="suggestions_view_saved">Guardadas (%1$d)</string>
     <string name="suggestions_saved_empty_title">Aún no hay recetas guardadas</string>
@@ -216,11 +216,11 @@
     <string name="suggestions_missing">Faltan: %1$s</string>
     <string name="suggestions_minutes">%1$d min</string>
     <string name="suggestions_coverage_count">%1$d de %2$d ingredientes</string>
-    <string name="suggestions_check_manually">Revisar a mano: %1$s</string>
+    <string name="suggestions_check_manually">Comprueba si los tienes: %1$s</string>
     <string name="profile_sent_summary">Cada sugerencia envía tus restricciones dietéticas, tu despensa y el idioma de la app.</string>
     <string name="profile_saving">Guardando</string>
     <string name="profile_no_preferences">No hay preferencias que mostrar</string>
-    <string name="profile_no_vocabulary">Este catálogo todavía no tiene vocabulario.</string>
+    <string name="profile_no_vocabulary">Todavía no hay preferencias para elegir.</string>
     <string name="profile_vocabulary_failed">No hemos podido cargar las opciones. Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="profile_sign_in_google">Iniciar sesión con Google</string>
     <string name="profile_sign_out">Cerrar sesión</string>
@@ -249,7 +249,7 @@
     <string name="appearance_light">Claro</string>
     <string name="appearance_dark">Oscuro</string>
     <string name="kitchen_title">Cocina</string>
-    <string name="kitchen_your_code">Tu código para unirse</string>
+    <string name="kitchen_your_code">Código de invitación</string>
     <string name="kitchen_copy">Copiar código</string>
     <string name="kitchen_regenerate_action">Nuevo código</string>
     <string name="kitchen_members_title">Miembros</string>
@@ -257,7 +257,7 @@
     <string name="kitchen_you_suffix">%1$s (tú)</string>
     <string name="kitchen_you_unnamed">Tú</string>
     <string name="kitchen_member_unnamed">Miembro de la cocina</string>
-    <string name="kitchen_remove_action">Eliminar</string>
+    <string name="kitchen_remove_action">Quitar</string>
     <string name="kitchen_leave_action">Salir de esta cocina</string>
     <string name="kitchen_leave_disabled_owner">Como propietario, no puedes salir mientras haya otras personas en esta cocina. Elimínalas primero.</string>
     <string name="kitchen_join_label">Unirse a una cocina</string>
@@ -270,7 +270,7 @@
     <string name="kitchen_confirm_leave_title">¿Salir de esta cocina?</string>
     <string name="kitchen_confirm_leave_body">Dejarás de ver su despensa, su lista de la compra y sus recetas guardadas, y tendrás una cocina propia vacía.</string>
     <string name="kitchen_confirm_leave">Salir</string>
-    <string name="kitchen_confirm_remove_title">¿Eliminar a %1$s?</string>
+    <string name="kitchen_confirm_remove_title">¿Quitar a %1$s?</string>
     <string name="kitchen_confirm_remove_body">Dejará de ver su despensa, su lista de la compra y sus recetas guardadas, y no podrá volver a unirse con el código.</string>
     <string name="kitchen_confirm_join_title">¿Unirte a esta cocina?</string>
     <string name="kitchen_confirm_join_body">Saldrás de tu cocina actual y dejarás de ver su despensa, su lista de la compra y sus recetas guardadas.</string>
@@ -284,11 +284,11 @@
     <string name="kitchen_invite_message">Únete a mi cocina en KitchenAI con el código %1$s</string>
     <string name="kitchen_code_copied">Código copiado</string>
     <string name="kitchen_paste">Pegar</string>
-    <string name="strength_prefer">Prefiero</string>
+    <string name="strength_prefer">Preferir</string>
     <string name="strength_avoid">Evitar</string>
-    <string name="strength_off">Nada</string>
-    <string name="strength_choose">Elegir Prefiero, Evitar o Nada</string>
-    <string name="strength_prefer_explained">Prefiero: las sugerencias tienden a incluirlo.</string>
+    <string name="strength_off">No</string>
+    <string name="strength_choose">Elegir Preferir, Evitar o No</string>
+    <string name="strength_prefer_explained">Preferir: las sugerencias tienden a incluirlo.</string>
     <string name="strength_avoid_explained">Evitar: nunca se sugieren ideas que lo lleven a nadie de tu cocina.</string>
     <plurals name="profile_selected_count">
         <item quantity="one">%1$d elegido</item>
@@ -299,7 +299,7 @@
     <string name="tab_shopping">Compra</string>
     <string name="tab_ideas">Ideas</string>
     <string name="tab_profile">Perfil</string>
-    <string name="session_retry">Inténtalo otra vez</string>
+    <string name="session_retry">Inténtalo de nuevo</string>
     <string name="error_retry">Inténtalo de nuevo</string>
     <string name="error_invalid_input">Ese valor no es válido. Revísalo e inténtalo de nuevo.</string>
     <string name="error_recipe_unavailable_title">Esta receta ya no está disponible</string>
@@ -308,7 +308,7 @@
     <string name="network_new_ideas_offline">Las ideas nuevas necesitan conexión. Volverán cuando te conectes.</string>
 
     <!-- Shopping check-off flow -->
-    <string name="shopping_removed">%1$s eliminado</string>
+    <string name="shopping_removed">Se ha quitado: %1$s</string>
     <plurals name="shopping_move_count">
         <item quantity="one">Mover %1$d a la despensa</item>
         <item quantity="other">Mover %1$d a la despensa</item>
@@ -321,7 +321,7 @@
     <string name="suggestions_filters_changed">Los filtros han cambiado</string>
     <string name="suggestions_update_ideas">Actualizar ideas</string>
     <string name="suggestions_cancel">Cancelar</string>
-    <string name="suggestions_retry">Inténtalo otra vez</string>
+    <string name="suggestions_retry">Inténtalo de nuevo</string>
     <string name="suggestions_add_missing">Añadir lo que falta a la lista</string>
     <plurals name="suggestions_missing_more">
         <item quantity="one">+%1$d más</item>
@@ -332,8 +332,8 @@
     <string name="pantry_editor_title_add">Añadir a la despensa</string>
     <string name="pantry_editor_title_edit">Editar %1$s</string>
     <string name="pantry_editor_recent">Recientes</string>
-    <string name="pantry_editor_will_save">Se guardará como este del catálogo</string>
-    <string name="pantry_editor_free_text_hint">No está en el catálogo: se guardará tal como lo escribes</string>
+    <string name="pantry_editor_will_save">Se guardará como este ingrediente</string>
+    <string name="pantry_editor_free_text_hint">No está en nuestra lista: se guardará tal como lo escribes</string>
     <string name="pantry_editor_clear_search">Borrar búsqueda</string>
     <string name="pantry_editor_amount_malformed">Introduce un número</string>
     <string name="pantry_editor_unit">Unidad</string>
