@@ -12,11 +12,12 @@ import com.kitchenai.shared.domain.service.PantryMatcher
 import com.kitchenai.shared.domain.usecase.profile.GetUnitConverterUseCase
 
 /**
- * The last generation, matched against the pantry as it stands now rather than as it stood when
- * it was generated — a launch that finds the pantry changed must not show stale coverage.
+ * The kept generations, newest first, matched against the pantry as it stands now rather than as
+ * it stood when they were generated — a launch that finds the pantry changed must not show stale
+ * coverage.
  *
- * One pantry read for the whole list, not one per recipe: [PantryMatcher] is pure, so matching
- * every stored recipe against the same snapshot costs nothing further reads would not.
+ * One pantry read for every list, not one per recipe: [PantryMatcher] is pure, so matching every
+ * stored recipe against the same snapshot costs nothing further reads would not.
  */
 class GetStoredSuggestionsUseCase(
     private val recipes: RecipeRepositoryContract,
@@ -24,14 +25,20 @@ class GetStoredSuggestionsUseCase(
     private val time: TimeProvider,
     private val units: GetUnitConverterUseCase,
 ) {
-    suspend operator fun invoke(kitchenId: KitchenId): AppResult<List<RecipeSuggestion>> =
-        recipes.getAll().flatMap { stored ->
+    suspend operator fun invoke(kitchenId: KitchenId): AppResult<List<List<RecipeSuggestion>>> =
+        recipes.getGenerations().flatMap { generations ->
             pantry.getPantry(kitchenId).flatMap { held ->
                 units().map { converter ->
                     val now = time.now()
                     val zone = time.zone()
-                    stored.map { recipe ->
-                        RecipeSuggestion(recipe, PantryMatcher.match(recipe, held, now, converter, zone), recipe.source)
+                    generations.map { generation ->
+                        generation.map { recipe ->
+                            RecipeSuggestion(
+                                recipe,
+                                PantryMatcher.match(recipe, held, now, converter, zone),
+                                recipe.source,
+                            )
+                        }
                     }
                 }
             }

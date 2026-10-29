@@ -9,5 +9,8 @@ package com.kitchenai.shared.data.local
 class RecipeLocalDataSource(private val dao: RecipeDao) {
     suspend fun getAll(): List<RecipeEntity> = dao.getAll()
 
-    suspend fun replaceAll(recipes: List<RecipeEntity>) = dao.replaceAll(recipes)
+    suspend fun addGeneration(
+        recipes: List<RecipeEntity>,
+        keep: Int,
+    ) = dao.addGeneration(recipes, keep)
 }

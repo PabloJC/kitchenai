@@ -6,7 +6,7 @@ import com.kitchenai.shared.domain.model.Recipe
 import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 
-/** One recipe from the last generation, by id — a generated dish was never written anywhere else. */
+/** One recipe from the kept generations, by id — a generated dish was never written anywhere else. */
 class GetStoredRecipeUseCase(
     private val recipes: RecipeRepositoryContract,
 ) {

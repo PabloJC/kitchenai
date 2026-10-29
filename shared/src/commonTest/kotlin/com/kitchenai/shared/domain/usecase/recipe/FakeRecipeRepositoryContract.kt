@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.flowOf
 /**
  * In-memory [RecipeRepositoryContract]. [catalogue] holds recipes nobody saved, so that a test
  * can read one by id without first putting it in the kitchen's library. [stored] seeds the local
- * generation cache, a separate list from [catalogue] and [saved].
+ * generation cache as one generation, a separate list from [catalogue] and [saved].
  */
 class FakeRecipeRepositoryContract(
     saved: List<Recipe> = emptyList(),
@@ -29,7 +29,9 @@ class FakeRecipeRepositoryContract(
     private val writeError: AppError? = null,
 ) : RecipeRepositoryContract {
     private val state = MutableStateFlow(saved)
-    private val cache = MutableStateFlow(stored)
+
+    // Newest first, like the real cache.
+    private val generations = MutableStateFlow(listOf(stored).filter { it.isNotEmpty() })
 
     val recipes: List<Recipe> get() = state.value
 
@@ -57,10 +59,18 @@ class FakeRecipeRepositoryContract(
     ): AppResult<Unit> = write { saved -> saved.filterNot { it.id == recipeId } }
 
     override suspend fun getAll(): AppResult<List<Recipe>> =
-        readError?.let { AppResult.Failure(it) } ?: AppResult.Success(cache.value)
+        readError?.let { AppResult.Failure(it) } ?: AppResult.Success(generations.value.flatten())
 
-    override suspend fun replaceAll(recipes: List<Recipe>): AppResult<Unit> =
-        writeError?.let { AppResult.Failure(it) } ?: AppResult.Success(Unit).also { cache.value = recipes }
+    override suspend fun getGenerations(): AppResult<List<List<Recipe>>> =
+        readError?.let { AppResult.Failure(it) } ?: AppResult.Success(generations.value)
+
+    override suspend fun addGeneration(
+        recipes: List<Recipe>,
+        keep: Int,
+    ): AppResult<Unit> =
+        writeError?.let { AppResult.Failure(it) } ?: AppResult.Success(Unit).also {
+            generations.value = withGeneration(generations.value, recipes, keep)
+        }
 
     private fun write(edit: (List<Recipe>) -> List<Recipe>): AppResult<Unit> =
         writeError?.let { AppResult.Failure(it) } ?: AppResult.Success(Unit).also { state.value = edit(state.value) }
@@ -109,3 +119,14 @@ internal fun recipe(
         tags = emptyList(),
         source = RecipeSource.Catalogue,
     )
+
+/** A recipe stored again moves to the newest generation, as a row replaced by id does in the real table. */
+internal fun withGeneration(
+    kept: List<List<Recipe>>,
+    recipes: List<Recipe>,
+    keep: Int,
+): List<List<Recipe>> {
+    val ids = recipes.map { it.id }.toSet()
+    val older = kept.map { generation -> generation.filterNot { it.id in ids } }.filter { it.isNotEmpty() }
+    return (listOf(recipes) + older).take(keep)
+}

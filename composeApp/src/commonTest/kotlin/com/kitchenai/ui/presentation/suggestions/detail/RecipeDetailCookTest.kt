@@ -175,9 +175,9 @@ class RecipeDetailCookTest : RecipeDetailViewModelHarness() {
             val seen = mutableListOf<RecipeDetailEvent>()
             val collector = launch { viewModel.events.toList(seen) }
 
-            // A new generation replaces the stored one while this screen is still open, so the
-            // dish this ViewModel is showing exists nowhere any longer.
-            recipes.replaceAll(emptyList())
+            // Newer generations push it out of the kept ones while this screen is still open, so
+            // the dish this ViewModel is showing exists nowhere any longer.
+            recipes.addGeneration(emptyList(), keep = 0)
             viewModel.cook()
             advanceUntilIdle()
             collector.cancel()

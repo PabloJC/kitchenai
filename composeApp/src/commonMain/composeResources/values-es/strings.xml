@@ -207,6 +207,10 @@
     <string name="suggestions_nothing_title">Nada que sugerir</string>
     <string name="suggestions_working">Leyendo tu despensa y pensando platos. Esto tarda un momento.</string>
     <string name="suggestions_generated">Generado</string>
+    <string name="suggestions_earlier">Ideas anteriores (%1$d)</string>
+    <string name="suggestions_earlier_position">Ideas anteriores, %1$d de %2$d</string>
+    <string name="suggestions_earlier_older">Más antiguas</string>
+    <string name="suggestions_latest">Últimas ideas</string>
     <string name="suggestions_view_ideas">Ideas</string>
     <string name="suggestions_view_saved">Guardadas (%1$d)</string>
     <string name="suggestions_saved_empty_title">Aún no hay recetas guardadas</string>

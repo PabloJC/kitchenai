@@ -13,12 +13,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -36,8 +34,8 @@ import com.kitchenai.ui.designsystem.component.RecipeImage
 import com.kitchenai.ui.designsystem.component.tonalCardColors
 import com.kitchenai.ui.designsystem.motion.sharedRecipeImage
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.presentation.common.SaveRecipeToggle
 import com.kitchenai.ui.resources.Res
-import com.kitchenai.ui.resources.detail_unsave
 import com.kitchenai.ui.resources.saved_household_avoids
 import com.kitchenai.ui.resources.suggestions_coverage_count
 import com.kitchenai.ui.resources.suggestions_minutes
@@ -137,14 +135,8 @@ private fun SavedRecipeCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    // The filled heart is the detail screen's own: tapping it lets the recipe go.
-                    IconButton(onClick = { onUnsave(recipe.id) }) {
-                        Icon(
-                            Icons.Filled.Favorite,
-                            contentDescription = stringResource(Res.string.detail_unsave),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
+                    // The same heart as the detail screen and the ideas cards: tapping it lets the recipe go.
+                    SaveRecipeToggle(saved = true, onToggle = { onUnsave(recipe.id) })
                 }
                 recipe.totalMinutes?.let { minutes ->
                     Text(

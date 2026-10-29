@@ -210,6 +210,10 @@
     <string name="suggestions_nothing_title">Nothing to suggest</string>
     <string name="suggestions_working">Reading your pantry and thinking of dishes. This takes a moment.</string>
     <string name="suggestions_generated">Generated</string>
+    <string name="suggestions_earlier">Earlier ideas (%1$d)</string>
+    <string name="suggestions_earlier_position">Earlier ideas, %1$d of %2$d</string>
+    <string name="suggestions_earlier_older">Older</string>
+    <string name="suggestions_latest">Latest ideas</string>
     <string name="suggestions_view_ideas">Ideas</string>
     <string name="suggestions_view_saved">Saved (%1$d)</string>
     <string name="suggestions_saved_empty_title">No saved recipes yet</string>

@@ -37,13 +37,15 @@ interface RecipeRepositoryContract {
         recipeId: RecipeId,
     ): AppResult<Unit>
 
-    /** The whole local generation cache. */
+    /** Every recipe in the local generation cache, from every generation still kept. */
     suspend fun getAll(): AppResult<List<Recipe>>
 
-    /**
-     * Replaces the whole local generation cache. Its first caller is a generation that
-     * supersedes the one before it wholesale, not a row that changes on its own — that is also
-     * why there is no single-recipe write here yet.
-     */
-    suspend fun replaceAll(recipes: List<Recipe>): AppResult<Unit>
+    /** The kept generations, newest first, each in the order it was generated. */
+    suspend fun getGenerations(): AppResult<List<List<Recipe>>>
+
+    /** Stores [recipes] as the newest generation and drops all but the newest [keep]. */
+    suspend fun addGeneration(
+        recipes: List<Recipe>,
+        keep: Int,
+    ): AppResult<Unit>
 }

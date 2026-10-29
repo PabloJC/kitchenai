@@ -10,6 +10,9 @@ sealed interface SuggestionsEvent {
 
     data class Failed(val message: UiText) : SuggestionsEvent
 
+    /** Kept from a card's heart. */
+    data object Saved : SuggestionsEvent
+
     /** Carries the recipe itself, so the undo can save it again after the listener let it go. */
     data class Unsaved(val restore: Recipe) : SuggestionsEvent
 }
