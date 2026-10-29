@@ -124,6 +124,7 @@
     <string name="shopping_move_same_date">La misma fecha para todo</string>
     <string name="shopping_move_skip_dates">Sin fechas</string>
     <string name="shopping_move_bare_amount">1 (sin cantidad)</string>
+    <string name="shopping_done">Hecho</string>
     <string name="shopping_amount">Cantidad</string>
     <string name="shopping_add_amount">Añadir cantidad</string>
     <string name="shopping_save">Guardar</string>

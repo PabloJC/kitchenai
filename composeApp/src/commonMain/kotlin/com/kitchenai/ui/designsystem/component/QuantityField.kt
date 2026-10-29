@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -18,15 +19,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import com.kitchenai.ui.designsystem.format.parseAmount
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.numberPadHasReturnKey
 
 /**
  * An amount plus a unit selector. [units] is a list of `id to label`: the component never
@@ -52,6 +58,7 @@ fun QuantityField(
     // Units can arrive after the field is first composed; the first one is shown, so it is reported.
     val unitId = chosenUnitId ?: units.firstOrNull()?.first
     var malformed by rememberSaveable { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
 
     // Keyed on whether the unit exists yet: a preference that arrives before its vocabulary waits.
     val preferredKnown = units.any { (id, _) -> id == preferredUnitId }
@@ -82,9 +89,12 @@ fun QuantityField(
             supportingText = options.malformedMessage?.takeIf { malformed }?.let { message -> { Text(message) } },
             singleLine = true,
             isError = malformed,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = options.imeAction),
+            keyboardActions = options.keyboardActions(),
+            modifier = Modifier.weight(1f).onFocusChanged { state -> focused = state.isFocused },
         )
+
+        if (focused && !numberPadHasReturnKey) options.doneLabel?.let { label -> DoneButton(label) }
 
         if (units.isNotEmpty()) {
             UnitSelector(
@@ -97,6 +107,19 @@ fun QuantityField(
                 },
             )
         }
+    }
+}
+
+/** Only when asked: a handler replaces the key's default, which closes the keyboard. */
+private fun QuantityFieldOptions.keyboardActions(): KeyboardActions =
+    if (imeAction == ImeAction.Default) KeyboardActions.Default else KeyboardActions(onAny = { onImeAction() })
+
+/** Where the iOS number pad has no Return key: closes the keyboard and nothing else. */
+@Composable
+private fun DoneButton(label: String) {
+    val focusManager = LocalFocusManager.current
+    TextButton(onClick = { focusManager.clearFocus() }, modifier = Modifier.padding(top = Dimens.small)) {
+        Text(label)
     }
 }
 
