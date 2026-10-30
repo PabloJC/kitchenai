@@ -47,12 +47,21 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Never from a property: a release build cannot be pointed at a laptop.
+            buildConfigField("String", "FIREBASE_EMULATOR_HOST", "\"\"")
+            buildConfigField("int", "FIRESTORE_EMULATOR_PORT", "8080")
         }
         debug {
             // No applicationIdSuffix: it would change the package to com.kitchenai.app.debug,
             // and google-services.json only has com.kitchenai.app registered. Separate
             // Firebase projects (dev/prod) are a product-flavour problem, not a suffix one.
             isMinifyEnabled = false
+            // Blank is the real project. See firebase/README.md, "Running the app against the emulators".
+            val emulatorHost = providers.gradleProperty("kitchenai.firebaseEmulatorHost").orNull.orEmpty()
+            val firestorePort =
+                providers.gradleProperty("kitchenai.firestoreEmulatorPort").orNull?.toIntOrNull() ?: 8080
+            buildConfigField("String", "FIREBASE_EMULATOR_HOST", "\"$emulatorHost\"")
+            buildConfigField("int", "FIRESTORE_EMULATOR_PORT", "$firestorePort")
         }
     }
 

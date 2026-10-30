@@ -13,7 +13,13 @@ class KitchenAiApplication : Application() {
         // and Firestore — installing it later lets the first requests out unattested.
         FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProviderFactory())
 
-        initKoinUi(BuildConfig.FUNCTIONS_REGION, BuildConfig.GOOGLE_WEB_CLIENT_ID, BuildConfig.PRIVACY_POLICY_URL) {
+        initKoinUi(
+            functionsRegion = BuildConfig.FUNCTIONS_REGION,
+            googleWebClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID,
+            privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL,
+            firebaseEmulatorHost = BuildConfig.FIREBASE_EMULATOR_HOST,
+            firestoreEmulatorPort = BuildConfig.FIRESTORE_EMULATOR_PORT,
+        ) {
             androidContext(this@KitchenAiApplication)
         }
     }

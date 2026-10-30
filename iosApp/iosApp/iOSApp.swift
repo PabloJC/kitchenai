@@ -36,10 +36,22 @@ struct iOSApp: App {
         // iOS sources its own Google client id from Info.plist's GIDClientID instead.
         // Optional, unlike the region: a blank address only hides About's Privacy policy row.
         let privacyPolicyUrl = Bundle.main.object(forInfoDictionaryKey: "PrivacyPolicyUrl") as? String ?? ""
+
+        // Read only in Debug, so a Release binary cannot be pointed at the emulators.
+        #if DEBUG
+        let emulatorHost = Bundle.main.object(forInfoDictionaryKey: "FirebaseEmulatorHost") as? String ?? ""
+        let firestorePort = Int32(Bundle.main.object(forInfoDictionaryKey: "FirebaseEmulatorFirestorePort") as? String ?? "") ?? 8080
+        #else
+        let emulatorHost = ""
+        let firestorePort: Int32 = 8080
+        #endif
+
         PresentationModuleKt.doInitKoinUi(
             functionsRegion: region,
             googleWebClientId: "",
             privacyPolicyUrl: privacyPolicyUrl,
+            firebaseEmulatorHost: emulatorHost,
+            firestoreEmulatorPort: firestorePort,
             appDeclaration: { _ in }
         )
     }
