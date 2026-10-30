@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DAILY_CALL_LIMIT, QuotaExceeded, chargeCall } from '../quota.ts';
+import { DAILY_CALL_LIMIT, IMAGES, IMAGE_DAILY_LIMIT, QuotaExceeded, chargeCall } from '../quota.ts';
 
 /**
  * A store that can also lose a race: two calls arriving together must not both read zero and
@@ -61,4 +61,15 @@ test('never lets a burst exceed the limit', async () => {
   const attempts = Array.from({ length: DAILY_CALL_LIMIT + 5 }, () => chargeCall(db, 'user-1', day));
   const outcomes = await Promise.allSettled(attempts);
   assert.equal(outcomes.filter((it) => it.status === 'fulfilled').length, DAILY_CALL_LIMIT);
+});
+
+test('images are counted apart from suggestions', async () => {
+  const db = fakeDb({ [`user-1_2026-08-13`]: { calls: DAILY_CALL_LIMIT } });
+  assert.equal(await chargeCall(db, 'user-1', day, IMAGES), 1);
+  await assert.rejects(() => chargeCall(db, 'user-1', day), QuotaExceeded);
+});
+
+test('refuses images once their own allowance is spent', async () => {
+  const db = fakeDb({ [`user-1_2026-08-13_images`]: { calls: IMAGE_DAILY_LIMIT } });
+  await assert.rejects(() => chargeCall(db, 'user-1', day, IMAGES), QuotaExceeded);
 });

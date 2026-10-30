@@ -7,6 +7,8 @@ service firebase.storage {
                          && request.auth.uid == userId
                          && request.resource.size < 5 * 1024 * 1024;
     }
+    // recipe-images/** stays closed on purpose: the recipeImage function writes it and hands out
+    // tokenised download URLs, which do not go through these rules.
     match /{allPaths=**} {
       allow read, write: if false;
     }
