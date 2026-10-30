@@ -5,6 +5,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -21,10 +23,15 @@ private const val MAX_WINDOW_SHARE = 0.4f
 internal fun Modifier.recipeImageSlot(): Modifier {
     val maxHeight = (LocalWindowInfo.current.containerSize.height * MAX_WINDOW_SHARE).roundToInt()
     return layout { measurable, constraints ->
-        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
+        val width =
+            constraints.constrainWidth(
+                if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth,
+            )
         val natural = (width / ASPECT_RATIO).roundToInt()
         // A window that reports no size yet (0) must not collapse the photo to nothing.
-        val height = if (maxHeight > 0) min(natural, maxHeight) else natural
+        val capped = if (maxHeight > 0) min(natural, maxHeight) else natural
+        // Kept inside the parent's own bounds too, such as a height-limited detail pane.
+        val height = constraints.constrainHeight(capped)
         val placeable = measurable.measure(Constraints.fixed(width, height))
         layout(width, height) { placeable.place(0, 0) }
     }
