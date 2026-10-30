@@ -79,8 +79,10 @@ builds ignore the setting.
 
    If port 8080 is taken, change Firestore's port in a local copy of `firebase.json` and set
    `kitchenai.firestoreEmulatorPort` or `FIREBASE_EMULATOR_FIRESTORE_PORT` to match.
-3. Use a device or simulator that is not signed in to the real project: a production session
-   survives the switch, and its profile is then missing from the empty emulator.
+3. Use a separate emulator or simulator, never one you also use against the real project. A
+   production session survives the switch, writes its own kitchen into the emulator, and that
+   kitchen stays in the local Firestore cache after switching back: production then refuses it
+   and the app shows "We couldn't open your data" until the cache is cleared.
 4. App Check is decoded but not verified by the Functions emulator. The debug provider still needs
    its debug token registered, as for the real project (`docs/infra.md`), or callables are refused.
 
