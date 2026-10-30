@@ -78,6 +78,8 @@ class KitchenOwnershipTest {
             assertFalse(viewModel.state.value.kitchen!!.canLeave)
 
             viewModel.requestMakeOwner(other)
+            // The state is a combined flow: it reflects the request once the dispatcher runs it.
+            advanceUntilIdle()
             assertTrue(viewModel.state.value.confirming is KitchenConfirmation.MakeOwner)
             assertTrue(kitchens.transfers.isEmpty())
 
