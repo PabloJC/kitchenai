@@ -1,5 +1,6 @@
 package com.kitchenai.ui.di
 
+import com.kitchenai.ui.presentation.common.RecipePictures
 import com.kitchenai.ui.presentation.suggestions.cooking.CookingModeViewModel
 import com.kitchenai.ui.presentation.suggestions.cooking.RunningTimers
 import com.kitchenai.ui.presentation.suggestions.detail.RecipeDetailReadsDelegate
@@ -16,10 +17,11 @@ val suggestionsPresentationModule: Module =
     module {
         factory { SuggestionsReadsDelegate(get(), get(), get(), get()) }
         factory { SuggestionsWritesDelegate(get(), get(), get(), get()) }
-        viewModel { SuggestionsViewModel(get(), get(), get(), get(), get(), get(), get()) }
+        viewModel { SuggestionsViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
         factory { RecipeDetailReadsDelegate(get(), get(), get(), get(), get(), get(), get(), get()) }
         factory { RecipeDetailWritesDelegate(get(), get(), get(), get(), get(), get(), get(), get()) }
-        viewModel { RecipeDetailViewModel(get(), get(), get(), get()) }
+        viewModel { RecipeDetailViewModel(get(), get(), get(), get(), get()) }
         single { RunningTimers() }
+        single { RecipePictures() }
         viewModel { CookingModeViewModel(get(), get(), get()) }
     }

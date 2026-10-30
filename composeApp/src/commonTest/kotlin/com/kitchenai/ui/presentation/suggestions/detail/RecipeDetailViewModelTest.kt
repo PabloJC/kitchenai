@@ -494,6 +494,8 @@ class RecipeDetailViewModelTest : RecipeDetailViewModelHarness() {
 
             assertEquals("https://images.test/recipe.jpg", viewModel.state.value.imageUrl)
             assertEquals(1, port.imageRequests.size)
+            // Published for the card behind this screen.
+            assertEquals("https://images.test/recipe.jpg", pictures.all.value[dish.id])
         }
 
     @Test

@@ -24,6 +24,7 @@ import com.kitchenai.shared.domain.service.PantryCandidateMatcher
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GenerateRecipeImageUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
+import com.kitchenai.ui.presentation.common.RecipePictures
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.presentation.common.wordFor
@@ -60,6 +61,7 @@ class RecipeDetailViewModel(
     private val observeKitchen: ObserveKitchenUseCase,
     /** The dish's own photograph: not a read of what is shown, not a write the person asked for. */
     private val picture: GenerateRecipeImageUseCase,
+    private val pictures: RecipePictures,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(RecipeDetailUiState())
     val state: StateFlow<RecipeDetailUiState> = internalState.asStateFlow()
@@ -419,6 +421,7 @@ class RecipeDetailViewModel(
             // Onto the recipe in hand too, so a save from here keeps the picture.
             recipe.update { held -> held?.takeIf { it.id == found.id }?.copy(imageUrl = url) ?: held }
             internalState.update { it.copy(imageUrl = url) }
+            pictures.put(found.id, url)
         }
     }
 

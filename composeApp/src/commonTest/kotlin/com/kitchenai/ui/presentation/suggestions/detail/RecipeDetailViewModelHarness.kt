@@ -48,6 +48,7 @@ import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
+import com.kitchenai.ui.presentation.common.RecipePictures
 import com.kitchenai.ui.presentation.common.noUnits
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -109,6 +110,7 @@ open class RecipeDetailViewModelHarness {
     protected val items = FakeShoppingItemPort()
     protected var lists = FakeShoppingListPort()
     protected val kitchens = FakeKitchenPort()
+    protected val pictures = RecipePictures()
 
     protected fun started(
         pantry: List<PantryItem>,
@@ -159,6 +161,7 @@ open class RecipeDetailViewModelHarness {
             writes = writes,
             observeKitchen = ObserveKitchenUseCase(kitchens),
             picture = GenerateRecipeImageUseCase(recipePort),
+            pictures = pictures,
         )
             .also { it.start(user, recipeId, listOf("en"), "List") }
     }
