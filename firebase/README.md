@@ -51,6 +51,48 @@ Two things keep this honest:
   hidden by the test shape, not by an emulator difference. If a future emulator does diverge, that
   test goes red; the authority is still the deployed project, checked by `tools/smoke-rules.mjs`.
 
+## Running the app against the emulators
+
+A debug build can talk to `firebase emulators:start` instead of the real project (#374). Release
+builds ignore the setting.
+
+1. Start the suite. With the real project id, functions that call a model reach Vertex AI with
+   your local credentials and are billed; with a `demo-` id everything stays local and model calls
+   fail.
+
+   ```bash
+   npm --prefix functions run build
+   firebase emulators:start --project <project-id> --only auth,firestore,storage,functions
+   ```
+
+2. Point the app at it, then rebuild:
+   - **Android:** add `kitchenai.firebaseEmulatorHost=127.0.0.1` to `~/.gradle/gradle.properties`
+     (never to the committed `gradle.properties`). Forward the ports so `127.0.0.1` on the device is
+     this machine. That also makes image URLs from the Storage emulator load:
+
+     ```bash
+     for p in 9099 8080 5001 9199; do adb reverse tcp:$p tcp:$p; done
+     ```
+
+   - **iOS simulator:** set `FIREBASE_EMULATOR_HOST = 127.0.0.1` in
+     `iosApp/Configuration/Config.xcconfig` locally, and do not commit it.
+
+   If port 8080 is taken, change Firestore's port in a local copy of `firebase.json` and set
+   `kitchenai.firestoreEmulatorPort` or `FIREBASE_EMULATOR_FIRESTORE_PORT` to match.
+3. Use a separate emulator or simulator, never one you also use against the real project. A
+   production session survives the switch, writes its own kitchen into the emulator, and that
+   kitchen stays in the local Firestore cache after switching back: production then refuses it
+   and the app shows "We couldn't open your data" until the cache is cleared.
+4. App Check is decoded but not verified by the Functions emulator. The debug provider still needs
+   its debug token registered, as for the real project (`docs/infra.md`), or callables are refused.
+
+The emulators start empty. Seed the catalogue into them, not into the real project, before asking
+for ideas:
+
+```bash
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node tools/seed.mjs --project <project-id>
+```
+
 ## Deploying
 
 CI never deploys, so a merge changes nothing in the backend until someone runs this. On

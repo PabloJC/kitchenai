@@ -47,6 +47,10 @@
 			<string>sparkles</string>
 		</dict>
 	</array>
+	<key>FirebaseEmulatorHost</key>
+	<string>$(FIREBASE_EMULATOR_HOST)</string>
+	<key>FirebaseEmulatorFirestorePort</key>
+	<string>$(FIREBASE_EMULATOR_FIRESTORE_PORT)</string>
 	<key>FunctionsRegion</key>
 	<string>$(FUNCTIONS_REGION)</string>
 	<key>PrivacyPolicyUrl</key>

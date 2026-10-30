@@ -28,3 +28,9 @@ GOOGLE_IOS_REVERSED_CLIENT_ID=
 // the policy has a home (#355). An xcconfig reads `//` as a comment, so write the scheme as
 // https:/$()/example.com/privacy — `$()` expands to nothing and keeps the slashes.
 PRIVACY_POLICY_URL=
+
+// Debug builds only: the host running `firebase emulators:start` (127.0.0.1 for the simulator).
+// Blank is the real project; a Release build ignores it. Set it locally, never commit a value.
+// See firebase/README.md.
+FIREBASE_EMULATOR_HOST=
+FIREBASE_EMULATOR_FIRESTORE_PORT=8080
