@@ -10,6 +10,7 @@ import {
   UnknownImageKey,
   attachImageKeys,
   buildPrompt,
+  downloadUrl,
   imageKeyFor,
   parseImageRequest,
   resolveRecipeImage,
@@ -183,4 +184,11 @@ test('suggestions get a key and their source is recorded', async () => {
   assert.equal(keyed[1]?.imageKey, null);
   assert.deepEqual(entries.get(KEY), SOURCE);
   assert.equal(entries.size, 1);
+});
+
+test('the download URL escapes the path and carries the token', () => {
+  assert.equal(
+    downloadUrl('bucket-1', `recipe-images/${KEY}.jpg`, 'token-1', 'https://storage.example.test'),
+    `https://storage.example.test/v0/b/bucket-1/o/recipe-images%2F${KEY}.jpg?alt=media&token=token-1`,
+  );
 });

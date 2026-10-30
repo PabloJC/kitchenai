@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { PersonGeneration, type GoogleGenAI } from '@google/genai';
 import type { Firestore } from 'firebase-admin/firestore';
-import { getDownloadURL, type getStorage } from 'firebase-admin/storage';
+import type { getStorage } from 'firebase-admin/storage';
 import { BadRequest, asObject } from './contract.ts';
 
 /** Named here and nowhere else, like `MODEL_ID`: the client only ever sees a URL. */
@@ -141,19 +141,39 @@ export function imagenGenerator(genai: GoogleGenAI): GenerateImage {
 
 type Bucket = ReturnType<ReturnType<typeof getStorage>['bucket']>;
 
-/** Download URLs carry their own token, so the bucket stays closed to clients in the rules. */
+/** The token-bearing URL a client opens; the token is what lets it past the closed rules. */
+export function downloadUrl(bucket: string, path: string, token: string, endpoint?: string): string {
+  const base = endpoint ?? process.env.STORAGE_EMULATOR_HOST ?? 'https://firebasestorage.googleapis.com';
+  return `${base}/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+}
+
+/**
+ * Not `getDownloadURL`: the Admin SDK's `save` mints no download token, and that call fails on a
+ * file without one. The token is written here instead, through the bucket API.
+ */
 export function storageImageStore(bucket: Bucket): ImageStore {
+  const TOKEN_KEY = 'firebaseStorageDownloadTokens';
   return {
     async urlOf(path) {
       const file = bucket.file(path);
       const [exists] = await file.exists();
-      return exists ? getDownloadURL(file) : null;
+      if (!exists) return null;
+      const [metadata] = await file.getMetadata();
+      let token = String(metadata.metadata?.[TOKEN_KEY] ?? '').split(',')[0];
+      if (!token) {
+        token = randomUUID();
+        await file.setMetadata({ metadata: { [TOKEN_KEY]: token } });
+      }
+      return downloadUrl(bucket.name, path, token);
     },
     async save(path, bytes) {
-      const file = bucket.file(path);
+      const token = randomUUID();
       // The key is a content hash, so the bytes behind a path never change.
-      await file.save(bytes, { contentType: 'image/jpeg', metadata: { cacheControl: 'public, max-age=31536000, immutable' } });
-      return getDownloadURL(file);
+      await bucket.file(path).save(bytes, {
+        contentType: 'image/jpeg',
+        metadata: { cacheControl: 'public, max-age=31536000, immutable', metadata: { [TOKEN_KEY]: token } },
+      });
+      return downloadUrl(bucket.name, path, token);
     },
   };
 }
