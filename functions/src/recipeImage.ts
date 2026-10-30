@@ -24,6 +24,8 @@ export interface ImageSource {
   title: string;
   summary: string | null;
   dishType: string | null;
+  /** The model refused this dish once; asking again would only spend another allowance. */
+  withheld?: boolean;
 }
 
 export class UnknownImageKey extends Error {}
@@ -42,6 +44,7 @@ export interface ImageStore {
 export interface ImageSources {
   get(key: string): Promise<ImageSource | null>;
   record(entries: Array<[string, ImageSource]>, now: Date): Promise<void>;
+  markWithheld(key: string): Promise<void>;
 }
 
 /** Same dish, same key: normalised so "Tortilla  de patatas" and "tortilla de patatas" share one image. */
@@ -91,10 +94,15 @@ export async function resolveRecipeImage(
 
   const source = await deps.sources.get(imageKey);
   if (!source) throw new UnknownImageKey(imageKey);
+  // Refused before: a filter that withheld this dish will withhold it again, and each try is charged.
+  if (source.withheld) throw new NoImageReturned();
 
   await deps.charge();
   const bytes = await deps.generate(buildPrompt(source));
-  if (!bytes) throw new NoImageReturned();
+  if (!bytes) {
+    await deps.sources.markWithheld(imageKey);
+    throw new NoImageReturned();
+  }
   return { url: await deps.store.save(path, bytes), generated: true };
 }
 
@@ -191,6 +199,7 @@ export function firestoreImageSources(db: Firestore): ImageSources {
         title: data.title,
         summary: typeof data.summary === 'string' ? data.summary : null,
         dishType: typeof data.dishType === 'string' ? data.dishType : null,
+        withheld: data.withheld === true,
       };
     },
     async record(entries, now) {
@@ -198,9 +207,13 @@ export function firestoreImageSources(db: Firestore): ImageSources {
       // A Firestore TTL policy on this field clears what nobody asked a picture for.
       const expiresAt = new Date(now.getTime() + SOURCE_KEEP_DAYS * 24 * 60 * 60 * 1000);
       for (const [key, source] of entries) {
-        batch.set(db.collection(SOURCES).doc(key), { ...source, expiresAt });
+        // Merged, so suggesting a refused dish again does not forget the refusal.
+        batch.set(db.collection(SOURCES).doc(key), { ...source, expiresAt }, { merge: true });
       }
       await batch.commit();
+    },
+    async markWithheld(key) {
+      await db.collection(SOURCES).doc(key).set({ withheld: true }, { merge: true });
     },
   };
 }

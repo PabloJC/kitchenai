@@ -37,6 +37,10 @@ function fakeSources(seed: Record<string, ImageSource> = {}) {
   const sources: ImageSources = {
     get: async (key) => entries.get(key) ?? null,
     record: async (list) => list.forEach(([key, source]) => entries.set(key, source)),
+    markWithheld: async (key) => {
+      const source = entries.get(key);
+      if (source) entries.set(key, { ...source, withheld: true });
+    },
   };
   return { sources, entries };
 }
@@ -129,6 +133,20 @@ test('a withheld image is an error and nothing is stored', async () => {
     NoImageReturned,
   );
   assert.equal(saved.size, 0);
+});
+
+test('a withheld dish is remembered and never charged again', async () => {
+  const { sources, entries } = fakeSources({ [KEY]: SOURCE });
+  const generate = counting(async () => null);
+  const charge = counting(async () => 1);
+  const deps = { store: fakeStore().store, sources, generate: generate.run, charge: charge.run };
+
+  await assert.rejects(resolveRecipeImage(KEY, deps), NoImageReturned);
+  assert.equal(entries.get(KEY)?.withheld, true);
+
+  await assert.rejects(resolveRecipeImage(KEY, deps), NoImageReturned);
+  assert.equal(charge.calls.length, 1);
+  assert.equal(generate.calls.length, 1);
 });
 
 test('a model failure propagates and nothing is stored', async () => {
