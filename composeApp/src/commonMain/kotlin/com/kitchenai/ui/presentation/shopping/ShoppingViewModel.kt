@@ -398,7 +398,7 @@ class ShoppingViewModel(
      */
     private suspend fun watchRecipeTitles(kitchen: KitchenId) {
         recipeTitles.value = emptyMap()
-        val stored = (reads.storedRecipes(kitchen) as? AppResult.Success)?.data.orEmpty()
+        val stored = (reads.storedRecipes(kitchen) as? AppResult.Success)?.data.orEmpty().flatten()
         val generated = stored.associate { suggestion -> suggestion.recipe.id to suggestion.recipe.title }
         recipeTitles.value = generated
         reads.savedRecipes(kitchen).collect { saved ->

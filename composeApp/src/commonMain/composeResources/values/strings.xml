@@ -34,7 +34,7 @@
     <string name="snack_unsaved">Removed from saved</string>
 
     <!-- Screens -->
-    <string name="pantry_search">Search the catalogue</string>
+    <string name="pantry_search">Search ingredients</string>
     <string name="pantry_amount">Amount</string>
     <string name="pantry_save">Save</string>
     <string name="pantry_done">Done</string>
@@ -78,7 +78,7 @@
     <string name="pantry_section_soon">Use soon</string>
     <string name="pantry_section_fresh">Fresh</string>
     <string name="pantry_section_undated">No expiry date</string>
-    <string name="not_in_catalogue">Not in catalogue</string>
+    <string name="not_in_catalogue">Added by hand</string>
     <string name="pantry_expires_today">Expires today</string>
     <string name="pantry_expires_tomorrow">Expires tomorrow</string>
     <string name="pantry_expired_yesterday">Expired yesterday</string>
@@ -138,10 +138,10 @@
     <string name="detail_title">Recipe</string>
     <string name="nav_back">Back</string>
     <string name="detail_ingredients">Ingredients</string>
-    <string name="detail_have">In Pantry</string>
+    <string name="detail_have">In pantry</string>
     <string name="detail_missing">Need to buy</string>
     <string name="detail_unverifiable">Check manually</string>
-    <string name="detail_unverifiable_body">Your pantry cannot say either way about these</string>
+    <string name="detail_unverifiable_body">We can\'t tell from your pantry whether you have these</string>
     <string name="detail_candidate_prompt">In your pantry as</string>
     <string name="detail_steps">Steps</string>
     <string name="detail_servings">Servings</string>
@@ -209,7 +209,11 @@
     <string name="suggestions_empty_title">No suggestions yet</string>
     <string name="suggestions_nothing_title">Nothing to suggest</string>
     <string name="suggestions_working">Reading your pantry and thinking of dishes. This takes a moment.</string>
-    <string name="suggestions_generated">Generated</string>
+    <string name="suggestions_generated">AI idea</string>
+    <string name="suggestions_earlier">Earlier ideas (%1$d)</string>
+    <string name="suggestions_earlier_position">Earlier ideas, %1$d of %2$d</string>
+    <string name="suggestions_earlier_older">Older</string>
+    <string name="suggestions_latest">Latest ideas</string>
     <string name="suggestions_view_ideas">Ideas</string>
     <string name="suggestions_view_saved">Saved (%1$d)</string>
     <string name="suggestions_saved_empty_title">No saved recipes yet</string>
@@ -223,7 +227,7 @@
     <string name="profile_sent_summary">Every suggestion sends your dietary constraints, your pantry, and the app\'s language.</string>
     <string name="profile_saving">Saving</string>
     <string name="profile_no_preferences">No preferences to show</string>
-    <string name="profile_no_vocabulary">This catalogue has no vocabulary in it yet.</string>
+    <string name="profile_no_vocabulary">There are no food preferences to choose from yet.</string>
     <string name="profile_vocabulary_failed">We couldn\'t load the options. Check your connection and try again.</string>
     <string name="profile_sign_in_google">Sign in with Google</string>
     <string name="profile_sign_out">Sign out</string>
@@ -359,8 +363,8 @@
     <string name="pantry_editor_title_add">Add to pantry</string>
     <string name="pantry_editor_title_edit">Edit %1$s</string>
     <string name="pantry_editor_recent">Recent</string>
-    <string name="pantry_editor_will_save">Saved as this catalogue item</string>
-    <string name="pantry_editor_free_text_hint">Not in the catalogue: it will be saved as typed</string>
+    <string name="pantry_editor_will_save">Saved as this ingredient</string>
+    <string name="pantry_editor_free_text_hint">Not in our list: it will be saved as typed</string>
     <string name="pantry_editor_clear_search">Clear search</string>
     <string name="pantry_editor_amount_malformed">Enter a number</string>
     <string name="pantry_editor_unit">Unit</string>

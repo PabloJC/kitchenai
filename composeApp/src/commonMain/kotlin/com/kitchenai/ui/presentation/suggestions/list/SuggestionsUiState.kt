@@ -14,8 +14,14 @@ import com.kitchenai.ui.presentation.common.UiText
  */
 data class SuggestionsUiState(
     val suggestions: List<SuggestionUi> = emptyList(),
+    /** The generations before [suggestions], newest first, kept on the device so New ideas loses nothing. */
+    val earlier: List<List<SuggestionUi>> = emptyList(),
+    /** The earlier generation on screen instead of [suggestions]; null shows the latest. */
+    val browsingEarlier: Int? = null,
     /** Every kept recipe, newest first: its own view, a save is a standing choice and not this session's answer. */
     val savedRecipes: List<SuggestionUi> = emptyList(),
+    /** Which cards draw a filled heart. */
+    val savedIds: Set<RecipeId> = emptySet(),
     /** Which of the two views is on: the ideas feed or the saved recipes. */
     val showingSaved: Boolean = false,
     val savedQuery: String = "",
@@ -34,6 +40,9 @@ data class SuggestionsUiState(
     /** The card whose missing ingredients are being written to the list, so a second tap is ignored. */
     val addingMissingFor: RecipeId? = null,
 ) {
+    /** The cards the ideas view draws: the earlier generation being browsed, or the latest. */
+    val shownSuggestions: List<SuggestionUi> get() = browsingEarlier?.let { earlier.getOrNull(it) } ?: suggestions
+
     /** Never auto-runs: each run costs a model call, so a changed filter only offers one. */
     val optionsChanged: Boolean get() = appliedOptions != null && appliedOptions != options
 

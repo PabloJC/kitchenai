@@ -91,8 +91,17 @@ class RecipeRepository(
         localCall(dispatchers) { localDataSource.getAll() }
             .map { entities -> entities.map { it.toRecipe() }.decodedOrDropped() }
 
-    override suspend fun replaceAll(recipes: List<Recipe>): AppResult<Unit> =
-        localCall(dispatchers) { localDataSource.replaceAll(recipes.map { it.toEntity(time.now()) }) }
+    override suspend fun getGenerations(): AppResult<List<List<Recipe>>> =
+        localCall(dispatchers) { localDataSource.getAll() }.map { entities -> entities.toGenerations() }
+
+    override suspend fun addGeneration(
+        recipes: List<Recipe>,
+        keep: Int,
+    ): AppResult<Unit> {
+        // Read once: the shared stamp is what makes these rows one generation.
+        val storedAt = time.now()
+        return localCall(dispatchers) { localDataSource.addGeneration(recipes.map { it.toEntity(storedAt) }, keep) }
+    }
 
     private companion object {
         // The collection, never the identifier: an error carries no user content.

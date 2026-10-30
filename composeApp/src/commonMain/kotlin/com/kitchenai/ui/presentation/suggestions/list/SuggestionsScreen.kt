@@ -3,7 +3,6 @@ package com.kitchenai.ui.presentation.suggestions.list
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,13 +13,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.outlined.AddShoppingCart
 import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -36,11 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.MealType
@@ -49,14 +44,11 @@ import com.kitchenai.shared.domain.model.RecipeId
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.CoverageBar
 import com.kitchenai.ui.designsystem.component.EmptyState
-import com.kitchenai.ui.designsystem.component.RecipeImage
 import com.kitchenai.ui.designsystem.component.RecipeImagePlaceholder
 import com.kitchenai.ui.designsystem.component.SKELETON_SUMMARY_WIDTH
 import com.kitchenai.ui.designsystem.component.SKELETON_TITLE_WIDTH
 import com.kitchenai.ui.designsystem.component.SkeletonBar
-import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.component.tonalCardColors
-import com.kitchenai.ui.designsystem.motion.sharedRecipeImage
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.IdeasRequests
 import com.kitchenai.ui.platform.platformLanguageTags
@@ -68,21 +60,15 @@ import com.kitchenai.ui.resources.shopping_default_list
 import com.kitchenai.ui.resources.snack_added_count
 import com.kitchenai.ui.resources.snack_counts_joined
 import com.kitchenai.ui.resources.snack_not_needed_count
+import com.kitchenai.ui.resources.snack_saved
 import com.kitchenai.ui.resources.snack_unsaved
-import com.kitchenai.ui.resources.suggestions_add_missing
 import com.kitchenai.ui.resources.suggestions_add_to_pantry
-import com.kitchenai.ui.resources.suggestions_check_manually
-import com.kitchenai.ui.resources.suggestions_coverage_count
 import com.kitchenai.ui.resources.suggestions_empty_body_action
 import com.kitchenai.ui.resources.suggestions_empty_title
-import com.kitchenai.ui.resources.suggestions_generated
 import com.kitchenai.ui.resources.suggestions_meal_breakfast
 import com.kitchenai.ui.resources.suggestions_meal_dinner
 import com.kitchenai.ui.resources.suggestions_meal_lunch
 import com.kitchenai.ui.resources.suggestions_meal_snack
-import com.kitchenai.ui.resources.suggestions_minutes
-import com.kitchenai.ui.resources.suggestions_missing
-import com.kitchenai.ui.resources.suggestions_missing_more
 import com.kitchenai.ui.resources.suggestions_new_ideas
 import com.kitchenai.ui.resources.suggestions_nothing_body_action
 import com.kitchenai.ui.resources.suggestions_nothing_title
@@ -96,13 +82,15 @@ import com.kitchenai.ui.resources.suggestions_view_saved
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val QUICK_MINUTES = 30
 private const val SKELETON_CARDS = 3
+
+// Not a recipe id, so it can never collide with a card's key.
+private const val EARLIER_ROW_KEY = "earlier-ideas"
 
 // Room under the list for the floating button, so it never hides the last card's content.
 private val FAB_CLEARANCE = 88.dp
@@ -166,10 +154,10 @@ fun SuggestionsScreen(
                 state.error?.let { message -> SuggestionsErrorBanner(message, viewModel::retry, state.isOnline) }
                 Results(
                     state,
-                    onOpen,
-                    onAddMissing = viewModel::addMissingToList,
+                    SuggestionCardActions(onOpen, viewModel::addMissingToList, viewModel::toggleSaved),
                     onRefresh = viewModel::generate,
                     onGoToPantry = onGoToPantry,
+                    onBrowseEarlier = viewModel::browseEarlier,
                 )
             }
         }
@@ -245,6 +233,7 @@ internal fun SuggestionsEvent.sentence(): UiText =
                 ),
             )
         is SuggestionsEvent.Failed -> message
+        SuggestionsEvent.Saved -> UiText.of(Res.string.snack_saved)
         is SuggestionsEvent.Unsaved -> UiText.of(Res.string.snack_unsaved)
     }
 
@@ -299,10 +288,10 @@ private fun MealType.label(): StringResource =
 @Composable
 private fun Results(
     state: SuggestionsUiState,
-    onOpen: (RecipeId) -> Unit,
-    onAddMissing: (RecipeId) -> Unit,
+    actions: SuggestionCardActions,
     onRefresh: () -> Unit,
     onGoToPantry: () -> Unit,
+    onBrowseEarlier: (Int?) -> Unit,
 ) {
     // Pulling down is the secondary trigger for the button's own generate(), guarded the same
     // way. The strip above shows progress, so the pull indicator is not held open for it.
@@ -315,13 +304,23 @@ private fun Results(
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
             contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
         ) {
+            if (state.earlier.isNotEmpty()) {
+                item(key = EARLIER_ROW_KEY) { EarlierIdeasRow(state.earlier, state.browsingEarlier, onBrowseEarlier) }
+            }
+            val shown = state.shownSuggestions
             when {
                 // Before isGenerating: a stored set from the last launch stays on screen while a
                 // new one runs behind it, rather than being hidden by a skeleton for the better
                 // part of a minute.
-                state.suggestions.isNotEmpty() ->
-                    items(state.suggestions, key = { it.id.value }) { suggestion ->
-                        SuggestionCard(suggestion, onOpen, onAddMissing, state.addingMissingFor != null)
+                shown.isNotEmpty() ->
+                    items(shown, key = { it.id.value }) { suggestion ->
+                        SuggestionCard(
+                            suggestion = suggestion,
+                            saved = suggestion.id in state.savedIds,
+                            actions = actions,
+                            addingMissing = state.addingMissingFor != null,
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 // A skeleton rather than a spinner: the call takes the better part of a minute,
                 // and a blank screen for that long reads as a hang rather than as work.
@@ -401,114 +400,6 @@ private fun SkeletonCard() {
             }
         }
     }
-}
-
-@Composable
-private fun SuggestionCard(
-    suggestion: SuggestionUi,
-    onOpen: (RecipeId) -> Unit,
-    onAddMissing: (RecipeId) -> Unit,
-    addingMissing: Boolean,
-) {
-    // The whole card opens the recipe: a dedicated "Open" button repeated what tapping the card
-    // already does everywhere else in the app.
-    Card(
-        onClick = { onOpen(suggestion.id) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = tonalCardColors(),
-    ) {
-        Column {
-            RecipeImage(tags = suggestion.tagRefs, modifier = Modifier.sharedRecipeImage(suggestion.id.value))
-            Column(
-                modifier = Modifier.padding(Dimens.large),
-                verticalArrangement = Arrangement.spacedBy(Dimens.small),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(suggestion.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    // The prototype's subtle badge, not the raw agent and model id: which model
-                    // wrote a dish is a support detail, not something a reader needs on the card.
-                    if (suggestion.provenance != null) {
-                        Tag(
-                            label = stringResource(Res.string.suggestions_generated),
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            icon = Icons.Filled.AutoAwesome,
-                        )
-                    }
-                }
-                suggestion.summary?.let { summary ->
-                    Text(
-                        summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                // Its own row rather than a bare line lost among the others: the one metadata
-                // fact this card has, given the same visual weight the prototype's badge gives it.
-                suggestion.totalMinutes?.let { minutes ->
-                    Tag(
-                        label = stringResource(Res.string.suggestions_minutes, minutes),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                SuggestionCoverage(suggestion, onAddMissing, addingMissing)
-            }
-        }
-    }
-}
-
-@Composable
-private fun SuggestionCoverage(
-    suggestion: SuggestionUi,
-    onAddMissing: (RecipeId) -> Unit,
-    addingMissing: Boolean,
-) {
-    CoverageBar(fraction = suggestion.coverage) {
-        Text(
-            stringResource(Res.string.suggestions_coverage_count, suggestion.heldCount, suggestion.totalCount),
-            style = MaterialTheme.typography.labelSmall,
-        )
-    }
-    if (suggestion.missing.isNotEmpty()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                missingSentence(suggestion),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = { onAddMissing(suggestion.id) }, enabled = !addingMissing) {
-                Icon(
-                    Icons.Outlined.AddShoppingCart,
-                    contentDescription = stringResource(Res.string.suggestions_add_missing),
-                )
-            }
-        }
-    }
-    // Its own line, its own wording. Folding these into "missing" would claim the pantry knows
-    // something it does not.
-    if (suggestion.unverifiable.isNotEmpty()) {
-        Text(
-            stringResource(Res.string.suggestions_check_manually, suggestion.unverifiable.joinToString()),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-/** At most three names, then a count: a long comma-joined line buried the card's other facts. */
-@Composable
-private fun missingSentence(suggestion: SuggestionUi): String {
-    val shown = stringResource(Res.string.suggestions_missing, suggestion.shownMissing.joinToString())
-    val hidden = suggestion.hiddenMissingCount
-    if (hidden == 0) return shown
-    return "$shown ${pluralStringResource(Res.plurals.suggestions_missing_more, hidden, hidden)}"
 }
 
 /** From Pantry's Use soon: the filter is chosen and the ideas view shown; generating stays a tap. */

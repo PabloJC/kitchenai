@@ -4,7 +4,8 @@ import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 
 /**
- * One row per locally stored recipe.
+ * One row per locally stored recipe. Rows written together share [savedAtMillis], which is what
+ * groups them into one generation.
  *
  * [id], [title], [source] and [savedAtMillis] are real columns rather than part of [payload]
  * because the favourites list this table also serves will filter and order by them; everything
