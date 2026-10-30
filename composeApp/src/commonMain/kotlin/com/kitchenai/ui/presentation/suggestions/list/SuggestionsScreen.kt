@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.outlined.Kitchen
@@ -324,7 +325,13 @@ private fun Results(
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
+        val listState = rememberLazyListState()
+        // The banners are list items now: one appearing while the list is scrolled down would be
+        // neither seen nor composed, so its live region would never announce it.
+        val alerting = state.error != null || !state.isOnline
+        LaunchedEffect(alerting, state.error) { if (alerting) listState.animateScrollToItem(0) }
         LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),
             contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
         ) {
