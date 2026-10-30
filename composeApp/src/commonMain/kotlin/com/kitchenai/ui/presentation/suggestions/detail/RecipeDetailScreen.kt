@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -62,6 +60,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -71,6 +70,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.PantryItemId
 import com.kitchenai.shared.domain.model.RecipeId
@@ -625,14 +625,10 @@ private fun StepRow(
     val colors = MaterialTheme.colorScheme
     val fill = if (isFirst) colors.primaryContainer else colors.surfaceContainerHighest
     val onFill = if (isFirst) colors.onPrimaryContainer else colors.onSurfaceVariant
-    // A minimum rather than a fixed size: at large font scales a two-digit number widens the circle.
-    var circle =
-        Modifier
-            .defaultMinSize(minWidth = Dimens.huge, minHeight = Dimens.huge)
-            .aspectRatio(1f)
-            .clip(CircleShape)
-            .background(fill)
+    var circle = Modifier.clip(CircleShape).background(fill)
     if (!isFirst) circle = circle.border(DividerDefaults.Thickness, colors.outlineVariant, CircleShape)
+    // Last, so the clip and fill above draw on the square it settles on rather than on the number alone.
+    circle = circle.squareAround(Dimens.huge)
     val spoken = stringResource(Res.string.detail_step_spoken, number, total, step)
     // One node per step: the number in its circle and the text would otherwise be read apart.
     Row(
@@ -782,4 +778,15 @@ internal fun RecipeDetailEvent.sentence(): UiText =
         RecipeDetailEvent.Saved -> UiText.of(Res.string.snack_saved)
         RecipeDetailEvent.Unsaved -> UiText.of(Res.string.snack_unsaved)
         is RecipeDetailEvent.Failed -> message
+    }
+
+/**
+ * A square as wide as its content or [minSide], whichever is larger, with the content centred: a
+ * fixed size clips a two-digit step at large text, and aspectRatio would stretch to the row's width.
+ */
+private fun Modifier.squareAround(minSide: Dp): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+        val side = maxOf(placeable.width, placeable.height, minSide.roundToPx())
+        layout(side, side) { placeable.place((side - placeable.width) / 2, (side - placeable.height) / 2) }
     }

@@ -98,6 +98,9 @@ private const val FILTERS_CHANGED_KEY = "filters-changed"
 private const val GENERATING_KEY = "generating"
 private const val ERROR_KEY = "error"
 
+/** What the empty state keeps of the viewport once the filters sit above it. */
+private const val EMPTY_HEIGHT_SHARE = 0.6f
+
 // Room under the list for the floating button, so it never hides the last card's content.
 private val FAB_CLEARANCE = 88.dp
 
@@ -159,22 +162,28 @@ fun SuggestionsScreen(
                     onRefresh = viewModel::generate,
                     onGoToPantry = onGoToPantry,
                     onBrowseEarlier = viewModel::browseEarlier,
-                    header = {
-                        item(key = OPTIONS_KEY) { Options(state, viewModel) }
-                        if (!state.isOnline) item(key = OFFLINE_KEY) { OfflineNote() }
-                        if (state.optionsChanged && !state.isGenerating && state.isOnline) {
-                            item(key = FILTERS_CHANGED_KEY) { FiltersChangedBanner(onUpdate = viewModel::generate) }
-                        }
-                        if (state.isGenerating) {
-                            item(key = GENERATING_KEY) { GeneratingStrip(onCancel = viewModel::cancelGeneration) }
-                        }
-                        state.error?.let { message ->
-                            item(key = ERROR_KEY) { SuggestionsErrorBanner(message, viewModel::retry, state.isOnline) }
-                        }
-                    },
+                    header = { ideasHeader(state, viewModel) },
                 )
             }
         }
+    }
+}
+
+/** The filters and the banners, as the list's first items so they scroll away with the cards. */
+private fun LazyListScope.ideasHeader(
+    state: SuggestionsUiState,
+    viewModel: SuggestionsViewModel,
+) {
+    item(key = OPTIONS_KEY) { Options(state, viewModel) }
+    if (!state.isOnline) item(key = OFFLINE_KEY) { OfflineNote() }
+    if (state.optionsChanged && !state.isGenerating && state.isOnline) {
+        item(key = FILTERS_CHANGED_KEY) { FiltersChangedBanner(onUpdate = viewModel::generate) }
+    }
+    if (state.isGenerating) {
+        item(key = GENERATING_KEY) { GeneratingStrip(onCancel = viewModel::cancelGeneration) }
+    }
+    state.error?.let { message ->
+        item(key = ERROR_KEY) { SuggestionsErrorBanner(message, viewModel::retry, state.isOnline) }
     }
 }
 
@@ -343,7 +352,17 @@ private fun Results(
                 state.isGenerating -> item { Skeleton() }
                 // A failed run is reported by the banner above; anything else empty says why it is.
                 state.hasGenerated && state.error != null -> Unit
-                else -> item { EmptyResults(state, onRefresh, onGoToPantry, Modifier.fillParentMaxSize()) }
+                // Not the whole viewport: the header above it already takes some, and a full-height
+                // block below it would push the empty state's action past the fold.
+                else ->
+                    item {
+                        EmptyResults(
+                            state,
+                            onRefresh,
+                            onGoToPantry,
+                            Modifier.fillParentMaxWidth().fillParentMaxHeight(EMPTY_HEIGHT_SHARE),
+                        )
+                    }
             }
         }
     }
