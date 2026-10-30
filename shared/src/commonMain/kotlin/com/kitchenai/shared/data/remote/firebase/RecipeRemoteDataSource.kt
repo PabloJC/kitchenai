@@ -79,6 +79,17 @@ class RecipeRemoteDataSource(
             is AppResult.Success -> writes.optimistically(errors.of(kitchenId)) { write(kitchenId, recipeId, dto) }
         }
 
+    /** Only the picture's fields: a whole `save` would also move the recipe in the library order. */
+    suspend fun setImage(
+        kitchenId: KitchenId,
+        recipeId: RecipeId,
+        imageKey: String?,
+        imageUrl: String,
+    ): AppResult<Unit> =
+        writes.optimistically(errors.of(kitchenId)) {
+            paths.savedRecipe(kitchenId, recipeId).update(IMAGE_KEY to imageKey, IMAGE_URL to imageUrl)
+        }
+
     suspend fun remove(
         kitchenId: KitchenId,
         recipeId: RecipeId,
@@ -109,5 +120,7 @@ class RecipeRemoteDataSource(
 
     private companion object {
         const val SAVED_AT = "savedAtMillis"
+        const val IMAGE_KEY = "imageKey"
+        const val IMAGE_URL = "imageUrl"
     }
 }

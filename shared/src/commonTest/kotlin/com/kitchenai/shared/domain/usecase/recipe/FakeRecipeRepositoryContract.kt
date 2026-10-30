@@ -27,7 +27,12 @@ class FakeRecipeRepositoryContract(
     stored: List<Recipe> = emptyList(),
     private val readError: AppError? = null,
     private val writeError: AppError? = null,
+    /** What `attachImage` answers with: an address, or the failure the image call had. */
+    private val imageResult: AppResult<String> = AppResult.Success("https://images.test/recipe.jpg"),
 ) : RecipeRepositoryContract {
+    /** Every recipe `attachImage` was asked about, so a test can tell "no call" from a call. */
+    val imageRequests = mutableListOf<Recipe>()
+
     private val state = MutableStateFlow(saved)
 
     // Newest first, like the real cache.
@@ -52,6 +57,17 @@ class FakeRecipeRepositoryContract(
         kitchenId: KitchenId,
         recipe: Recipe,
     ): AppResult<Unit> = write { saved -> saved.filterNot { it.id == recipe.id } + recipe }
+
+    override suspend fun attachImage(
+        kitchenId: KitchenId?,
+        recipe: Recipe,
+    ): AppResult<Recipe> {
+        imageRequests += recipe
+        return when (imageResult) {
+            is AppResult.Failure -> imageResult
+            is AppResult.Success -> AppResult.Success(recipe.copy(imageUrl = imageResult.data))
+        }
+    }
 
     override suspend fun removeSavedRecipe(
         kitchenId: KitchenId,

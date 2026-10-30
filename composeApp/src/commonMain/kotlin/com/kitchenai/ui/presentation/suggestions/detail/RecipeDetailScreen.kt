@@ -318,7 +318,11 @@ private fun Header(
     // the top of the screen rather than margined like body content.
     // The card's photograph lands here: the same recipe id names both ends of the move.
     val shared = sharedImageKey?.let { key -> Modifier.sharedRecipeImage(key) } ?: Modifier
-    RecipeImage(tags = state.tagRefs, modifier = shared.onSizeChanged { onImageHeight(it.height) })
+    RecipeImage(
+        tags = state.tagRefs,
+        imageUrl = state.imageUrl,
+        modifier = shared.onSizeChanged { onImageHeight(it.height) },
+    )
     Column(
         modifier = Modifier.padding(horizontal = Dimens.large),
         verticalArrangement = Arrangement.spacedBy(Dimens.small),

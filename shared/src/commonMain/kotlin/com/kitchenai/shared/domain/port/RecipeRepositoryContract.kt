@@ -32,6 +32,15 @@ interface RecipeRepositoryContract {
         recipe: Recipe,
     ): AppResult<Unit>
 
+    /**
+     * Asks for [recipe]'s photograph by its `imageKey` and keeps the address wherever the recipe
+     * is stored: the local generation cache, and the saved copy in [kitchenId] if there is one.
+     */
+    suspend fun attachImage(
+        kitchenId: KitchenId?,
+        recipe: Recipe,
+    ): AppResult<Recipe>
+
     suspend fun removeSavedRecipe(
         kitchenId: KitchenId,
         recipeId: RecipeId,

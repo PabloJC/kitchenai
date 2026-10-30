@@ -9,6 +9,11 @@ package com.kitchenai.shared.data.local
 class RecipeLocalDataSource(private val dao: RecipeDao) {
     suspend fun getAll(): List<RecipeEntity> = dao.getAll()
 
+    suspend fun getById(id: String): RecipeEntity? = dao.getById(id)
+
+    /** Replaces one row in place; the caller keeps its stamp, so it stays in its generation. */
+    suspend fun replace(recipe: RecipeEntity) = dao.insertAll(listOf(recipe))
+
     suspend fun addGeneration(
         recipes: List<RecipeEntity>,
         keep: Int,

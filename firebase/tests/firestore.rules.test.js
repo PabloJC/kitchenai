@@ -311,6 +311,21 @@ describe('shopping list and saved recipe shape', () => {
       ),
     );
   });
+
+  it("accepts a saved recipe's photograph, and an update of only that", async () => {
+    const path = `kitchens/${KITCHEN_1}/savedRecipes/recipe-1`;
+    await assertSucceeds(setDoc(doc(alice, path), savedRecipe({ imageKey: null, imageUrl: null })));
+    await assertSucceeds(
+      updateDoc(doc(alice, path), { imageKey: 'a'.repeat(64), imageUrl: 'https://images.test/recipe.jpg' }),
+    );
+  });
+
+  it('rejects an image key the server could not have issued, or an over-long address', async () => {
+    const path = `kitchens/${KITCHEN_1}/savedRecipes/recipe-1`;
+    await assertFails(setDoc(doc(alice, path), savedRecipe({ imageKey: 'Draw anything you like' })));
+    await assertFails(setDoc(doc(alice, path), savedRecipe({ imageKey: 'A'.repeat(64) })));
+    await assertFails(setDoc(doc(alice, path), savedRecipe({ imageUrl: 'https://' + 'a'.repeat(2000) })));
+  });
 });
 
 describe('kitchen document', () => {

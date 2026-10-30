@@ -8,6 +8,9 @@ import com.kitchenai.shared.core.AppResult
  *
  * [title], [summary] and [steps] are content that arrives from the catalogue or from the
  * agent. Nothing in this codebase may write one of them as a literal.
+ *
+ * [imageKey] is what the server issued to ask for this dish's photograph; [imageUrl] is that
+ * photograph once it exists. Either may be null, and a missing picture is never an error.
  */
 data class Recipe(
     val id: RecipeId,
@@ -19,6 +22,8 @@ data class Recipe(
     val steps: List<String>,
     val tags: List<TermRef>,
     val source: RecipeSource,
+    val imageKey: String? = null,
+    val imageUrl: String? = null,
 )
 
 /**

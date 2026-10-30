@@ -483,6 +483,48 @@ class RecipeDetailViewModelTest : RecipeDetailViewModelHarness() {
             assertEquals(4, viewModel.state.value.servings)
             assertEquals(listOf("rice"), viewModel.state.value.missing.map { it.name })
         }
+
+    @Test
+    fun `a dish with a key gets its own photograph once it is on screen`() =
+        runTest(dispatcher) {
+            val keyed = dish.copy(imageKey = IMAGE_KEY)
+            val port = FakeRecipePort(catalogue = listOf(keyed))
+            val viewModel = started(pantry = emptyList(), recipePort = port)
+            advanceUntilIdle()
+
+            assertEquals("https://images.test/recipe.jpg", viewModel.state.value.imageUrl)
+            assertEquals(1, port.imageRequests.size)
+            // Published for the card behind this screen.
+            assertEquals("https://images.test/recipe.jpg", pictures.all.value[dish.id])
+        }
+
+    @Test
+    fun `a failed photograph leaves the dish-type one and shows no error`() =
+        runTest(dispatcher) {
+            val port =
+                FakeRecipePort(
+                    catalogue = listOf(dish.copy(imageKey = IMAGE_KEY)),
+                    imageResult = AppResult.Failure(AppError.Network(null)),
+                )
+            val viewModel = started(pantry = emptyList(), recipePort = port)
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.imageUrl)
+            assertNull(viewModel.state.value.error)
+            assertEquals("Dish", viewModel.state.value.title)
+        }
+
+    @Test
+    fun `a dish that already has a photograph is not asked for one`() =
+        runTest(dispatcher) {
+            val pictured = dish.copy(imageKey = IMAGE_KEY, imageUrl = "https://images.test/old.jpg")
+            val port = FakeRecipePort(catalogue = listOf(pictured))
+            val viewModel = started(pantry = emptyList(), recipePort = port)
+            advanceUntilIdle()
+
+            assertEquals("https://images.test/old.jpg", viewModel.state.value.imageUrl)
+            assertTrue(port.imageRequests.isEmpty())
+        }
 }
 
 /** Refuses every read of one recipe while [error] is set, then answers like the port it wraps. */
@@ -493,3 +535,5 @@ private class FailingRecipePort(
     override suspend fun getRecipe(recipeId: RecipeId): AppResult<Recipe> =
         error?.let { AppResult.Failure(it) } ?: real.getRecipe(recipeId)
 }
+
+private val IMAGE_KEY = "a".repeat(64)
