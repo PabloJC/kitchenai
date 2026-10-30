@@ -1034,6 +1034,22 @@ hardware keyboard.*
    - "1 of 2", with "Older" leading to "2 of 2": only the last three sets are kept. Close and
      reopen the app: the earlier ideas are still there.
 
+### 45. Times follow the 12/24-hour clock, and each platform picks dates and times its own way
+
+*Both platforms, in English, once with the device on a 12-hour clock and once on 24-hour.*
+
+1. With a dated item in the pantry and reminders not yet answered, wait for the offer.
+   - On 12-hour it names the time like "6:00 PM"; on 24-hour, "18:00".
+2. Profile › Reminders, on, then tap the time row.
+   - The row shows the same style. Android opens Material's dial, in AM/PM on 12-hour; iOS opens
+     the system wheels between Cancel and Done. Choose 7:45 PM and Done: the row reads it back.
+3. Pantry › add › Pick a date.
+   - Android shows Material's calendar; iOS the system's inline calendar. Pick the 20th and Done:
+     the row shows that day. Change the device's time zone and reopen: it still opens on the 20th.
+4. With VoiceOver on iOS, repeat steps 2 and 3.
+   - The wheels and the calendar are read and adjusted as in any system app; Done and Cancel read as
+     buttons.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

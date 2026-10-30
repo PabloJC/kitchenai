@@ -10,7 +10,6 @@ import com.kitchenai.shared.domain.usecase.reminder.SaveReminderSettingsUseCase
 import com.kitchenai.ui.platform.ExpiryReminderScheduler
 import com.kitchenai.ui.platform.ScheduledReminder
 import com.kitchenai.ui.platform.platformLanguageTags
-import com.kitchenai.ui.presentation.common.clockTime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +65,8 @@ class ExpiryReminderViewModel(
             internalState.update {
                 it.copy(
                     offering = !postponed && !settings.offered && dated,
-                    time = clockTime(settings.hour, settings.minute),
+                    hour = settings.hour,
+                    minute = settings.minute,
                 )
             }
             // Kept going while reminders are on, even on a quiet day: Android's job reads the pantry itself.
