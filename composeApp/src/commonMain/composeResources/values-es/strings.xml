@@ -406,8 +406,8 @@
     <string name="reminder_setting_body">Un aviso los días en que algo de tu cocina esté a punto de caducar.</string>
     <string name="reminder_setting_time">Hora</string>
     <string name="reminder_setting_refused">Las notificaciones de KitchenAI están desactivadas. Permítelas en los ajustes y los recordatorios se activarán al volver.</string>
-    <string name="reminder_time_ok">Aceptar</string>
-    <string name="reminder_time_cancel">Cancelar</string>
+    <string name="picker_done">Hecho</string>
+    <string name="picker_cancel">Cancelar</string>
     <plurals name="reminder_expiring">
         <item quantity="one">%1$d producto caduca hoy o mañana</item>
         <item quantity="other">%1$d productos caducan hoy o mañana</item>
