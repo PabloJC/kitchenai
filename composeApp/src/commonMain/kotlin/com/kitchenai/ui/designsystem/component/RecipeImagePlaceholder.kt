@@ -2,8 +2,6 @@ package com.kitchenai.ui.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Image
@@ -13,8 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.kitchenai.ui.designsystem.theme.Dimens
-
-private const val ASPECT_RATIO = 16f / 9f
 
 /**
  * Where a photograph will go once the product has one. A flat tonal block sized to the slot a
@@ -31,8 +27,7 @@ fun RecipeImagePlaceholder(modifier: Modifier = Modifier) {
     Box(
         modifier =
             modifier
-                .fillMaxWidth()
-                .aspectRatio(ASPECT_RATIO)
+                .recipeImageSlot()
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,
     ) {

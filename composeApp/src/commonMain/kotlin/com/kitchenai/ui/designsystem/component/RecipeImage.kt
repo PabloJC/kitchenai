@@ -1,8 +1,6 @@
 package com.kitchenai.ui.designsystem.component
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -34,8 +32,6 @@ import com.kitchenai.ui.resources.dish_stir_fry
 import com.kitchenai.ui.resources.dish_tacos_wraps
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-
-private const val ASPECT_RATIO = 16f / 9f
 
 /** The taxonomy #195 seeds one term from per suggestion; not a domain concept, only a lookup key. */
 private const val DISH_TYPES_TAXONOMY = "dish-types"
@@ -85,7 +81,7 @@ internal fun dishTypeDrawable(tags: List<TermRef>): DrawableResource? =
     tags.firstOrNull { it.taxonomy.value == DISH_TYPES_TAXONOMY }?.let { dishTypeImages[it.term.value] }
 
 /**
- * A recipe's photo, by dish type. Same `16f / 9f` slot as [RecipeImagePlaceholder] either way,
+ * A recipe's photo, by dish type. Same [recipeImageSlot] as [RecipeImagePlaceholder] either way,
  * so picking one over the other is never a layout change.
  */
 @Composable
@@ -100,7 +96,7 @@ fun RecipeImage(
         Image(
             painter = painterResource(drawable),
             contentDescription = null,
-            modifier = modifier.fillMaxWidth().aspectRatio(ASPECT_RATIO),
+            modifier = modifier.recipeImageSlot(),
             contentScale = ContentScale.Crop,
         )
     }

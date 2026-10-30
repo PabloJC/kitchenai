@@ -508,12 +508,15 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - The servings buttons read "Decrease servings, button" and "Increase servings, button"; the
      count between them reads "4 servings", and is read again after a tap.
    - Each step reads as one item: "Step 2 of 6: …".
+   - Moving by headings visits the title, "Ingredients", "Check manually" when it shows, and "Steps".
 5. Profile: tap a dietary term and choose "Prefer" in the sheet.
    - The chip reads its state ("Prefer") and its action reads "Choose Prefer, Avoid or Off".
      In the sheet each of Prefer, Avoid and Off reads as a selectable option, and the two lines
      under them are read too. Choosing "Avoid" turns the chip's state to "Avoid".
 6. With the font at 200%, repeat steps 1 to 4 by sight.
    - No label is cut off and every button stays reachable by scrolling.
+   - On a recipe with ten or more steps, every number stays inside its circle.
+   - On Ideas, the filters and banners scroll away with the cards; only Ideas · Saved stays put.
 
 ### 16. Errors say what to do, and offline is announced
 
@@ -750,6 +753,10 @@ shared case, a second device joined to that kitchen (scenario 5).*
    - "Start cooking" from the right pane opens cooking mode full screen; back returns to the recipe.
 6. Rotate that tablet to portrait, below 840 dp.
    - Ideas is one list again, and a tap opens the recipe on its own screen.
+7. On a phone in landscape, open Ideas with results, then open a recipe.
+   - A card's photo takes well under half the height: one whole card and the start of the next
+     are visible, and scrolling takes the filters away with the cards.
+   - On the recipe, the title and the first ingredients show below the photo without scrolling.
 
 ### 28. Motion and haptics, and less of both when the system asks
 
