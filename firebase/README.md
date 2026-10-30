@@ -79,7 +79,9 @@ builds ignore the setting.
 
    If port 8080 is taken, change Firestore's port in a local copy of `firebase.json` and set
    `kitchenai.firestoreEmulatorPort` or `FIREBASE_EMULATOR_FIRESTORE_PORT` to match.
-3. App Check is decoded but not verified by the Functions emulator. The debug provider still needs
+3. Use a device or simulator that is not signed in to the real project: a production session
+   survives the switch, and its profile is then missing from the empty emulator.
+4. App Check is decoded but not verified by the Functions emulator. The debug provider still needs
    its debug token registered, as for the real project (`docs/infra.md`), or callables are refused.
 
 The emulators start empty. Seed the catalogue into them, not into the real project, before asking
