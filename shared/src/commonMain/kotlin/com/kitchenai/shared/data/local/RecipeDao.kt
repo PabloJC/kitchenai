@@ -26,7 +26,16 @@ interface RecipeDao {
         recipes: List<RecipeEntity>,
         keep: Int,
     ) {
-        insertAll(recipes)
+        // Always after the newest kept one: a clock moved backwards would otherwise file this
+        // generation as the oldest and delete it below, and one in the same millisecond would merge.
+        val newest = getAll().maxOfOrNull { it.savedAtMillis }
+        val stamped =
+            if (newest == null || recipes.all { it.savedAtMillis > newest }) {
+                recipes
+            } else {
+                recipes.map { it.copy(savedAtMillis = newest + 1) }
+            }
+        insertAll(stamped)
         val stamps = getAll().map { it.savedAtMillis }.distinct().sortedDescending()
         if (stamps.size > keep) deleteStoredBefore(stamps[keep - 1])
     }
