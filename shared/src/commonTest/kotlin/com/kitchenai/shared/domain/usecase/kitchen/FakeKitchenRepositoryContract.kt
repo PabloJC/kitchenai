@@ -115,6 +115,20 @@ class FakeKitchenRepositoryContract(
         return result
     }
 
+    var transferResult: AppResult<Unit> = AppResult.Success(Unit)
+    val transfers = mutableListOf<Pair<KitchenId, UserId>>()
+
+    /** Applied to the held kitchen on success, as the listener echo would show it. */
+    override suspend fun transferOwnership(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+        newOwnerId: UserId,
+    ): AppResult<Unit> {
+        transfers += kitchenId to newOwnerId
+        if (transferResult is AppResult.Success) state.value = state.value?.copy(ownerId = newOwnerId)
+        return transferResult
+    }
+
     override suspend fun updateMyDisplayName(
         userId: UserId,
         kitchenId: KitchenId,

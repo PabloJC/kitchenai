@@ -274,10 +274,11 @@ different accounts) if you want names in the member list; anonymous works for ev
    - The field empties and a snackbar reads "You joined the kitchen".
    - B's screen now shows A's code under "Your join code" and two members: A first, with the
      supporting text "Owner", then B ending in "(you)".
-   - B has **no** "New code" button and **no** "Remove" button. "Leave this kitchen" is enabled.
+   - B has **no** "New code" button and no ⋮ menu on A's row; B's own row offers "Edit name".
+     "Leave this kitchen" is enabled.
 4. Device A, without leaving the screen.
-   - The same two members appear live, no relaunch. A sees a "Remove" button on B's row and none on
-     its own. "New code" is visible.
+   - The same two members appear live, no relaunch. A sees a ⋮ menu on B's row ("Make owner",
+     "Remove") and "Edit name" on its own. "New code" is visible.
 5. Member names.
    - Joining passes the profile display name. B's row shows B's Google name if B signed in with
      Google, and the label "Kitchen member" on A's screen (and "You" on B's) if B is anonymous. A
@@ -300,8 +301,8 @@ different accounts) if you want names in the member list; anonymous works for ev
 *Continue from scenario 5: A owns a kitchen with B in it.*
 
 1. Device A (owner, two members): look at the bottom of the Kitchen screen.
-   - A muted line "As the owner, you cannot leave while others are still in this kitchen. Remove
-     them first." sits above "Leave this kitchen", and the button is **disabled**.
+   - A muted line "Make someone else the owner to leave this kitchen." sits above "Leave this
+     kitchen", and the button is **disabled**.
 2. Device A: in "Join a kitchen", enter any code, tap "Join" and confirm in the dialog.
    - The same sentence appears as the error, since joining another kitchen would first leave this
      one. A is still in its kitchen afterwards.
@@ -328,7 +329,7 @@ different accounts) if you want names in the member list; anonymous works for ev
 
 *Rebuild the sharing from scenario 5 with fresh accounts if needed: A owns, B has joined.*
 
-1. Device A: Members, B's row, tap "Remove".
+1. Device A: Members, B's row, open its ⋮ menu and tap "Remove".
    - A dialog names B ("Remove <name>?", or "Kitchen member" if B has no name) and
      says B cannot rejoin with the code; its "Remove" button is red. Confirm.
    - B's row disappears from A's list and a snackbar confirms it.
@@ -341,6 +342,18 @@ different accounts) if you want names in the member list; anonymous works for ev
    - The join is refused with a red line. The expected message is "This account is not allowed to
      do that"; if another appears, record it verbatim.
    - B does not appear in A's member list, and the Console `memberIds` is unchanged.
+
+8. Names, with two guests (Profile shows the sign-in buttons on both): build the sharing again.
+   - Both rows read "Kitchen member". Device B: Profile › Account › "Your name", type `sam`, press
+     Done. The field started in capitals ("Sam"); the row now reads "Sam".
+   - Device A, live: B's row reads "Sam" with the initial "S". A names itself from its own row's
+     "Edit name"; B sees it live. A blank name keeps Save disabled.
+9. Owner hands over and leaves. Device A: B's ⋮ menu › "Make owner", confirm.
+   - A snackbar reads "<B> is now the owner"; the "Owner" tag moves to B on both devices, A loses
+     "New code" and the menus, and B gains them. The muted line goes away and "Leave this
+     kitchen" is enabled for A.
+   - A leaves. B keeps the pantry, the list and the saved recipes, and can remove people and make
+     a new code. Console: `ownerId` is B's uid and nothing else changed in the hand-over write.
 
 ### 8. Owner regenerates the join code
 

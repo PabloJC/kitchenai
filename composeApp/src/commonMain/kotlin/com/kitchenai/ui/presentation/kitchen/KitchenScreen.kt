@@ -17,11 +17,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -59,7 +62,10 @@ import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.Tag
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.navigation.DetailTopBarState
+import com.kitchenai.ui.platform.platformLanguageTags
 import com.kitchenai.ui.platform.rememberShareText
+import com.kitchenai.ui.presentation.common.DisplayNameDialog
+import com.kitchenai.ui.presentation.common.DisplayNameViewModel
 import com.kitchenai.ui.presentation.common.JoinCodeField
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.displayJoinCode
@@ -75,11 +81,14 @@ import com.kitchenai.ui.resources.kitchen_confirm_join_title
 import com.kitchenai.ui.resources.kitchen_confirm_leave
 import com.kitchenai.ui.resources.kitchen_confirm_leave_body
 import com.kitchenai.ui.resources.kitchen_confirm_leave_title
+import com.kitchenai.ui.resources.kitchen_confirm_owner_body
+import com.kitchenai.ui.resources.kitchen_confirm_owner_title
 import com.kitchenai.ui.resources.kitchen_confirm_regenerate_body
 import com.kitchenai.ui.resources.kitchen_confirm_regenerate_title
 import com.kitchenai.ui.resources.kitchen_confirm_remove_body
 import com.kitchenai.ui.resources.kitchen_confirm_remove_title
 import com.kitchenai.ui.resources.kitchen_copy
+import com.kitchenai.ui.resources.kitchen_edit_name
 import com.kitchenai.ui.resources.kitchen_empty_action
 import com.kitchenai.ui.resources.kitchen_empty_body
 import com.kitchenai.ui.resources.kitchen_empty_title
@@ -90,9 +99,12 @@ import com.kitchenai.ui.resources.kitchen_join_label
 import com.kitchenai.ui.resources.kitchen_joined
 import com.kitchenai.ui.resources.kitchen_leave_action
 import com.kitchenai.ui.resources.kitchen_left
+import com.kitchenai.ui.resources.kitchen_make_owner
+import com.kitchenai.ui.resources.kitchen_member_actions
 import com.kitchenai.ui.resources.kitchen_member_removed
 import com.kitchenai.ui.resources.kitchen_members_title
 import com.kitchenai.ui.resources.kitchen_owner
+import com.kitchenai.ui.resources.kitchen_owner_changed
 import com.kitchenai.ui.resources.kitchen_regenerate_action
 import com.kitchenai.ui.resources.kitchen_remove_action
 import com.kitchenai.ui.resources.kitchen_title
@@ -111,12 +123,15 @@ fun KitchenScreen(
     detailTopBar: DetailTopBarState,
     modifier: Modifier = Modifier,
     viewModel: KitchenViewModel = koinViewModel(),
+    displayName: DisplayNameViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val nameState by displayName.state.collectAsStateWithLifecycle()
     val title = stringResource(Res.string.kitchen_title)
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(userId) { viewModel.start(userId) }
+    LaunchedEffect(userId) { displayName.start(userId, platformLanguageTags()) }
     LaunchedEffect(viewModel) { viewModel.events.collect { event -> snackbar.showSnackbar(event.sentence().text()) } }
     PublishTitle(title, detailTopBar)
 
@@ -129,13 +144,19 @@ fun KitchenScreen(
         if (state.isLoading) {
             LoadingState(Modifier.padding(padding))
         } else {
-            KitchenContent(state = state, viewModel = viewModel, modifier = Modifier.padding(padding))
+            KitchenContent(
+                state = state,
+                viewModel = viewModel,
+                onEditName = displayName::edit,
+                modifier = Modifier.padding(padding),
+            )
         }
     }
 
     state.confirming?.let { asked ->
         ConfirmDialog(asked, onConfirm = viewModel::confirm, onDismiss = viewModel::dismissConfirmation)
     }
+    DisplayNameDialog(nameState, onSave = displayName::save, onDismiss = displayName::cancel)
 }
 
 /** Leave and remove are drawn as destructive; joining and a new code are serious but not losses of data. */
@@ -190,6 +211,12 @@ private fun KitchenConfirmation.wording(): ConfirmWording =
                 stringResource(Res.string.kitchen_confirm_remove_body),
                 stringResource(Res.string.kitchen_remove_action),
             )
+        is KitchenConfirmation.MakeOwner ->
+            ConfirmWording(
+                stringResource(Res.string.kitchen_confirm_owner_title, name.resolve()),
+                stringResource(Res.string.kitchen_confirm_owner_body),
+                stringResource(Res.string.kitchen_make_owner),
+            )
         KitchenConfirmation.Join ->
             ConfirmWording(
                 stringResource(Res.string.kitchen_confirm_join_title),
@@ -208,6 +235,7 @@ internal fun KitchenEvent.sentence(): UiText =
     when (this) {
         KitchenEvent.Left -> UiText.of(Res.string.kitchen_left)
         is KitchenEvent.MemberRemoved -> UiText.Joined(Res.string.kitchen_member_removed, listOf(name))
+        is KitchenEvent.OwnerChanged -> UiText.Joined(Res.string.kitchen_owner_changed, listOf(name))
         KitchenEvent.Joined -> UiText.of(Res.string.kitchen_joined)
         KitchenEvent.CodeRegenerated -> UiText.of(Res.string.kitchen_code_regenerated)
         KitchenEvent.CodeCopied -> UiText.of(Res.string.kitchen_code_copied)
@@ -230,6 +258,7 @@ private fun PublishTitle(
 private fun KitchenContent(
     state: KitchenUiState,
     viewModel: KitchenViewModel,
+    onEditName: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val joinField = remember { FocusRequester() }
@@ -255,7 +284,11 @@ private fun KitchenContent(
                 onRegenerate = viewModel::requestRegenerateJoinCode,
                 onCopied = viewModel::onCodeCopied,
             )
-            MembersSection(kitchen, isBusy = state.isBusy, onRemove = viewModel::requestRemoveMember)
+            MembersSection(
+                kitchen,
+                isBusy = state.isBusy,
+                actions = MemberActions(viewModel::requestRemoveMember, viewModel::requestMakeOwner, onEditName),
+            )
             LeaveSection(kitchen, isBusy = state.isBusy, onLeave = viewModel::requestLeave)
         } else if (!state.canRetry) {
             // A failed listener says nothing about membership, so "no kitchen yet" would be a guess.
@@ -359,19 +392,26 @@ private fun JoinCodeCard(
 private fun MembersSection(
     kitchen: KitchenUi,
     isBusy: Boolean,
-    onRemove: (UserId) -> Unit,
+    actions: MemberActions,
 ) {
     Column {
         SectionHeader(title = stringResource(Res.string.kitchen_members_title))
-        kitchen.members.forEach { member -> MemberRow(member, isBusy, onRemove) }
+        kitchen.members.forEach { member -> MemberRow(member, isBusy, actions) }
     }
 }
+
+/** What a member row can do: name yourself on your own row; the owner's two actions on the others. */
+private class MemberActions(
+    val onRemove: (UserId) -> Unit,
+    val onMakeOwner: (UserId) -> Unit,
+    val onEditName: () -> Unit,
+)
 
 @Composable
 private fun MemberRow(
     member: KitchenMemberUi,
     isBusy: Boolean,
-    onRemove: (UserId) -> Unit,
+    actions: MemberActions,
 ) {
     ListItem(
         leadingContent = { MemberAvatar(member.initials) },
@@ -386,13 +426,51 @@ private fun MemberRow(
             }
         },
         trailingContent = {
-            if (member.canRemove) {
-                TextButton(onClick = { onRemove(member.id) }, enabled = !isBusy) {
-                    Text(stringResource(Res.string.kitchen_remove_action))
-                }
+            when {
+                member.isSelf ->
+                    TextButton(onClick = actions.onEditName) { Text(stringResource(Res.string.kitchen_edit_name)) }
+                member.canRemove || member.canMakeOwner -> OwnerMenu(member, isBusy, actions)
             }
         },
     )
+}
+
+/** Two actions do not fit beside a name on a phone, so the owner's sit behind one button. */
+@Composable
+private fun OwnerMenu(
+    member: KitchenMemberUi,
+    isBusy: Boolean,
+    actions: MemberActions,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, enabled = !isBusy) {
+            Icon(
+                Icons.Outlined.MoreVert,
+                contentDescription = stringResource(Res.string.kitchen_member_actions, member.name.resolve()),
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            if (member.canMakeOwner) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.kitchen_make_owner)) },
+                    onClick = {
+                        open = false
+                        actions.onMakeOwner(member.id)
+                    },
+                )
+            }
+            if (member.canRemove) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.kitchen_remove_action)) },
+                    onClick = {
+                        open = false
+                        actions.onRemove(member.id)
+                    },
+                )
+            }
+        }
+    }
 }
 
 /** Decorative: the row's headline already names the member. */

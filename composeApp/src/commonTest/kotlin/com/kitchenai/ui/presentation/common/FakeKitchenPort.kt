@@ -128,11 +128,30 @@ class FakeKitchenPort(
         return result
     }
 
+    var transferResult: AppResult<Unit> = AppResult.Success(Unit)
+    val transfers = mutableListOf<UserId>()
+
+    /** Applied to the held kitchen on success, as the listener echo would show it. */
+    override suspend fun transferOwnership(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+        newOwnerId: UserId,
+    ): AppResult<Unit> {
+        transfers += newOwnerId
+        if (transferResult is AppResult.Success) state.value = state.value?.copy(ownerId = newOwnerId)
+        return transferResult
+    }
+
+    /** Applied to the held kitchen, as the listener echo would show it. */
     override suspend fun updateMyDisplayName(
         userId: UserId,
         kitchenId: KitchenId,
         displayName: String,
-    ): AppResult<Unit> = AppResult.Success(Unit)
+    ): AppResult<Unit> {
+        val held = state.value ?: return AppResult.Success(Unit)
+        state.value = held.copy(memberDisplayNames = held.memberDisplayNames + (userId.value to displayName))
+        return AppResult.Success(Unit)
+    }
 
     val updatedAvoids = mutableListOf<HouseholdAvoids>()
 

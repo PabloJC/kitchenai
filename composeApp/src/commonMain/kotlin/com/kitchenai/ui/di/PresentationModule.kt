@@ -6,6 +6,7 @@ import com.kitchenai.ui.navigation.LaunchLinks
 import com.kitchenai.ui.navigation.ShoppingAddRequests
 import com.kitchenai.ui.presentation.common.AppearanceViewModel
 import com.kitchenai.ui.presentation.common.ConnectivityViewModel
+import com.kitchenai.ui.presentation.common.DisplayNameViewModel
 import com.kitchenai.ui.presentation.common.PendingDisplayName
 import com.kitchenai.ui.presentation.session.SessionKitchenDelegate
 import com.kitchenai.ui.presentation.session.SessionViewModel
@@ -23,6 +24,7 @@ val presentationModule: Module =
         single { LaunchLinks() }
         viewModel { ConnectivityViewModel(get()) }
         viewModel { AppearanceViewModel(get(), get()) }
+        viewModel { DisplayNameViewModel(get(), get()) }
         factory { SessionKitchenDelegate(get(), get(), get(), get()) }
         viewModel { SessionViewModel(get(), get(), get(), get(), get(), get(), get()) }
         includes(kitchenPresentationModule)

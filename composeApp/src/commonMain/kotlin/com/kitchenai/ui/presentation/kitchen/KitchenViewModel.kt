@@ -130,6 +130,11 @@ class KitchenViewModel(
         confirming.value = KitchenConfirmation.RemoveMember(memberId, name)
     }
 
+    fun requestMakeOwner(memberId: UserId) {
+        val name = state.value.kitchen?.members?.firstOrNull { it.id == memberId }?.name ?: return
+        confirming.value = KitchenConfirmation.MakeOwner(memberId, name)
+    }
+
     fun requestRegenerateJoinCode() {
         confirming.value = KitchenConfirmation.RegenerateCode
     }
@@ -141,6 +146,7 @@ class KitchenViewModel(
         when (asked) {
             KitchenConfirmation.Leave -> leave()
             is KitchenConfirmation.RemoveMember -> removeMember(asked.memberId, asked.name)
+            is KitchenConfirmation.MakeOwner -> makeOwner(asked.memberId, asked.name)
             KitchenConfirmation.Join -> join()
             KitchenConfirmation.RegenerateCode -> regenerateJoinCode()
         }
@@ -174,6 +180,14 @@ class KitchenViewModel(
     ) {
         val uid = userId ?: return
         write(onSuccess = { announce(KitchenEvent.MemberRemoved(name)) }) { writes.removeMember(uid, memberId) }
+    }
+
+    private fun makeOwner(
+        memberId: UserId,
+        name: UiText,
+    ) {
+        val uid = userId ?: return
+        write(onSuccess = { announce(KitchenEvent.OwnerChanged(name)) }) { writes.transferOwnership(uid, memberId) }
     }
 
     fun regenerateJoinCode() {

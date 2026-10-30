@@ -8,9 +8,9 @@ import com.kitchenai.shared.domain.port.KitchenRepositoryContract
 
 /**
  * Leaves the caller's current kitchen. The owner of one with other members is rejected here:
- * they would strand it without anyone able to remove people or regenerate its join code, and
- * ownership never transfers in the MVP. No replacement kitchen is made here: the session
- * provisions one once the kitchen listener reports none (`docs/session.md`).
+ * they would strand it without anyone able to remove people or regenerate its join code, so
+ * they hand it over first ([TransferKitchenOwnershipUseCase]). No replacement kitchen is made
+ * here: the session provisions one once the kitchen listener reports none (`docs/session.md`).
  */
 class LeaveKitchenUseCase(
     private val kitchens: KitchenRepositoryContract,

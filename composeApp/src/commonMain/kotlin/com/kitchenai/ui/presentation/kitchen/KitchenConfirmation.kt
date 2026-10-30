@@ -12,6 +12,12 @@ sealed interface KitchenConfirmation {
         val name: UiText,
     ) : KitchenConfirmation
 
+    /** The owner gives up removing people and the code; only the new owner can hand it back. */
+    data class MakeOwner(
+        val memberId: UserId,
+        val name: UiText,
+    ) : KitchenConfirmation
+
     /** Joining leaves the current kitchen in the same transaction, so it is asked like a leave. */
     data object Join : KitchenConfirmation
 

@@ -57,6 +57,13 @@ interface KitchenRepositoryContract {
         requesterId: UserId,
     ): AppResult<Kitchen>
 
+    /** Makes [newOwnerId], already a member, the owner; [requesterId] must be the owner and stays a member. */
+    suspend fun transferOwnership(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+        newOwnerId: UserId,
+    ): AppResult<Unit>
+
     /** Refreshes the caller's own entry in [Kitchen.memberDisplayNames]; never another member's. */
     suspend fun updateMyDisplayName(
         userId: UserId,

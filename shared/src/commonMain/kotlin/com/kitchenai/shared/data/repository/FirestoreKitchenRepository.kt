@@ -125,6 +125,15 @@ class FirestoreKitchenRepository(
             firestore.runTransaction { regenerateJoinCodeTransaction(kitchenId, requesterId) }
         }.flatMap { it }
 
+    override suspend fun transferOwnership(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+        newOwnerId: UserId,
+    ): AppResult<Unit> =
+        firestoreCall(dispatchers) {
+            firestore.runTransaction { transferOwnershipTransaction(kitchenId, requesterId, newOwnerId) }
+        }.flatMap { it }
+
     /** A single dotted-path write: no read needed, and no other member's entry is touched. */
     override suspend fun updateMyDisplayName(
         userId: UserId,
@@ -236,6 +245,19 @@ class FirestoreKitchenRepository(
                 memberId,
             ).copy(removedMemberIds = (dto.removedMemberIds + memberId.value).distinct())
         set(paths.kitchen(kitchenId), updated) { encodeDefaults = true }
+        return AppResult.Success(Unit)
+    }
+
+    /** Re-checked against the document as it stands now: the member may have left since the screen was drawn. */
+    private suspend fun Transaction.transferOwnershipTransaction(
+        kitchenId: KitchenId,
+        requesterId: UserId,
+        newOwnerId: UserId,
+    ): AppResult<Unit> {
+        val dto = getKitchenDto(kitchenId).getOrElse { return AppResult.Failure(it) }
+        if (dto.ownerId != requesterId.value) return AppResult.Failure(AppError.Unauthorized())
+        if (newOwnerId.value !in dto.memberIds) return AppResult.Failure(AppError.NotFound("member"))
+        set(paths.kitchen(kitchenId), dto.copy(ownerId = newOwnerId.value)) { encodeDefaults = true }
         return AppResult.Success(Unit)
     }
 

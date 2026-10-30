@@ -35,7 +35,7 @@ data class KitchenUi(
 
 /**
  * [name] is the label to draw, placeholder included; [initials] is null when there is no name to
- * take them from. [canRemove] is the owner's action on others only.
+ * take them from. [canRemove] and [canMakeOwner] are the owner's actions on others only.
  */
 data class KitchenMemberUi(
     val id: UserId,
@@ -44,4 +44,5 @@ data class KitchenMemberUi(
     val isSelf: Boolean,
     val isOwner: Boolean,
     val canRemove: Boolean,
+    val canMakeOwner: Boolean = canRemove,
 )

@@ -7,6 +7,7 @@ import com.kitchenai.shared.domain.usecase.kitchen.LeaveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.RegenerateKitchenJoinCodeUseCase
 import com.kitchenai.shared.domain.usecase.kitchen.RemoveKitchenMemberUseCase
+import com.kitchenai.shared.domain.usecase.kitchen.TransferKitchenOwnershipUseCase
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -21,4 +22,5 @@ val kitchenModule: Module =
         factory { ObserveKitchenUseCase(get()) }
         factory { RegenerateKitchenJoinCodeUseCase(get()) }
         factory { RemoveKitchenMemberUseCase(get()) }
+        factory { TransferKitchenOwnershipUseCase(get(), get()) }
     }

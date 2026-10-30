@@ -8,6 +8,8 @@ sealed interface KitchenEvent {
 
     data class MemberRemoved(val name: UiText) : KitchenEvent
 
+    data class OwnerChanged(val name: UiText) : KitchenEvent
+
     data object Joined : KitchenEvent
 
     data object CodeRegenerated : KitchenEvent
