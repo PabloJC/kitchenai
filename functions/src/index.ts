@@ -16,7 +16,7 @@ import {
   UnknownImageKey,
   attachImageKeys,
   firestoreImageSources,
-  imagenGenerator,
+  geminiImageGenerator,
   parseImageRequest,
   resolveRecipeImage,
   storageImageStore,
@@ -150,7 +150,7 @@ export const recipeImage = onCall(
       const { url, generated } = await resolveRecipeImage(imageKey, {
         store: storageImageStore(getStorage().bucket()),
         sources: imageSources,
-        generate: imagenGenerator(imageGenai),
+        generate: geminiImageGenerator(imageGenai),
         charge: () => chargeCall(db, uid, new Date(), IMAGES),
       });
       logger.info('recipe image', { generated });

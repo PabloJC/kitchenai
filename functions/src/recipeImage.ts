@@ -1,11 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { PersonGeneration, type GoogleGenAI } from '@google/genai';
+import { Modality, type GoogleGenAI } from '@google/genai';
 import type { Firestore } from 'firebase-admin/firestore';
 import type { getStorage } from 'firebase-admin/storage';
 import { BadRequest, asObject } from './contract.ts';
 
 /** Named here and nowhere else, like `MODEL_ID`: the client only ever sees a URL. */
-export const IMAGE_MODEL_ID = 'imagen-4.0-fast-generate-001';
+// Not Imagen: Vertex no longer serves those models to this project, in any region.
+export const IMAGE_MODEL_ID = 'gemini-2.5-flash-image';
 
 export const IMAGE_SCHEMA_VERSION = 1;
 
@@ -121,20 +122,23 @@ export async function attachImageKeys<
   return keyed;
 }
 
-export function imagenGenerator(genai: GoogleGenAI): GenerateImage {
+export function geminiImageGenerator(genai: GoogleGenAI): GenerateImage {
   return async (prompt) => {
-    const response = await genai.models.generateImages({
+    const response = await genai.models.generateContent({
       model: IMAGE_MODEL_ID,
-      prompt,
+      contents: prompt,
       config: {
-        numberOfImages: 1,
-        aspectRatio: '16:9',
-        personGeneration: PersonGeneration.DONT_ALLOW,
-        outputMimeType: 'image/jpeg',
-        outputCompressionQuality: 80,
+        responseModalities: [Modality.IMAGE],
+        imageConfig: {
+          aspectRatio: '16:9',
+          personGeneration: 'ALLOW_NONE',
+          outputMimeType: 'image/jpeg',
+          outputCompressionQuality: 80,
+        },
       },
     });
-    const bytes = response.generatedImages?.[0]?.image?.imageBytes;
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    const bytes = parts.find((part) => part.inlineData?.data)?.inlineData?.data;
     return bytes ? Buffer.from(bytes, 'base64') : null;
   };
 }
