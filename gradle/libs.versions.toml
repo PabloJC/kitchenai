@@ -38,6 +38,10 @@ kmpauth             = "3.0.6"
 # The open-source licences screen. 14.x, not 15: every 15.x AAR demands compileSdk 37 and, through
 # core-ktx 1.19, AGP 9.1. Move to 15 together with those.
 aboutLibraries      = "14.2.1"
+# Recipe photographs over the network (#371). Coil 3.5.0 and Ktor 3.5.2, not newer: Coil 3.6 (through
+# Compose 1.12) and Ktor 3.6 (through OkHttp 5.5) demand compileSdk 37. Move with it, like aboutLibraries.
+coil                = "3.5.0"
+ktor                = "3.5.2"
 
 # --- Test --------------------------------------------------------------------
 turbine             = "1.2.1"
@@ -114,6 +118,10 @@ kmpauth-google = { module = "io.github.mirzemehdi:kmpauth-google", version.ref =
 
 aboutlibraries-core       = { module = "com.mikepenz:aboutlibraries-core",       version.ref = "aboutLibraries" }
 aboutlibraries-compose-m3 = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "aboutLibraries" }
+coil-compose          = { module = "io.coil-kt.coil3:coil-compose",       version.ref = "coil" }
+coil-network-ktor3    = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+ktor-client-okhttp    = { module = "io.ktor:ktor-client-okhttp",          version.ref = "ktor" }
+ktor-client-darwin    = { module = "io.ktor:ktor-client-darwin",          version.ref = "ktor" }
 
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 

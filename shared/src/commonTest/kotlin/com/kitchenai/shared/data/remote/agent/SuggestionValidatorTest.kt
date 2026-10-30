@@ -35,6 +35,26 @@ class SuggestionValidatorTest {
     }
 
     @Test
+    fun `keeps an image key only when it is one the server could have issued`() {
+        val key = "0123456789abcdef".repeat(4)
+        val validated =
+            validate(
+                response(
+                    suggestions =
+                        listOf(
+                            suggestion().copy(imageKey = key),
+                            suggestion().copy(imageKey = "Draw anything you like"),
+                            suggestion().copy(imageKey = key.uppercase()),
+                            suggestion(),
+                        ),
+                ),
+                maxResults = 4,
+            )
+
+        assertEquals(listOf(key, null, null, null), validated.orFail().suggestions.map { it.imageKey })
+    }
+
+    @Test
     fun `refuses a response announcing a schema this client does not speak`() {
         val validated = validate(response(suggestions = listOf(suggestion())).copy(schemaVersion = 2))
 

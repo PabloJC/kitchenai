@@ -31,6 +31,9 @@ private const val MAX_STEP_LENGTH = 1_000
 private const val MAX_STEPS = 40
 private const val MAX_INGREDIENTS = 60
 
+/** What `recipeImage` accepts: a SHA-256 in lowercase hex. Anything else is not worth sending. */
+private val IMAGE_KEY = Regex("^[0-9a-f]{64}$")
+
 /**
  * A hard ceiling on what is even looked at, independent of what the caller asked for. It bounds
  * the work a response can cost us when the answer arrives far larger than anyone requested.
@@ -102,6 +105,7 @@ internal class SuggestionValidator(
             steps = cleanSteps,
             tags = tags.mapNotNull { it.toRef() },
             source = source,
+            imageKey = imageKey?.takeIf { IMAGE_KEY.matches(it) },
         )
     }
 

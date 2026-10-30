@@ -45,6 +45,15 @@ class RecipeMapperTest {
     }
 
     @Test
+    fun `a recipe keeps its image key and address through the document shape`() {
+        val original = recipe().copy(imageKey = "a".repeat(64), imageUrl = "https://images.test/recipe.jpg")
+
+        val restored = original.toDto(SAVED_AT).toDomain(original.id.value)
+
+        assertEquals(AppResult.Success(original), restored)
+    }
+
+    @Test
     fun `stamps the moment a recipe was saved so the library can be ordered by it`() {
         val document = recipe().toDto(SAVED_AT)
 

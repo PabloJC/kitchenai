@@ -22,6 +22,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.shared.domain.model.householdAvoids
 import com.kitchenai.shared.domain.service.PantryCandidateMatcher
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GenerateRecipeImageUseCase
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
@@ -57,6 +58,8 @@ class RecipeDetailViewModel(
     private val reads: RecipeDetailReadsDelegate,
     private val writes: RecipeDetailWritesDelegate,
     private val observeKitchen: ObserveKitchenUseCase,
+    /** The dish's own photograph: not a read of what is shown, not a write the person asked for. */
+    private val picture: GenerateRecipeImageUseCase,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(RecipeDetailUiState())
     val state: StateFlow<RecipeDetailUiState> = internalState.asStateFlow()
@@ -93,6 +96,7 @@ class RecipeDetailViewModel(
     private var listLabels: Map<String, String> = emptyMap()
     private var languageTags: List<String> = emptyList()
     private var started = false
+    private var pictureRequested = false
     private var userId: UserId? = null
     private var kitchenListener: Job? = null
 
@@ -395,7 +399,26 @@ class RecipeDetailViewModel(
             is AppResult.Success -> {
                 currentMatch.value = match.data
                 render(found, match.data, servings ?: found.servings)
+                askForPicture(kitchenId, found)
             }
+        }
+    }
+
+    /**
+     * Asked once per visit, never for a dish that already has one or that the server gave no key.
+     * A failure keeps the dish-type photo on screen: a fine picture, so not an error to show.
+     */
+    private fun askForPicture(
+        kitchenId: KitchenId,
+        found: Recipe,
+    ) {
+        if (pictureRequested || found.imageUrl != null || found.imageKey == null) return
+        pictureRequested = true
+        viewModelScope.launch {
+            val url = (picture(kitchenId, found) as? AppResult.Success)?.data?.imageUrl ?: return@launch
+            // Onto the recipe in hand too, so a save from here keeps the picture.
+            recipe.update { held -> held?.takeIf { it.id == found.id }?.copy(imageUrl = url) ?: held }
+            internalState.update { it.copy(imageUrl = url) }
         }
     }
 
@@ -421,6 +444,7 @@ class RecipeDetailViewModel(
                 steps = found.steps,
                 tags = found.tags.map(resolver::wordFor),
                 tagRefs = found.tags,
+                imageUrl = found.imageUrl,
                 avoidedByHousehold =
                     avoids.value.hitsIn(found).let { hits ->
                         hits.terms.map(resolver::wordFor) +

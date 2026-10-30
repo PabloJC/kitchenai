@@ -27,6 +27,7 @@ data class SuggestedRecipeDto(
     val ingredients: List<SuggestedIngredientDto> = emptyList(),
     val steps: List<String> = emptyList(),
     val tags: List<SuggestedTagDto> = emptyList(),
+    val imageKey: String? = null,
 )
 
 /** A line is either a catalogue pointer or free text; the validator rejects both and neither. */

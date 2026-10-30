@@ -28,6 +28,7 @@ import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.recipe.CookRecipeUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GenerateRecipeImageUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
@@ -153,7 +154,12 @@ open class RecipeDetailViewModelHarness {
                         AddShoppingItemUseCase(items, sequentialIds(), time, noUnits()),
                     ),
             )
-        return RecipeDetailViewModel(reads, writes, ObserveKitchenUseCase(kitchens))
+        return RecipeDetailViewModel(
+            reads = reads,
+            writes = writes,
+            observeKitchen = ObserveKitchenUseCase(kitchens),
+            picture = GenerateRecipeImageUseCase(recipePort),
+        )
             .also { it.start(user, recipeId, listOf("en"), "List") }
     }
 

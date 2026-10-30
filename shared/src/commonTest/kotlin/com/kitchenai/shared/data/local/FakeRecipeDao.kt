@@ -6,6 +6,8 @@ internal class FakeRecipeDao : RecipeDao {
 
     override suspend fun getAll(): List<RecipeEntity> = rows.values.toList()
 
+    override suspend fun getById(id: String): RecipeEntity? = rows[id]
+
     override suspend fun insertAll(recipes: List<RecipeEntity>) {
         // REPLACE deletes the old row first, so a replaced recipe moves to the end like a new one.
         recipes.forEach {

@@ -1,9 +1,14 @@
 package com.kitchenai.ui.designsystem.component
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.kitchenai.shared.domain.model.TermRef
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.dish_baked_goods
@@ -81,13 +86,40 @@ internal fun dishTypeDrawable(tags: List<TermRef>): DrawableResource? =
     tags.firstOrNull { it.taxonomy.value == DISH_TYPES_TAXONOMY }?.let { dishTypeImages[it.term.value] }
 
 /**
- * A recipe's photo, by dish type. Same [recipeImageSlot] as [RecipeImagePlaceholder] either way,
- * so picking one over the other is never a layout change.
+ * A recipe's own photograph when it has one, cross-fading in over the dish-type photo, which stays
+ * underneath while it loads and if it never does. Same [recipeImageSlot] either way: no layout shift.
  */
 @Composable
 fun RecipeImage(
     tags: List<TermRef>,
     modifier: Modifier = Modifier,
+    imageUrl: String? = null,
+) {
+    if (imageUrl == null) {
+        DishTypeImage(tags, modifier)
+        return
+    }
+    Box(modifier.recipeImageSlot()) {
+        DishTypeImage(tags, Modifier.matchParentSize())
+        AsyncImage(
+            model =
+                ImageRequest
+                    .Builder(LocalPlatformContext.current)
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .build(),
+            contentDescription = null,
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.Crop,
+        )
+    }
+}
+
+/** The bundled photo for the first dish type it has a picture for, or the plain placeholder. */
+@Composable
+private fun DishTypeImage(
+    tags: List<TermRef>,
+    modifier: Modifier,
 ) {
     val drawable = dishTypeDrawable(tags)
     if (drawable == null) {
