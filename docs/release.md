@@ -128,3 +128,52 @@ framework*), so a Kotlin/Native release-only break shows up there rather than at
 4. Allow notifications and turn reminders on; with something expiring tomorrow, one arrives.
 5. In the Firebase console, *App Check › Apps* shows verified requests from the iOS app once the
    build came through TestFlight (#377 registers it).
+
+---
+
+## iOS test builds (#379)
+
+`.github/workflows/release-ios.yml` archives Release on a macOS runner and uploads it to App Store
+Connect, where it appears under *TestFlight* after processing (usually 10–30 minutes). Run it from
+*Actions › Release iOS › Run workflow*, or push a `v*` tag, which also names the version
+(`v0.2.0` → `0.2.0`); a manual run is `0.0.<run>`. The build number is the run number.
+
+Signing is **cloud-managed**: `xcodebuild -allowProvisioningUpdates` with an App Store Connect API
+key asks Apple for the distribution certificate and profile during the run, so neither is stored
+in the repository, in secrets or on the runner. `ITSAppUsesNonExemptEncryption = NO` in `Info.plist`
+answers the export-compliance question, so builds are not held at *Missing Compliance*.
+
+### One-off setup
+
+1. The account work in *iOS signing* (App ID with Sign in with Apple and App Attest, the app in
+   App Store Connect).
+2. **API key.** App Store Connect › *Users and Access › Integrations › App Store Connect API* ›
+   *Team keys* › generate one with the **Admin** role (cloud-managed signing creates certificates,
+   which *App Manager* cannot). Download the `.p8` once; note the *Key ID* and *Issuer ID*.
+3. The `release` environment from *Android test builds*, if not created yet.
+
+### Secrets and variables (in the `release` environment)
+
+| Name | Kind | What it is |
+|---|---|---|
+| `GOOGLE_SERVICE_INFO_PLIST` | secret | `base64` of `GoogleService-Info.plist` |
+| `APPLE_TEAM_ID` | secret | *Membership details › Team ID* (not secret in itself; kept with the rest) |
+| `APP_STORE_CONNECT_KEY_ID` | secret | the API key's *Key ID* |
+| `APP_STORE_CONNECT_ISSUER_ID` | secret | the *Issuer ID* above the keys list |
+| `APP_STORE_CONNECT_KEY_P8` | secret | the contents of `AuthKey_<KeyID>.p8` |
+| `GOOGLE_IOS_CLIENT_ID` | variable | Google Sign-In's iOS client id (`CLIENT_ID` in `GoogleService-Info.plist`) |
+| `GOOGLE_IOS_REVERSED_CLIENT_ID` | variable | the same id reversed (`REVERSED_CLIENT_ID`) |
+| `PRIVACY_POLICY_URL` | variable | shared with Android; the workflow writes it in the `https:/$()/` form an xcconfig needs |
+
+The workflow writes these into `Local.xcconfig` for the run and deletes it, the key and
+`GoogleService-Info.plist` when it ends, pass or fail.
+
+### Testers
+
+- **Internal** (up to 100 people with an App Store Connect role): *TestFlight › Internal Testing* ›
+  a group with *automatic distribution* on; each new build reaches them without review.
+- **External** (by email or a public link): *TestFlight › External Testing*. The first build of a
+  version goes through a short Beta App Review, which asks for a privacy policy URL (#380), a beta
+  description and a contact email.
+
+Each run keeps the archive's dSYMs as an artifact for 90 days, for symbolicating a crash report.

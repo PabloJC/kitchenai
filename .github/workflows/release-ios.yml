@@ -1,0 +1,111 @@
+# iOS test builds (#379): a Release archive uploaded to App Store Connect, where it appears in
+# TestFlight. Secrets live in the `release` environment, which should require a reviewer; see
+# docs/release.md › iOS test builds for each one and who can rotate it.
+name: Release iOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+# One upload at a time: two runs could claim the same build number.
+concurrency: release-ios
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Archive and upload to TestFlight
+    runs-on: macos-15
+    environment: release
+    steps:
+      - uses: actions/checkout@v5
+
+      # The archive's Run Script builds the Kotlin framework through Gradle.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore GoogleService-Info.plist
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+        run: |
+          if [ -z "$GOOGLE_SERVICE_INFO_PLIST" ]; then echo "::error::GOOGLE_SERVICE_INFO_PLIST is missing."; exit 1; fi
+          echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/iosApp/GoogleService-Info.plist
+
+      - name: Local.xcconfig
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_IOS_REVERSED_CLIENT_ID: ${{ vars.GOOGLE_IOS_REVERSED_CLIENT_ID }}
+          PRIVACY_POLICY_URL: ${{ vars.PRIVACY_POLICY_URL }}
+        run: |
+          if [ -z "$APPLE_TEAM_ID" ]; then echo "::error::APPLE_TEAM_ID is missing."; exit 1; fi
+          # The tag names the version (v0.2.0 -> 0.2.0); a manual run is 0.0.<run>. The run number
+          # is the build number, so every upload is newer than the last.
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; else version="0.0.${GITHUB_RUN_NUMBER}"; fi
+          # An xcconfig reads // as a comment, so the URL's scheme is written https:/$()/ (#347).
+          policy="${PRIVACY_POLICY_URL/https:\/\//https:\/\$()\/}"
+          {
+            echo "TEAM_ID=$APPLE_TEAM_ID"
+            echo "MARKETING_VERSION=$version"
+            echo "CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER"
+            [ -n "$GOOGLE_IOS_CLIENT_ID" ] && echo "GOOGLE_IOS_CLIENT_ID=$GOOGLE_IOS_CLIENT_ID"
+            [ -n "$GOOGLE_IOS_REVERSED_CLIENT_ID" ] && echo "GOOGLE_IOS_REVERSED_CLIENT_ID=$GOOGLE_IOS_REVERSED_CLIENT_ID"
+            [ -n "$PRIVACY_POLICY_URL" ] && echo "PRIVACY_POLICY_URL=$policy"
+            true
+          } > iosApp/Configuration/Local.xcconfig
+
+      - name: App Store Connect API key
+        env:
+          APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+        run: |
+          echo "$APP_STORE_CONNECT_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/AuthKey.p8"
+
+      # Cloud-managed signing through the API key: no certificate or profile is stored anywhere,
+      # Xcode asks App Store Connect for them during the archive and the export.
+      - name: Archive
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          xcodebuild archive \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/KitchenAI.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID"
+
+      - name: Upload to App Store Connect
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/KitchenAI.xcarchive" \
+            -exportOptionsPlist iosApp/ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID"
+
+      # The dSYMs, for symbolicating a crash from this build (Crashlytics, #381, will upload them itself).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-dsyms-${{ github.run_number }}
+          path: ${{ runner.temp }}/KitchenAI.xcarchive/dSYMs
+          retention-days: 90
+
+      - name: Remove the key and the Firebase config
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8" iosApp/iosApp/GoogleService-Info.plist iosApp/Configuration/Local.xcconfig
