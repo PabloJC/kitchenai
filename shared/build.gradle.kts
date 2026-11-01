@@ -49,6 +49,7 @@ kotlin {
             api(libs.gitlive.firebase.auth)
             api(libs.gitlive.firebase.firestore)
             api(libs.gitlive.firebase.functions)
+            implementation(libs.gitlive.firebase.crashlytics)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

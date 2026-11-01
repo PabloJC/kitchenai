@@ -317,3 +317,46 @@ The workflow writes these into `Local.xcconfig` for the run and deletes it, the 
   description and a contact email.
 
 Each run keeps the archive's dSYMs as an artifact for 90 days, for symbolicating a crash report.
+
+## Crash reports (#381)
+
+Crashlytics reports from **release builds only**, on both platforms. A debug build sends nothing:
+on Android the build type sets `firebase_crashlytics_collection_enabled` in the manifest, and on
+iOS `iOSApp.swift` switches collection off under `#if DEBUG`.
+
+### What a report holds
+
+- **Crashes:** the stack trace, device model, OS version and app version. Nothing from the app's
+  data: no custom keys, no logs and no user id are set.
+- **Non-fatal errors** (today, a failed `suggestRecipes` call): the operation, the error's kind and
+  the Firebase status code, for example `suggestRecipes: Unknown (INTERNAL)`. Never a message,
+  because an SDK message can quote the request. `NonFatalSummaryTest` pins this, and being offline
+  is never reported.
+
+### Symbols
+
+- **Android:** the release workflow sets `kitchenai.crashlyticsUploadMapping=true`, so each build
+  uploads its R8 mapping and its stack traces come back deobfuscated. Elsewhere the upload task is
+  off, because CI builds against a template `google-services.json`.
+- **iOS:** the *Upload Crashlytics dSYMs* build phase uploads the archive's dSYMs in Release. The
+  Kotlin framework is static, so its code is in the app binary and symbolicated with it.
+
+### Checking it once per platform
+
+1. Add a temporary crash trigger (for example `throw RuntimeException("Test crash")` behind a
+   button) and ship one test build through the release workflow.
+2. Press it, relaunch the app (reports are sent on the next launch) and wait a few minutes.
+3. In *Firebase console › Crashlytics*, confirm the crash appears with readable file and line
+   names, and that nothing in it is a name, email, ingredient, recipe text or location.
+4. Remove the trigger.
+
+### Store forms
+
+Once crash reports ship, add them to the privacy answers:
+
+- **Play › Data safety:** *App info and performance › Crash logs* and *Diagnostics*: collected, not
+  shared, not linked to the user, for app functionality and analytics.
+- **App Store Connect › App Privacy:** *Diagnostics › Crash Data*: not linked to the user, not used
+  for tracking, for app functionality.
+- **Privacy policy (`hosting/`):** a line saying that release builds send crash reports with the
+  device model, OS and app version, and no account or content data.

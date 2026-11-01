@@ -28,6 +28,7 @@ sqlite              = "2.7.0"
 gitliveFirebase     = "2.5.0"   # 2.6.0 did not publish dev.gitlive:firebase-app to Maven Central
 firebaseBom         = "34.9.0"
 googleServices      = "4.4.3"
+crashlyticsPlugin   = "3.0.6"
 koin                = "4.1.0"
 coroutines          = "1.10.2"
 kotlinxDatetime     = "0.7.1"
@@ -60,8 +61,9 @@ gitlive-firebase-auth      = { module = "dev.gitlive:firebase-auth",      versio
 gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitliveFirebase" }
 gitlive-firebase-storage   = { module = "dev.gitlive:firebase-storage",   version.ref = "gitliveFirebase" }
 gitlive-firebase-functions = { module = "dev.gitlive:firebase-functions", version.ref = "gitliveFirebase" }
+gitlive-firebase-crashlytics = { module = "dev.gitlive:firebase-crashlytics", version.ref = "gitliveFirebase" }
 
-# Native Android Firebase (analytics/crashlytics are not in GitLive)
+# Native Android Firebase, for what :androidApp configures itself
 firebase-bom         = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics   = { module = "com.google.firebase:firebase-analytics" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
@@ -125,6 +127,7 @@ kotlinSerialization  = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 googleServices       = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebaseCrashlytics  = { id = "com.google.firebase.crashlytics", version.ref = "crashlyticsPlugin" }
 ksp                  = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 androidxRoom3        = { id = "androidx.room3", version.ref = "room3" }
 detekt               = { id = "dev.detekt", version.ref = "detekt" }

@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseCore
 import FirebaseAppCheck
+import FirebaseCrashlytics
 import GoogleSignIn
 import ComposeApp   // the framework also exports the :shared types
 
@@ -21,6 +22,14 @@ struct iOSApp: App {
 
         // Order matters: Firebase before anything Kotlin.
         FirebaseApp.configure()
+
+        // Debug reports nothing. Set both ways because the SDK persists the flag across launches,
+        // so a Release build installed over a Debug one would otherwise stay silent.
+        #if DEBUG
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
+        #else
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+        #endif
 
         GoogleSignInConfiguration.verify()
 

@@ -49,6 +49,7 @@ fun agentDataModule(functionsRegion: String): Module =
                 validator = get(),
                 ids = get(),
                 dispatchers = get(),
+                crashes = get(),
             )
         }
     }
