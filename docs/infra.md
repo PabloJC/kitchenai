@@ -501,7 +501,7 @@ which:
 
 ## Known debt
 
-- Restrict the iOS API key in Google Cloud Console to the app's bundle id.
+- Restrict the API keys to the apps (`docs/release.md` › *Backend for release builds* › step 4).
 - Enable App Check enforcement for Firestore, Auth and Storage once the verified-requests
   metric is clean. The code is in place; the switch is not flipped.
 - Split `:shared` into `:domain` and `:data` to get iOS tests back.
