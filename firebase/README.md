@@ -7,7 +7,8 @@
 | `storage.rules` | Storage rules: own-folder writes, capped in size. |
 | `tests/` | Emulator tests for `firestore.rules`. |
 
-`firebase.json` at the repository root points at all three and configures the emulator ports.
+`firebase.json` at the repository root points at all three, serves `hosting/` (the privacy policy
+and the account-deletion page, `docs/release.md`) and configures the emulator ports.
 
 ## Rules tests
 

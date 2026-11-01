@@ -39,5 +39,16 @@
         "src/__tests__"
       ]
     }
-  ]
+  ],
+  "hosting": {
+    "public": "hosting",
+    "cleanUrls": true,
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ],
+    "predeploy": [
+      "node \"$PROJECT_DIR\"/tools/check-hosting.mjs"
+    ]
+  }
 }
