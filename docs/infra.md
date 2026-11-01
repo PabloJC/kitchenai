@@ -47,6 +47,9 @@ gh secret set CLAUDE_CODE_OAUTH_TOKEN       # claude setup-token
 gh secret set PROJECT_TOKEN                 # classic token, see below
 ```
 
+The release workflows read theirs from the `release` environment, not from repository secrets:
+`docs/release.md` lists them (*Android test builds*, *iOS test builds*).
+
 You also need the **Claude GitHub App** (<https://github.com/apps/claude>) installed on the
 repository: the action exchanges an OIDC token for an app token, and without the app it
 returns 401 before ever reaching Anthropic.
