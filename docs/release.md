@@ -47,7 +47,8 @@ Without the four `upload*` properties the same tasks build an **unsigned** relea
 installed or uploaded, but R8 has run, which is what CI's *Build Android (release, unsigned)* job
 checks on every PR.
 
-`versionCode` must grow with every upload; CI uses its run number. Locally it defaults to 1.
+`versionCode` must grow with every upload. Locally it defaults to 1; the upload workflow (#378)
+will pass its run number. The PR check above builds with the default.
 
 ### Fingerprints for Firebase
 
