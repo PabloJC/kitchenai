@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de privacidad · KitchenAI</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+<nav><a href="/privacy" lang="en">Read in English</a></nav>
+<h1>Política de privacidad</h1>
+<p class="muted">Última actualización: 1 de noviembre de 2026</p>
+
+<p>KitchenAI ayuda a un hogar a llevar una despensa y una lista de la compra compartidas y a sacar ideas de recetas
+con lo que tiene. Esta página explica qué guarda la aplicación, qué envía y a quién, y cómo borrarlo. Contacto:
+<a href="mailto:CONTACT_EMAIL_PLACEHOLDER">CONTACT_EMAIL_PLACEHOLDER</a>.</p>
+
+<h2>Qué se guarda y dónde</h2>
+<ul>
+  <li><strong>Tu cuenta:</strong> un identificador y, si entras con Google o Apple, el correo y el nombre que esos
+    servicios entregan a la aplicación. También puedes usarla como invitado, sin correo.</li>
+  <li><strong>Tu perfil:</strong> el nombre que eliges mostrar a tu cocina, tus preferencias y lo que evitas al comer
+    (por ejemplo una alergia o una dieta) y el idioma de la aplicación.</li>
+  <li><strong>Tu cocina:</strong> sus miembros y los nombres que han elegido, la despensa (ingredientes, cantidades,
+    dónde se guardan, fechas de caducidad), las listas de la compra y las recetas guardadas. Lo ve todo el que está en
+    la cocina y nadie más.</li>
+  <li><strong>Solo en tu dispositivo:</strong> las últimas ideas de recetas y los ajustes de apariencia y de
+    recordatorios. Los recordatorios son notificaciones que programa el propio teléfono; nada de ellos sale de él.</li>
+</ul>
+<p>Todo lo que no se queda en el dispositivo se guarda en Google Firebase (Cloud Firestore y Firebase
+Authentication), en servidores de Google Cloud.</p>
+
+<h2>Qué se envía para sugerir recetas</h2>
+<p>Cuando pides ideas, la aplicación envía tus preferencias y lo que evitas, lo de los demás miembros de tu cocina,
+los ingredientes y cantidades de tu despensa, el número de raciones, los filtros elegidos y el idioma. No envía
+nombre, correo ni identificador de cuenta. Una función de nuestro proyecto de Google Cloud se lo pasa al modelo Gemini
+de Google a través de Vertex AI, con las condiciones de Google Cloud, y devuelve las ideas. Contamos las peticiones por
+cuenta y día para no salirnos del presupuesto del servicio.</p>
+
+<h2>Comprobar que las peticiones vienen de la aplicación</h2>
+<p>La aplicación usa Firebase App Check, que pide a Google Play Integrity (Android) o a Apple App Attest y DeviceCheck
+(iOS) que confirmen que una petición viene de una copia auténtica de la aplicación. Esos servicios reciben datos sobre
+el dispositivo y la instalación, no tu contenido.</p>
+
+<h2>Informes de fallos</h2>
+<p>Cuando la aplicación se cierra por un fallo o una petición de recetas falla, envía un informe a Firebase
+Crashlytics: el error técnico, el modelo de dispositivo, las versiones del sistema y de la aplicación y un
+identificador aleatorio de instalación. No contiene nombre, correo, identificador de cuenta, ingredientes, recetas ni
+ubicación.</p>
+
+<h2>Lo que no hacemos</h2>
+<ul>
+  <li>Ni publicidad, ni venta o cesión de datos a anunciantes, ni seguimiento en otras aplicaciones o webs.</li>
+  <li>Ninguna analítica sobre cómo usas la aplicación.</li>
+  <li>No usamos tus datos para entrenar ningún modelo.</li>
+</ul>
+
+<h2>Quién puede verlos</h2>
+<p>Los miembros de tu cocina, tú y Google como proveedor que los guarda y procesa por nosotros. No se los damos a
+nadie más salvo que la ley lo exija.</p>
+
+<h2>Cuánto tiempo se guardan</h2>
+<p>Mientras exista tu cuenta. Los contadores diarios de peticiones caducan solos. Al salir de una cocina dejas de ver
+sus datos; los demás miembros los conservan.</p>
+
+<h2>Borrar tu cuenta</h2>
+<p>En la aplicación: <em>Perfil › Eliminar cuenta</em>. Borra tu perfil y tu cuenta, y cada cocina en la que estabas
+solo, con su despensa, sus listas y sus recetas. Una cocina compartida se queda para los demás y, si eras el
+propietario, otro miembro pasa a serlo. No se puede deshacer. Sin la aplicación, consulta
+<a href="/delete-account-es">Eliminar tu cuenta</a>.</p>
+
+<h2>Tus derechos</h2>
+<p>Puedes pedir ver, corregir, exportar o borrar tus datos, u oponerte a su uso, escribiendo al contacto de arriba.
+También puedes reclamar ante tu autoridad de protección de datos (en España, la AEPD).</p>
+
+<h2>Menores</h2>
+<p>KitchenAI no está dirigida a menores de 13 años y no recoge sus datos a sabiendas.</p>
+
+<h2>Cambios</h2>
+<p>Si esta política cambia, cambia también la fecha de arriba, y un cambio importante se anuncia en la aplicación.</p>
+</main>
+</body>
+</html>

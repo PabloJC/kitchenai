@@ -497,8 +497,8 @@ which:
 
 - Deploy the function with the others (`firebase deploy --only functions`), in the documented order;
   until it is deployed the button fails with "Something went wrong".
-- Google Play also wants a **web** way to request deletion, declared in the Data safety form. A page
-  or form that reaches the owner is enough; it is not built here.
+- Google Play also wants a **web** way to request deletion, declared in the Data safety form:
+  `hosting/delete-account.html`, published with the privacy policy (`docs/release.md`, #380).
 
 ---
 

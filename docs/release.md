@@ -318,6 +318,64 @@ The workflow writes these into `Local.xcconfig` for the run and deletes it, the 
 
 Each run keeps the archive's dSYMs as an artifact for 90 days, for symbolicating a crash report.
 
+---
+
+## Privacy policy, account deletion and store forms (#380)
+
+External testers and both stores ask for a privacy policy URL, and Google Play also for a web page
+where someone without the app can ask for their account to be deleted. Both live in `hosting/`, as
+plain HTML in English and Spanish, served by Firebase Hosting on the project's own domain:
+no domain to buy.
+
+| Page | URL |
+|---|---|
+| Privacy policy | `https://<projectId>.web.app/privacy` (`/privacy-es` in Spanish) |
+| Delete your account | `https://<projectId>.web.app/delete-account` (`/delete-account-es`) |
+
+### Publishing
+
+1. Replace every `CONTACT_EMAIL_PLACEHOLDER` in `hosting/*.html` with the address that answers
+   privacy and deletion requests, and commit it. `firebase deploy --only hosting` refuses to upload
+   while one is left (`tools/check-hosting.mjs`, run as the hosting `predeploy`).
+2. `firebase deploy --only hosting --project <projectId>`.
+3. Set the URL where the apps read it, so *Profile › About › Privacy policy* appears:
+   - GitHub › the `release` environment › variable `PRIVACY_POLICY_URL` = `https://<projectId>.web.app/privacy`
+     (both release workflows read it; the iOS one writes the `https:/$()/` form itself);
+   - locally, `kitchenai.privacyPolicyUrl` in `~/.gradle/gradle.properties` and `PRIVACY_POLICY_URL`
+     in `iosApp/Configuration/Local.xcconfig` (written `https:/$()/…`).
+4. Paste the same URL in Play Console (*App content › Privacy policy*), App Store Connect (*App
+   Privacy › Privacy Policy URL*) and TestFlight's external-testing *Test Information*.
+
+When what the app collects changes, the pages change in the same PR, with the date at their top.
+
+### Google Play › Data safety
+
+| Question | Answer |
+|---|---|
+| Does the app collect or share user data? | Collects: yes. Shares: no (Google processes it as our service provider, which Play does not count as sharing) |
+| Is all data encrypted in transit? | Yes |
+| Can users ask for their data to be deleted? | Yes, in the app and at `/delete-account` |
+| Personal info › Name | Collected, optional (sign-in provider or the name the user sets); app functionality |
+| Personal info › Email address | Collected, optional (Google or Apple sign-in); account management |
+| Personal info › User IDs | Collected, required; account management, app functionality |
+| Health and fitness › Health info | Collected, optional: food allergies and diets the user avoids; app functionality |
+| App activity › Other user-generated content | Collected, required: pantry, shopping lists, saved recipes; app functionality |
+| Device or other IDs | Collected, required: App Check attestation; fraud prevention and security |
+| App info and performance › Crash logs, Diagnostics | Collected, required, release builds only (#381); app functionality |
+| Location, financial, contacts, messages, photos, audio, files, calendar, web browsing | Not collected |
+
+Data processed only on the device (reminder settings, the last ideas) is not "collected" in Play's sense.
+
+### App Store › App Privacy
+
+- **Data used to track you:** none.
+- **Data linked to you:** *Contact Info › Name* and *Email Address* (App Functionality); *Identifiers ›
+  User ID* (App Functionality); *Health & Fitness › Health* for avoided foods (App Functionality);
+  *User Content › Other User Content* for pantry, lists and recipes (App Functionality).
+- **Data not linked to you:** *Identifiers › Device ID* through App Check (App Functionality);
+  *Diagnostics › Crash Data* through Crashlytics (App Functionality, #381).
+- No analytics, advertising or third-party SDK collects anything else.
+
 ## Crash reports (#381)
 
 Crashlytics reports from **release builds only**, on both platforms. A debug build sends nothing:
@@ -350,13 +408,7 @@ iOS `iOSApp.swift` switches collection off under `#if DEBUG`.
    names, and that nothing in it is a name, email, ingredient, recipe text or location.
 4. Remove the trigger.
 
-### Store forms
+### Store forms and the policy
 
-Once crash reports ship, add them to the privacy answers:
-
-- **Play › Data safety:** *App info and performance › Crash logs* and *Diagnostics*: collected, not
-  shared, not linked to the user, for app functionality and analytics.
-- **App Store Connect › App Privacy:** *Diagnostics › Crash Data*: not linked to the user, not used
-  for tracking, for app functionality.
-- **Privacy policy (`hosting/`):** a line saying that release builds send crash reports with the
-  device model, OS and app version, and no account or content data.
+Crash data is in the *Data safety* and *App Privacy* answers above, and in the privacy policy's
+*Crash reports* section in both languages. Update all three if a report ever carries more.
