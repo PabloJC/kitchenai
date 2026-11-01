@@ -49,6 +49,10 @@ jobs:
           # is <run>.<attempt>: "Re-run jobs" keeps the run number, and App Store Connect refuses a
           # build number it already has for this version.
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; else version="0.0.${GITHUB_RUN_NUMBER}"; fi
+          # App Store Connect takes up to three dot-separated integers: v1.0.0-rc1 ships as 1.0.0,
+          # and anything else stops here rather than after the archive.
+          version="${version%%-*}"
+          if ! [[ "$version" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then echo "::error::'$version' is not a valid iOS version."; exit 1; fi
           # An xcconfig reads // as a comment, so the URL's scheme is written https:/$()/ (#347).
           policy="${PRIVACY_POLICY_URL/https:\/\//https:\/\$()\/}"
           {
@@ -64,7 +68,13 @@ jobs:
       - name: App Store Connect API key
         env:
           APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
+          # Checked before the archive: an empty key fails only after the whole Kotlin build.
+          for name in APP_STORE_CONNECT_KEY_P8 KEY_ID ISSUER_ID; do
+            if [ -z "${!name}" ]; then echo "::error::The App Store Connect secret behind $name is missing."; exit 1; fi
+          done
           echo "$APP_STORE_CONNECT_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
           chmod 600 "$RUNNER_TEMP/AuthKey.p8"
 
