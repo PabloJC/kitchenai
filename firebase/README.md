@@ -65,10 +65,11 @@ npm --prefix tools install
 npm --prefix functions install
 ```
 
-1. **Rules and indexes.** Everything else reads and writes through them.
+1. **Rules, indexes and storage rules.** Everything else reads and writes through them; storage goes
+   with them so the two sets of rules never drift apart.
 
    ```bash
-   firebase deploy --only firestore:rules,firestore:indexes --project <projectId>
+   firebase deploy --only firestore:rules,firestore:indexes,storage --project <projectId>
    ```
 
    Indexes build in the background; a query that needs one fails until it is `READY`
@@ -91,8 +92,9 @@ npm --prefix functions install
 
 4. **Smoke check** (below), before telling anyone it is live.
 
-Storage rules (`firebase deploy --only storage`) are separate and only needed when
-`storage.rules` changed.
+Before a build goes to testers, the release apps also need registering (signing fingerprints, App
+Check, API key restrictions): `docs/release.md` › *Backend for release builds*. Record each
+deployment in the table there.
 
 ### Post-deploy smoke check
 
