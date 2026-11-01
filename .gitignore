@@ -43,3 +43,5 @@ functions/lib/
 
 # Merge and patch leftovers.
 *.orig
+# Per-developer signing team and version overrides (#376); see Local.xcconfig.template.
+iosApp/Configuration/Local.xcconfig
