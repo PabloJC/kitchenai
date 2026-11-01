@@ -18,6 +18,7 @@ import com.kitchenai.shared.domain.agent.RecipeAgent
 import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.DietaryConstraint
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.shared.domain.port.CrashReporter
 import com.kitchenai.shared.domain.port.IdGenerator
 import kotlinx.coroutines.withContext
 
@@ -38,10 +39,16 @@ internal class CallableFunctionRecipeAgent(
     private val validator: SuggestionValidator,
     private val ids: IdGenerator,
     private val dispatchers: DispatcherProvider,
+    private val crashes: CrashReporter,
 ) : RecipeAgent {
     override suspend fun suggest(context: AgentContext): AppResult<AgentSuggestions> =
         withContext(dispatchers.io) {
-            decode(context).flatMap { response -> validator.validate(response, context.options.maxResults) }
+            decode(context)
+                .flatMap { response -> validator.validate(response, context.options.maxResults) }
+                // A tester's "no suggestions" is otherwise invisible, a malformed answer from the model included.
+                .also { result ->
+                    if (result is AppResult.Failure) crashes.recordNonFatal(SUGGEST_FUNCTION, result.error)
+                }
         }
 
     /**

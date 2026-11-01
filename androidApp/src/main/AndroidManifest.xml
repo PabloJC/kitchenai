@@ -19,6 +19,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KitchenAI">
 
+        <!-- Set per build type in build.gradle.kts: release reports crashes, debug never does. -->
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="${crashlyticsCollectionEnabled}" />
+
         <!-- adjustResize: the default pan stacks on imePadding() and strands the field mid-screen. -->
         <activity
             android:name=".MainActivity"

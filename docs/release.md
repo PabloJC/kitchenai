@@ -361,6 +361,7 @@ When what the app collects changes, the pages change in the same PR, with the da
 | Health and fitness › Health info | Collected, optional: food allergies and diets the user avoids; app functionality |
 | App activity › Other user-generated content | Collected, required: pantry, shopping lists, saved recipes; app functionality |
 | Device or other IDs | Collected, required: App Check attestation; fraud prevention and security |
+| App info and performance › Crash logs, Diagnostics | Collected, required, release builds only (#381); app functionality |
 | Location, financial, contacts, messages, photos, audio, files, calendar, web browsing | Not collected |
 
 Data processed only on the device (reminder settings, the last ideas) is not "collected" in Play's sense.
@@ -371,6 +372,43 @@ Data processed only on the device (reminder settings, the last ideas) is not "co
 - **Data linked to you:** *Contact Info › Name* and *Email Address* (App Functionality); *Identifiers ›
   User ID* (App Functionality); *Health & Fitness › Health* for avoided foods (App Functionality);
   *User Content › Other User Content* for pantry, lists and recipes (App Functionality).
-- **Data not linked to you:** *Identifiers › Device ID* through App Check (App Functionality).
-- No analytics, advertising or third-party SDK collects anything else. When #381 brings Crashlytics
-  back, add *Diagnostics › Crash Data* (App Functionality, not linked) here and in Play's form.
+- **Data not linked to you:** *Identifiers › Device ID* through App Check (App Functionality);
+  *Diagnostics › Crash Data* through Crashlytics (App Functionality, #381).
+- No analytics, advertising or third-party SDK collects anything else.
+
+## Crash reports (#381)
+
+Crashlytics reports from **release builds only**, on both platforms. A debug build sends nothing:
+on Android the build type sets `firebase_crashlytics_collection_enabled` in the manifest, and on
+iOS `iOSApp.swift` switches collection off under `#if DEBUG`.
+
+### What a report holds
+
+- **Crashes:** the stack trace, device model, OS version and app version. Nothing from the app's
+  data: no custom keys, no logs and no user id are set.
+- **Non-fatal errors** (today, a failed `suggestRecipes` call): the operation, the error's kind and
+  the Firebase status code, for example `suggestRecipes: Unknown (INTERNAL)`. Never a message,
+  because an SDK message can quote the request. `NonFatalSummaryTest` pins this, and being offline
+  is never reported.
+
+### Symbols
+
+- **Android:** the release workflow sets `kitchenai.crashlyticsUploadMapping=true`, so each build
+  uploads its R8 mapping and its stack traces come back deobfuscated. Elsewhere the upload task is
+  off, because CI builds against a template `google-services.json`.
+- **iOS:** the *Upload Crashlytics dSYMs* build phase uploads the archive's dSYMs in Release. The
+  Kotlin framework is static, so its code is in the app binary and symbolicated with it.
+
+### Checking it once per platform
+
+1. Add a temporary crash trigger (for example `throw RuntimeException("Test crash")` behind a
+   button) and ship one test build through the release workflow.
+2. Press it, relaunch the app (reports are sent on the next launch) and wait a few minutes.
+3. In *Firebase console › Crashlytics*, confirm the crash appears with readable file and line
+   names, and that nothing in it is a name, email, ingredient, recipe text or location.
+4. Remove the trigger.
+
+### Store forms and the policy
+
+Crash data is in the *Data safety* and *App Privacy* answers above, and in the privacy policy's
+*Crash reports* section in both languages. Update all three if a report ever carries more.
