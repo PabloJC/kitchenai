@@ -206,6 +206,11 @@ jobs:
       # registered — is checked in `Lint & Detekt`; building the app itself is still not done.
       - run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 
+      # The device framework in release mode, which is what an archive for TestFlight builds
+      # (embedAndSignAppleFrameworkForXcode follows Xcode's configuration). Nothing else compiles
+      # Kotlin/Native with release optimisations before a build reaches a phone (#376).
+      - run: ./gradlew :composeApp:linkReleaseFrameworkIosArm64
+
   # ---------------------------------------------------------------- #
   # Firestore rules, executed against the emulator. No secret and no real project: the
   # `demo-` project id keeps the emulator from ever reaching a Firebase backend.
