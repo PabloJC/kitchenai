@@ -16,7 +16,11 @@ android {
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
         // From the build's caller, never edited by hand: CI passes its run number, so every
         // uploaded build is newer than the last (Play and App Distribution both refuse a repeat).
-        versionCode = providers.gradleProperty("kitchenai.versionCode").orNull?.toIntOrNull() ?: 1
+        // Present but not a number is a typo, not "use 1": a repeat versionCode is refused on upload.
+        versionCode =
+            providers.gradleProperty("kitchenai.versionCode").orNull?.let { raw ->
+                raw.toIntOrNull()?.takeIf { it > 0 } ?: error("kitchenai.versionCode must be a positive integer, got '$raw'.")
+            } ?: 1
         versionName = providers.gradleProperty("kitchenai.versionName").orNull?.takeIf { it.isNotBlank() } ?: "0.1.0"
 
         // The deployment coordinate reaches the app from here rather than from a constant in
@@ -52,6 +56,11 @@ android {
         listOf("uploadStoreFile", "uploadStorePassword", "uploadKeyAlias", "uploadKeyPassword")
             .associateWith { name -> providers.gradleProperty("kitchenai.$name").orNull?.takeIf { it.isNotBlank() } }
     val canSign = uploadKey.values.all { it != null }
+    // Some but not all is a misspelt name: an unsigned build would only be noticed at upload.
+    if (!canSign && uploadKey.values.any { it != null }) {
+        val missing = uploadKey.filterValues { it == null }.keys.joinToString { "kitchenai.$it" }
+        error("Release signing is half configured; missing $missing. See docs/release.md.")
+    }
     signingConfigs {
         if (canSign) {
             create("upload") {
