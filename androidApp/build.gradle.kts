@@ -19,7 +19,8 @@ android {
         // Present but not a number is a typo, not "use 1": a repeat versionCode is refused on upload.
         versionCode =
             providers.gradleProperty("kitchenai.versionCode").orNull?.let { raw ->
-                raw.toIntOrNull()?.takeIf { it > 0 } ?: error("kitchenai.versionCode must be a positive integer, got '$raw'.")
+                raw.toIntOrNull()?.takeIf { it > 0 }
+                    ?: error("kitchenai.versionCode must be a positive integer, got '$raw'.")
             } ?: 1
         versionName = providers.gradleProperty("kitchenai.versionName").orNull?.takeIf { it.isNotBlank() } ?: "0.1.0"
 
