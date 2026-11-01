@@ -14,8 +14,10 @@ android {
         applicationId = "com.kitchenai.app"
         minSdk = libs.versions.androidMinSdk.get().toInt()
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        // From the build's caller, never edited by hand: CI passes its run number, so every
+        // uploaded build is newer than the last (Play and App Distribution both refuse a repeat).
+        versionCode = providers.gradleProperty("kitchenai.versionCode").orNull?.toIntOrNull() ?: 1
+        versionName = providers.gradleProperty("kitchenai.versionName").orNull?.takeIf { it.isNotBlank() } ?: "0.1.0"
 
         // The deployment coordinate reaches the app from here rather than from a constant in
         // :shared. Absent rather than defaulted: a wrong region is a call that reaches nothing,
@@ -43,10 +45,29 @@ android {
         buildConfig = true
     }
 
+    // The upload key lives outside the repository (docs/release.md › Android signing). With
+    // the four properties absent the release build stays unsigned, which is what CI and every
+    // contributor without the key get: it still proves the minified build works.
+    val uploadKey =
+        listOf("uploadStoreFile", "uploadStorePassword", "uploadKeyAlias", "uploadKeyPassword")
+            .associateWith { name -> providers.gradleProperty("kitchenai.$name").orNull?.takeIf { it.isNotBlank() } }
+    val canSign = uploadKey.values.all { it != null }
+    signingConfigs {
+        if (canSign) {
+            create("upload") {
+                storeFile = file(uploadKey.getValue("uploadStoreFile")!!)
+                storePassword = uploadKey.getValue("uploadStorePassword")
+                keyAlias = uploadKey.getValue("uploadKeyAlias")
+                keyPassword = uploadKey.getValue("uploadKeyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (canSign) signingConfig = signingConfigs.getByName("upload")
         }
         debug {
             // No applicationIdSuffix: it would change the package to com.kitchenai.app.debug,

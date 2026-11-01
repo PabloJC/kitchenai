@@ -141,6 +141,34 @@ jobs:
       - run: ./gradlew :androidApp:assembleDebug
 
   # ---------------------------------------------------------------- #
+  # Unsigned, but minified: R8 runs here and nowhere else before a test build goes out (#375).
+  # ---------------------------------------------------------------- #
+  build-android-release:
+    name: Build Android (release, unsigned)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > androidApp/google-services.json
+          else
+            cp androidApp/google-services.json.template androidApp/google-services.json
+          fi
+
+      - run: ./gradlew :androidApp:assembleRelease
+
+  # ---------------------------------------------------------------- #
   # macOS minutes are expensive: build and test the Apple targets only.
   # ---------------------------------------------------------------- #
   build-ios:
@@ -247,7 +275,7 @@ jobs:
   ci-passed:
     name: CI passed
     if: always()
-    needs: [static-analysis, shared-tests, build-android, build-ios, firestore-rules, functions]
+    needs: [static-analysis, shared-tests, build-android, build-android-release, build-ios, firestore-rules, functions]
     runs-on: ubuntu-latest
     steps:
       - name: Verify every job passed
