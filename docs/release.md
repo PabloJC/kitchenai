@@ -221,7 +221,8 @@ The smoke check then needs the fingerprint it presents (`--cert-sha1`, see `fire
 `.github/workflows/release-ios.yml` archives Release on a macOS runner and uploads it to App Store
 Connect, where it appears under *TestFlight* after processing (usually 10–30 minutes). Run it from
 *Actions › Release iOS › Run workflow*, or push a `v*` tag, which also names the version
-(`v0.2.0` → `0.2.0`); a manual run is `0.0.<run>`. The build number is the run number.
+(`v0.2.0` → `0.2.0`); a manual run is `0.0.<run>`. The build number is `<run>.<attempt>`, so a
+re-run is still a new build.
 
 Signing is **cloud-managed**: `xcodebuild -allowProvisioningUpdates` with an App Store Connect API
 key asks Apple for the distribution certificate and profile during the run, so neither is stored
