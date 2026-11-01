@@ -75,8 +75,9 @@ jobs:
           for name in APP_STORE_CONNECT_KEY_P8 KEY_ID ISSUER_ID; do
             if [ -z "${!name}" ]; then echo "::error::The App Store Connect secret behind $name is missing."; exit 1; fi
           done
+          # Private from the moment it exists, not only after a chmod.
+          umask 077
           echo "$APP_STORE_CONNECT_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
-          chmod 600 "$RUNNER_TEMP/AuthKey.p8"
 
       # Cloud-managed signing through the API key: no certificate or profile is stored anywhere,
       # Xcode asks App Store Connect for them during the archive and the export.
@@ -100,10 +101,14 @@ jobs:
         env:
           KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # The team named explicitly: an API-key export does not always find it from the archive.
+          cp iosApp/ExportOptions.plist "$RUNNER_TEMP/ExportOptions.plist"
+          /usr/libexec/PlistBuddy -c "Add :teamID string $APPLE_TEAM_ID" "$RUNNER_TEMP/ExportOptions.plist"
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/KitchenAI.xcarchive" \
-            -exportOptionsPlist iosApp/ExportOptions.plist \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -exportPath "$RUNNER_TEMP/export" \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- How release-ios.yml exports an archive (#379): straight to App Store Connect, which is
-     where TestFlight takes it from. The team comes from the archive, signed with TEAM_ID. -->
+     where TestFlight takes it from. The workflow adds teamID from the APPLE_TEAM_ID secret. -->
 <plist version="1.0">
 <dict>
 	<key>method</key>
