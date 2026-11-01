@@ -14,8 +14,15 @@ android {
         applicationId = "com.kitchenai.app"
         minSdk = libs.versions.androidMinSdk.get().toInt()
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        // From the build's caller, never edited by hand: CI passes its run number, so every
+        // uploaded build is newer than the last (Play and App Distribution both refuse a repeat).
+        // Present but not a number is a typo, not "use 1": a repeat versionCode is refused on upload.
+        versionCode =
+            providers.gradleProperty("kitchenai.versionCode").orNull?.let { raw ->
+                raw.toIntOrNull()?.takeIf { it > 0 }
+                    ?: error("kitchenai.versionCode must be a positive integer, got '$raw'.")
+            } ?: 1
+        versionName = providers.gradleProperty("kitchenai.versionName").orNull?.takeIf { it.isNotBlank() } ?: "0.1.0"
 
         // The deployment coordinate reaches the app from here rather than from a constant in
         // :shared. Absent rather than defaulted: a wrong region is a call that reaches nothing,
@@ -43,10 +50,34 @@ android {
         buildConfig = true
     }
 
+    // The upload key lives outside the repository (docs/release.md › Android signing). With
+    // the four properties absent the release build stays unsigned, which is what CI and every
+    // contributor without the key get: it still proves the minified build works.
+    val uploadKey =
+        listOf("uploadStoreFile", "uploadStorePassword", "uploadKeyAlias", "uploadKeyPassword")
+            .associateWith { name -> providers.gradleProperty("kitchenai.$name").orNull?.takeIf { it.isNotBlank() } }
+    val canSign = uploadKey.values.all { it != null }
+    // Some but not all is a misspelt name: an unsigned build would only be noticed at upload.
+    if (!canSign && uploadKey.values.any { it != null }) {
+        val missing = uploadKey.filterValues { it == null }.keys.joinToString { "kitchenai.$it" }
+        error("Release signing is half configured; missing $missing. See docs/release.md.")
+    }
+    signingConfigs {
+        if (canSign) {
+            create("upload") {
+                storeFile = file(uploadKey.getValue("uploadStoreFile")!!)
+                storePassword = uploadKey.getValue("uploadStorePassword")
+                keyAlias = uploadKey.getValue("uploadKeyAlias")
+                keyPassword = uploadKey.getValue("uploadKeyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (canSign) signingConfig = signingConfigs.getByName("upload")
             // Never from a property: a release build cannot be pointed at a laptop.
             buildConfigField("String", "FIREBASE_EMULATOR_HOST", "\"\"")
             buildConfigField("int", "FIRESTORE_EMULATOR_PORT", "8080")

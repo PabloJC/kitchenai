@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kitchenai.shared.domain.model.UserId
+import com.kitchenai.ui.platform.platformFormatTime
 import com.kitchenai.ui.platform.rememberNotificationPermissionRequest
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.reminder_offer_body
@@ -36,7 +37,7 @@ fun ExpiryReminders(
         // Tapping outside is not an answer: it postpones the question rather than refusing for good.
         onDismissRequest = viewModel::later,
         title = { Text(stringResource(Res.string.reminder_offer_title)) },
-        text = { Text(stringResource(Res.string.reminder_offer_body, state.time)) },
+        text = { Text(stringResource(Res.string.reminder_offer_body, platformFormatTime(state.hour, state.minute))) },
         confirmButton = {
             Button(onClick = { requestPermission(viewModel::answered) }) {
                 Text(stringResource(Res.string.reminder_offer_yes))

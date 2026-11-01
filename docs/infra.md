@@ -47,6 +47,9 @@ gh secret set CLAUDE_CODE_OAUTH_TOKEN       # claude setup-token
 gh secret set PROJECT_TOKEN                 # classic token, see below
 ```
 
+The release workflows read theirs from the `release` environment, not from repository secrets:
+`docs/release.md` lists them (*Android test builds*, *iOS test builds*).
+
 You also need the **Claude GitHub App** (<https://github.com/apps/claude>) installed on the
 repository: the action exchanges an OIDC token for an app token, and without the app it
 returns 401 before ever reaching Anthropic.
@@ -494,14 +497,14 @@ which:
 
 - Deploy the function with the others (`firebase deploy --only functions`), in the documented order;
   until it is deployed the button fails with "Something went wrong".
-- Google Play also wants a **web** way to request deletion, declared in the Data safety form. A page
-  or form that reaches the owner is enough; it is not built here.
+- Google Play also wants a **web** way to request deletion, declared in the Data safety form:
+  `hosting/delete-account.html`, published with the privacy policy (`docs/release.md`, #380).
 
 ---
 
 ## Known debt
 
-- Restrict the iOS API key in Google Cloud Console to the app's bundle id.
+- Restrict the API keys to the apps (`docs/release.md` › *Backend for release builds* › step 4).
 - Enable App Check enforcement for Firestore, Auth and Storage once the verified-requests
   metric is clean. The code is in place; the switch is not flipped.
 - Split `:shared` into `:domain` and `:data` to get iOS tests back.

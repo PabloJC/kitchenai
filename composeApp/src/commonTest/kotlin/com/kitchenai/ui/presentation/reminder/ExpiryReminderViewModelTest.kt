@@ -172,6 +172,17 @@ class ExpiryReminderViewModelTest {
         }
 
     @Test
+    fun `the offer carries the stored time as numbers for the screen to format`() =
+        runTest(dispatcher) {
+            settings.current.value = ReminderSettings(hour = 9, minute = 30)
+            val viewModel = started(FakePantryPort(listOf(item("a", tomorrow()))))
+            advanceUntilIdle()
+
+            // Formatting is the platform's, so the device's 12/24-hour clock decides how it reads.
+            assertEquals(9 to 30, viewModel.state.value.hour to viewModel.state.value.minute)
+        }
+
+    @Test
     fun `a quiet day keeps the daily job at the chosen time`() =
         runTest(dispatcher) {
             settings.current.value = ReminderSettings(offered = true, hour = 9, minute = 30)

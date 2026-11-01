@@ -1,0 +1,130 @@
+# Android test builds (#378): a signed build to Firebase App Distribution, Play internal testing,
+# or both. Secrets live in the `release` environment; its required reviewer is the gate for every
+# run, a tag push included (docs/release.md › Android test builds › One-off setup, step 1).
+name: Release Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      destination:
+        description: Where the build goes
+        type: choice
+        options: [app-distribution, play-internal, both]
+        default: app-distribution
+  push:
+    tags: ['v*']
+
+# One release at a time: two runs could upload the same versionCode.
+concurrency: release-android
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build, sign and distribute
+    runs-on: ubuntu-latest
+    environment: release
+    env:
+      # A tag push goes everywhere; a manual run goes where it was asked to.
+      DESTINATION: ${{ github.event_name == 'push' && 'both' || inputs.destination }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          # No template fallback here, unlike CI: a release against the placeholder project
+          # would install and then fail every request.
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then echo "::error::GOOGLE_SERVICES_JSON is missing."; exit 1; fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 --decode > androidApp/google-services.json
+
+      - name: Restore the upload key
+        env:
+          ANDROID_UPLOAD_KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+        run: |
+          if [ -z "$ANDROID_UPLOAD_KEYSTORE" ]; then echo "::error::ANDROID_UPLOAD_KEYSTORE is missing."; exit 1; fi
+          echo "$ANDROID_UPLOAD_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+
+      - name: Version
+        id: version
+        run: |
+          # The tag names the version (v0.2.0 -> 0.2.0); a manual run is 0.0.<run> so it never
+          # looks like a real release. versionCode is run * 10 + attempt: "Re-run jobs" keeps the
+          # run number, and Play refuses a versionCode it has already seen.
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then name="${GITHUB_REF_NAME#v}"; else name="0.0.${GITHUB_RUN_NUMBER}"; fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$(( GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT ))" >> "$GITHUB_OUTPUT"
+          # Release notes: commit subjects since the previous tag, or the last 20.
+          previous=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -n "$previous" ]; then git log --format='- %s' "$previous"..HEAD; else git log -20 --format='- %s'; fi > "$RUNNER_TEMP/notes.txt"
+
+      - name: Build signed AAB and APK
+        env:
+          # Gradle reads ORG_GRADLE_PROJECT_* as project properties: no secret on a command line.
+          ORG_GRADLE_PROJECT_kitchenai.uploadStoreFile: ${{ runner.temp }}/upload.jks
+          ORG_GRADLE_PROJECT_kitchenai.uploadStorePassword: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_kitchenai.uploadKeyAlias: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_kitchenai.uploadKeyPassword: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_kitchenai.versionCode: ${{ steps.version.outputs.code }}
+          ORG_GRADLE_PROJECT_kitchenai.versionName: ${{ steps.version.outputs.name }}
+          ORG_GRADLE_PROJECT_kitchenai.googleWebClientId: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+          ORG_GRADLE_PROJECT_kitchenai.privacyPolicyUrl: ${{ vars.PRIVACY_POLICY_URL }}
+        run: ./gradlew :androidApp:bundleRelease :androidApp:assembleRelease
+
+      - name: Firebase App Distribution
+        if: env.DESTINATION != 'play-internal'
+        env:
+          FIREBASE_DISTRIBUTION_SA: ${{ secrets.FIREBASE_DISTRIBUTION_SA }}
+          FIREBASE_ANDROID_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+        run: |
+          echo "$FIREBASE_DISTRIBUTION_SA" > "$RUNNER_TEMP/distribution-sa.json"
+          # The APK, not the AAB: an AAB through App Distribution needs the Play link as well.
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/distribution-sa.json" \
+            npx --yes firebase-tools@15.34.2 appdistribution:distribute \
+            androidApp/build/outputs/apk/release/androidApp-release.apk \
+            --app "$FIREBASE_ANDROID_APP_ID" \
+            --groups testers \
+            --release-notes-file "$RUNNER_TEMP/notes.txt"
+
+      - name: Prepare the Play service account
+        if: env.DESTINATION != 'app-distribution'
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: echo "$PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/play-sa.json"
+
+      - name: Play internal testing
+        if: env.DESTINATION != 'app-distribution'
+        # r0adkll/upload-google-play v1.1.5, pinned by commit.
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
+        with:
+          serviceAccountJson: ${{ runner.temp }}/play-sa.json
+          packageName: com.kitchenai.app
+          releaseFiles: androidApp/build/outputs/bundle/release/androidApp-release.aab
+          track: internal
+          status: completed
+          mappingFile: androidApp/build/outputs/mapping/release/mapping.txt
+
+      # Kept so a crash from this build can be de-obfuscated later, whichever channel it came from.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release-${{ steps.version.outputs.name }}
+          path: |
+            androidApp/build/outputs/bundle/release/androidApp-release.aab
+            androidApp/build/outputs/apk/release/androidApp-release.apk
+            androidApp/build/outputs/mapping/release/mapping.txt
+          retention-days: 90
+
+      - name: Remove the key and the service accounts
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" "$RUNNER_TEMP/distribution-sa.json" "$RUNNER_TEMP/play-sa.json"

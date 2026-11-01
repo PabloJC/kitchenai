@@ -1,3 +1,6 @@
+// The Apple Developer team that signs the app (#376). Not a secret, but it ties every build to
+// one account, so it is set in the untracked Local.xcconfig included at the end of this file
+// (copy Local.xcconfig.template); CI writes that file from a secret (#379).
 TEAM_ID=
 
 PRODUCT_NAME=KitchenAI
@@ -34,3 +37,12 @@ PRIVACY_POLICY_URL=
 // See firebase/README.md.
 FIREBASE_EMULATOR_HOST=
 FIREBASE_EMULATOR_FIRESTORE_PORT=8080
+
+// App Attest attests only a build signed for distribution, which needs the production
+// environment; a development build from Xcode uses the debug provider anyway (#376).
+APP_ATTEST_ENVIRONMENT = development
+APP_ATTEST_ENVIRONMENT[config=Release] = production
+
+// Last, so it overrides anything above: TEAM_ID, and MARKETING_VERSION / CURRENT_PROJECT_VERSION
+// when a build should not be 1.0 (1). Optional: a fresh clone builds without it.
+#include? "Local.xcconfig"

@@ -5,15 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -22,10 +17,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.kitchenai.shared.domain.model.expiryDate
 import com.kitchenai.ui.designsystem.theme.Dimens
+import com.kitchenai.ui.platform.PlatformDatePicker
 import com.kitchenai.ui.platform.platformFormatDate
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.pantry_clear
-import com.kitchenai.ui.resources.pantry_done
 import com.kitchenai.ui.resources.pantry_expiry_in_1_month
 import com.kitchenai.ui.resources.pantry_expiry_in_1_week
 import com.kitchenai.ui.resources.pantry_expiry_in_3_days
@@ -33,12 +28,12 @@ import com.kitchenai.ui.resources.pantry_expiry_pick
 import com.kitchenai.ui.resources.pantry_no_expiry
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
 import kotlin.time.Instant
 
 /** A date with its shortcuts, a picker and Clear: the pantry editor's and the move-to-pantry sheet's. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpiryField(
     value: Instant?,
@@ -46,9 +41,6 @@ fun ExpiryField(
 ) {
     var picking by rememberSaveable { mutableStateOf(false) }
     val zone = remember { TimeZone.currentSystemDefault() }
-    // Seeded from the date on the row, and rebuilt whenever that date changes: seeded once, it
-    // kept the old selection after Clear and put it back the next time Done was tapped.
-    val picker = key(value) { rememberDatePickerState(initialSelectedDateMillis = value?.toPickerMillis(zone)) }
 
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.small)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -69,18 +61,16 @@ fun ExpiryField(
         }
     }
 
+    // Opened on the date on the row each time, so a Clear is never undone by the next Done.
     if (picking) {
-        DatePickerDialog(
-            onDismissRequest = { picking = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onChange(picker.selectedDateMillis?.let { millis -> expiryFromPicker(millis, zone) })
-                        picking = false
-                    },
-                ) { Text(stringResource(Res.string.pantry_done)) }
+        PlatformDatePicker(
+            initial = value?.expiryDate(zone),
+            onPick = { day ->
+                onChange(expiryFromPicker(day.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(), zone))
+                picking = false
             },
-        ) { DatePicker(state = picker) }
+            onDismiss = { picking = false },
+        )
     }
 }
 
