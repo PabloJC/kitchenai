@@ -1,6 +1,6 @@
 # Android test builds (#378): a signed build to Firebase App Distribution, Play internal testing,
-# or both. Secrets live in the `release` environment, which should require a reviewer; see
-# docs/release.md › Android test builds for each one and who can rotate it.
+# or both. Secrets live in the `release` environment; its required reviewer is the gate for every
+# run, a tag push included (docs/release.md › Android test builds › One-off setup, step 1).
 name: Release Android
 
 on:
@@ -60,10 +60,11 @@ jobs:
         id: version
         run: |
           # The tag names the version (v0.2.0 -> 0.2.0); a manual run is 0.0.<run> so it never
-          # looks like a real release. The run number keeps versionCode growing either way.
+          # looks like a real release. versionCode is run * 10 + attempt: "Re-run jobs" keeps the
+          # run number, and Play refuses a versionCode it has already seen.
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then name="${GITHUB_REF_NAME#v}"; else name="0.0.${GITHUB_RUN_NUMBER}"; fi
           echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "code=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "code=$(( GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT ))" >> "$GITHUB_OUTPUT"
           # Release notes: commit subjects since the previous tag, or the last 20.
           previous=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
           if [ -n "$previous" ]; then git log --format='- %s' "$previous"..HEAD; else git log -20 --format='- %s'; fi > "$RUNNER_TEMP/notes.txt"

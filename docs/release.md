@@ -222,12 +222,14 @@ The smoke check then needs the fingerprint it presents (`--cert-sha1`, see `fire
 from *Actions › Release Android › Run workflow*, choosing **app-distribution** (fastest, by email),
 **play-internal** (installed from Play, the build Play Integrity attests) or **both**. A `v*` tag push
 (`git tag v0.2.0 && git push origin v0.2.0`) runs it with **both** and names the version after the
-tag; a manual run is `0.0.<run>`. `versionCode` is the run number, so every upload is newer.
+tag; a manual run is `0.0.<run>`. `versionCode` is `run × 10 + attempt`, so a re-run of the same
+run is still newer than its first attempt.
 
 ### One-off setup
 
 1. **The `release` environment.** *Settings › Environments › New environment* `release`, with
    *Required reviewers* set to the owner: every run waits for a click before it can read a secret.
+   This is the only gate: without it, anyone who can push a `v*` tag publishes to testers.
 2. **Firebase App Distribution.** Firebase console › *App Distribution* › *Get started* for the
    Android app; *Testers & Groups* › a group with the alias `testers`. Then a service account in the
    Google Cloud project with the single role **Firebase App Distribution Admin**, and a JSON key.
