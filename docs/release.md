@@ -128,3 +128,55 @@ framework*), so a Kotlin/Native release-only break shows up there rather than at
 4. Allow notifications and turn reminders on; with something expiring tomorrow, one arrives.
 5. In the Firebase console, *App Check › Apps* shows verified requests from the iOS app once the
    build came through TestFlight (#377 registers it).
+
+---
+
+## Android test builds (#378)
+
+`.github/workflows/release-android.yml` builds a signed AAB and APK and sends them to testers. Run it
+from *Actions › Release Android › Run workflow*, choosing **app-distribution** (fastest, by email),
+**play-internal** (installed from Play, the build Play Integrity attests) or **both**. A `v*` tag push
+(`git tag v0.2.0 && git push origin v0.2.0`) runs it with **both** and names the version after the
+tag; a manual run is `0.0.<run>`. `versionCode` is the run number, so every upload is newer.
+
+### One-off setup
+
+1. **The `release` environment.** *Settings › Environments › New environment* `release`, with
+   *Required reviewers* set to the owner: every run waits for a click before it can read a secret.
+2. **Firebase App Distribution.** Firebase console › *App Distribution* › *Get started* for the
+   Android app; *Testers & Groups* › a group with the alias `testers`. Then a service account in the
+   Google Cloud project with the single role **Firebase App Distribution Admin**, and a JSON key.
+3. **Play Console.** The app `com.kitchenai.app` created, *App integrity* › Play App Signing on, and
+   one AAB uploaded **by hand** to *Testing › Internal testing* (Play refuses an API upload for an
+   app that has never had a release). Then *Users and permissions* › invite the service account of
+   step 4 with *Release to testing tracks* on this app only.
+4. **Play service account.** Google Cloud › *IAM › Service accounts* › a new one with no project
+   role, and a JSON key; Play Console grants it the app permission above.
+
+### Secrets and variables (in the `release` environment)
+
+| Name | Kind | What it is |
+|---|---|---|
+| `GOOGLE_SERVICES_JSON` | secret | `base64` of `google-services.json`, refreshed after #377 step 2 |
+| `ANDROID_UPLOAD_KEYSTORE` | secret | `base64 -i kitchenai-upload.jks` |
+| `ANDROID_UPLOAD_STORE_PASSWORD` | secret | the keystore password |
+| `ANDROID_UPLOAD_KEY_ALIAS` | secret | `upload`, or whatever alias the key was made with |
+| `ANDROID_UPLOAD_KEY_PASSWORD` | secret | the key password |
+| `FIREBASE_ANDROID_APP_ID` | secret | Firebase › *Project settings* › the Android app's *App ID* (`1:…:android:…`) |
+| `FIREBASE_DISTRIBUTION_SA` | secret | the App Distribution service account's JSON key |
+| `PLAY_SERVICE_ACCOUNT_JSON` | secret | the Play service account's JSON key |
+| `GOOGLE_WEB_CLIENT_ID` | variable | Google Sign-In's Web client id (`kitchenai.googleWebClientId`) |
+| `PRIVACY_POLICY_URL` | variable | the hosted policy (#380); blank keeps the row hidden |
+
+Rotating any of them is a new value in the environment; nothing is stored anywhere else. The run
+deletes the keystore and both JSON keys from the runner when it ends, pass or fail.
+
+### Adding a tester
+
+- **App Distribution:** *App Distribution › Testers & Groups* › add the email to `testers`. They get
+  an invitation, install the App Tester app once, and every later build arrives as a notification.
+- **Play internal testing:** *Testing › Internal testing › Testers* › add the email to the list, then
+  send them the *opt-in link* on the same page; after opting in they install from the Play Store.
+
+Each run keeps the AAB, the APK and `mapping.txt` as an artifact for 90 days: the mapping is what
+turns an obfuscated stack trace from that build back into names.
