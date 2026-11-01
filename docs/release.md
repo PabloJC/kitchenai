@@ -131,6 +131,91 @@ framework*), so a Kotlin/Native release-only break shows up there rather than at
 
 ---
 
+## Backend for release builds (#377)
+
+A test build talks to the same Firebase project as development. Before the first one goes out,
+the project must run the code on `main` and recognise the **release** apps, which are signed with
+different keys from the debug builds. Everything here is done by whoever holds the project's
+credentials; nothing in CI deploys or changes it.
+
+### 1. Deploy what `main` expects
+
+Follow `firebase/README.md` › *Deploying*, in its order, naming the project every time:
+
+1. `firebase deploy --only firestore:rules,firestore:indexes,storage --project <projectId>`
+   (rules changed in #351 for the ownership hand-over; storage with them, so the two never drift).
+2. `node tools/seed.mjs --project <projectId>` (the seed changed in #345: `food-groups` now declares
+   `SHOPPING_SECTIONS`, which is what groups the shopping list by section).
+3. `firebase deploy --only functions --project <projectId>`, then `firebase functions:list` shows
+   every callable in `functions/src/index.ts`.
+4. The smoke check (`tools/smoke-rules.mjs`), which must end without an unexpected result.
+
+Then record the deployment in the table at the end of this section.
+
+### 2. Register the release signing certificates (Android)
+
+Firebase › *Project settings* › the Android app › *SHA certificate fingerprints*. Add **SHA-1 and
+SHA-256** of:
+
+| Certificate | Where it comes from | Why |
+|---|---|---|
+| Debug keystore | `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android` | Already there for development; keep it |
+| Upload key | `docs/release.md` › *Android signing* › *Fingerprints* | A release APK installed by cable or from App Distribution |
+| Play app signing key | Play Console › the app › *Test and release › App integrity* › *App signing key certificate* | The build Play installs, re-signed by Google |
+
+Then download `google-services.json` again (the OAuth clients for Google Sign-In change with the
+fingerprints), replace the local copy and update the `GOOGLE_SERVICES_JSON` secret
+(`base64 -i google-services.json | pbcopy`). A Google Sign-In that works from Android Studio and
+fails in a Play build is a missing Play signing fingerprint, every time.
+
+### 3. Register both apps in App Check (enforcement stays off)
+
+*App Check › Apps*, one row per platform (`docs/infra.md` › *Register the app before the token
+means anything*):
+
+- **Android, Play Integrity.** Play Console › *Test and release › App integrity* › *Play Integrity
+  API* › link the Google Cloud project that holds Firebase. Then register the provider in Firebase
+  with the SHA-256 of the **Play app signing** key. Only a build installed from Play attests;
+  a cable or App Distribution install sends requests App Check counts as unverified.
+- **iOS, App Attest.** Register with the Team ID (`docs/release.md` › *iOS signing*). Only a build
+  from TestFlight or the App Store attests; the DeviceCheck fallback covers older devices.
+
+**Do not turn enforcement on.** The gate and its order are in `docs/infra.md` › *Enforcement*, and
+it needs builds attesting from **both** platforms first (*Enforcement is off on purpose: iOS cannot
+attest yet*). Until then enforcement would lock out every cable and App Distribution install, with
+an error that never names App Check.
+
+### 4. Restrict the API keys
+
+Google Cloud console › *APIs & Services › Credentials*:
+
+- **Android key:** *Android apps* restriction with package `com.kitchenai.app` and the SHA-1 of
+  each certificate in step 2.
+- **iOS key:** *iOS apps* restriction with bundle id `com.kitchenai.app`.
+- Both: *API restrictions* to the Firebase APIs the app calls (Identity Toolkit, Token Service,
+  Firestore, Firebase Storage, Cloud Functions, Firebase App Check, Firebase Installations).
+
+The smoke check then needs the fingerprint it presents (`--cert-sha1`, see `firebase/README.md`).
+
+### 5. Sign-in providers
+
+*Authentication › Sign-in method*:
+
+- **Google:** enabled; the Web client id is `kitchenai.googleWebClientId` (Android) and the iOS
+  client id is `GOOGLE_IOS_CLIENT_ID` (`Config.xcconfig`).
+- **Apple:** enabled, with the Services ID, Team ID, Key ID and private key from the Apple
+  Developer account (*Keys* › a key with *Sign in with Apple*). A mismatch fails Apple sign-in only,
+  with an `invalid-credential` error.
+- **Anonymous:** enabled; every guest starts there.
+
+### Deployments
+
+| Date | Commit on `main` | Rules | Seed | Functions | Smoke check | By |
+|---|---|---|---|---|---|---|
+| | | | | | | |
+
+---
+
 ## iOS test builds (#379)
 
 `.github/workflows/release-ios.yml` archives Release on a macOS runner and uploads it to App Store
