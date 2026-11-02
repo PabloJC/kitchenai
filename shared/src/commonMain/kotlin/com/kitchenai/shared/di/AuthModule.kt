@@ -12,9 +12,11 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /** Bound to the port, never to the adapter: no use case may reach the Firebase type through DI. */
-val authModule: Module =
+fun authModule(emulators: FirebaseEmulators?): Module =
     module {
-        single<FirebaseAuth> { Firebase.auth }
+        single<FirebaseAuth> {
+            Firebase.auth.apply { emulators?.let { useEmulator(it.host, it.authPort) } }
+        }
 
         single<SessionRepositoryContract> { FirebaseSessionAdapter(get(), get()) }
 

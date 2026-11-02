@@ -30,9 +30,16 @@ private const val SUGGEST_AGENT_ID = "pantry-suggest"
  * SDK calls `us-central1`, which is not a misconfiguration the caller can see: the request simply
  * reaches nothing.
  */
-fun agentDataModule(functionsRegion: String): Module =
+fun agentDataModule(
+    functionsRegion: String,
+    emulators: FirebaseEmulators?,
+): Module =
     module {
-        single { Firebase.functions(functionsRegion) }
+        single {
+            Firebase.functions(functionsRegion).apply {
+                emulators?.let { useEmulator(it.host, it.functionsPort) }
+            }
+        }
         single<CallableTransport> { FunctionsCallableTransport(get()) }
         single {
             val ids: IdGenerator = get()

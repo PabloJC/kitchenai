@@ -13,15 +13,18 @@ val coreModule: Module =
     }
 
 // One module per line and alphabetical: several issues append to this list in parallel.
-fun sharedModules(functionsRegion: String): List<Module> =
+fun sharedModules(
+    functionsRegion: String,
+    emulators: FirebaseEmulators? = null,
+): List<Module> =
     listOf(
-        agentDataModule(functionsRegion),
+        agentDataModule(functionsRegion, emulators),
         agentModule,
-        authModule,
+        authModule(emulators),
         coreModule,
         crossFeatureModule,
         databaseModule,
-        firebaseModule,
+        firebaseModule(emulators),
         kitchenDataModule,
         kitchenModule,
         pantryDataModule,
@@ -40,11 +43,13 @@ fun sharedModules(functionsRegion: String): List<Module> =
  *
  * [functionsRegion] has no default. A wrong region fails as a call that reaches nothing rather
  * than as an error, so a default would be a value nobody chose behaving like one somebody did.
+ * [emulators] is null in every release build; only a debug build's local setting fills it in.
  */
 fun initKoin(
     functionsRegion: String,
+    emulators: FirebaseEmulators? = null,
     appDeclaration: KoinAppDeclaration = {},
 ) = startKoin {
     appDeclaration()
-    modules(sharedModules(functionsRegion))
+    modules(sharedModules(functionsRegion, emulators))
 }

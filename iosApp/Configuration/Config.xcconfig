@@ -32,6 +32,12 @@ GOOGLE_IOS_REVERSED_CLIENT_ID=
 // https:/$()/example.com/privacy — `$()` expands to nothing and keeps the slashes.
 PRIVACY_POLICY_URL=
 
+// Debug builds only: the host running `firebase emulators:start` (127.0.0.1 for the simulator).
+// Blank is the real project; a Release build ignores it. Set it locally, never commit a value.
+// See firebase/README.md.
+FIREBASE_EMULATOR_HOST=
+FIREBASE_EMULATOR_FIRESTORE_PORT=8080
+
 // App Attest attests only a build signed for distribution, which needs the production
 // environment; a development build from Xcode uses the debug provider anyway (#376).
 APP_ATTEST_ENVIRONMENT = development
