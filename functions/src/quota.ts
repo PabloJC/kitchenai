@@ -9,6 +9,19 @@ import type { Firestore } from 'firebase-admin/firestore';
  */
 export const DAILY_CALL_LIMIT = Number(process.env.DAILY_CALL_LIMIT ?? 50);
 
+/** Images cost more per call than suggestions, so they get their own, smaller allowance. */
+export const IMAGE_DAILY_LIMIT = Number(process.env.IMAGE_DAILY_LIMIT ?? 20);
+
+/** One allowance per account per day. [suffix] keeps each counter in its own document. */
+export interface DailyCounter {
+  suffix: string;
+  limit: number;
+}
+
+/** Empty suffix: the documents suggestions were already counted in keep their ids. */
+export const SUGGESTIONS: DailyCounter = { suffix: '', limit: DAILY_CALL_LIMIT };
+export const IMAGES: DailyCounter = { suffix: '_images', limit: IMAGE_DAILY_LIMIT };
+
 /** Kept out of client reach by the rules; a counter a caller can edit is not a counter. */
 const COLLECTION = 'agentUsage';
 
@@ -25,14 +38,19 @@ export class QuotaExceeded extends Error {}
  * a timezone the caller sends, which is a field someone would eventually set to whatever gives
  * them a fresh allowance.
  */
-export async function chargeCall(db: Firestore, uid: string, now: Date): Promise<number> {
+export async function chargeCall(
+  db: Firestore,
+  uid: string,
+  now: Date,
+  counter: DailyCounter = SUGGESTIONS,
+): Promise<number> {
   const day = now.toISOString().slice(0, 10);
-  const doc = db.collection(COLLECTION).doc(`${uid}_${day}`);
+  const doc = db.collection(COLLECTION).doc(`${uid}_${day}${counter.suffix}`);
 
   return db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(doc);
     const used = (snapshot.data()?.calls as number | undefined) ?? 0;
-    if (used >= DAILY_CALL_LIMIT) {
+    if (used >= counter.limit) {
       throw new QuotaExceeded(`${used} calls today`);
     }
     transaction.set(doc, {

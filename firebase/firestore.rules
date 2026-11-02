@@ -404,6 +404,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // What each recipeImage key stands for. Function-only: a caller who could write here could
+    // put any prompt behind a key.
+    match /recipeImageSources/{key} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

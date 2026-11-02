@@ -74,7 +74,8 @@ still carry a legacy `EXCLUDE` from a client that has not updated (#180) — tre
           "unitTaxonomy": "<id>", "unitTerm": "<id>", "optional": false }
       ],
       "steps": ["..."],
-      "tags": [ { "taxonomy": "<id>", "term": "<id>" } ]
+      "tags": [ { "taxonomy": "<id>", "term": "<id>" } ],
+      "imageKey": "<64 hex characters>"
     }
   ]
 }
@@ -90,6 +91,36 @@ Every suggestion's `tags` should include exactly one term from the `dish-types` 
 dish's shape (`soup`, `pizza`, `salad`...), not its diet or cuisine — alongside whatever
 `diets`/`cuisines` tags apply. It is the same array, same `{taxonomy, term}` shape as any other
 tag; a suggestion missing it is not invalid, just one #196's photo fallback has to handle.
+
+`imageKey` (#370) is optional and may be `null`. It is the only thing the client sends back to
+ask for that dish's photograph, see [Recipe images](#recipe-images).
+
+---
+
+## Recipe images
+
+The `recipeImage` callable returns a photograph of one suggested dish.
+
+```json
+{ "schemaVersion": 1, "imageKey": "<the suggestion's imageKey>" }
+```
+
+```json
+{ "schemaVersion": 1, "imageUrl": "https://..." }
+```
+
+The key is a hash `suggestRecipes` issued, and the title and summary behind it stay on the
+server, so this call keeps the rule above: no sentence leaves the device. The image is generated
+once per key and stored; later calls return the stored URL and cost nothing.
+
+| Code | Meaning |
+|---|---|
+| `INVALID_ARGUMENT` | not a key this function could have issued |
+| `FAILED_PRECONDITION` | a well-formed key with nothing behind it (its source expired before any image was made) |
+| `RESOURCE_EXHAUSTED` | the account's daily image allowance is spent |
+| `UNAVAILABLE` | the model failed or withheld the image |
+
+Every one of them means the same to the client: keep the dish-type photo.
 
 ---
 

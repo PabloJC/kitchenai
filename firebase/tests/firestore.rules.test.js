@@ -230,6 +230,19 @@ describe('read-only catalogues', () => {
   });
 });
 
+describe('function-only collections', () => {
+  beforeEach(async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, 'recipeImageSources/key-1'), { title: 'recipe title' });
+    });
+  });
+
+  it('keeps recipe image sources closed to every client', async () => {
+    await assertFails(getDoc(doc(alice, 'recipeImageSources/key-1')));
+    await assertFails(setDoc(doc(alice, 'recipeImageSources/key-2'), { title: 'any prompt' }));
+  });
+});
+
 describe('pantry item shape', () => {
   beforeEach(seedKitchens);
 

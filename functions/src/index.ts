@@ -2,13 +2,25 @@ import { GoogleGenAI } from '@google/genai';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import { deleteAccount as deleteAccountData } from './accountDeletion.js';
 import { writeCatalogueEntry } from './catalogueAdmin.js';
 import { loadCatalogue, resolve, toReadable } from './catalogue.js';
 import { BadRequest, parseRequest, SCHEMA_VERSION } from './contract.js';
-import { QuotaExceeded, chargeCall } from './quota.js';
+import { IMAGES, QuotaExceeded, chargeCall } from './quota.js';
+import {
+  IMAGE_SCHEMA_VERSION,
+  NoImageReturned,
+  UnknownImageKey,
+  attachImageKeys,
+  firestoreImageSources,
+  geminiImageGenerator,
+  parseImageRequest,
+  resolveRecipeImage,
+  storageImageStore,
+} from './recipeImage.js';
 import { AGENT_ID, MODEL_ID, askModel, toWire, type Vocabulary } from './suggest.js';
 
 initializeApp();
@@ -27,6 +39,15 @@ const genai = new GoogleGenAI({
   project: process.env.GCLOUD_PROJECT,
   location: process.env.VERTEX_LOCATION ?? 'europe-west1',
 });
+
+/** Separate only because an image model may not be offered in the text model's region. */
+const imageGenai = new GoogleGenAI({
+  vertexai: true,
+  project: process.env.GCLOUD_PROJECT,
+  location: process.env.IMAGE_LOCATION ?? process.env.VERTEX_LOCATION ?? 'europe-west1',
+});
+
+const imageSources = firestoreImageSources(db);
 
 /**
  * The one endpoint the app calls.
@@ -90,11 +111,63 @@ export const suggestRecipes = onCall(
         schemaVersion: SCHEMA_VERSION,
         agentId: AGENT_ID,
         modelId: MODEL_ID,
-        suggestions: toWire(suggestions, catalogue, vocabulary, request.options.maxResults),
+        suggestions: await withImageKeys(toWire(suggestions, catalogue, vocabulary, request.options.maxResults)),
       };
     } catch (failure) {
       logger.error('the model call failed', { requestId: request.requestId, failure: String(failure) });
       throw new HttpsError('unavailable', 'could not reach the model');
+    }
+  },
+);
+
+/**
+ * A photograph of one suggested dish, generated once and stored. The caller sends only the
+ * `imageKey` `suggestRecipes` handed it, so the prompt is built from text this project wrote.
+ */
+export const recipeImage = onCall(
+  {
+    region: process.env.FUNCTIONS_REGION ?? 'europe-southwest1',
+    enforceAppCheck: true,
+    timeoutSeconds: 60,
+    memory: '512MiB',
+    maxInstances: 5,
+  },
+  async (call) => {
+    if (!call.auth) {
+      throw new HttpsError('unauthenticated', 'sign in first');
+    }
+    const uid = call.auth.uid;
+
+    let imageKey;
+    try {
+      ({ imageKey } = parseImageRequest(call.data));
+    } catch (failure) {
+      const reason = failure instanceof BadRequest ? failure.message : 'malformed request';
+      throw new HttpsError('invalid-argument', reason);
+    }
+
+    try {
+      const { url, generated } = await resolveRecipeImage(imageKey, {
+        store: storageImageStore(getStorage().bucket()),
+        sources: imageSources,
+        generate: geminiImageGenerator(imageGenai),
+        charge: () => chargeCall(db, uid, new Date(), IMAGES),
+      });
+      logger.info('recipe image', { generated });
+      return { schemaVersion: IMAGE_SCHEMA_VERSION, imageUrl: url };
+    } catch (failure) {
+      if (failure instanceof QuotaExceeded) {
+        throw new HttpsError('resource-exhausted', 'too many images today, try again tomorrow');
+      }
+      // Not `not-found`: the client reads that as "function not deployed".
+      if (failure instanceof UnknownImageKey) {
+        throw new HttpsError('failed-precondition', 'no dish behind this imageKey');
+      }
+      logger.error('the image call failed', {
+        filtered: failure instanceof NoImageReturned,
+        failure: String(failure),
+      });
+      throw new HttpsError('unavailable', 'could not generate the image');
     }
   },
 );
@@ -169,4 +242,17 @@ async function loadVocabulary(languageTags: string[]): Promise<Vocabulary> {
     unitTaxonomy: unitsTaxonomy.id,
     dishTypes,
   };
+}
+
+/**
+ * A suggestion without a key only loses its picture, so a failed write must not cost the user
+ * the suggestions themselves.
+ */
+async function withImageKeys<T extends Parameters<typeof attachImageKeys>[1][number]>(suggestions: T[]) {
+  try {
+    return await attachImageKeys(imageSources, suggestions, new Date());
+  } catch (failure) {
+    logger.error('could not record image sources', { failure: String(failure) });
+    return suggestions.map((suggestion) => ({ ...suggestion, imageKey: null }));
+  }
 }
