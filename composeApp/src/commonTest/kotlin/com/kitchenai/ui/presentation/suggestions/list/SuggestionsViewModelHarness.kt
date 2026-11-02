@@ -33,6 +33,7 @@ import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
+import com.kitchenai.ui.presentation.common.RecipePictures
 import com.kitchenai.ui.presentation.common.noUnits
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -49,6 +50,7 @@ open class SuggestionsViewModelHarness {
     protected val catalogue = FakeIngredientPort()
     protected val agent = RecordingOrchestrator()
     protected val network = FakeNetworkMonitor()
+    protected val pictures = RecipePictures()
     protected val profile =
         UserProfile(
             userId = UserId.of("user-1").orFail(),
@@ -137,6 +139,7 @@ open class SuggestionsViewModelHarness {
                     unsave = RemoveSavedRecipeUseCase(recipes),
                 ),
             network = network,
+            pictures = pictures,
         ).also { it.start(UserId.of("user-1").orFail(), languageTags, "List") }
     }
 

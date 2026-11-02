@@ -21,4 +21,6 @@ data class RecipeDto(
     val tags: List<TermRefDto> = emptyList(),
     val source: RecipeSourceDto? = null,
     val savedAtMillis: Long? = null,
+    val imageKey: String? = null,
+    val imageUrl: String? = null,
 )

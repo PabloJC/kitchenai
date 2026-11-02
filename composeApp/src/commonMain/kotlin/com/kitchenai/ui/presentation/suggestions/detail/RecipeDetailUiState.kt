@@ -23,6 +23,8 @@ data class RecipeDetailUiState(
     val tags: List<String> = emptyList(),
     /** Unresolved, unlike [tags]: `RecipeImage` reads it itself, the screen does not. */
     val tagRefs: List<TermRef> = emptyList(),
+    /** The dish's own photograph once it exists; until then the header shows the dish-type one. */
+    val imageUrl: String? = null,
     /** What in this dish someone in the kitchen avoids, in words; never who. Empty when nothing. */
     val avoidedByHousehold: List<String> = emptyList(),
     val isLoading: Boolean = true,

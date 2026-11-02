@@ -71,6 +71,21 @@ class SuggestionsViewModelTest : SuggestionsViewModelHarness() {
         }
 
     @Test
+    fun `a card shows a photograph its detail fetched after the list was built`() =
+        runTest(dispatcher) {
+            val recipes = FakeRecipePort(stored = listOf(dish("recipe-1")))
+            agent.gate = CompletableDeferred()
+            val viewModel = started(recipes = recipes)
+            dispatcher.scheduler.runCurrent()
+            assertNull(viewModel.state.value.suggestions.single().imageUrl)
+
+            pictures.put(dish("recipe-1").id, "https://images.test/recipe-1.jpg")
+            dispatcher.scheduler.runCurrent()
+
+            assertEquals("https://images.test/recipe-1.jpg", viewModel.state.value.suggestions.single().imageUrl)
+        }
+
+    @Test
     fun `a kitchen change cancels an in-flight generation instead of leaving it stuck`() =
         runTest(dispatcher) {
             agent.gate = CompletableDeferred()

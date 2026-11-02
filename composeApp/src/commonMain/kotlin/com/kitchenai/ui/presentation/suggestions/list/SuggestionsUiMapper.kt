@@ -35,6 +35,7 @@ internal fun RecipeSuggestion.toUi(
         // Both ids travel as the response reported them; neither is named anywhere in this module.
         provenance = (source as? RecipeSource.Agent)?.let { ProvenanceUi(it.agentId.value, it.modelId) },
         tagRefs = recipe.tags,
+        imageUrl = recipe.imageUrl,
         conflictsWithHousehold = !avoids.hitsIn(recipe).isEmpty,
     )
 }

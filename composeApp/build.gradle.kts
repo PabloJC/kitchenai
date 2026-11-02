@@ -56,6 +56,8 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.aboutlibraries.core)
             implementation(libs.aboutlibraries.compose.m3)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
         }
         androidMain.dependencies {
             // The @Preview annotation only, not the tooling runtime: Compose Multiplatform
@@ -78,11 +80,17 @@ kotlin {
 
             // The privacy policy and photo sources: platform/OpenUrl.android.kt.
             implementation(libs.androidx.browser)
+
+            // Coil's transport for recipe photographs: designsystem/component/RecipeImage.kt.
+            implementation(libs.ktor.client.okhttp)
         }
         iosMain.dependencies {
             // Google Sign-In via Google's own iOS SDK, wrapped for Kotlin/Native rather than
             // hand-cinteroped: see the `kmpauth` version comment in the catalog.
             implementation(libs.kmpauth.google)
+
+            // Coil's transport for recipe photographs: designsystem/component/RecipeImage.kt.
+            implementation(libs.ktor.client.darwin)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

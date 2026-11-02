@@ -19,6 +19,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.OfflineBanner
 import com.kitchenai.ui.designsystem.theme.KitchenAiTheme
@@ -54,6 +57,10 @@ import org.koin.compose.viewmodel.koinViewModel
 /** The composition root, and the only place in the shell that holds wording. */
 @Composable
 fun App(onSessionSettled: () -> Unit = {}) {
+    // Stated rather than discovered: Kotlin/Native has no service loader to find the fetcher.
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context).components { add(KtorNetworkFetcherFactory()) }.build()
+    }
     val appearance by koinViewModel<AppearanceViewModel>().state.collectAsStateWithLifecycle()
     KitchenAiTheme(darkTheme = appearance.isDark(isSystemInDarkTheme())) {
         Surface(modifier = Modifier.fillMaxSize()) {

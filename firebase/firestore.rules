@@ -168,7 +168,14 @@ service cloud.firestore {
              && data.steps is list
              && data.steps.size() <= 100
              && isOptionalMillis(data.get('updatedAtMillis', null))
-             && isOptionalMillis(data.get('savedAtMillis', null));
+             && isOptionalMillis(data.get('savedAtMillis', null))
+             && isOptionalImageKey(data.get('imageKey', null))
+             && isOptionalText(data.get('imageUrl', null), 2000);
+    }
+
+    // The SHA-256 recipeImage issued (#370); anything else is not a key and could not fetch a picture.
+    function isOptionalImageKey(value) {
+      return value == null || (value is string && value.matches('^[0-9a-f]{64}$'));
     }
 
     // memberDisplayNames is unbounded on purpose: its size tracks memberIds, which isValidKitchen

@@ -19,6 +19,7 @@ import com.kitchenai.shared.domain.usecase.recipe.StoreSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.platform.NetworkMonitor
 import com.kitchenai.ui.presentation.common.LabelResolver
+import com.kitchenai.ui.presentation.common.RecipePictures
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_action
@@ -60,6 +61,7 @@ class SuggestionsViewModel(
     private val reads: SuggestionsReadsDelegate,
     private val writes: SuggestionsWritesDelegate,
     private val network: NetworkMonitor,
+    private val pictures: RecipePictures,
 ) : ViewModel() {
     private val internalState = MutableStateFlow(SuggestionsUiState())
     val state: StateFlow<SuggestionsUiState> = internalState.asStateFlow()
@@ -123,6 +125,7 @@ class SuggestionsViewModel(
         viewModelScope.launch {
             network.isOnline.collect { online -> internalState.update { it.copy(isOnline = online) } }
         }
+        viewModelScope.launch { pictures.all.collect { reresolve() } }
         watchKitchen(userId)
         viewModelScope.launch {
             // matchRecipe reads the pantry itself, but only once per call — combine so a saved
@@ -410,17 +413,18 @@ class SuggestionsViewModel(
         // catalogue ingredient by its identifier. The card carries no quantities, so terms and
         // taxonomies are not needed here — only a language to answer in.
         val resolver = LabelResolver(ingredients = ingredients.value, languageTags = languageTags)
+        val fetched = pictures.all.value
+
+        // A card shows a photograph its detail fetched since this list was built.
+        fun RecipeSuggestion.card() =
+            toUi(resolver, avoids).let { ui -> fetched[ui.id]?.let { url -> ui.copy(imageUrl = url) } ?: ui }
         internalState.update { state ->
             state.copy(
-                suggestions = current.map { suggestion -> suggestion.toUi(resolver, avoids) },
-                earlier =
-                    earlier.map {
-                            generation ->
-                        generation.map { suggestion -> suggestion.toUi(resolver, avoids) }
-                    },
+                suggestions = current.map { suggestion -> suggestion.card() },
+                earlier = earlier.map { generation -> generation.map { suggestion -> suggestion.card() } },
                 // A kitchen change can leave fewer earlier generations than the one being browsed.
                 browsingEarlier = state.browsingEarlier?.takeIf { it in earlier.indices },
-                savedRecipes = currentSaved.map { suggestion -> suggestion.toUi(resolver, avoids) },
+                savedRecipes = currentSaved.map { suggestion -> suggestion.card() },
                 savedIds = currentSaved.map { it.recipe.id }.toSet(),
             ).withVisibleSaved()
         }

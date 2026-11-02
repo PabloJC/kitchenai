@@ -71,6 +71,8 @@ data class SuggestionUi(
     val provenance: ProvenanceUi?,
     /** Unresolved, unlike everything above: `RecipeImage` reads it itself, the screen does not. */
     val tagRefs: List<TermRef> = emptyList(),
+    /** Shown when the recipe already has one; a card never asks for a picture itself. */
+    val imageUrl: String? = null,
     /** Someone in the kitchen avoids something in it: kept from before they joined, or saved by another member. */
     val conflictsWithHousehold: Boolean = false,
 ) {

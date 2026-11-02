@@ -53,7 +53,11 @@ internal fun SuggestionCard(
         colors = tonalCardColors(),
     ) {
         Column {
-            RecipeImage(tags = suggestion.tagRefs, modifier = Modifier.sharedRecipeImage(suggestion.id.value))
+            RecipeImage(
+                tags = suggestion.tagRefs,
+                imageUrl = suggestion.imageUrl,
+                modifier = Modifier.sharedRecipeImage(suggestion.id.value),
+            )
             Column(
                 modifier = Modifier.padding(Dimens.large),
                 verticalArrangement = Arrangement.spacedBy(Dimens.small),

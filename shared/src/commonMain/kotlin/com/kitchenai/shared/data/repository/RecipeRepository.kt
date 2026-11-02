@@ -13,6 +13,7 @@ import com.kitchenai.shared.data.mapper.toDomain
 import com.kitchenai.shared.data.mapper.toDto
 import com.kitchenai.shared.data.remote.dto.RecipeDto
 import com.kitchenai.shared.data.remote.firebase.RecipeDocument
+import com.kitchenai.shared.data.remote.firebase.RecipeImageRemoteDataSource
 import com.kitchenai.shared.data.remote.firebase.RecipeRemoteDataSource
 import com.kitchenai.shared.domain.model.KitchenId
 import com.kitchenai.shared.domain.model.Recipe
@@ -23,6 +24,7 @@ import com.kitchenai.shared.domain.port.RecipeRepositoryContract
 import com.kitchenai.shared.domain.port.TimeProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlin.time.Instant
 
 /**
  * [RecipeRepositoryContract] over both recipe data sources: [RecipeRemoteDataSource] answers the
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.map
 class RecipeRepository(
     private val localDataSource: RecipeLocalDataSource,
     private val remoteDataSource: RecipeRemoteDataSource,
+    private val imageDataSource: RecipeImageRemoteDataSource,
     private val kitchens: KitchenRepositoryContract,
     private val time: TimeProvider,
     private val dispatchers: DispatcherProvider,
@@ -56,6 +59,41 @@ class RecipeRepository(
         kitchenId: KitchenId,
         recipe: Recipe,
     ): AppResult<Unit> = remoteDataSource.save(kitchenId, recipe.id, recipe.toDto(time.now()))
+
+    override suspend fun attachImage(
+        kitchenId: KitchenId?,
+        recipe: Recipe,
+    ): AppResult<Recipe> {
+        val key = recipe.imageKey ?: return AppResult.Success(recipe)
+        return imageDataSource.imageUrl(key).flatMap { url ->
+            val pictured = recipe.copy(imageUrl = url)
+            keepInCache(pictured).flatMap { keepInSavedCopy(kitchenId, pictured) }.map { pictured }
+        }
+    }
+
+    /** Re-stamped with the row's own time: a new one would move it to another generation. */
+    private suspend fun keepInCache(recipe: Recipe): AppResult<Unit> =
+        localCall(dispatchers) {
+            localDataSource.getById(recipe.id.value)?.let { row ->
+                localDataSource.replace(recipe.toEntity(Instant.fromEpochMilliseconds(row.savedAtMillis)))
+            }
+            Unit
+        }
+
+    private suspend fun keepInSavedCopy(
+        kitchenId: KitchenId?,
+        recipe: Recipe,
+    ): AppResult<Unit> {
+        val kitchen = kitchenId ?: return AppResult.Success(Unit)
+        val url = recipe.imageUrl ?: return AppResult.Success(Unit)
+        return remoteDataSource.getSavedRecipe(kitchen, recipe.id).flatMap { saved ->
+            if (saved == null) {
+                AppResult.Success(Unit)
+            } else {
+                remoteDataSource.setImage(kitchen, recipe.id, recipe.imageKey, url)
+            }
+        }
+    }
 
     override suspend fun removeSavedRecipe(
         kitchenId: KitchenId,

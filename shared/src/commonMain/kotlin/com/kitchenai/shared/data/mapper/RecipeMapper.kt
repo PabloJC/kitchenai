@@ -30,6 +30,8 @@ fun Recipe.toDto(savedAt: Instant): RecipeDto =
         tags = tags.map { TermRefDto(it.taxonomy.value, it.term.value) },
         source = source.toDto(),
         savedAtMillis = savedAt.toEpochMilliseconds(),
+        imageKey = imageKey,
+        imageUrl = imageUrl,
     )
 
 /**
@@ -42,7 +44,19 @@ fun RecipeDto.toDomain(documentId: String): AppResult<Recipe> {
     return RecipeId.of(documentId).flatMap { id ->
         contents().flatMap { (lines, terms) ->
             source.toDomain().map { provenance ->
-                Recipe(id, name, summary, portions, totalMinutes, lines, steps, terms, provenance)
+                Recipe(
+                    id = id,
+                    title = name,
+                    summary = summary,
+                    servings = portions,
+                    totalMinutes = totalMinutes,
+                    ingredients = lines,
+                    steps = steps,
+                    tags = terms,
+                    source = provenance,
+                    imageKey = imageKey,
+                    imageUrl = imageUrl,
+                )
             }
         }
     }

@@ -122,7 +122,11 @@ private fun SavedRecipeCard(
         colors = tonalCardColors(),
     ) {
         Column {
-            RecipeImage(tags = recipe.tagRefs, modifier = Modifier.sharedRecipeImage(recipe.id.value))
+            RecipeImage(
+                tags = recipe.tagRefs,
+                imageUrl = recipe.imageUrl,
+                modifier = Modifier.sharedRecipeImage(recipe.id.value),
+            )
             Column(
                 modifier = Modifier.padding(Dimens.medium),
                 verticalArrangement = Arrangement.spacedBy(Dimens.extraSmall),

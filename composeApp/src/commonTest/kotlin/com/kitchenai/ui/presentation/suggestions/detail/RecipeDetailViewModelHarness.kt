@@ -28,6 +28,7 @@ import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomiesUseCase
 import com.kitchenai.shared.domain.usecase.profile.ObserveTaxonomyUseCase
 import com.kitchenai.shared.domain.usecase.recipe.CookRecipeUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GenerateRecipeImageUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
@@ -47,6 +48,7 @@ import com.kitchenai.ui.presentation.common.FakeRecipePort
 import com.kitchenai.ui.presentation.common.FakeShoppingItemPort
 import com.kitchenai.ui.presentation.common.FakeShoppingListPort
 import com.kitchenai.ui.presentation.common.FakeTaxonomyPort
+import com.kitchenai.ui.presentation.common.RecipePictures
 import com.kitchenai.ui.presentation.common.noUnits
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -108,6 +110,7 @@ open class RecipeDetailViewModelHarness {
     protected val items = FakeShoppingItemPort()
     protected var lists = FakeShoppingListPort()
     protected val kitchens = FakeKitchenPort()
+    protected val pictures = RecipePictures()
 
     protected fun started(
         pantry: List<PantryItem>,
@@ -153,7 +156,13 @@ open class RecipeDetailViewModelHarness {
                         AddShoppingItemUseCase(items, sequentialIds(), time, noUnits()),
                     ),
             )
-        return RecipeDetailViewModel(reads, writes, ObserveKitchenUseCase(kitchens))
+        return RecipeDetailViewModel(
+            reads = reads,
+            writes = writes,
+            observeKitchen = ObserveKitchenUseCase(kitchens),
+            picture = GenerateRecipeImageUseCase(recipePort),
+            pictures = pictures,
+        )
             .also { it.start(user, recipeId, listOf("en"), "List") }
     }
 
