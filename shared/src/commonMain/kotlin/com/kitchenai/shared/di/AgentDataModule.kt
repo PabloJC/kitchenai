@@ -56,6 +56,7 @@ fun agentDataModule(
                 validator = get(),
                 ids = get(),
                 dispatchers = get(),
+                crashes = get(),
             )
         }
     }

@@ -21,6 +21,7 @@ import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.TaxonomyId
 import com.kitchenai.shared.domain.model.TermId
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.shared.domain.port.CrashReporter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -126,7 +127,34 @@ class CallableFunctionRecipeAgentTest {
             assertFailsWith<CancellationException> { agent(transport).suggest(context()) }
         }
 
-    private fun agent(transport: FakeCallableTransport): CallableFunctionRecipeAgent {
+    @Test
+    fun `reports a failed call by operation and error only`() =
+        runTest {
+            val refused = FakeCallableTransport.Answer.Rejected(IllegalStateException("refused"))
+            val reported = mutableListOf<Pair<String, AppError>>()
+
+            agent(FakeCallableTransport(refused), crashes = { operation, error -> reported += operation to error })
+                .suggest(context())
+
+            assertEquals("suggestRecipes", reported.single().first)
+            assertIs<AppError.Unknown>(reported.single().second)
+        }
+
+    @Test
+    fun `reports nothing when the call succeeds`() =
+        runTest {
+            val reported = mutableListOf<AppError>()
+            val transport = FakeCallableTransport(FakeCallableTransport.Answer.Body(wellFormed()))
+
+            agent(transport, crashes = { _, error -> reported += error }).suggest(context())
+
+            assertEquals(emptyList(), reported)
+        }
+
+    private fun agent(
+        transport: FakeCallableTransport,
+        crashes: CrashReporter = CrashReporter { _, _ -> },
+    ): CallableFunctionRecipeAgent {
         var counter = 0
         return CallableFunctionRecipeAgent(
             id = AgentId.of("agent-1").let { (it as AppResult.Success).data },
@@ -135,6 +163,7 @@ class CallableFunctionRecipeAgentTest {
             validator = SuggestionValidator(newRecipeId = { "recipe-${counter++}" }, now = { NOW }),
             ids = { "request-1" },
             dispatchers = testDispatchers(UnconfinedTestDispatcher()),
+            crashes = crashes,
         )
     }
 

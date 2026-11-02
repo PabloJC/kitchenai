@@ -1,18 +1,21 @@
 package com.kitchenai.shared.di
 
 import com.kitchenai.shared.data.remote.firebase.FirestorePaths
+import com.kitchenai.shared.data.system.CrashlyticsCrashReporter
 import com.kitchenai.shared.data.system.SystemTimeProvider
 import com.kitchenai.shared.data.system.UuidIdGenerator
+import com.kitchenai.shared.domain.port.CrashReporter
 import com.kitchenai.shared.domain.port.IdGenerator
 import com.kitchenai.shared.domain.port.TimeProvider
 import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.crashlytics.crashlytics
 import dev.gitlive.firebase.firestore.firestore
 import dev.gitlive.firebase.firestore.firestoreSettings
 import dev.gitlive.firebase.firestore.persistentCacheSettings
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
-/** Firestore plus the ambient platform singletons every repository needs: a clock and an id source. */
+/** Firestore plus the ambient platform singletons: a clock, an id source and the crash reporter. */
 fun firebaseModule(emulators: FirebaseEmulators?): Module =
     module {
         single {
@@ -38,4 +41,6 @@ fun firebaseModule(emulators: FirebaseEmulators?): Module =
         single<TimeProvider> { SystemTimeProvider() }
 
         single<IdGenerator> { UuidIdGenerator() }
+
+        single<CrashReporter> { CrashlyticsCrashReporter(Firebase.crashlytics) }
     }

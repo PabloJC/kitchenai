@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.googleServices)
+    // Injects the build id Crashlytics checks on start; without it the SDK crashes the app at launch.
+    alias(libs.plugins.firebaseCrashlytics)
     // No kotlin-android: AGP 9 ships built-in Kotlin support.
 }
 
@@ -78,11 +80,14 @@ android {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (canSign) signingConfig = signingConfigs.getByName("upload")
+            manifestPlaceholders["crashlyticsCollectionEnabled"] = true
             // Never from a property: a release build cannot be pointed at a laptop.
             buildConfigField("String", "FIREBASE_EMULATOR_HOST", "\"\"")
             buildConfigField("int", "FIRESTORE_EMULATOR_PORT", "8080")
         }
         debug {
+            // Off from process start, not from onCreate: a debug crash never reaches the console.
+            manifestPlaceholders["crashlyticsCollectionEnabled"] = false
             // No applicationIdSuffix: it would change the package to com.kitchenai.app.debug,
             // and google-services.json only has com.kitchenai.app registered. Separate
             // Firebase projects (dev/prod) are a product-flavour problem, not a suffix one.
@@ -121,13 +126,11 @@ dependencies {
     implementation(libs.firebase.appcheck.playintegrity)
     debugImplementation(libs.firebase.appcheck.debug)
 
-    // Analytics and Crashlytics: out for now.
-    //
-    // Crashlytics also needs its Gradle plugin, which injects the build ID into the APK.
-    // Without it Crashlytics throws on init and takes FirebaseInitProvider down with it:
-    // the app crashes before drawing anything.
-    //
-    // No code uses either yet. They come back in their own issue, with the plugin and the
-    // R8 mapping upload configured, once there are testers. The BOM pinning their versions
-    // arrives through `api` from :shared.
+    // Declared although :shared's GitLive wrapper brings it: the plugin above configures it here.
+    implementation(libs.firebase.crashlytics)
 }
+
+// Off unless asked for: CI builds against a template google-services.json, whose upload would fail.
+// The release workflow sets it, so every tester build has a mapping to deobfuscate its crashes.
+val uploadMapping = providers.gradleProperty("kitchenai.crashlyticsUploadMapping").orNull == "true"
+tasks.matching { it.name.startsWith("uploadCrashlyticsMappingFile") }.configureEach { enabled = uploadMapping }

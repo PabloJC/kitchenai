@@ -12,6 +12,7 @@
 		79960DED302A106300AA04EE /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DEC302A106300AA04EE /* FirebaseFirestore */; };
 		79960DF1302A106300AA04EE /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DF0302A106300AA04EE /* FirebaseFunctions */; };
 		79960DEF302A106300AA04EE /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DEE302A106300AA04EE /* FirebaseAppCheck */; };
+		79960DF3302A106300AA04EE /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 79960DF2302A106300AA04EE /* FirebaseCrashlytics */; };
 		BC0BF01D483A04CEA266A691 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = BC9E6EC2232340B1199B01C6 /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
@@ -55,6 +56,7 @@
 				79960DED302A106300AA04EE /* FirebaseFirestore in Frameworks */,
 				79960DF1302A106300AA04EE /* FirebaseFunctions in Frameworks */,
 				79960DEF302A106300AA04EE /* FirebaseAppCheck in Frameworks */,
+				79960DF3302A106300AA04EE /* FirebaseCrashlytics in Frameworks */,
 				BC0BF01D483A04CEA266A691 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -98,6 +100,7 @@
 				CB3BB39D0FBCE97891709E95 /* Sources */,
 				A42523907282E12443246069 /* Frameworks */,
 				62EBB8221EC75F7C38ACAC64 /* Resources */,
+				79960DF4302A106300AA04EE /* Upload Crashlytics dSYMs */,
 			);
 			buildRules = (
 			);
@@ -113,6 +116,7 @@
 				79960DEA302A106300AA04EE /* FirebaseCore */,
 				79960DEC302A106300AA04EE /* FirebaseFirestore */,
 				79960DF0302A106300AA04EE /* FirebaseFunctions */,
+				79960DF2302A106300AA04EE /* FirebaseCrashlytics */,
 				BC9E6EC2232340B1199B01C6 /* GoogleSignIn */,
 			);
 			productName = iosApp;
@@ -187,6 +191,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n";
+		};
+		79960DF4302A106300AA04EE /* Upload Crashlytics dSYMs */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Upload Crashlytics dSYMs";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Release only: a Debug build reports nothing, so its symbols have nowhere to go.\nif [ \"$CONFIGURATION\" != \"Release\" ]; then\n  exit 0\nfi\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -449,6 +476,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 79E55C9D302A0BCC0098A3DC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAppCheck;
+		};
+		79960DF2302A106300AA04EE /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 79E55C9D302A0BCC0098A3DC /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
 		};
 		BC9E6EC2232340B1199B01C6 /* GoogleSignIn */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -508,6 +508,4 @@ which:
 - Enable App Check enforcement for Firestore, Auth and Storage once the verified-requests
   metric is clean. The code is in place; the switch is not flipped.
 - Split `:shared` into `:domain` and `:data` to get iOS tests back.
-- Re-add Analytics and Crashlytics **with their Gradle plugin**: without it the build id is
-  missing and the app crashes on launch.
 - Pin the exact test task names in CI instead of relying on `check`.
