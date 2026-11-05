@@ -40,6 +40,37 @@ development, so a debug build signs in as it does on the emulator.
 
 The second phone needs its own App Check debug token (step 1.3).
 
+### Through Firebase App Distribution
+
+So each phone gets new builds from a notification instead of a cable. The **debug** build, uploaded
+from your own computer:
+
+- **Why not `release-android.yml`:** a release build attests with Play Integrity, which only vouches
+  for an install from Play. From App Distribution its suggestions would fail App Check.
+- **Why not CI:** the debug build is signed with your machine's debug keystore. CI's changes every
+  run, and Android refuses an update signed by a different key, so always upload from the same computer.
+
+Once:
+
+1. Firebase console › *App Distribution* › *Get started* for the Android app; *Testers & Groups* ›
+   a group with the alias `testers` and both emails.
+2. `firebase login` on the computer that builds.
+
+Each new version:
+
+```bash
+./gradlew :androidApp:assembleDebug
+firebase appdistribution:distribute androidApp/build/outputs/apk/debug/androidApp-debug.apk \
+  --app <Firebase Android App ID, 1:…:android:…> --groups testers --release-notes "What changed"
+```
+
+Or drag the APK onto *App Distribution › Releases* in the console. Each tester accepts the email
+invitation once and installs the *App Tester* app; later builds arrive as a notification, and an
+update keeps the app's data.
+
+Each phone's App Check debug token (step 1.3) comes from `adb logcat`, so it needs a cable once. The
+token survives updates; it changes only if the app is uninstalled or its data cleared.
+
 ## 3. iPhone, with a free Apple account
 
 Needs a Mac with Xcode and each iPhone connected by cable at least once.
