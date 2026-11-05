@@ -20,10 +20,16 @@ import com.kitchenai.shared.domain.usecase.recipe.SuggestRecipesUseCase
 import com.kitchenai.ui.platform.NetworkMonitor
 import com.kitchenai.ui.presentation.common.LabelResolver
 import com.kitchenai.ui.presentation.common.RecipePictures
+import com.kitchenai.ui.presentation.common.UiText
 import com.kitchenai.ui.presentation.common.describe
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_unauthorized_action
 import com.kitchenai.ui.resources.error_unauthorized_suggestions
+import com.kitchenai.ui.resources.suggestions_daily_limit_any
+import com.kitchenai.ui.resources.suggestions_daily_limit_breakfast
+import com.kitchenai.ui.resources.suggestions_daily_limit_dinner
+import com.kitchenai.ui.resources.suggestions_daily_limit_lunch
+import com.kitchenai.ui.resources.suggestions_daily_limit_snack
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -156,7 +162,7 @@ class SuggestionsViewModel(
                 showStored(id)
                 // An empty pantry would spend a model call on "nothing to suggest"; the screen
                 // points at the pantry instead. A listener that fails without emitting still generates.
-                if (reads.pantry(id).firstOrNull()?.isEmpty() != true) generate()
+                if (reads.pantry(id).firstOrNull()?.isEmpty() != true) run(announceLimit = false)
             }
         }
     }
@@ -192,8 +198,6 @@ class SuggestionsViewModel(
             }
     }
 
-    fun setMaxResults(value: Int) = editOptions { it.copy(maxResults = value) }
-
     fun setMaxMinutes(value: Int?) = editOptions { it.copy(maxMinutes = value) }
 
     fun setUseOnlyPantry(value: Boolean) = editOptions { it.copy(useOnlyPantry = value) }
@@ -210,7 +214,10 @@ class SuggestionsViewModel(
      * this nor [start] ever names a dispatcher: both run confined to [viewModelScope]'s own Main,
      * so the guard below and the auto-generate's call to this are never truly concurrent.
      */
-    fun generate() {
+    fun generate() = run(announceLimit = true)
+
+    /** [announceLimit] is off for the run on arrival: a meal already served today keeps its set quietly. */
+    private fun run(announceLimit: Boolean) {
         val userId = user ?: return
         val kitchen = kitchenId.value ?: return
         // The button is disabled offline; this also stops the arrival run from failing on its own.
@@ -218,14 +225,19 @@ class SuggestionsViewModel(
         // The options this run is sent with, so an edit made while it is in flight still reads
         // as a change once it lands.
         val sent = internalState.value.options
-        internalState.update { it.copy(isGenerating = true, error = null) }
+        internalState.update { it.copy(isGenerating = true, error = null, dailyLimit = null) }
         generation.value =
             viewModelScope.launch {
                 val answered = suggestRecipes(userId, kitchen, languageTags, sent.toDomain())
                 // A data source that maps a cancellation to an AppError must not turn it into a failure.
                 ensureActive()
                 when (answered) {
-                    is AppResult.Failure -> fail(answered.error)
+                    is AppResult.Failure ->
+                        if (answered.error is AppError.DailyLimit) {
+                            limitReached(sent, announceLimit)
+                        } else {
+                            fail(answered.error)
+                        }
                     is AppResult.Success -> generated(kitchen, answered.data, sent)
                 }
             }
@@ -314,8 +326,17 @@ class SuggestionsViewModel(
         }
     }
 
+    // Another meal may still have its set to give, so a notice about this one no longer applies.
     private fun editOptions(block: (SuggestionOptionsUi) -> SuggestionOptionsUi) =
-        internalState.update { current -> current.copy(options = block(current.options)) }
+        internalState.update { current -> current.copy(options = block(current.options), dailyLimit = null) }
+
+    /** Not a failure: the set on screen stays, and nothing offers to try again today. */
+    private fun limitReached(
+        sent: SuggestionOptionsUi,
+        announce: Boolean,
+    ) = internalState.update {
+        it.copy(isGenerating = false, dailyLimit = sent.mealType.dailyLimitText().takeIf { announce })
+    }
 
     /** What survived the last launch, shown while this one has nothing of its own yet. */
     private suspend fun showStored(kitchenId: KitchenId) {
@@ -449,3 +470,14 @@ class SuggestionsViewModel(
 
 /** Every kept generation but the one on screen. */
 private const val EARLIER_KEPT = StoreSuggestionsUseCase.KEPT_GENERATIONS - 1
+
+private fun MealType?.dailyLimitText(): UiText =
+    UiText.of(
+        when (this) {
+            null -> Res.string.suggestions_daily_limit_any
+            MealType.BREAKFAST -> Res.string.suggestions_daily_limit_breakfast
+            MealType.LUNCH -> Res.string.suggestions_daily_limit_lunch
+            MealType.DINNER -> Res.string.suggestions_daily_limit_dinner
+            MealType.SNACK -> Res.string.suggestions_daily_limit_snack
+        },
+    )

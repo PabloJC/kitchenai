@@ -3,6 +3,7 @@ package com.kitchenai.ui.presentation.common
 import com.kitchenai.shared.core.AppError
 import com.kitchenai.ui.resources.Res
 import com.kitchenai.ui.resources.error_conflict
+import com.kitchenai.ui.resources.error_daily_limit
 import com.kitchenai.ui.resources.error_invalid_input
 import com.kitchenai.ui.resources.error_no_connection
 import com.kitchenai.ui.resources.error_not_found
@@ -32,5 +33,6 @@ internal fun AppError.describe(
         is AppError.NotFound -> UiText.of(Res.string.error_not_found)
         is AppError.Validation -> validation?.invoke(this) ?: UiText.of(Res.string.error_invalid_input)
         is AppError.Conflict -> UiText.of(Res.string.error_conflict)
+        is AppError.DailyLimit -> UiText.of(Res.string.error_daily_limit)
         is AppError.Unknown -> UiText.of(Res.string.error_unknown)
     }

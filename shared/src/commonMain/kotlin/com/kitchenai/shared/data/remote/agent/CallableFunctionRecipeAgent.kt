@@ -9,7 +9,7 @@ import com.kitchenai.shared.data.remote.agent.dto.SuggestOptionsDto
 import com.kitchenai.shared.data.remote.agent.dto.SuggestRequestDto
 import com.kitchenai.shared.data.remote.agent.dto.SuggestResponseDto
 import com.kitchenai.shared.data.remote.agent.dto.TermRefDto
-import com.kitchenai.shared.data.remote.firebase.toAppError
+import com.kitchenai.shared.data.remote.firebase.toSuggestError
 import com.kitchenai.shared.domain.agent.AgentCapability
 import com.kitchenai.shared.domain.agent.AgentContext
 import com.kitchenai.shared.domain.agent.AgentSuggestions
@@ -59,8 +59,8 @@ internal class CallableFunctionRecipeAgent(
     private suspend fun decode(context: AgentContext): AppResult<SuggestResponseDto> =
         runCatching { transport.call(SUGGEST_FUNCTION, context.toRequest()) }.fold(
             onSuccess = { decoded -> AppResult.Success(decoded) },
-            // `runCatching` also catches cancellation; `toAppError` rethrows it.
-            onFailure = { failure -> AppResult.Failure(failure.toAppError()) },
+            // `runCatching` also catches cancellation; `toSuggestError` rethrows it.
+            onFailure = { failure -> AppResult.Failure(failure.toSuggestError()) },
         )
 
     private fun AgentContext.toRequest(): SuggestRequestDto =

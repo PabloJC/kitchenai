@@ -29,6 +29,20 @@ fun Throwable.toAppError(): AppError {
     }
 }
 
+/** As [toAppError], except that `suggestRecipes` answers RESOURCE_EXHAUSTED for a meal already served today. */
+fun Throwable.toSuggestError(): AppError =
+    if (this is FirebaseFunctionsException) suggestErrorForCode(code.name, this) else toAppError()
+
+internal fun suggestErrorForCode(
+    code: String,
+    cause: Throwable?,
+): AppError =
+    if (code == "RESOURCE_EXHAUSTED") {
+        AppError.DailyLimit
+    } else {
+        appErrorForCode(code, cause, FUNCTIONS_RESOURCE)
+    }
+
 /**
  * Keyed on the code name rather than on the SDKs' code enums: on Android those are typealiases
  * to the Firebase enums, whose static initialisers need the Android runtime and cannot be loaded
@@ -36,7 +50,8 @@ fun Throwable.toAppError(): AppError {
  *
  * `RESOURCE_EXHAUSTED` deliberately falls through to [AppError.Unknown]. #51 asked for
  * [AppError.Network] because it is retryable, but every screen renders that as "No connection",
- * and a rate-limited user has a connection. "Something went wrong" is the true statement.
+ * and a rate-limited user has a connection. "Something went wrong" is the true statement; only
+ * `suggestRecipes` has a better one ([toSuggestError]).
  *
  * `DEADLINE_EXCEEDED` was mapped to [AppError.Network] for the same reason and with the same
  * fault: a call that timed out reached the network. It has its own case now, because unlike

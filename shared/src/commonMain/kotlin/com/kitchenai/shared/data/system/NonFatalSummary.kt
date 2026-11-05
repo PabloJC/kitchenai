@@ -24,6 +24,8 @@ internal fun nonFatalSummary(
 private fun AppError.kind(): String? =
     when (this) {
         is AppError.Network -> null
+        // The quota doing its job, not a fault worth a report.
+        is AppError.DailyLimit -> null
         is AppError.Timeout -> "Timeout"
         is AppError.Unauthorized -> "Unauthorized"
         is AppError.NotFound -> "NotFound"
