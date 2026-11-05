@@ -1,4 +1,5 @@
 import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
+import { logger } from 'firebase-functions';
 import type { MealType } from './contract.js';
 
 /**
@@ -89,6 +90,7 @@ export async function withMealSlot<T>(
     const data = (await transaction.get(doc)).data();
     if (data?.used === true) throw new QuotaExceeded(`${slot} already has its ideas today`);
     const claimedUntil = data?.claimedUntil as number | undefined;
+    // Same answer as a used slot: the run holding the claim is the one that brings today's ideas.
     if (claimedUntil !== undefined && claimedUntil > now.getTime()) {
       throw new QuotaExceeded(`${slot} is already running`);
     }
@@ -105,10 +107,22 @@ export async function withMealSlot<T>(
   if (ideas.length === 0) {
     await release(doc);
   } else {
-    // The answer is already paid for: a failed write must not lose it, and the claim still holds the slot.
-    await doc.set({ used: true, expiresAt: expiry(now) }).catch(() => undefined);
+    await markUsed(doc, now);
   }
   return ideas;
+}
+
+/**
+ * The answer is already paid for, so a failed write must not lose it. It is retried once and
+ * logged, because the claim alone reopens the slot after [CLAIM_MS].
+ */
+async function markUsed(doc: DocumentReference, now: Date): Promise<void> {
+  const write = () => doc.set({ used: true, expiresAt: expiry(now) });
+  try {
+    await write().catch(write);
+  } catch (failure) {
+    logger.error('could not mark the meal slot used', { failure: String(failure) });
+  }
 }
 
 /** A release that fails is not retried: the claim expires after [CLAIM_MS] anyway. */

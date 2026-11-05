@@ -8,12 +8,16 @@ type Doc = Record<string, unknown>;
  * A store that can also lose a race: two calls arriving together must not both read zero and
  * both decide they are the first, so the fake serialises transactions the way Firestore does.
  */
-function fakeDb(seed: Record<string, Doc> = {}) {
+function fakeDb(seed: Record<string, Doc> = {}, failedSets = 0) {
   const store = new Map(Object.entries(seed));
   let inFlight = Promise.resolve();
+  let failuresLeft = failedSets;
   const ref = (id: string) => ({
     id,
-    set: async (value: Doc) => void store.set(id, value),
+    set: async (value: Doc) => {
+      if (failuresLeft-- > 0) throw new Error('write failed');
+      store.set(id, value);
+    },
     delete: async () => void store.delete(id),
   });
   return {
@@ -70,6 +74,17 @@ test('keeps the slot once a run returns ideas', async () => {
   const db = fakeDb();
   assert.deepEqual(await withMealSlot(db as never, 'user-1', day, 'dinner', ideas), ['idea']);
   assert.equal(db.writes.get(dinner)?.used, true);
+});
+
+test('retries a failed write that keeps the slot', async () => {
+  const db = fakeDb({}, 1);
+  assert.deepEqual(await withMealSlot(db as never, 'user-1', day, 'dinner', ideas), ['idea']);
+  assert.equal(db.writes.get(dinner)?.used, true);
+});
+
+test('still returns the ideas when the slot cannot be kept', async () => {
+  const db = fakeDb({}, 2);
+  assert.deepEqual(await withMealSlot(db as never, 'user-1', day, 'dinner', ideas), ['idea']);
 });
 
 test('refuses a second run for the same meal without running it', async () => {
