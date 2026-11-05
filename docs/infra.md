@@ -178,7 +178,8 @@ neither, so they use the debug provider, which prints a token on first launch:
 
 ```bash
 # Android
-adb logcat -s DebugAppCheckProvider          # "Enter this debug secret into the allow list…"
+# The tag is the full class name, so `-s DebugAppCheckProvider` matches nothing.
+adb logcat -d | grep "debug secret"          # "Enter this debug secret into the allow list…"
 ```
 
 On iOS the token appears in the Xcode console. If it does not, add `-FIRDebugEnabled` to the

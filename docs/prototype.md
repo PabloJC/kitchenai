@@ -20,7 +20,7 @@ is the long path, for when the app goes to testers or the stores.
      keystore (`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`).
      iOS: App Attest, with the personal team id from step 3 below.
    - Launch the app once on each phone, copy the token it prints, and add it under the app's
-     *Manage debug tokens*. Android: `adb logcat -s DebugAppCheckProvider`. iPhone: the Xcode
+     *Manage debug tokens*. Android: `adb logcat -d | grep "debug secret"`. iPhone: the Xcode
      console. Details in `docs/infra.md` › *App Check*.
 
 Skip the rest of `docs/release.md` › *Backend for release builds*: API key restrictions and the
