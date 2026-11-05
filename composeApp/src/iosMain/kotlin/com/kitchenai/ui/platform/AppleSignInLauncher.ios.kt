@@ -34,6 +34,7 @@ import platform.AuthenticationServices.ASAuthorizationControllerPresentationCont
 import platform.AuthenticationServices.ASAuthorizationScopeFullName
 import platform.AuthenticationServices.ASPresentationAnchor
 import platform.CoreCrypto.CC_SHA256
+import platform.Foundation.NSBundle
 import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.NSPersonNameComponents
@@ -54,8 +55,13 @@ private const val SHA256_BYTES = 32
 private const val HEX_RADIX = 16
 private const val HEX_DIGITS_PER_BYTE = 2
 
+// A personal-team build has no Sign in with Apple entitlement: Apple's sheet would fail on tap.
 @Composable
-actual fun rememberAppleSignInLauncher(): AppleSignInLauncher? = remember { AuthorizationControllerLauncher() }
+actual fun rememberAppleSignInLauncher(): AppleSignInLauncher? =
+    remember {
+        val personalTeam = NSBundle.mainBundle.objectForInfoDictionaryKey("PersonalTeam") as? String == "YES"
+        if (personalTeam) null else AuthorizationControllerLauncher()
+    }
 
 private class AuthorizationControllerLauncher : AppleSignInLauncher {
     // ASAuthorizationController holds its delegate weakly: this keeps it alive until Apple answers.

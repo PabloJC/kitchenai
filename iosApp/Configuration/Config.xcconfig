@@ -43,6 +43,13 @@ FIREBASE_EMULATOR_FIRESTORE_PORT=8080
 APP_ATTEST_ENVIRONMENT = development
 APP_ATTEST_ENVIRONMENT[config=Release] = production
 
+// YES signs with Xcode's free personal team (docs/prototype.md): it cannot sign Sign in with Apple
+// or App Attest, so the app asks for neither and hides the Apple button. Set it in Local.xcconfig.
+PERSONAL_TEAM = NO
+APP_ENTITLEMENTS_NO = iosApp/iosApp.entitlements
+APP_ENTITLEMENTS_YES = iosApp/iosApp-PersonalTeam.entitlements
+APP_ENTITLEMENTS = $(APP_ENTITLEMENTS_$(PERSONAL_TEAM))
+
 // Last, so it overrides anything above: TEAM_ID, and MARKETING_VERSION / CURRENT_PROJECT_VERSION
 // when a build should not be 1.0 (1). Optional: a fresh clone builds without it.
 #include? "Local.xcconfig"

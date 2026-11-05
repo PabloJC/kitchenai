@@ -8,6 +8,9 @@
 	     at "Missing Compliance" waiting for the question to be answered by hand (#379). -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- YES when signed by a free personal team, which has no Sign in with Apple: the button hides. -->
+	<key>PersonalTeam</key>
+	<string>$(PERSONAL_TEAM)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleLocalizations</key>
