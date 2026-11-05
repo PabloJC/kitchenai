@@ -9,7 +9,7 @@ import { deleteAccount as deleteAccountData } from './accountDeletion.js';
 import { writeCatalogueEntry } from './catalogueAdmin.js';
 import { loadCatalogue, resolve, toReadable } from './catalogue.js';
 import { BadRequest, parseRequest, SCHEMA_VERSION } from './contract.js';
-import { IMAGES, QuotaExceeded, chargeCall } from './quota.js';
+import { IMAGES, QuotaExceeded, chargeCall, mealSlot, withMealSlot } from './quota.js';
 import {
   IMAGE_SCHEMA_VERSION,
   NoImageReturned,
@@ -84,36 +84,31 @@ export const suggestRecipes = onCall(
       throw new HttpsError('invalid-argument', reason);
     }
 
-    // Before the model, not after: the point is to not spend the call.
-    try {
-      await chargeCall(db, call.auth.uid, new Date());
-    } catch (failure) {
-      if (failure instanceof QuotaExceeded) {
-        throw new HttpsError('resource-exhausted', 'too many suggestions today, try again tomorrow');
-      }
-      throw failure;
-    }
-
     const catalogue = await loadCatalogue(db, request.languageTags);
     const readable = toReadable(request, catalogue);
     const vocabulary = await loadVocabulary(request.languageTags);
+    const slot = mealSlot(request.options.mealType);
 
     try {
-      const suggestions = await askModel(genai, readable, vocabulary);
+      // The slot is claimed before the model, not after: the point is to not spend the call.
+      const suggestions = await withMealSlot(db, call.auth.uid, new Date(), slot, async () =>
+        withImageKeys(
+          toWire(await askModel(genai, readable, vocabulary), catalogue, vocabulary, request.options.maxResults),
+        ),
+      );
       // No pantry content and no user id: this log is read by whoever is on call, and a food
       // list is the user's own content.
       logger.info('suggested', {
         requestId: request.requestId,
         returned: suggestions.length,
         pantrySize: request.pantry.length,
+        slot,
       });
-      return {
-        schemaVersion: SCHEMA_VERSION,
-        agentId: AGENT_ID,
-        modelId: MODEL_ID,
-        suggestions: await withImageKeys(toWire(suggestions, catalogue, vocabulary, request.options.maxResults)),
-      };
+      return { schemaVersion: SCHEMA_VERSION, agentId: AGENT_ID, modelId: MODEL_ID, suggestions };
     } catch (failure) {
+      if (failure instanceof QuotaExceeded) {
+        throw new HttpsError('resource-exhausted', 'this meal already has its ideas today, try again tomorrow');
+      }
       logger.error('the model call failed', { requestId: request.requestId, failure: String(failure) });
       throw new HttpsError('unavailable', 'could not reach the model');
     }

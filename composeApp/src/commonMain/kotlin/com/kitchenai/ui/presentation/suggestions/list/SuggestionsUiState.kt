@@ -32,6 +32,8 @@ data class SuggestionsUiState(
     /** Nothing held, so nothing ran on arrival: the empty state offers the pantry instead. */
     val isPantryEmpty: Boolean = false,
     val error: UiText? = null,
+    /** Today's set for the meal asked for is already out (#395); a note, not an error. */
+    val dailyLimit: UiText? = null,
     /** New ideas need the model, and the model needs the network: offline the button waits. */
     val isOnline: Boolean = true,
     val options: SuggestionOptionsUi = SuggestionOptionsUi(),
@@ -92,7 +94,6 @@ data class ProvenanceUi(
 )
 
 data class SuggestionOptionsUi(
-    val maxResults: Int = 5,
     val maxMinutes: Int? = null,
     val useOnlyPantry: Boolean = false,
     val useExpiringSoon: Boolean = false,

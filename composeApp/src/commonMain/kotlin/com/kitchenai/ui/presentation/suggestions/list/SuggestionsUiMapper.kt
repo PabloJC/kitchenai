@@ -9,7 +9,6 @@ import com.kitchenai.ui.presentation.common.LabelResolver
 
 internal fun SuggestionOptionsUi.toDomain(): SuggestionOptions =
     SuggestionOptions(
-        maxResults = maxResults,
         maxMinutes = maxMinutes,
         useOnlyPantry = useOnlyPantry,
         useExpiringSoon = useExpiringSoon,

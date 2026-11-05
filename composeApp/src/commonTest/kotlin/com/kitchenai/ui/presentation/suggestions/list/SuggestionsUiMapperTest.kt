@@ -27,7 +27,6 @@ class SuggestionsUiMapperTest {
     fun `an options draft maps field for field onto the domain shape`() {
         val ui =
             SuggestionOptionsUi(
-                maxResults = 5,
                 maxMinutes = 30,
                 useOnlyPantry = true,
                 useExpiringSoon = true,
@@ -36,6 +35,7 @@ class SuggestionsUiMapperTest {
 
         val domain = ui.toDomain()
 
+        // Not a choice on the device: every run asks for five (#395).
         assertEquals(5, domain.maxResults)
         assertEquals(30, domain.maxMinutes)
         assertEquals(true, domain.useOnlyPantry)

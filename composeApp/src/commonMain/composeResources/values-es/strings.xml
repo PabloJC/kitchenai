@@ -4,6 +4,7 @@
     <string name="error_unknown">Algo ha ido mal por nuestra parte. Inténtalo de nuevo en un momento.</string>
     <string name="error_not_found">No hemos encontrado eso. Puede que se haya eliminado, así que vuelve atrás e inténtalo de nuevo.</string>
     <string name="error_conflict">Eso ya está en uso. Prueba con otro.</string>
+    <string name="error_daily_limit">Eso es todo por hoy. Vuelve a probar mañana.</string>
     <string name="error_unauthorized_suggestions">Las ideas no están disponibles ahora mismo. Inténtalo de nuevo en un momento.</string>
     <string name="error_missing_ingredients">Te faltan ingredientes para esto. Añádelos primero a tu lista.</string>
     <string name="error_unauthorized_own_data">No hemos podido abrir tus datos. Inténtalo de nuevo en un momento.</string>
@@ -333,6 +334,11 @@
     <string name="error_recipe_unavailable_body">Vuelve a las ideas y elige otra.</string>
     <string name="network_offline_banner">Sin conexión. Tus cambios se sincronizarán al volver a conectarte.</string>
     <string name="network_new_ideas_offline">Las ideas nuevas necesitan conexión. Volverán cuando te conectes.</string>
+    <string name="suggestions_daily_limit_any">Ya tienes las ideas de hoy. Mañana habrá más.</string>
+    <string name="suggestions_daily_limit_breakfast">Ya tienes las ideas de hoy para el desayuno. Mañana habrá más.</string>
+    <string name="suggestions_daily_limit_lunch">Ya tienes las ideas de hoy para la comida. Mañana habrá más.</string>
+    <string name="suggestions_daily_limit_dinner">Ya tienes las ideas de hoy para la cena. Mañana habrá más.</string>
+    <string name="suggestions_daily_limit_snack">Ya tienes las ideas de hoy para la merienda. Mañana habrá más.</string>
 
     <!-- Shopping check-off flow -->
     <string name="shopping_removed">Se ha quitado: %1$s</string>

@@ -61,8 +61,14 @@ is the one nobody can diagnose from the app.
 `enforceAppCheck` answers "is this our app?". It does not answer "is our app asking ten
 thousand times?", and on Blaze that second question costs money.
 
-`quota.ts` counts calls per account per UTC day and refuses past `DAILY_CALL_LIMIT` (50 by
-default, overridable). The counter lives in `agentUsage`, which the rules deny to every client —
+`quota.ts` gives each account one `suggestRecipes` run per meal per UTC day (#395): breakfast,
+lunch, dinner, snack and "any" are five slots, each a document `{uid}_{day}_meal_{slot}`. The slot
+is claimed in a transaction before the model call, kept when the run returns ideas and given back
+when it fails or returns none; a claim left by a crashed run expires after two minutes. A run
+asks for at most five ideas. The old `DAILY_CALL_LIMIT` counter is gone: five slots already bound
+the day. Images keep a counter, `IMAGE_DAILY_LIMIT` (25 by default, overridable).
+
+The documents live in `agentUsage`, which the rules deny to every client —
 the function writes it through the Admin SDK, which bypasses them. A quota a caller can edit is
 not a quota.
 

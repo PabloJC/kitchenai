@@ -12,6 +12,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.theme.Dimens
 import com.kitchenai.ui.presentation.common.UiText
@@ -94,5 +97,19 @@ internal fun OfflineNote(modifier: Modifier = Modifier) {
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.fillMaxWidth(),
+    )
+}
+
+/** Why New ideas brought nothing new: this meal already has today's set. Said once, with no retry. */
+@Composable
+internal fun DailyLimitNote(
+    message: UiText,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = message.resolve(),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
     )
 }

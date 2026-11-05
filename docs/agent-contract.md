@@ -133,7 +133,7 @@ as untrusted input, because it is: it reaches a screen and a Firestore document.
 |---|---|
 | `schemaVersion` must equal 1 | the whole response fails |
 | `agentId` or `modelId` blank | the whole response fails |
-| more suggestions than `maxResults` | the extras are dropped, after validation |
+| more suggestions than `maxResults` (at most 5, #395) | the extras are dropped, after validation |
 | more than 50 suggestions | never even inspected |
 | no title, no steps, no lines, or `servings < 1` | that suggestion is dropped, its siblings survive |
 | an ingredient that is neither a pointer nor free text | that line is dropped |
@@ -175,7 +175,7 @@ The call fails through the same mapping every Firebase call in this app uses:
 |---|---|
 | `UNAUTHENTICATED`, `PERMISSION_DENIED` | `Unauthorized` |
 | `UNAVAILABLE`, `DEADLINE_EXCEEDED` | `Network` |
-| `RESOURCE_EXHAUSTED` | `Unknown` |
+| `RESOURCE_EXHAUSTED` | `DailyLimit` from `suggestRecipes`, `Unknown` from any other callable |
 | `NOT_FOUND` | `NotFound("function")` |
 | anything else | `Unknown` |
 
@@ -186,6 +186,12 @@ screen.
 `RESOURCE_EXHAUSTED` is retryable, and #51 asked for `Network` on that ground. It is mapped to
 `Unknown` instead: every screen renders `Network` as "No connection", and a rate-limited user
 has a connection. Retryability is not what that error type means to the person reading it.
+
+From `suggestRecipes` it means one thing only: this account already had today's set for the meal
+it asked for (#395). Each account gets one run per meal per UTC day, `BREAKFAST`, `LUNCH`,
+`DINNER`, `SNACK` and `null` (any) each being a slot. A run that fails or returns no suggestions
+gives its slot back. The client maps it to `DailyLimit`, keeps the set on screen and says so;
+the run it makes on its own at launch says nothing.
 
 The call carries an explicit **30 second timeout**. A model call may be slow, but a stalled one
 has to fail rather than spin: without it the caller waits on the platform default, which is a

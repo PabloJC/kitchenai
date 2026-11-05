@@ -6,6 +6,7 @@
     <string name="error_unknown">Something went wrong on our side. Try again in a moment.</string>
     <string name="error_not_found">We couldn\'t find that. It may have been removed, so go back and try again.</string>
     <string name="error_conflict">That is already in use. Try a different one.</string>
+    <string name="error_daily_limit">That is all for today. Try again tomorrow.</string>
     <string name="error_unauthorized_suggestions">Ideas aren\'t available right now. Try again in a moment.</string>
     <string name="error_missing_ingredients">You are missing ingredients for this. Add them to your list first.</string>
     <string name="error_unauthorized_own_data">We couldn\'t open your data. Try again in a moment.</string>
@@ -338,6 +339,11 @@
     <string name="error_recipe_unavailable_body">Go back to your ideas and choose another one.</string>
     <string name="network_offline_banner">Offline. Your changes will sync when you reconnect.</string>
     <string name="network_new_ideas_offline">New ideas need a connection. They will be back when you reconnect.</string>
+    <string name="suggestions_daily_limit_any">You already have today's ideas. New ones tomorrow.</string>
+    <string name="suggestions_daily_limit_breakfast">You already have today's breakfast ideas. New ones tomorrow.</string>
+    <string name="suggestions_daily_limit_lunch">You already have today's lunch ideas. New ones tomorrow.</string>
+    <string name="suggestions_daily_limit_dinner">You already have today's dinner ideas. New ones tomorrow.</string>
+    <string name="suggestions_daily_limit_snack">You already have today's snack ideas. New ones tomorrow.</string>
     <!-- Shopping check-off flow -->
     <string name="shopping_removed">%1$s removed</string>
     <plurals name="shopping_move_count">
