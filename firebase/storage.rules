@@ -7,6 +7,16 @@ service firebase.storage {
                          && request.auth.uid == userId
                          && request.resource.size < 5 * 1024 * 1024;
     }
+    // Catalogue pictures (#400): any signed-in reader, written only by the admin claim.
+    match /catalogue/{kind}/{fileName} {
+      allow read: if request.auth != null && kind in ['ingredients', 'recipes'];
+      allow delete: if request.auth != null && request.auth.token.admin == true;
+      allow create, update: if request.auth != null
+                            && request.auth.token.admin == true
+                            && kind in ['ingredients', 'recipes']
+                            && request.resource.contentType.matches('image/.+')
+                            && request.resource.size < 2 * 1024 * 1024;
+    }
     // recipe-images/** stays closed on purpose: the recipeImage function writes it and hands out
     // tokenised download URLs, which do not go through these rules.
     match /{allPaths=**} {

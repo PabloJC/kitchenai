@@ -4,8 +4,8 @@
 |---|---|
 | `firestore.rules` | The only security control between a client and the database. |
 | `firestore.indexes.json` | Composite indexes and field overrides, deployed with the rules. |
-| `storage.rules` | Storage rules: own-folder writes, capped in size. |
-| `tests/` | Emulator tests for `firestore.rules`. |
+| `storage.rules` | Storage rules: own-folder writes, capped in size; catalogue pictures written only by the `admin` claim. |
+| `tests/` | Emulator tests for `firestore.rules` and `storage.rules`. |
 
 `firebase.json` at the repository root points at all three, serves `hosting/` (the privacy policy
 and the account-deletion page, `docs/release.md`) and configures the emulator ports.
@@ -19,7 +19,7 @@ npm install
 npm test
 ```
 
-`npm test` starts the emulator, runs the tests against the rules file as committed and shuts
+`npm test` starts the Firestore and Storage emulators, runs the tests against the rules file as committed and shuts
 the emulator down. It uses the project id `demo-kitchenai-rules`: the `demo-` prefix is what
 tells the emulator never to reach a real Firebase backend, so no credential, no secret and no
 project of ours is involved. CI runs the same command.

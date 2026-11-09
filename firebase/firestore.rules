@@ -11,6 +11,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // `== true` on purpose: a claim set to the string "true" or to 1 must not pass.
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -205,6 +210,94 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------- //
+    // Catalogue guards (#400)
+    //
+    // Mirror functions/src/catalogueEntry.ts, which the admin web also runs before writing. Rules
+    // cannot iterate a list or a map, so contents are capped by size, not checked one by one.
+    // ---------------------------------------------------------------- //
+
+    function isLabels(value) {
+      return value is map && value.size() > 0 && value.size() <= 20;
+    }
+
+    function isOptionalLabels(value) {
+      return value == null || (value is map && value.size() <= 20);
+    }
+
+    // Both halves of a TermRef or neither, like optionalUnit in catalogueEntry.ts.
+    function isOptionalUnit(taxonomy, term) {
+      return (taxonomy == null && term == null) || (isId(taxonomy) && isId(term));
+    }
+
+    // A tokenised Storage download URL; never a data: or http: URL a client would load blindly.
+    function isOptionalImageUrl(value) {
+      return value == null || (value is string && value.size() <= 2000 && value.matches('^https://.+'));
+    }
+
+    function isOptionalBool(value) {
+      return value == null || value is bool;
+    }
+
+    function isValidCatalogueIngredient(data) {
+      return data.keys().hasOnly([
+               'labels', 'defaultUnitTaxonomy', 'defaultUnitTerm', 'tags', 'purchasedWhole',
+               'imageUrl', 'archived'
+             ])
+             && isLabels(data.labels)
+             && isOptionalUnit(data.get('defaultUnitTaxonomy', null), data.get('defaultUnitTerm', null))
+             && (data.get('tags', null) == null || (data.tags is map && data.tags.size() <= 20))
+             && isOptionalBool(data.get('purchasedWhole', null))
+             && isOptionalImageUrl(data.get('imageUrl', null))
+             && isOptionalBool(data.get('archived', null));
+    }
+
+    // `source` is fixed: anything the admin writes is curated content, never `agent`.
+    function isValidCatalogueRecipe(data) {
+      return data.keys().hasOnly([
+               'title', 'summary', 'servings', 'totalMinutes', 'ingredients', 'steps', 'tags',
+               'source', 'imageUrl'
+             ])
+             && data.keys().hasAll(['title', 'servings', 'ingredients', 'steps', 'source'])
+             && isText(data.title, 200)
+             && isOptionalText(data.get('summary', null), 2000)
+             && data.servings is int && data.servings >= 1 && data.servings <= 100
+             && (data.get('totalMinutes', null) == null
+                 || (data.totalMinutes is int && data.totalMinutes >= 1 && data.totalMinutes <= 1440))
+             && data.ingredients is list && data.ingredients.size() > 0 && data.ingredients.size() <= 100
+             && data.steps is list && data.steps.size() > 0 && data.steps.size() <= 100
+             && (data.get('tags', null) == null || (data.tags is list && data.tags.size() <= 50))
+             && data.source == {'type': 'catalogue'}
+             && isOptionalImageUrl(data.get('imageUrl', null));
+    }
+
+    // The purposes tools/lib/seed-checks.mjs accepts; absent for most taxonomies.
+    function isValidTaxonomy(data) {
+      return data.keys().hasOnly(['labels', 'defaultLanguageTag', 'purpose'])
+             && isLabels(data.labels)
+             && isOptionalText(data.get('defaultLanguageTag', null), 35)
+             && (data.get('purpose', null) == null
+                 || data.purpose in ['UNITS', 'STORAGE_LOCATIONS', 'RECIPE_CLASSIFICATION', 'SHOPPING_SECTIONS']);
+    }
+
+    function isOptionalConversion(value) {
+      return value == null
+             || (value is map
+                 && value.keys().hasOnly(['dimension', 'factor'])
+                 && value.keys().hasAll(['dimension', 'factor'])
+                 && isId(value.dimension)
+                 && value.factor is number && value.factor > 0);
+    }
+
+    function isValidTerm(data) {
+      return data.keys().hasOnly(['labels', 'parent', 'order', 'conversion', 'pluralLabels'])
+             && isLabels(data.labels)
+             && isOptionalId(data.get('parent', null))
+             && (data.get('order', null) == null || data.order is int)
+             && isOptionalConversion(data.get('conversion', null))
+             && isOptionalLabels(data.get('pluralLabels', null));
+    }
+
+    // ---------------------------------------------------------------- //
     // Kitchen membership diffs
     //
     // One function per shape the repository ever writes to a kitchen document. `allow update`
@@ -381,27 +474,32 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------- //
-    // Read-only catalogues: authenticated reads, writes only from the backend.
+    // Catalogues: authenticated reads; writes only from the admin claim (the admin web, #400)
+    // or the backend through the Admin SDK.
     // ---------------------------------------------------------------- //
 
     match /taxonomies/{taxonomyId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow create, update: if isAdmin() && isValidTaxonomy(request.resource.data);
+      allow delete: if isAdmin();
 
       match /terms/{termId} {
         allow read: if isSignedIn();
-        allow write: if false;
+        allow create, update: if isAdmin() && isValidTerm(request.resource.data);
+        allow delete: if isAdmin();
       }
     }
 
     match /ingredients/{ingredientId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow create, update: if isAdmin() && isId(ingredientId) && isValidCatalogueIngredient(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /recipes/{recipeId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow create, update: if isAdmin() && isId(recipeId) && isValidCatalogueRecipe(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     // Anything not declared stays closed. This block must remain last.
