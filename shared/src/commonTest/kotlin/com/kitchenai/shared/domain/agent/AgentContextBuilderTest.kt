@@ -134,6 +134,14 @@ class AgentContextBuilderTest {
         assertEquals(null, AgentContextBuilder.foodName("12 / 34"))
     }
 
+    // The same names as `contract.test.ts`: both alphabets must keep them whole.
+    @Test
+    fun `a non-Latin food name survives whole`() {
+        for (name in listOf("हल्दी पाउडर", "น้ำปลา", "김치", "Crème fraîche")) {
+            assertEquals(name, AgentContextBuilder.foodName(name), name)
+        }
+    }
+
     @Test
     fun `a food name is cut to the length the function accepts`() {
         val name = AgentContextBuilder.foodName("a".repeat(30) + " " + "b".repeat(30))

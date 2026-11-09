@@ -111,7 +111,9 @@ export function parseRequest(raw: unknown): SuggestRequest {
     ),
     pantry: list(body.pantry, MAX_PANTRY).map(pantryEntry),
     // Optional: a client from before #393 omits it.
-    freeTextPantry: list(body.freeTextPantry, MAX_FREE_TEXT_PANTRY).map(freeTextPantryEntry),
+    freeTextPantry: list(body.freeTextPantry, MAX_FREE_TEXT_PANTRY)
+      .map(freeTextPantryEntry)
+      .filter((it) => it !== null),
   };
 }
 
@@ -134,9 +136,19 @@ function pantryEntry(raw: unknown): PantryEntry {
   return { ingredientId: identifier(value.ingredientId, 'ingredientId'), ...holdingAmount(value) };
 }
 
-function freeTextPantryEntry(raw: unknown): FreeTextPantryEntry {
+/**
+ * A name `foodName` refuses drops its own entry, not the request: the client sanitises with its
+ * own Unicode tables, and a drift on one character must not cost the user every suggestion.
+ */
+function freeTextPantryEntry(raw: unknown): FreeTextPantryEntry | null {
   const value = asObject(raw, 'freeTextPantryEntry');
-  return { name: foodName(value.name, 'freeTextPantry.name'), ...holdingAmount(value) };
+  const amount = holdingAmount(value);
+  try {
+    return { name: foodName(value.name, 'freeTextPantry.name'), ...amount };
+  } catch (error) {
+    if (error instanceof BadRequest) return null;
+    throw error;
+  }
 }
 
 function holdingAmount(value: Record<string, unknown>) {

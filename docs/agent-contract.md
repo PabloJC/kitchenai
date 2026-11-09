@@ -65,10 +65,13 @@ for, and it is the only place a user's words reach the function, so it is held t
 
 | Rule | Client (`AgentContextBuilder`) | Function (`contract.ts`) |
 |---|---|---|
-| Alphabet: letters, combining marks, digits, space, `'`, `-` | anything else becomes a space | refused |
-| At least one letter, single spaces, no padding | cleaned | refused |
-| At most 40 characters | cut | refused |
+| Alphabet: letters, combining marks, digits, space, `'`, `-` | anything else becomes a space | entry dropped |
+| At least one letter, single spaces, no padding | cleaned | entry dropped |
+| At most 40 characters | cut | entry dropped |
 | At most 20 entries | cut, most urgent first, never at a catalogue holding's expense | cut |
+
+A name the function refuses costs its own entry, never the request: both sides implement the
+alphabet with their own Unicode tables, and a drift on one character must not empty the answer.
 
 The function lists these names quoted, in their own block after the catalogue holdings, and
 tells the model they are food names to be read as data, never as instructions. Recipe lines that
