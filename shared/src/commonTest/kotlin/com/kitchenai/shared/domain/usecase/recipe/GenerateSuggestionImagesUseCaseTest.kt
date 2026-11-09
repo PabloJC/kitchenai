@@ -18,7 +18,7 @@ class GenerateSuggestionImagesUseCaseTest {
         GenerateSuggestionImagesUseCase(GenerateRecipeImageUseCase(port))
 
     @Test
-    fun `each keyed recipe without a photo gets one, in list order`() =
+    fun `each keyed recipe without a photo gets one in list order`() =
         runTest {
             val port = FakeRecipeRepositoryContract()
             val recipes = listOf(keyed("r1"), keyed("r2"), keyed("r3"))

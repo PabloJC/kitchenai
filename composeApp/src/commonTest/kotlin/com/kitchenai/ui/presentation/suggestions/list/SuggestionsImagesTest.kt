@@ -45,7 +45,7 @@ class SuggestionsImagesTest : SuggestionsViewModelHarness() {
         }
 
     @Test
-    fun `the stored set is pictured on launch, earlier sets are not`() =
+    fun `the stored set is pictured on launch`() =
         runTest(dispatcher) {
             val recipes = FakeRecipePort(stored = listOf(keyed("stored-1").recipe))
             agent.answer = AppResult.Failure(AppError.DailyLimit)
@@ -69,7 +69,7 @@ class SuggestionsImagesTest : SuggestionsViewModelHarness() {
         }
 
     @Test
-    fun `offline, nothing is asked for`() =
+    fun `nothing is asked for while offline`() =
         runTest(dispatcher) {
             network.setOnline(false)
             val recipes = FakeRecipePort(stored = listOf(keyed("stored-1").recipe))
