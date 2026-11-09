@@ -22,10 +22,15 @@ data class SuggestionOptions(
     val useExpiringSoon: Boolean = false,
     /** Null is any meal. */
     val mealType: MealType? = null,
+    /** Separate from [maxPantryEntries], so a typed-in holding never displaces a catalogue one. */
+    val maxFreeTextEntries: Int = DEFAULT_MAX_FREE_TEXT_ENTRIES,
 ) {
     companion object {
         const val DEFAULT_MAX_RESULTS: Int = 5
         const val DEFAULT_MAX_PANTRY_ENTRIES: Int = 40
+
+        /** The function cuts at the same number. */
+        const val DEFAULT_MAX_FREE_TEXT_ENTRIES: Int = 20
 
         /** Today, tomorrow and the day after; the pantry screen groups by the same number. */
         const val DEFAULT_EXPIRING_SOON_DAYS: Int = 3

@@ -6,11 +6,11 @@ import com.kitchenai.shared.domain.model.Quantity
 import com.kitchenai.shared.domain.model.TermRef
 
 /**
- * Everything an agent is told about this request: identifiers and numbers, nothing else.
+ * Everything an agent is told about this request: identifiers and numbers, plus the bounded
+ * names in [freeTextPantry] (#393).
  *
  * There is no instruction, no system message and no word describing the cook here on purpose.
- * Resolving a reference to a label and turning this into a prompt is the server's job, done
- * against the same catalogue documents, so the client cannot be where a prompt is assembled.
+ * Turning this into a prompt is the server's job, so the client cannot be where one is assembled.
  */
 data class AgentContext(
     val languageTags: List<String>,
@@ -20,6 +20,7 @@ data class AgentContext(
     val avoidedIngredients: List<IngredientId>,
     val pantry: List<PantryEntry>,
     val options: SuggestionOptions,
+    val freeTextPantry: List<PantryFreeTextEntry> = emptyList(),
 )
 
 /**

@@ -78,7 +78,8 @@ export interface ReadableRequest {
   useOnlyPantry: boolean;
   useExpiringSoon: boolean;
   mealType: MealType | null;
-  pantry: { name: string; amount: number; unit: string | null; expiringSoon: boolean }[];
+  /** `typedByUser` marks a name the user wrote rather than one the catalogue supplies (#393). */
+  pantry: { name: string; amount: number; unit: string | null; expiringSoon: boolean; typedByUser: boolean }[];
   excluded: string[];
   preferred: string[];
 }
@@ -94,7 +95,16 @@ export function toReadable(request: SuggestRequest, catalogue: Catalogue): Reada
     useOnlyPantry: request.options.useOnlyPantry,
     useExpiringSoon: request.options.useExpiringSoon,
     mealType: request.options.mealType,
-    pantry: request.pantry.map((entry) => holding(entry, catalogue)).filter((it) => it !== null),
+    pantry: [
+      ...request.pantry.map((entry) => holding(entry, catalogue)).filter((it) => it !== null),
+      ...request.freeTextPantry.map((entry) => ({
+        name: entry.name,
+        amount: entry.amount,
+        unit: unitOf(entry, catalogue),
+        expiringSoon: entry.expiringSoon,
+        typedByUser: true,
+      })),
+    ],
     // 'EXCLUDE' is the legacy name for what the client now sends as 'AVOID' (#180) — both land
     // here, the absolute bucket, never in the softer one below.
     excluded: [
@@ -108,11 +118,11 @@ export function toReadable(request: SuggestRequest, catalogue: Catalogue): Reada
 function holding(entry: PantryEntry, catalogue: Catalogue): ReadableRequest['pantry'][number] | null {
   const name = catalogue.ingredient(entry.ingredientId);
   if (!name) return null;
-  const unit =
-    entry.unitTaxonomy && entry.unitTerm
-      ? catalogue.term({ taxonomy: entry.unitTaxonomy, term: entry.unitTerm })
-      : null;
-  return { name, amount: entry.amount, unit, expiringSoon: entry.expiringSoon };
+  return { name, amount: entry.amount, unit: unitOf(entry, catalogue), expiringSoon: entry.expiringSoon, typedByUser: false };
+}
+
+function unitOf(entry: { unitTaxonomy: string | null; unitTerm: string | null }, catalogue: Catalogue): string | null {
+  return entry.unitTaxonomy && entry.unitTerm ? catalogue.term({ taxonomy: entry.unitTaxonomy, term: entry.unitTerm }) : null;
 }
 
 function isText(value: string | null): value is string {

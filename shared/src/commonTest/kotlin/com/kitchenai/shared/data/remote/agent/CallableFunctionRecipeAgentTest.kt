@@ -11,6 +11,7 @@ import com.kitchenai.shared.data.remote.firebase.appErrorForCode
 import com.kitchenai.shared.domain.agent.AgentCapability
 import com.kitchenai.shared.domain.agent.AgentContext
 import com.kitchenai.shared.domain.agent.PantryEntry
+import com.kitchenai.shared.domain.agent.PantryFreeTextEntry
 import com.kitchenai.shared.domain.agent.SuggestionOptions
 import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.ConstraintStrength
@@ -45,8 +46,8 @@ class CallableFunctionRecipeAgentTest {
             assertEquals("suggestRecipes", transport.lastName)
             assertEquals("SUGGEST_FROM_PANTRY", sent.capability)
             assertEquals("ingredient-1", sent.pantry.single().ingredientId)
-            // Identifiers and numbers only. There is no field on this DTO in which a sentence
-            // could travel, which is the property worth pinning rather than a substring search.
+            // Identifiers and numbers only, bar the sanitised names of #393: no field on this DTO
+            // carries a sentence, which is the property worth pinning rather than a substring search.
             assertEquals(listOf("en"), sent.languageTags)
             assertEquals(2, sent.servings)
         }
@@ -74,6 +75,32 @@ class CallableFunctionRecipeAgentTest {
             val sent = requireNotNull(transport.lastRequest).options
             assertEquals(null, sent.mealType)
             assertEquals(false, sent.useExpiringSoon)
+        }
+
+    @Test
+    fun `sends a typed-in holding with its name amount and unit`() =
+        runTest {
+            val transport = FakeCallableTransport(FakeCallableTransport.Answer.Body(wellFormed()))
+            val typed = PantryFreeTextEntry("Kimchi", Quantity(2.0, term("taxonomy-3", "term-3")), true)
+
+            agent(transport).suggest(context().copy(freeTextPantry = listOf(typed)))
+
+            val sent = requireNotNull(transport.lastRequest).freeTextPantry.single()
+            assertEquals("Kimchi", sent.name)
+            assertEquals(2.0, sent.amount)
+            assertEquals("taxonomy-3", sent.unitTaxonomy)
+            assertEquals("term-3", sent.unitTerm)
+            assertEquals(true, sent.expiringSoon)
+        }
+
+    @Test
+    fun `sends an empty typed-in pantry when there is none`() =
+        runTest {
+            val transport = FakeCallableTransport(FakeCallableTransport.Answer.Body(wellFormed()))
+
+            agent(transport).suggest(context())
+
+            assertEquals(emptyList(), requireNotNull(transport.lastRequest).freeTextPantry)
         }
 
     /**

@@ -16,6 +16,9 @@ const MAX_LANGUAGE_TAGS = 5;
 /** One set of five ideas per meal per day (#395); asking for more gets five. */
 const MAX_RESULTS = 5;
 const MAX_ID_LENGTH = 200;
+/** Mirrors `SuggestionOptions.DEFAULT_MAX_FREE_TEXT_ENTRIES` and `MAX_FOOD_NAME_LENGTH` in `:shared`. */
+const MAX_FREE_TEXT_PANTRY = 20;
+const MAX_FOOD_NAME = 40;
 
 export interface TermRef {
   taxonomy: string;
@@ -33,6 +36,15 @@ export interface Constraint extends TermRef {
 
 export interface PantryEntry {
   ingredientId: string;
+  amount: number;
+  unitTaxonomy: string | null;
+  unitTerm: string | null;
+  expiringSoon: boolean;
+}
+
+/** A holding the catalogue does not know, named by the user (#393). */
+export interface FreeTextPantryEntry {
+  name: string;
   amount: number;
   unitTaxonomy: string | null;
   unitTerm: string | null;
@@ -60,6 +72,7 @@ export interface SuggestRequest {
   preferences: TermRef[];
   avoidedIngredients: string[];
   pantry: PantryEntry[];
+  freeTextPantry: FreeTextPantryEntry[];
 }
 
 export class BadRequest extends Error {}
@@ -98,6 +111,10 @@ export function parseRequest(raw: unknown): SuggestRequest {
       identifier(id, 'avoidedIngredient'),
     ),
     pantry: list(body.pantry, MAX_PANTRY).map(pantryEntry),
+    // Optional: a client from before #393 omits it.
+    freeTextPantry: list(body.freeTextPantry, MAX_FREE_TEXT_PANTRY)
+      .map(freeTextPantryEntry)
+      .filter((it) => it !== null),
   };
 }
 
@@ -117,10 +134,28 @@ function termRef(raw: unknown): TermRef {
 
 function pantryEntry(raw: unknown): PantryEntry {
   const value = asObject(raw, 'pantryEntry');
+  return { ingredientId: identifier(value.ingredientId, 'ingredientId'), ...holdingAmount(value) };
+}
+
+/**
+ * A name `foodName` refuses drops its own entry, not the request: the client sanitises with its
+ * own Unicode tables, and a drift on one character must not cost the user every suggestion.
+ */
+function freeTextPantryEntry(raw: unknown): FreeTextPantryEntry | null {
+  const value = asObject(raw, 'freeTextPantryEntry');
+  const amount = holdingAmount(value);
+  try {
+    return { name: foodName(value.name, 'freeTextPantry.name'), ...amount };
+  } catch (error) {
+    if (error instanceof BadRequest) return null;
+    throw error;
+  }
+}
+
+function holdingAmount(value: Record<string, unknown>) {
   const unitTaxonomy = value.unitTaxonomy == null ? null : identifier(value.unitTaxonomy, 'unitTaxonomy');
   const unitTerm = value.unitTerm == null ? null : identifier(value.unitTerm, 'unitTerm');
   return {
-    ingredientId: identifier(value.ingredientId, 'ingredientId'),
     amount: typeof value.amount === 'number' && Number.isFinite(value.amount) ? value.amount : 0,
     // Half a unit reference is no unit reference: it would name a term against nothing.
     unitTaxonomy: unitTerm == null ? null : unitTaxonomy,
@@ -153,6 +188,20 @@ export function identifier(raw: unknown, field: string): string {
   }
   if (!/^[A-Za-z0-9._:-]+$/.test(raw)) {
     throw new BadRequest(`${field} must not contain free text`);
+  }
+  return raw;
+}
+
+/**
+ * The one place a user's words are accepted (#393): a short food name, never a sentence. Refused
+ * rather than cleaned, like `identifier`; the client already sanitises to this alphabet.
+ */
+export function foodName(raw: unknown, field: string): string {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_FOOD_NAME) {
+    throw new BadRequest(`${field} must be a short name`);
+  }
+  if (!/^[\p{L}\p{M}\p{N}' -]+$/u.test(raw) || !/\p{L}/u.test(raw) || raw.trim() !== raw || raw.includes('  ')) {
+    throw new BadRequest(`${field} must be a plain food name`);
   }
   return raw;
 }
