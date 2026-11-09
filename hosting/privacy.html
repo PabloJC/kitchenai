@@ -32,7 +32,7 @@ Authentication), on Google Cloud servers.</p>
 
 <h2>What is sent to make recipe ideas</h2>
 <p>When you ask for ideas, the app sends your food preferences and avoids, those shared by your kitchen's members,
-your pantry's ingredients and amounts, the number of servings, the filters you chose and the app's language. It sends
+your pantry's ingredients and amounts (including the names you typed for items not in our list), the number of servings, the filters you chose and the app's language. It sends
 no name, email or account identifier. A function in our Google Cloud project passes this to Google's Gemini model
 through Vertex AI, under Google Cloud's terms, and returns the ideas. We count requests per account per day to keep
 the service within its budget.</p>

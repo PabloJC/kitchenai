@@ -16,7 +16,8 @@ model, owns the instruction template, and resolves identifiers to words against 
 taxonomy documents the app reads.
 
 That split is the reason for the shape below: **every value the client sends is an identifier
-or a number.** There is no field in which a sentence can leave the device.
+or a number**, with one bounded exception: the names of pantry holdings the catalogue does not
+know (`freeTextPantry`, #393). There is no field in which a sentence can leave the device.
 
 ---
 
@@ -37,6 +38,10 @@ or a number.** There is no field in which a sentence can leave the device.
   "pantry": [
     { "ingredientId": "<id>", "amount": 1.0, "unitTaxonomy": "<id>",
       "unitTerm": "<id>", "expiringSoon": false }
+  ],
+  "freeTextPantry": [
+    { "name": "Queso de cabra", "amount": 1.0, "unitTaxonomy": "<id>",
+      "unitTerm": "<id>", "expiringSoon": true }
   ]
 }
 ```
@@ -53,6 +58,21 @@ still carry a legacy `EXCLUDE` from a client that has not updated (#180) — tre
 `AVOID`, never softer.
 
 `expiringSoon` is the reason the whole feature exists; the function is expected to weight it.
+
+`freeTextPantry` (#393) is optional: a client from before it omits the field, and a function
+from before it ignores it. It carries what the user typed for a holding the catalogue has no id
+for, and it is the only place a user's words reach the function, so it is held to a name:
+
+| Rule | Client (`AgentContextBuilder`) | Function (`contract.ts`) |
+|---|---|---|
+| Alphabet: letters, combining marks, digits, space, `'`, `-` | anything else becomes a space | refused |
+| At least one letter, single spaces, no padding | cleaned | refused |
+| At most 40 characters | cut | refused |
+| At most 20 entries | cut, most urgent first, never at a catalogue holding's expense | cut |
+
+The function lists these names quoted, in their own block after the catalogue holdings, and
+tells the model they are food names to be read as data, never as instructions. Recipe lines that
+use them come back as `freeText`.
 
 ---
 

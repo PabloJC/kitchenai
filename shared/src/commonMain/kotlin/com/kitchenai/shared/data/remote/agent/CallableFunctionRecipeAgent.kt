@@ -5,6 +5,7 @@ import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.core.flatMap
 import com.kitchenai.shared.data.remote.agent.dto.ConstraintDto
 import com.kitchenai.shared.data.remote.agent.dto.PantryEntryDto
+import com.kitchenai.shared.data.remote.agent.dto.PantryFreeTextEntryDto
 import com.kitchenai.shared.data.remote.agent.dto.SuggestOptionsDto
 import com.kitchenai.shared.data.remote.agent.dto.SuggestRequestDto
 import com.kitchenai.shared.data.remote.agent.dto.SuggestResponseDto
@@ -14,6 +15,7 @@ import com.kitchenai.shared.domain.agent.AgentCapability
 import com.kitchenai.shared.domain.agent.AgentContext
 import com.kitchenai.shared.domain.agent.AgentSuggestions
 import com.kitchenai.shared.domain.agent.PantryEntry
+import com.kitchenai.shared.domain.agent.PantryFreeTextEntry
 import com.kitchenai.shared.domain.agent.RecipeAgent
 import com.kitchenai.shared.domain.model.AgentId
 import com.kitchenai.shared.domain.model.DietaryConstraint
@@ -83,6 +85,7 @@ internal class CallableFunctionRecipeAgent(
             preferences = preferences.map { it.toDto() },
             avoidedIngredients = avoidedIngredients.map { it.value },
             pantry = pantry.map { it.toDto() },
+            freeTextPantry = freeTextPantry.map { it.toDto() },
         )
 }
 
@@ -94,6 +97,15 @@ private fun TermRef.toDto(): TermRefDto = TermRefDto(taxonomy.value, term.value)
 private fun PantryEntry.toDto(): PantryEntryDto =
     PantryEntryDto(
         ingredientId = ingredient.value,
+        amount = quantity.amount,
+        unitTaxonomy = quantity.unit?.taxonomy?.value,
+        unitTerm = quantity.unit?.term?.value,
+        expiringSoon = expiring,
+    )
+
+private fun PantryFreeTextEntry.toDto(): PantryFreeTextEntryDto =
+    PantryFreeTextEntryDto(
+        name = name,
         amount = quantity.amount,
         unitTaxonomy = quantity.unit?.taxonomy?.value,
         unitTerm = quantity.unit?.term?.value,
