@@ -77,4 +77,21 @@ class FirestoreErrorMapperTest {
 
         assertSame(cancellation, thrown)
     }
+
+    @Test
+    fun `maps RESOURCE_EXHAUSTED from suggestRecipes to DailyLimit`() {
+        assertEquals(AppError.DailyLimit, suggestErrorForCode("RESOURCE_EXHAUSTED", cause))
+    }
+
+    @Test
+    fun `maps every other suggestRecipes code as any callable`() {
+        listOf("UNAVAILABLE", "DEADLINE_EXCEEDED", "NOT_FOUND", "PERMISSION_DENIED", "INTERNAL").forEach { code ->
+            assertEquals(appErrorForCode(code, cause, FUNCTIONS_RESOURCE), suggestErrorForCode(code, cause), code)
+        }
+    }
+
+    @Test
+    fun `suggestRecipes rethrows a cancellation instead of mapping it`() {
+        assertFailsWith<CancellationException> { CancellationException("left").toSuggestError() }
+    }
 }

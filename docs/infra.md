@@ -513,8 +513,10 @@ default bucket. Outside the repository:
   as for `agentUsage`. Without it the collection only grows.
 - The image model must be enabled for the project in Vertex AI, in `IMAGE_LOCATION` (falls back to
   `VERTEX_LOCATION`). Set `IMAGE_LOCATION` if the model is not offered in the text model's region.
-- `IMAGE_DAILY_LIMIT` (default 20) caps generated images per account per day; stored images do
-  not count. Each generated image is billed by Vertex AI.
+- `IMAGE_DAILY_LIMIT` (default 25) caps generated images per account per day: one photo for each
+  of the five ideas in each of the five daily sets (#395). Stored images do not count. Each
+  generated image is billed by Vertex AI, so 25 is also the worst-case number of billed images per
+  account per day.
 - Deploy with the other functions; until then the app keeps showing the dish-type photo.
 
 ---

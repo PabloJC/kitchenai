@@ -40,4 +40,9 @@ class NonFatalSummaryTest {
     fun `reports nothing for an offline user`() {
         assertNull(nonFatalSummary("operation", AppError.Network(IllegalStateException(userContent))))
     }
+
+    @Test
+    fun `reports nothing for a meal already served today`() {
+        assertNull(nonFatalSummary("suggestRecipes", AppError.DailyLimit))
+    }
 }

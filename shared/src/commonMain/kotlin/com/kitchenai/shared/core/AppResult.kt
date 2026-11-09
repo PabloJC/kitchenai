@@ -29,6 +29,9 @@ sealed class AppError(open val cause: Throwable? = null) {
     /** What the call would create already belongs to someone else, e.g. a Google account with its own uid. */
     data class Conflict(override val cause: Throwable? = null) : AppError(cause)
 
+    /** Today's ideas for this meal are already out (#395): not a fault, and retrying today cannot help. */
+    data object DailyLimit : AppError()
+
     data class Unknown(override val cause: Throwable? = null) : AppError(cause)
 }
 

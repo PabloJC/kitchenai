@@ -1070,6 +1070,22 @@ hardware keyboard.*
    - The wheels and the calendar are read and adjusted as in any system app; Done and Cancel read as
      buttons.
 
+### 46. One set of ideas per meal per day
+
+*One account that has not asked for dinner ideas today (days are UTC), online, a few things in the pantry.*
+
+1. Ideas: choose Dinner and tap New ideas.
+   - Five cards at most arrive.
+2. Tap New ideas again, still on Dinner.
+   - The cards stay. Above them: "You already have today's dinner ideas. New ones tomorrow." No
+     red banner and no Try again.
+3. Choose Lunch.
+   - The note goes. New ideas brings a set of lunch ideas.
+4. Close and reopen the app.
+   - The last set is on screen and no note shows, although the run on arrival was refused.
+5. Turn the network off during a run, or wait for one to fail, then try the same meal again online.
+   - A failed run does not use the meal up: the next one works.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

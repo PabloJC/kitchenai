@@ -295,14 +295,14 @@ class SuggestionsViewModelTest : SuggestionsViewModelHarness() {
 
             viewModel.setUseOnlyPantry(true)
             viewModel.setMaxMinutes(30)
-            viewModel.setMaxResults(2)
             viewModel.generate()
             advanceUntilIdle()
 
             val sent = requireNotNull(agent.lastOptions)
             assertTrue(sent.useOnlyPantry)
             assertEquals(30, sent.maxMinutes)
-            assertEquals(2, sent.maxResults)
+            // Five a run, never chosen on the device (#395).
+            assertEquals(5, sent.maxResults)
         }
 
     /**

@@ -98,6 +98,7 @@ private const val OFFLINE_KEY = "offline"
 private const val FILTERS_CHANGED_KEY = "filters-changed"
 private const val GENERATING_KEY = "generating"
 private const val ERROR_KEY = "error"
+private const val DAILY_LIMIT_KEY = "daily-limit"
 
 /** What the empty state keeps of the viewport once the filters sit above it. */
 private const val EMPTY_HEIGHT_SHARE = 0.6f
@@ -186,6 +187,7 @@ private fun LazyListScope.ideasHeader(
     state.error?.let { message ->
         item(key = ERROR_KEY) { SuggestionsErrorBanner(message, viewModel::retry, state.isOnline) }
     }
+    state.dailyLimit?.let { message -> item(key = DAILY_LIMIT_KEY) { DailyLimitNote(message) } }
 }
 
 /** Ideas and saved recipes one tap apart, with the count so the kept ones are never out of sight. */
@@ -328,8 +330,8 @@ private fun Results(
         val listState = rememberLazyListState()
         // The banners are list items now: one appearing while the list is scrolled down would be
         // neither seen nor composed, so its live region would never announce it.
-        val alerting = state.error != null || !state.isOnline
-        LaunchedEffect(alerting, state.error) { if (alerting) listState.animateScrollToItem(0) }
+        val alerting = state.error != null || state.dailyLimit != null || !state.isOnline
+        LaunchedEffect(alerting, state.error, state.dailyLimit) { if (alerting) listState.animateScrollToItem(0) }
         LazyColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(Dimens.medium),

@@ -13,7 +13,8 @@ export const SCHEMA_VERSION = 1;
 const MAX_PANTRY = 200;
 const MAX_CONSTRAINTS = 100;
 const MAX_LANGUAGE_TAGS = 5;
-const MAX_RESULTS = 10;
+/** One set of five ideas per meal per day (#395); asking for more gets five. */
+const MAX_RESULTS = 5;
 const MAX_ID_LENGTH = 200;
 
 export interface TermRef {

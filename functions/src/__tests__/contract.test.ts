@@ -40,7 +40,7 @@ test('clamps what a caller asks for rather than trusting it', () => {
   const greedy = { ...wellFormed, servings: 9999, options: { ...wellFormed.options, maxResults: 500 } };
   const parsed = parseRequest(greedy);
   assert.equal(parsed.servings, 20);
-  assert.equal(parsed.options.maxResults, 10);
+  assert.equal(parsed.options.maxResults, 5);
 });
 
 test('caps a pantry large enough to be an attack', () => {
