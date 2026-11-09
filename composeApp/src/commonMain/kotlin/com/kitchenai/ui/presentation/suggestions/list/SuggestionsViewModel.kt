@@ -106,6 +106,9 @@ class SuggestionsViewModel(
     // Tracked so a retry can replace a kitchen listener that failed before it ever answered.
     private var kitchenListener: Job? = null
 
+    // Photos for the set on screen. Not cancelled when a run starts: the set stays up until one lands.
+    private var picturing: Job? = null
+
     /** Idempotent: a configuration change composes the screen again and must not double the listener or the launch. */
     fun start(
         userId: UserId,
@@ -158,6 +161,7 @@ class SuggestionsViewModel(
             // viewModelScope launch, so a stale answer would otherwise land as the new kitchen's.
             kitchenId.filterNotNull().collectLatest { id ->
                 generation.value?.cancel()
+                picturing?.cancel()
                 internalState.update { it.copy(isGenerating = false) }
                 showStored(id)
                 // An empty pantry would spend a model call on "nothing to suggest"; the screen
@@ -344,6 +348,7 @@ class SuggestionsViewModel(
         if (stored.isNullOrEmpty()) return
         earlier = stored.drop(1)
         render(stored.first())
+        pictureCurrent(kitchenId)
     }
 
     /** A new generation takes the screen; the one it replaces becomes the newest earlier one, on screen and on disk. */
@@ -361,6 +366,7 @@ class SuggestionsViewModel(
         // The pantry may have changed during the minute-long call, and its emission found the
         // previous list on screen. A stamped match is only as fresh as the model call's start.
         render(withFreshMatch(kitchenId, suggestions))
+        pictureCurrent(kitchenId)
         internalState.update {
             it.copy(
                 isGenerating = false,
@@ -370,6 +376,23 @@ class SuggestionsViewModel(
                 browsingEarlier = null,
             )
         }
+    }
+
+    /**
+     * Only the set on screen: earlier sets and saved recipes get theirs when their detail opens.
+     * A failure keeps the dish-type photo and says nothing; it is not the user's to act on.
+     */
+    private fun pictureCurrent(kitchenId: KitchenId) {
+        picturing?.cancel()
+        if (!internalState.value.isOnline) return
+        val known = pictures.all.value
+        val unpictured = current.map { it.recipe }.filter { it.id !in known }
+        picturing =
+            viewModelScope.launch {
+                writes.generateImages(kitchenId, unpictured) { recipe ->
+                    recipe.imageUrl?.let { url -> pictures.put(recipe.id, url) }
+                }
+            }
     }
 
     private fun render(suggestions: List<RecipeSuggestion>) {

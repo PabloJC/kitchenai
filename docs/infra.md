@@ -517,6 +517,9 @@ default bucket. Outside the repository:
   of the five ideas in each of the five daily sets (#395). Stored images do not count. Each
   generated image is billed by Vertex AI, so 25 is also the worst-case number of billed images per
   account per day.
+- A key is claimed in `recipeImageSources/{key}.generatingUntil` before the quota is charged, so
+  two calls at once generate and bill it once (#394). A claim left by a call that died expires
+  after two minutes.
 - Deploy with the other functions; until then the app keeps showing the dish-type photo.
 
 ---

@@ -1,5 +1,6 @@
 package com.kitchenai.ui.presentation.suggestions.list
 
+import com.kitchenai.shared.domain.usecase.recipe.GenerateSuggestionImagesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.RemoveSavedRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.SaveRecipeUseCase
 import com.kitchenai.shared.domain.usecase.shopping.AddMissingIngredientsToShoppingListUseCase
@@ -11,4 +12,5 @@ class SuggestionsWritesDelegate(
     val defaultList: EnsureDefaultShoppingListUseCase,
     val save: SaveRecipeUseCase,
     val unsave: RemoveSavedRecipeUseCase,
+    val generateImages: GenerateSuggestionImagesUseCase,
 )

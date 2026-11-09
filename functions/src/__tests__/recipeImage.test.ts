@@ -6,6 +6,7 @@ import {
   type ImageSource,
   type ImageSources,
   type ImageStore,
+  ImageInProgress,
   NoImageReturned,
   UnknownImageKey,
   attachImageKeys,
@@ -32,9 +33,17 @@ function fakeStore(seed: Record<string, string> = {}) {
   return { store, saved };
 }
 
-function fakeSources(seed: Record<string, ImageSource> = {}) {
+function fakeSources(seed: Record<string, ImageSource> = {}, claims: Record<string, number> = {}) {
   const entries = new Map(Object.entries(seed));
+  const claimed = new Map(Object.entries(claims));
   const sources: ImageSources = {
+    claim: async (key, now) => {
+      const until = claimed.get(key);
+      if (until !== undefined && until > now.getTime()) return false;
+      claimed.set(key, now.getTime() + 120_000);
+      return true;
+    },
+    release: async (key) => void claimed.delete(key),
     get: async (key) => entries.get(key) ?? null,
     record: async (list) => list.forEach(([key, source]) => entries.set(key, source)),
     markWithheld: async (key) => {
@@ -42,7 +51,7 @@ function fakeSources(seed: Record<string, ImageSource> = {}) {
       if (source) entries.set(key, { ...source, withheld: true });
     },
   };
-  return { sources, entries };
+  return { sources, entries, claimed };
 }
 
 function counting<T>(answer: () => Promise<T>) {
@@ -209,4 +218,81 @@ test('the download URL escapes the path and carries the token', () => {
     downloadUrl('bucket-1', `recipe-images/${KEY}.jpg`, 'token-1', 'https://storage.example.test'),
     `https://storage.example.test/v0/b/bucket-1/o/recipe-images%2F${KEY}.jpg?alt=media&token=token-1`,
   );
+});
+
+test('a key another call is generating is refused without a charge or a model call', async () => {
+  const generate = counting(async () => Buffer.from('x'));
+  const charge = counting(async () => 1);
+  const now = new Date('2026-11-09T10:00:00Z');
+  await assert.rejects(
+    resolveRecipeImage(KEY, {
+      store: fakeStore().store,
+      sources: fakeSources({ [KEY]: SOURCE }, { [KEY]: now.getTime() + 60_000 }).sources,
+      generate: generate.run,
+      charge: charge.run,
+      now,
+    }),
+    ImageInProgress,
+  );
+  assert.equal(charge.calls.length, 0);
+  assert.equal(generate.calls.length, 0);
+});
+
+test('a claim left by a call that died frees the key once it expires', async () => {
+  const now = new Date('2026-11-09T10:00:00Z');
+  const result = await resolveRecipeImage(KEY, {
+    store: fakeStore().store,
+    sources: fakeSources({ [KEY]: SOURCE }, { [KEY]: now.getTime() - 1 }).sources,
+    generate: async () => Buffer.from('x'),
+    charge: async () => 1,
+    now,
+  });
+  assert.equal(result.generated, true);
+});
+
+test('two calls at once for one key charge and generate once', async () => {
+  const { store } = fakeStore();
+  const { sources } = fakeSources({ [KEY]: SOURCE });
+  const generate = counting(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    return Buffer.from('x');
+  });
+  const charge = counting(async () => 1);
+  const deps = { store, sources, generate: generate.run, charge: charge.run };
+  const outcomes = await Promise.allSettled([resolveRecipeImage(KEY, deps), resolveRecipeImage(KEY, deps)]);
+  assert.equal(charge.calls.length, 1);
+  assert.equal(generate.calls.length, 1);
+  assert.deepEqual(outcomes.map((it) => it.status).sort(), ['fulfilled', 'rejected']);
+});
+
+test('the claim is released after a success, a refusal and a failure', async () => {
+  for (const generate of [
+    async () => Buffer.from('x'),
+    async () => null,
+    async () => {
+      throw new Error('model down');
+    },
+  ]) {
+    const { sources, claimed } = fakeSources({ [KEY]: SOURCE });
+    await resolveRecipeImage(KEY, { store: fakeStore().store, sources, generate, charge: async () => 1 }).catch(
+      () => undefined,
+    );
+    assert.equal(claimed.has(KEY), false);
+  }
+});
+
+test('a spent allowance releases the claim', async () => {
+  const { sources, claimed } = fakeSources({ [KEY]: SOURCE });
+  await assert.rejects(
+    resolveRecipeImage(KEY, {
+      store: fakeStore().store,
+      sources,
+      generate: async () => Buffer.from('x'),
+      charge: async () => {
+        throw new QuotaExceeded('spent');
+      },
+    }),
+    QuotaExceeded,
+  );
+  assert.equal(claimed.has(KEY), false);
 });

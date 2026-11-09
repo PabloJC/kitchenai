@@ -16,6 +16,8 @@ import com.kitchenai.shared.domain.port.UserProfileRepositoryContract
 import com.kitchenai.shared.domain.usecase.kitchen.ObserveKitchenUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObserveIngredientsUseCase
 import com.kitchenai.shared.domain.usecase.pantry.ObservePantryUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GenerateRecipeImageUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GenerateSuggestionImagesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
 import com.kitchenai.shared.domain.usecase.recipe.MatchRecipeAgainstPantryUseCase
 import com.kitchenai.shared.domain.usecase.recipe.ObserveSavedRecipesUseCase
@@ -137,6 +139,7 @@ open class SuggestionsViewModelHarness {
                         EnsureDefaultShoppingListUseCase(lists, IdGenerator { "list-1" }, TimeProvider { now }),
                     save = SaveRecipeUseCase(recipes),
                     unsave = RemoveSavedRecipeUseCase(recipes),
+                    generateImages = GenerateSuggestionImagesUseCase(GenerateRecipeImageUseCase(recipes)),
                 ),
             network = network,
             pictures = pictures,

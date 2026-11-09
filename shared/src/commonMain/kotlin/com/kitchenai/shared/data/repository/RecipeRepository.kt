@@ -43,6 +43,9 @@ class RecipeRepository(
     private val time: TimeProvider,
     private val dispatchers: DispatcherProvider,
 ) : RecipeRepositoryContract {
+    /** The list and an open detail can ask for one new key together; the server is asked once. */
+    private val imageCalls = SingleFlight<String, AppResult<String>>()
+
     // --- Saved recipes and the catalogue, over RecipeRemoteDataSource ---
 
     override fun observeSavedRecipes(kitchenId: KitchenId): Flow<List<Recipe>> =
@@ -65,7 +68,7 @@ class RecipeRepository(
         recipe: Recipe,
     ): AppResult<Recipe> {
         val key = recipe.imageKey ?: return AppResult.Success(recipe)
-        return imageDataSource.imageUrl(key).flatMap { url ->
+        return imageCalls.run(key) { imageDataSource.imageUrl(key) }.flatMap { url ->
             val pictured = recipe.copy(imageUrl = url)
             keepInCache(pictured).flatMap { keepInSavedCopy(kitchenId, pictured) }.map { pictured }
         }

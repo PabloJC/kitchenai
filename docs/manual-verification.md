@@ -1086,6 +1086,22 @@ hardware keyboard.*
 5. Turn the network off during a run, or wait for one to fail, then try the same meal again online.
    - A failed run does not use the meal up: the next one works.
 
+### 47. A new set's cards get their own photos
+
+*Online, against the deployed project, one meal not asked for today. The function logs are open
+(`recipe image`).*
+
+1. Ideas: tap New ideas without opening any card.
+   - The cards first show the dish-type photo, then cross-fade to their own photo one after
+     another. No card changes size.
+   - The logs show `generated: true` for each new dish, never two calls at once for the same one.
+2. Open one card's detail while its photo is still loading.
+   - The detail shows the same photo once it lands; the logs show no second generation for it.
+3. Close and reopen the app, then open a card and a saved copy of it.
+   - The photos are there and the logs show `generated: false` only.
+4. Turn the network off and reopen the app.
+   - The cards keep whatever photo they had, and no error shows.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the

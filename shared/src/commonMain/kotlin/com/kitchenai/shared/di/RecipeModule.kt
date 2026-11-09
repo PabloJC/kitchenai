@@ -1,6 +1,7 @@
 package com.kitchenai.shared.di
 
 import com.kitchenai.shared.domain.usecase.recipe.GenerateRecipeImageUseCase
+import com.kitchenai.shared.domain.usecase.recipe.GenerateSuggestionImagesUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetRecipeByIdUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredRecipeUseCase
 import com.kitchenai.shared.domain.usecase.recipe.GetStoredSuggestionsUseCase
@@ -16,6 +17,7 @@ import org.koin.dsl.module
 val recipeModule: Module =
     module {
         factory { GenerateRecipeImageUseCase(get()) }
+        factory { GenerateSuggestionImagesUseCase(get()) }
         factory { GetRecipeByIdUseCase(get()) }
         factory { GetStoredRecipeUseCase(get()) }
         factory { GetStoredSuggestionsUseCase(get(), get(), get(), get()) }
