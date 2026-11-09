@@ -27,6 +27,10 @@ iosApp/GoogleService-Info.plist
 iosApp/iosApp/GoogleService-Info.plist
 firebase-debug.log
 .firebase/
+# Maps hosting targets to this project's site ids, set with `firebase target:apply`.
+.firebaserc
+# The admin web's Firebase config (#399); admin/.env.example lists the names.
+admin/.env*.local
 
 # Signing
 *.keystore
@@ -38,8 +42,9 @@ keystore.properties
 node_modules/
 package-lock.json
 
-# Compiled output of the Cloud Function; the deploy builds it from source.
+# Compiled output of the Cloud Function and the admin web; each deploy builds from source.
 functions/lib/
+admin/dist/
 
 # Merge and patch leftovers.
 *.orig

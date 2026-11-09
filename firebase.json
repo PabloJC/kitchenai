@@ -40,15 +40,45 @@
       ]
     }
   ],
-  "hosting": {
-    "public": "hosting",
-    "cleanUrls": true,
-    "ignore": [
-      "firebase.json",
-      "**/.*"
-    ],
-    "predeploy": [
-      "node \"$PROJECT_DIR\"/tools/check-hosting.mjs"
-    ]
-  }
+  "hosting": [
+    {
+      "target": "public",
+      "public": "hosting",
+      "cleanUrls": true,
+      "ignore": [
+        "firebase.json",
+        "**/.*"
+      ],
+      "predeploy": [
+        "node \"$PROJECT_DIR\"/tools/check-hosting.mjs"
+      ]
+    },
+    {
+      "target": "admin",
+      "public": "admin/dist",
+      "ignore": [
+        "**/.*"
+      ],
+      "predeploy": [
+        "npm --prefix \"$PROJECT_DIR\"/admin run build"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

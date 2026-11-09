@@ -1,0 +1,86 @@
+:root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --text: #1d1d1b;
+    --muted: #6b6b66;
+    --accent: #2f7d4f;
+    --border: #e3e3dd;
+    font-family:
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        sans-serif;
+    color: var(--text);
+    background: var(--bg);
+}
+
+body {
+    margin: 0;
+}
+
+button {
+    font: inherit;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.centered {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 1rem;
+    min-height: 100vh;
+    text-align: center;
+}
+
+.shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100vh;
+}
+
+.shell-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.shell-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.25rem;
+}
+
+.shell-nav a {
+    display: block;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.shell-nav a.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.shell-account {
+    margin-top: auto;
+    display: grid;
+    gap: 0.5rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
+.shell-content {
+    padding: 2rem;
+}

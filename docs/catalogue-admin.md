@@ -1,5 +1,8 @@
 # Adding to the catalogue by hand
 
+The admin web in `admin/` (#399) is the everyday way to edit the catalogue; `admin/README.md` covers
+running and deploying it. The scripts below stay for one-off writes from a terminal.
+
 Two scripts under `tools/` write one ingredient or recipe at a time through the `writeCatalogue`
 callable (#165). Both take everything from arguments or the environment: nothing identifying the
 project or the account lives in the repository. `firebase/firestore.rules` is not involved: the

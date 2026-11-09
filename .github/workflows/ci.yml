@@ -275,12 +275,42 @@ jobs:
         run: npm test
 
   # ---------------------------------------------------------------- #
+  # Admin web (#399): type check, lint, format, tests and build. No secret: the Firebase config
+  # is read at runtime, so the build needs none.
+  # ---------------------------------------------------------------- #
+  admin:
+    name: Admin (lint, build, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install the admin dependencies
+        working-directory: admin
+        run: npm install --no-audit --no-fund
+
+      - name: Lint
+        working-directory: admin
+        run: npm run lint
+
+      - name: Run the admin tests
+        working-directory: admin
+        run: npm test
+
+      - name: Build
+        working-directory: admin
+        run: npm run build
+
+  # ---------------------------------------------------------------- #
   # Aggregated check: the only one marked as required on main.
   # ---------------------------------------------------------------- #
   ci-passed:
     name: CI passed
     if: always()
-    needs: [static-analysis, shared-tests, build-android, build-android-release, build-ios, firestore-rules, functions]
+    needs: [static-analysis, shared-tests, build-android, build-android-release, build-ios, firestore-rules, functions, admin]
     runs-on: ubuntu-latest
     steps:
       - name: Verify every job passed
