@@ -111,14 +111,16 @@ The `recipeImage` callable returns a photograph of one suggested dish.
 
 The key is a hash `suggestRecipes` issued, and the title and summary behind it stay on the
 server, so this call keeps the rule above: no sentence leaves the device. The image is generated
-once per key and stored; later calls return the stored URL and cost nothing.
+once per key and stored; later calls return the stored URL and cost nothing. While one call is
+generating a key, another call for the same key is refused with `UNAVAILABLE` and is not charged
+(#394). The app asks for the photos of a new set on its own, two at a time.
 
 | Code | Meaning |
 |---|---|
 | `INVALID_ARGUMENT` | not a key this function could have issued |
 | `FAILED_PRECONDITION` | a well-formed key with nothing behind it (its source expired before any image was made) |
 | `RESOURCE_EXHAUSTED` | the account's daily image allowance is spent |
-| `UNAVAILABLE` | the model failed or withheld the image |
+| `UNAVAILABLE` | the model failed or withheld the image, or another call is generating this key |
 
 Every one of them means the same to the client: keep the dish-type photo.
 

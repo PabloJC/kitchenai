@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Modality, type GoogleGenAI } from '@google/genai';
-import type { Firestore } from 'firebase-admin/firestore';
+import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import type { getStorage } from 'firebase-admin/storage';
 import { BadRequest, asObject } from './contract.ts';
 
@@ -33,6 +33,12 @@ export class UnknownImageKey extends Error {}
 /** The model answered with no picture, usually because a safety filter withheld it. */
 export class NoImageReturned extends Error {}
 
+/** Another call is generating this key right now; it will store the one picture both want. */
+export class ImageInProgress extends Error {}
+
+/** Past the function's 60 s timeout: a call that died without releasing frees the key on its own. */
+const CLAIM_MS = 2 * 60 * 1000;
+
 export type GenerateImage = (prompt: string) => Promise<Buffer | null>;
 
 export interface ImageStore {
@@ -45,6 +51,9 @@ export interface ImageSources {
   get(key: string): Promise<ImageSource | null>;
   record(entries: Array<[string, ImageSource]>, now: Date): Promise<void>;
   markWithheld(key: string): Promise<void>;
+  /** False while another call holds a live claim on [key]. */
+  claim(key: string, now: Date): Promise<boolean>;
+  release(key: string): Promise<void>;
 }
 
 /** Same dish, same key: normalised so "Tortilla  de patatas" and "tortilla de patatas" share one image. */
@@ -81,12 +90,18 @@ export function buildPrompt(source: ImageSource): string {
 }
 
 /**
- * Stored image first, model second. The quota is charged only when the model is about to run, so
- * reopening a dish never costs an allowance.
+ * Stored image first, model second. The key is claimed before the quota is charged, so one key is
+ * generated once, and reopening a dish never costs an allowance.
  */
 export async function resolveRecipeImage(
   imageKey: string,
-  deps: { store: ImageStore; sources: ImageSources; generate: GenerateImage; charge: () => Promise<unknown> },
+  deps: {
+    store: ImageStore;
+    sources: ImageSources;
+    generate: GenerateImage;
+    charge: () => Promise<unknown>;
+    now?: Date;
+  },
 ): Promise<{ url: string; generated: boolean }> {
   const path = `recipe-images/${imageKey}.jpg`;
   const existing = await deps.store.urlOf(path);
@@ -97,13 +112,22 @@ export async function resolveRecipeImage(
   // Refused before: a filter that withheld this dish will withhold it again, and each try is charged.
   if (source.withheld) throw new NoImageReturned();
 
-  await deps.charge();
-  const bytes = await deps.generate(buildPrompt(source));
-  if (!bytes) {
-    await deps.sources.markWithheld(imageKey);
-    throw new NoImageReturned();
+  if (!(await deps.sources.claim(imageKey, deps.now ?? new Date()))) throw new ImageInProgress(imageKey);
+  try {
+    // A call that stored the file between the first look and the claim leaves nothing to generate.
+    const stored = await deps.store.urlOf(path);
+    if (stored) return { url: stored, generated: false };
+    await deps.charge();
+    const bytes = await deps.generate(buildPrompt(source));
+    if (!bytes) {
+      await deps.sources.markWithheld(imageKey);
+      throw new NoImageReturned();
+    }
+    return { url: await deps.store.save(path, bytes), generated: true };
+  } finally {
+    // Once stored, the file answers every later call first; the claim has nothing left to guard.
+    await deps.sources.release(imageKey).catch(() => undefined);
   }
-  return { url: await deps.store.save(path, bytes), generated: true };
 }
 
 /**
@@ -214,6 +238,18 @@ export function firestoreImageSources(db: Firestore): ImageSources {
     },
     async markWithheld(key) {
       await db.collection(SOURCES).doc(key).set({ withheld: true }, { merge: true });
+    },
+    async claim(key, now) {
+      const doc = db.collection(SOURCES).doc(key);
+      return db.runTransaction(async (transaction) => {
+        const until = (await transaction.get(doc)).data()?.generatingUntil;
+        if (typeof until === 'number' && until > now.getTime()) return false;
+        transaction.set(doc, { generatingUntil: now.getTime() + CLAIM_MS }, { merge: true });
+        return true;
+      });
+    },
+    async release(key) {
+      await db.collection(SOURCES).doc(key).update({ generatingUntil: FieldValue.delete() });
     },
   };
 }

@@ -12,6 +12,7 @@ import { BadRequest, parseRequest, SCHEMA_VERSION } from './contract.js';
 import { IMAGES, QuotaExceeded, chargeCall, mealSlot, withMealSlot } from './quota.js';
 import {
   IMAGE_SCHEMA_VERSION,
+  ImageInProgress,
   NoImageReturned,
   UnknownImageKey,
   attachImageKeys,
@@ -157,6 +158,10 @@ export const recipeImage = onCall(
       // Not `not-found`: the client reads that as "function not deployed".
       if (failure instanceof UnknownImageKey) {
         throw new HttpsError('failed-precondition', 'no dish behind this imageKey');
+      }
+      // Nothing charged: the call holding the key stores the picture, and the next ask finds it.
+      if (failure instanceof ImageInProgress) {
+        throw new HttpsError('unavailable', 'this image is being generated, try again shortly');
       }
       logger.error('the image call failed', {
         filtered: failure instanceof NoImageReturned,

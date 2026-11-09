@@ -29,6 +29,8 @@ class FakeRecipeRepositoryContract(
     private val writeError: AppError? = null,
     /** What `attachImage` answers with: an address, or the failure the image call had. */
     private val imageResult: AppResult<String> = AppResult.Success("https://images.test/recipe.jpg"),
+    /** Overrides [imageResult] per recipe, for a test that needs a slow or a mixed answer. */
+    private val imageAnswer: (suspend (Recipe) -> AppResult<String>)? = null,
 ) : RecipeRepositoryContract {
     /** Every recipe `attachImage` was asked about, so a test can tell "no call" from a call. */
     val imageRequests = mutableListOf<Recipe>()
@@ -63,9 +65,9 @@ class FakeRecipeRepositoryContract(
         recipe: Recipe,
     ): AppResult<Recipe> {
         imageRequests += recipe
-        return when (imageResult) {
-            is AppResult.Failure -> imageResult
-            is AppResult.Success -> AppResult.Success(recipe.copy(imageUrl = imageResult.data))
+        return when (val answer = imageAnswer?.invoke(recipe) ?: imageResult) {
+            is AppResult.Failure -> answer
+            is AppResult.Success -> AppResult.Success(recipe.copy(imageUrl = answer.data))
         }
     }
 
