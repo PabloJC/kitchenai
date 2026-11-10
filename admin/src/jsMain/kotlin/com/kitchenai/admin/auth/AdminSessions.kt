@@ -11,6 +11,6 @@ fun adminSessions(): Flow<AdminSession> =
         if (user == null) {
             AdminSession.SignedOut
         } else {
-            sessionFor(user.email, user.getIdTokenResult(forceRefresh = false).claims)
+            sessionFor(user.email) { user.getIdTokenResult(forceRefresh = false).claims }
         }
     }

@@ -40,6 +40,7 @@ kotlin {
         }
         jsTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

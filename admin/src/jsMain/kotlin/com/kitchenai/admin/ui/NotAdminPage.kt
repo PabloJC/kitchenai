@@ -11,6 +11,7 @@ import org.jetbrains.compose.web.dom.Text
 @Composable
 fun NotAdminPage(
     email: String?,
+    error: String?,
     onSignOut: () -> Unit,
 ) {
     Main({ classes("centered") }) {
@@ -21,5 +22,6 @@ fun NotAdminPage(
             Text(", then sign in again.")
         }
         Button({ onClick { onSignOut() } }) { Text("Sign out") }
+        error?.let { message -> P({ classes("error") }) { Text(message) } }
     }
 }

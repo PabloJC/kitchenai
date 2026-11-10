@@ -22,6 +22,7 @@ import org.w3c.dom.events.Event
 @Composable
 fun ShellPage(
     email: String?,
+    error: String?,
     onSignOut: () -> Unit,
 ) {
     // Hash routing: the page is one file on Hosting, and a hash never reaches the server.
@@ -45,6 +46,7 @@ fun ShellPage(
             Div({ classes("shell-account") }) {
                 Span { Text(email.orEmpty()) }
                 Button({ onClick { onSignOut() } }) { Text("Sign out") }
+                error?.let { message -> Span({ classes("error") }) { Text(message) } }
             }
         }
         Main({ classes("shell-content") }) {
