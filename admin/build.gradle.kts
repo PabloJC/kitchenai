@@ -18,7 +18,10 @@ kotlin {
             // Tests run on Node: they cover logic, not the DOM, and CI has no headless browser.
             testTask { enabled = false }
         }
-        nodejs()
+        nodejs {
+            // Same as :shared: js-joda's zone rules load on the first test that names a zone.
+            testTask { useMocha { timeout = "10s" } }
+        }
         binaries.executable()
     }
 
