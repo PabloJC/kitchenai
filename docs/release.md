@@ -107,8 +107,9 @@ Settings › Accounts*.
 | `appattest-environment` entitlement | `development` | `production` (`APP_ATTEST_ENVIRONMENT` in `Config.xcconfig`) |
 | Kotlin framework | debug | release, optimised (`embedAndSignAppleFrameworkForXcode` follows the configuration) |
 
-CI links the release device framework on every PR (`linkReleaseFrameworkIosArm64` in *Build iOS
-framework*), so a Kotlin/Native release-only break shows up there rather than at archive time.
+CI links the release device framework on every PR that touches `shared/`, `composeApp/`, `iosApp/`
+or the Gradle build (`linkReleaseFrameworkIosArm64` in *Build iOS framework (release, device)*), so
+a Kotlin/Native release-only break shows up there rather than at archive time.
 
 ### Archiving
 

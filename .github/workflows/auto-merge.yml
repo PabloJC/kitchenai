@@ -37,8 +37,8 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           PR_NUM: ${{ github.event.pull_request.number }}
           LABEL: ready-to-merge
-          # Must match the job's `name:` above exactly.
-          SELF: Merge if everything is green
+          # Must match the `name:` of the two jobs that gate main (docs/infra.md).
+          REQUIRED: '["CI passed", "Claude review"]'
         run: |
           set -euo pipefail
 
@@ -81,21 +81,20 @@ jobs:
             fi
 
             # ---------------------------------------------------------- #
-            # 2. Every check green, except ours.
+            # 2. The two required checks green (#416).
             #
-            # On a `pull_request` trigger this job is itself a check of the pull request, so
-            # asking `gh pr checks` whether everything is green answers itself with no — it
-            # is still running. It has to exclude itself from the count.
-            #
-            # `skipping` counts as good: it is what a job skipped by condition reports.
+            # Not "every check": the board sync and this job are checks of the pull request
+            # too, and neither says anything about the code. A required check that has not
+            # reported yet counts as missing, never as green.
             # ---------------------------------------------------------- #
-            PENDING=$(gh pr checks "$PR" --json name,bucket --jq \
-              "[.[] | select(.name != \"$SELF\") | select(.bucket != \"pass\" and .bucket != \"skipping\")] | length")
+            MISSING=$(gh pr checks "$PR" --json name,bucket | jq -r --argjson req "$REQUIRED" \
+              '. as $c | $req[] | . as $n
+               | select(([$c[] | select(.name == $n)] | length) == 0
+                        or any($c[]; .name == $n and .bucket != "pass"))')
 
-            if [ "$PENDING" != "0" ]; then
-              echo "$PENDING check(s) failing or pending. Not merging."
-              gh pr checks "$PR" --json name,bucket --jq \
-                '.[] | select(.bucket != "pass" and .bucket != "skipping") | "  \(.bucket)\t\(.name)"'
+            if [ -n "$MISSING" ]; then
+              echo "Not merging. Required checks failing, pending or absent:"
+              echo "$MISSING" | sed 's/^/  /'
               echo "::endgroup::"; continue
             fi
 

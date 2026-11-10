@@ -48,8 +48,8 @@ jobs:
       # detektAll, not detekt: the bare task reads src/main, which no module here has. It pulls
       # in the per-compilation tasks, the only ones carrying a classpath, without which every
       # typed rule stays silent.
-      - run: ./gradlew detektAll --continue
-      - run: ./gradlew ktlintCheck --continue
+      # One invocation: the daemon is off, so each ./gradlew pays start-up and configuration again.
+      - run: ./gradlew detektAll ktlintCheck --continue
 
       # Here rather than on the macOS runner: it reads two files and needs no toolchain, and the
       # job it protects is the one that cannot see the problem. Linking the Kotlin framework
@@ -169,11 +169,72 @@ jobs:
       - run: ./gradlew :androidApp:assembleRelease
 
   # ---------------------------------------------------------------- #
-  # macOS minutes are expensive: build and test the Apple targets only.
+  # Which paths a pull request touches, so the slow macOS job runs only when it can fail (#416).
+  # A push to main always builds: that run is also what seeds the caches.
+  # ---------------------------------------------------------------- #
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      ios: ${{ steps.filter.outputs.ios }}
+    steps:
+      - name: Does anything reach the iOS framework?
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # A rename counts under both names: moving a file out of shared/ changes the framework.
+          FILES=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" \
+                  --jq '.[] | .filename, (.previous_filename // empty)')
+
+          # A here-string, not a pipe: `grep -q` exits on the first match, and under pipefail the
+          # SIGPIPE it sends upstream would read as "no match".
+          PATTERN='^(shared|composeApp|iosApp|gradle)/|^[^/]+\.gradle\.kts$|^gradle\.properties$|^gradlew|^\.github/workflows/ci\.yml$'
+          if grep -qE "$PATTERN" <<< "$FILES"; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing here reaches the iOS framework: skipping the macOS job."
+          fi
+
+  # ---------------------------------------------------------------- #
+  # The two links are the whole wait of a pull request, so they run side by side (#416).
+  # Link only: Kotlin/Native tests are disabled because the linker cannot find the iOS Firebase
+  # frameworks, which Xcode supplies through SPM. See docs/infra.md.
+  #
+  # Neither entry opens iosApp.xcodeproj, so anything that only breaks inside Xcode passes here.
+  # The cheap half of that gap, a Firebase SPM product nobody registered, is checked in
+  # `Lint & Detekt`; building the app itself is still not done.
   # ---------------------------------------------------------------- #
   build-ios:
-    name: Build iOS framework
+    name: Build iOS framework (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
     runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: debug, simulator
+            task: linkDebugFrameworkIosSimulatorArm64
+            konan-cache: true
+          # The device framework in release mode, which is what an archive for TestFlight builds
+          # (embedAndSignAppleFrameworkForXcode follows Xcode's configuration). Nothing else
+          # compiles Kotlin/Native with release optimisations before a build reaches a phone (#376).
+          # No ~/.konan here: a release link uses no compiler cache.
+          - name: release, device
+            task: linkReleaseFrameworkIosArm64
+            konan-cache: false
     steps:
       - uses: actions/checkout@v5
 
@@ -183,6 +244,17 @@ jobs:
           java-version: '17'
 
       - uses: gradle/actions/setup-gradle@v4
+
+      # The toolchain and the per-dependency compiler caches a debug link otherwise rebuilds on
+      # every run. Saved from main only: a pull request's copy would be private to its branch and
+      # eat the repository's cache quota.
+      - name: Restore ~/.konan
+        id: konan
+        if: matrix.konan-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Restore GoogleService-Info.plist
         env:
@@ -198,18 +270,14 @@ jobs:
             exit 1
           fi
 
-      # Link only: Kotlin/Native tests are disabled because the linker cannot find the
-      # iOS Firebase frameworks, which Xcode supplies through SPM. See docs/infra.md.
-      #
-      # This links the framework and never opens iosApp.xcodeproj, so anything that only breaks
-      # inside Xcode passes here. The cheap half of that gap — a Firebase SPM product nobody
-      # registered — is checked in `Lint & Detekt`; building the app itself is still not done.
-      - run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+      - run: ./gradlew :composeApp:${{ matrix.task }}
 
-      # The device framework in release mode, which is what an archive for TestFlight builds
-      # (embedAndSignAppleFrameworkForXcode follows Xcode's configuration). Nothing else compiles
-      # Kotlin/Native with release optimisations before a build reaches a phone (#376).
-      - run: ./gradlew :composeApp:linkReleaseFrameworkIosArm64
+      - name: Save ~/.konan
+        if: matrix.konan-cache && github.ref == 'refs/heads/main' && steps.konan.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.konan
+          key: ${{ steps.konan.outputs.cache-primary-key }}
 
   # ---------------------------------------------------------------- #
   # Firestore and Storage rules, executed against the emulators. No secret and no real project: the
@@ -280,11 +348,16 @@ jobs:
   ci-passed:
     name: CI passed
     if: always()
-    needs: [static-analysis, shared-tests, build-android, build-android-release, build-ios, firestore-rules, functions]
+    needs: [changes, static-analysis, shared-tests, build-android, build-android-release, build-ios, firestore-rules, functions]
     runs-on: ubuntu-latest
     steps:
+      # Only build-ios may be skipped, and only by a `changes` job that itself succeeded: a
+      # skip caused by a failure upstream must not read as green.
       - name: Verify every job passed
         run: |
-          echo '${{ toJSON(needs) }}' | jq -e 'all(.[]; .result == "success")' > /dev/null \
+          echo '${{ toJSON(needs) }}' | jq -e '
+            to_entries | all(.[];
+              .value.result == "success"
+              or (.key == "build-ios" and .value.result == "skipped"))' > /dev/null \
             || { echo "::error::A CI job failed"; exit 1; }
           echo "Every CI job green."
