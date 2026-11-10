@@ -128,6 +128,16 @@ class OnboardingViewModelTest {
         }
 
     @Test
+    fun `an archived ingredient is not offered as a staple`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            catalogue.emit(listOf(ingredient("rice", "Rice"), ingredient("egg", "Egg").copy(archived = true)))
+            advanceUntilIdle()
+
+            assertEquals(listOf("Rice"), viewModel.state.value.staples.map { it.label })
+        }
+
+    @Test
     fun `leaving the staples page adds the chosen ones and moves on`() =
         runTest(dispatcher) {
             val pantry = FakePantryPort()

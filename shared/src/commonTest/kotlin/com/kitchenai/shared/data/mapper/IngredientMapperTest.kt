@@ -65,6 +65,20 @@ class IngredientMapperTest {
     }
 
     @Test
+    fun `carries the archived flag`() {
+        val mapped = IngredientDto(labels = mapOf("en" to "label-1"), archived = true).toDomain("ingredient-1")
+
+        assertEquals(true, (mapped as AppResult.Success).data.archived)
+    }
+
+    @Test
+    fun `maps a document without the flag to not archived`() {
+        val mapped = IngredientDto(labels = mapOf("en" to "label-1")).toDomain("ingredient-1")
+
+        assertEquals(false, (mapped as AppResult.Success).data.archived)
+    }
+
+    @Test
     fun `rejects a default unit that names a taxonomy without its term`() {
         val mapped = IngredientDto(defaultUnitTaxonomy = "taxonomy-1").toDomain("ingredient-1")
 

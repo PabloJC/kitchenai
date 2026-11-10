@@ -407,7 +407,7 @@ class ShoppingViewModel(
     }
 
     private fun namedExactly(text: String): IngredientId? =
-        exactCatalogueMatch(text, catalogue.value) { ingredient -> resolver.value.label(ingredient.id).orEmpty() }?.id
+        exactCatalogueMatch(text, offered()) { ingredient -> resolver.value.label(ingredient.id).orEmpty() }?.id
 
     /** Rebuilt from every source at once: a resolver missing one of them answers with an id. */
     private fun rebuildResolver() {
@@ -502,6 +502,9 @@ class ShoppingViewModel(
         )
     }
 
+    /** What typing may pick: archived ingredients still name existing lines, through the resolver. */
+    private fun offered(): List<Ingredient> = catalogue.value.filterNot { ingredient -> ingredient.archived }
+
     private fun suggest(query: String): List<IngredientSuggestion> {
         val needle = foldForSearch(query).trim()
         if (needle.isEmpty()) return emptyList()
@@ -510,7 +513,7 @@ class ShoppingViewModel(
                     line ->
                 line.checked
             }.mapNotNullTo(mutableSetOf()) { it.ingredient }
-        return catalogue.value
+        return offered()
             .mapNotNull { ingredient ->
                 resolver.value.label(ingredient.id)?.let { label ->
                     IngredientSuggestion(ingredient.id, label, onList = ingredient.id in onList)

@@ -401,8 +401,9 @@ class PantryViewModel(
         // A stable order, so the banner does not flicker between two broken listeners.
         val message = Source.entries.firstNotNullOfOrNull { source -> projection.errors[source] }
         val now = writes.time.now()
+        // Archived ones stay in the resolver, so existing rows keep their name, but are never offered.
         val options =
-            ingredients.map { ingredient ->
+            ingredients.filterNot { ingredient -> ingredient.archived }.map { ingredient ->
                 IngredientOption(
                     id = ingredient.id,
                     label = resolver.nameOf(ingredient),
