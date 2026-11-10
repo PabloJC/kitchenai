@@ -26,9 +26,9 @@ None of this needs manual intervention beyond writing the issue and adding the l
 
 | File | What it does |
 |---|---|
-| `ci.yml` | Lint, detekt, JVM tests, Android APK and iOS framework. Aggregated into the **`CI passed`** check |
+| `ci.yml` | Lint, detekt, JVM tests, Android APK and iOS framework. Aggregated into the **`CI passed`** check. The two iOS links run in parallel, and only when the pull request touches `shared/`, `composeApp/`, `iosApp/` or the Gradle build |
 | `ai-code-review.yml` | Claude reviews the diff against `CLAUDE.md`, comments inline and emits a verdict. **`Claude review`** check |
-| `auto-merge.yml` | With the `ready-to-merge` label and everything green, squash-merges and deletes the branch |
+| `auto-merge.yml` | With the `ready-to-merge` label and the two required checks green, squash-merges and deletes the branch |
 | `project-sync.yml` | Moves the board card. Derives the column from the PR's state, and listens to the other workflows finishing — see the trap below |
 
 `CI passed` and `Claude review` are the only two required checks on `main`. That way jobs
