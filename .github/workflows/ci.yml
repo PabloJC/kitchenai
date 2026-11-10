@@ -103,7 +103,9 @@ jobs:
       # more, in exchange for not depending on task names that KMP varies per source set
       # (ktlintCommonMainSourceSetCheck, ktlintAndroidMainSourceSetCheck, ...) and which
       # fail the command by ambiguity.
-      - run: ./gradlew :shared:check :composeApp:check
+      # :admin rides along (#399): its tests run on Node, and the production bundle must build,
+      # since that is what `firebase deploy --only hosting:admin` uploads.
+      - run: ./gradlew :shared:check :composeApp:check :admin:check :admin:jsBrowserDistribution
 
       - name: Publish test results
         if: always()

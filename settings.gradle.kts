@@ -32,3 +32,4 @@ dependencyResolutionManagement {
 include(":shared") // domain + data, Kotlin puro
 include(":composeApp") // UI Compose Multiplatform (biblioteca KMP)
 include(":androidApp") // entry point Android; AGP 9 lo exige separado
+include(":admin") // the catalogue admin web, Kotlin/JS (#399)

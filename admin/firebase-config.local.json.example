@@ -1,0 +1,9 @@
+{
+  "apiKey": "",
+  "authDomain": "",
+  "projectId": "",
+  "storageBucket": "",
+  "appId": "",
+  "functionsRegion": "europe-southwest1",
+  "useEmulators": false
+}

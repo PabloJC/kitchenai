@@ -336,9 +336,11 @@ no domain to buy.
 ### Publishing
 
 1. Replace every `CONTACT_EMAIL_PLACEHOLDER` in `hosting/*.html` with the address that answers
-   privacy and deletion requests, and commit it. `firebase deploy --only hosting` refuses to upload
+   privacy and deletion requests, and commit it. `firebase deploy --only hosting:public` refuses to upload
    while one is left (`tools/check-hosting.mjs`, run as the hosting `predeploy`).
-2. `firebase deploy --only hosting --project <projectId>`.
+2. Once per checkout, map the hosting target to the project's default site (the admin web is a
+   second target, `admin/README.md`): `firebase target:apply hosting public <projectId> --project <projectId>`.
+   Then `firebase deploy --only hosting:public --project <projectId>`.
 3. Set the URL where the apps read it, so *Profile › About › Privacy policy* appears:
    - GitHub › the `release` environment › variable `PRIVACY_POLICY_URL` = `https://<projectId>.web.app/privacy`
      (both release workflows read it; the iOS one writes the `https:/$()/` form itself);
