@@ -1102,6 +1102,22 @@ hardware keyboard.*
 4. Turn the network off and reopen the app.
    - The cards keep whatever photo they had, and no error shows.
 
+### 48. Catalogue pictures on pantry rows, in the ingredient search and on catalogue recipes
+
+*One catalogue ingredient and one catalogue recipe given an `imageUrl` (an https download URL of a
+picture under `catalogue/`), with the admin web (#403) or `tools/catalogue.mjs`. That ingredient is
+in the pantry, and so is one with no picture and one typed by hand.*
+
+1. Pantry.
+   - The pictured ingredient's row starts with its picture, a small rounded square. The other two
+     rows have none, and their names line up with each other.
+2. Add an item and type the start of the pictured ingredient's name.
+   - Its match row shows the same picture; other matches show none.
+3. Ideas or Recipes: open the catalogue recipe.
+   - Its card and its detail header show the uploaded picture, not the dish-type photo.
+4. Turn the network off and reopen the app.
+   - Rows keep their names; a picture not yet cached shows as a tonal square, never an error.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -1131,3 +1147,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 19. Recipe header and sharing |  |  |  |  |
 | 20. Preferences autosave |  |  |  |  |
 | 21. Appearance setting |  |  |  |  |
+| 48. Catalogue pictures |  |  |  |  |

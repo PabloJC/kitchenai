@@ -34,6 +34,8 @@ const MAX_RECIPE_TAGS = 50;
 const MAX_AMOUNT = 1_000_000;
 const MAX_SERVINGS = 100;
 const MAX_MINUTES = 24 * 60;
+// Same ceiling and scheme as `isOptionalImageUrl` in firestore.rules (#400).
+const MAX_IMAGE_URL = 2000;
 
 export function parseCatalogueEntry(raw: unknown): CatalogueEntry {
   const body = asObject(raw, 'request');
@@ -51,7 +53,11 @@ export function parseCatalogueEntry(raw: unknown): CatalogueEntry {
 }
 
 function ingredient(data: Record<string, unknown>): Record<string, unknown> {
-  onlyKeys(data, ['labels', 'defaultUnitTaxonomy', 'defaultUnitTerm', 'tags', 'purchasedWhole'], 'ingredient');
+  onlyKeys(
+    data,
+    ['labels', 'defaultUnitTaxonomy', 'defaultUnitTerm', 'tags', 'purchasedWhole', 'imageUrl', 'archived'],
+    'ingredient',
+  );
   const document: Record<string, unknown> = { labels: labels(data.labels) };
   const unit = optionalUnit(data.defaultUnitTaxonomy, data.defaultUnitTerm, 'defaultUnit');
   if (unit) {
@@ -60,11 +66,13 @@ function ingredient(data: Record<string, unknown>): Record<string, unknown> {
   }
   document.tags = groupedTags(data.tags);
   if (data.purchasedWhole !== undefined) document.purchasedWhole = bool(data.purchasedWhole, 'purchasedWhole');
+  if (data.imageUrl != null) document.imageUrl = imageUrl(data.imageUrl);
+  if (data.archived !== undefined) document.archived = bool(data.archived, 'archived');
   return document;
 }
 
 function recipe(data: Record<string, unknown>): Record<string, unknown> {
-  onlyKeys(data, ['title', 'summary', 'servings', 'totalMinutes', 'ingredients', 'steps', 'tags'], 'recipe');
+  onlyKeys(data, ['title', 'summary', 'servings', 'totalMinutes', 'ingredients', 'steps', 'tags', 'imageUrl'], 'recipe');
   const document: Record<string, unknown> = { title: text(data.title, MAX_TITLE, 'title') };
   if (data.summary != null) document.summary = text(data.summary, MAX_SUMMARY, 'summary');
   document.servings = integer(data.servings, 1, MAX_SERVINGS, 'servings');
@@ -72,6 +80,7 @@ function recipe(data: Record<string, unknown>): Record<string, unknown> {
   document.ingredients = nonEmptyList(data.ingredients, MAX_LINES, 'ingredients').map(recipeLine);
   document.steps = nonEmptyList(data.steps, MAX_STEPS, 'steps').map((step) => text(step, MAX_STEP, 'step'));
   document.tags = optionalList(data.tags, MAX_RECIPE_TAGS, 'tags').map(termRef);
+  if (data.imageUrl != null) document.imageUrl = imageUrl(data.imageUrl);
   // Provenance is the server's to state: an admin write is curated content, never `agent`.
   document.source = { type: 'catalogue' };
   return document;
@@ -157,6 +166,14 @@ function id(raw: unknown, field: string): string {
 function text(raw: unknown, max: number, field: string): string {
   if (typeof raw !== 'string' || raw.trim().length === 0 || raw.length > max) {
     throw new BadRequest(`${field} must be non-empty text of at most ${max} characters`);
+  }
+  return raw;
+}
+
+/** A Storage download URL: https only, so a client never loads a data: or plain-http picture. */
+function imageUrl(raw: unknown): string {
+  if (typeof raw !== 'string' || raw.length > MAX_IMAGE_URL || !/^https:\/\/\S+$/.test(raw)) {
+    throw new BadRequest(`imageUrl must be an https URL of at most ${MAX_IMAGE_URL} characters`);
   }
   return raw;
 }

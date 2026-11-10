@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.kitchenai.shared.domain.model.TermRef
+import com.kitchenai.ui.designsystem.component.IngredientThumbnail
 import com.kitchenai.ui.designsystem.component.QuantityField
 import com.kitchenai.ui.designsystem.component.QuantityFieldOptions
 import com.kitchenai.ui.designsystem.component.TermChip
@@ -440,6 +441,7 @@ private fun MatchRows(
         matches.forEach { option ->
             key(option.id.value) {
                 ListItem(
+                    leadingContent = option.imageUrl?.let { url -> { IngredientThumbnail(url) } },
                     headlineContent = { Text(option.label) },
                     supportingContent =
                         if (option == saved) {

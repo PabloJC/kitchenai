@@ -53,6 +53,7 @@ internal fun PantryItem.toUi(
         expiresAt = expiresAt,
         freshness = freshnessIn(daysLeft, EXPIRING_SOON_DAYS),
         expiryLabel = daysLeft?.let(::expiryLabel),
+        imageUrl = ingredient?.let(resolver::imageUrl),
     )
 }
 

@@ -147,3 +147,25 @@ test('refuses recipe tags that are not term references', () => {
   refuses(recipeEntry({ ...recipe, tags: [{ taxonomy: 'dish-types' }] }));
   refuses(recipeEntry({ ...recipe, tags: [{ taxonomy: 'dish-types', term: 'pasta', extra: 1 }] }));
 });
+
+test('an ingredient may carry its picture and an archived flag', () => {
+  const data = { ...ingredient, imageUrl: 'https://storage.example/egg.webp', archived: true };
+  assert.deepEqual(parseCatalogueEntry(ingredientEntry(data)).document, data);
+});
+
+test('a recipe may carry its picture', () => {
+  const entry = parseCatalogueEntry(recipeEntry({ ...recipe, imageUrl: 'https://storage.example/pasta.webp' }));
+  assert.equal(entry.document.imageUrl, 'https://storage.example/pasta.webp');
+});
+
+test('refuses a picture that is not a short https URL', () => {
+  for (const imageUrl of ['http://storage.example/egg.webp', 'data:image/png;base64,AAAA', 'https://', 3]) {
+    refuses(ingredientEntry({ ...ingredient, imageUrl }));
+    refuses(recipeEntry({ ...recipe, imageUrl }));
+  }
+  refuses(ingredientEntry({ ...ingredient, imageUrl: `https://storage.example/${'a'.repeat(2000)}` }));
+});
+
+test('refuses an archived flag that is not a boolean', () => {
+  refuses(ingredientEntry({ ...ingredient, archived: 'yes' }));
+});

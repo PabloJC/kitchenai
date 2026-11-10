@@ -8,4 +8,5 @@ data class IngredientOption(
     val id: IngredientId,
     val label: String,
     val defaultUnit: TermRef?,
+    val imageUrl: String? = null,
 )

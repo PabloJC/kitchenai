@@ -81,5 +81,5 @@ internal fun pickedOption(
     if (pickedId == null) return null
     catalogue.firstOrNull { option -> option.id.value == pickedId }?.let { found -> return found }
     val held = editing?.ingredient?.takeIf { id -> id.value == pickedId } ?: return null
-    return IngredientOption(held, editing.name, null)
+    return IngredientOption(held, editing.name, null, editing.imageUrl)
 }

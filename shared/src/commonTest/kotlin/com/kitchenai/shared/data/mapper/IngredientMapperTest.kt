@@ -49,6 +49,22 @@ class IngredientMapperTest {
     }
 
     @Test
+    fun `carries the catalogue picture when the document has one`() {
+        val mapped =
+            IngredientDto(labels = mapOf("en" to "label-1"), imageUrl = "https://storage.example/picture-1")
+                .toDomain("ingredient-1")
+
+        assertEquals("https://storage.example/picture-1", (mapped as AppResult.Success).data.imageUrl)
+    }
+
+    @Test
+    fun `maps a document without a picture to no picture`() {
+        val mapped = IngredientDto(labels = mapOf("en" to "label-1")).toDomain("ingredient-1")
+
+        assertEquals(null, (mapped as AppResult.Success).data.imageUrl)
+    }
+
+    @Test
     fun `rejects a default unit that names a taxonomy without its term`() {
         val mapped = IngredientDto(defaultUnitTaxonomy = "taxonomy-1").toDomain("ingredient-1")
 

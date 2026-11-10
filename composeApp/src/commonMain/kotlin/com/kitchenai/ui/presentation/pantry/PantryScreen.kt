@@ -49,6 +49,7 @@ import com.kitchenai.shared.domain.model.UserId
 import com.kitchenai.ui.designsystem.component.EmptyState
 import com.kitchenai.ui.designsystem.component.ErrorBanner
 import com.kitchenai.ui.designsystem.component.ErrorState
+import com.kitchenai.ui.designsystem.component.IngredientThumbnail
 import com.kitchenai.ui.designsystem.component.LoadingState
 import com.kitchenai.ui.designsystem.component.SectionHeader
 import com.kitchenai.ui.designsystem.component.SwipeToDismissRow
@@ -437,6 +438,9 @@ private fun PantryRow(
             ),
     ) { deleteAction ->
         ListItem(
+            // Only rows that have a picture get one: a placeholder on every row would push all the
+            // names right for a catalogue that has no pictures yet.
+            leadingContent = item.imageUrl?.let { url -> { IngredientThumbnail(url) } },
             overlineContent = freeTextMarker,
             headlineContent = {
                 // Set apart from a catalogue row, which is the row that merges and that the

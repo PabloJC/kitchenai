@@ -111,6 +111,28 @@ class PantryUiMapperTest {
     }
 
     @Test
+    fun `a catalogue holding carries its ingredient's picture`() {
+        val pictured = ingredient(ingredientId, "Rice").copy(imageUrl = "https://storage.example/picture-1")
+        val resolver = LabelResolver(ingredients = listOf(pictured), languageTags = listOf("en"))
+
+        val ui = pantryItem(quantity = Quantity(1.0, null)).toUi(resolver, now)
+
+        assertEquals("https://storage.example/picture-1", ui.imageUrl)
+    }
+
+    @Test
+    fun `a holding whose ingredient has no picture or that is free text has none`() {
+        val pictured = ingredient(ingredientId, "Rice").copy(imageUrl = "https://storage.example/picture-1")
+        val resolver = LabelResolver(ingredients = listOf(pictured), languageTags = listOf("en"))
+
+        val bare = pantryItem(quantity = Quantity(1.0, null)).toUi(LabelResolver(), now)
+        val typed = pantryItem(quantity = Quantity(1.0, null), freeText = "the good bread").toUi(resolver, now)
+
+        assertEquals(null, bare.imageUrl)
+        assertEquals(null, typed.imageUrl)
+    }
+
+    @Test
     fun `an edited draft can turn a catalogue row into a free-text one`() {
         val original = pantryItem(quantity = Quantity(1.0, unitRef))
         val draft =
