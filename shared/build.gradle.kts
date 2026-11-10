@@ -39,7 +39,10 @@ kotlin {
     // commonTest runs on Node: the same code as the browser, without a headless browser in CI.
     js {
         browser { testTask { enabled = false } }
-        nodejs()
+        nodejs {
+            // Mocha's 2 s default: the first test that names a zone loads js-joda's rules, 4 s on CI.
+            testTask { useMocha { timeout = "10s" } }
+        }
     }
 
     // mobileMain: Android and iOS only. Room's cache and Crashlytics have no browser artefact.
