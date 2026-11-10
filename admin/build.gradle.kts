@@ -37,6 +37,7 @@ kotlin {
             implementation(libs.gitlive.firebase.firestore)
             implementation(libs.gitlive.firebase.functions)
             implementation(libs.gitlive.firebase.storage)
+            implementation(libs.koin.core)
         }
         jsTest.dependencies {
             implementation(kotlin("test"))

@@ -41,6 +41,25 @@ The page is at `http://localhost:5173` (8080 is the Firestore emulator). The Goo
 the emulator's sign-in page. To make an emulator account an admin, add `{"admin": true}` as its
 custom claims in the emulator UI (Authentication) and sign in again.
 
+To have a catalogue to edit, seed the emulator (`FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node
+tools/seed.mjs --project demo-kitchenai-admin`) and build the functions once (`npm run build` in
+`functions/`), since saving goes through `writeCatalogue`. One thing cannot be done locally: saving
+an ingredient with a picture. The Storage emulator's download URLs are `http`, and `writeCatalogue`
+only accepts `https`.
+
+## Ingredients (#403)
+
+- **Reads** use `:shared`'s own repositories.
+- **Saves** go through the `writeCatalogue` callable, whose validator is the only one. The form
+  repeats only the checks that keep Save honest, with the same messages.
+- **Archive** is the default way to retire an ingredient. The apps stop offering it, and pantry
+  rows that hold it keep its name.
+- **Delete** is offered only when no catalogue recipe names the ingredient, and only once its id is
+  typed again.
+- **Pictures** are resized in the browser to at most 1024 px and stored as WebP under
+  `catalogue/ingredients/`. A file replaced or discarded during an edit is removed when the edit
+  ends.
+
 ## Checks
 
 ```bash
