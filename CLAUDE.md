@@ -13,6 +13,7 @@ by the agent reviewing pull requests.
 | `:shared` | `com.android.kotlin.multiplatform.library` | `domain` (models, ports, use cases) and `data` (Firebase, cache, mappers) | nothing in the project |
 | `:composeApp` | `com.android.kotlin.multiplatform.library` | `presentation` (ViewModels, UiState, composables), navigation, design system. Package `com.kitchenai.ui` | `:shared` |
 | `:androidApp` | `com.android.application` | `MainActivity`, `Application`, manifest, resources and icons. Package `com.kitchenai.app`. **No logic** | `:composeApp`, `:shared` |
+| `:admin` | — (Kotlin/JS) | The catalogue admin web: Compose HTML, Firebase through GitLive, gated by the `admin` claim. Package `com.kitchenai.admin` (#399) | `:shared` |
 | `iosApp` | — | Xcode wrapper, `FirebaseApp.configure()` | `ComposeApp` framework |
 | `functions` | — | TypeScript. The `suggestRecipes` callable: the only thing that talks to a model, and the only thing holding a credential to do it; plus `writeCatalogue`, the admin-claim-gated catalogue write | nothing in the project |
 
@@ -29,6 +30,8 @@ shared.data              →  shared.domain        ✅
 shared.domain            →  anything else        ❌
 composeApp               →  shared.data          ❌
 composeApp / shared      →  androidApp           ❌
+admin                    →  shared               ✅
+anything                 →  admin                ❌
 ```
 
 `shared/domain` is **pure Kotlin**: no Firebase, no Android, no iOS, no Compose, no Ktor.
