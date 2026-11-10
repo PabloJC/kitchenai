@@ -465,6 +465,36 @@ The linker cannot find the iOS Firebase frameworks, which Xcode supplies through
 real fix is splitting `:shared` into `:domain` (pure Kotlin, testable everywhere) and
 `:data`. Still pending.
 
+### `:shared` compiles for the browser (#413)
+
+`:shared` has a `js` target so the admin web can reuse its domain models, DTOs and mappers. Code
+the browser cannot run lives in `mobileMain`, which only Android and iOS depend on:
+
+- **Room and the generation cache**: `data/local/` except `PreferenceStore`, `RecipeRepository`,
+  `RecipeGenerations`, `databaseModule` and `recipeDataModule`. Room 3's runtime resolves for JS,
+  but `sqlite-bundled` does not, and the admin has no use for the cache.
+- **Crashlytics**: GitLive publishes no JS artefact for it. Its binding left `firebaseModule` for
+  `crashReportingModule`.
+- **`sharedModules` / `initKoin`**: the apps' entry point lists the modules above, so it moved
+  with them. A browser client declares its own module list.
+
+GitLive 2.5.0 has JS artefacts for app, auth, firestore, functions and storage. `jsMain` holds the
+`actual`s: `Dispatchers.Default` for IO, `localStorage` for `PreferenceStore`, `kotlin.uuid` for
+ids, and the project id from the common `FirebaseApp.options`.
+
+Two traps:
+
+- **Time zones.** kotlinx-datetime's JS target ships no IANA rules, so every named zone throws
+  `IllegalTimeZoneException`. `jsMain` loads `@js-joda/timezone` (`JsJodaTimeZone.kt`), pinned at
+  2.23.0: from 2.24.0 its peer range wants `@js-joda/core` 5.7, and kotlinx-datetime 0.7.1 ships
+  3.2.0. `kotlinx-datetime-zoneinfo` is for Wasm, not JS.
+- **The yarn lock.** Kotlin/JS writes `kotlin-js-store/yarn.lock` and fails the build when it
+  drifts. It is committed, unlike the npm locks: it belongs to the Gradle build. After changing an
+  `npm(...)` dependency run `./gradlew kotlinUpgradeYarnLock`.
+
+`commonTest` runs on Node too (`:shared:jsNodeTest`, part of `:shared:check`): 586 tests, the same
+ones the JVM runs. The browser test task is off, so CI needs no headless browser.
+
 ### Should CI deploy the backend on merge? (open, the owner's call)
 
 Today nothing deploys: rules, indexes, the seed and the functions go out by hand, in the order in

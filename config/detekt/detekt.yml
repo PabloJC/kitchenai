@@ -24,6 +24,8 @@ naming:
   FunctionNaming:
     # Composables are PascalCase
     ignoreAnnotated: ['Composable']
+    # detekt's own test excludes plus mobileTest, the Android and iOS test source set (#413).
+    excludes: ['**/test/**', '**/commonTest/**', '**/mobileTest/**', '**/androidHostTest/**', '**/jsTest/**', '**/iosTest/**']
   TopLevelPropertyNaming:
     constantPattern: '[A-Z][_A-Za-z0-9]*'
 
@@ -31,6 +33,8 @@ style:
   MagicNumber:
     ignoreAnnotated: ['Composable', 'Preview']
     ignorePropertyDeclaration: true
+    # detekt's own test excludes plus mobileTest, the Android and iOS test source set (#413).
+    excludes: ['**/test/**', '**/commonTest/**', '**/mobileTest/**', '**/androidHostTest/**', '**/jsTest/**', '**/iosTest/**']
   MaxLineLength:
     maxLineLength: 120
   # Needs type resolution, which only the compilation tasks have. Those cover commonMain and
