@@ -12,8 +12,11 @@ import com.kitchenai.admin.auth.signInWithGoogle
 import com.kitchenai.admin.auth.signOutOfAdmin
 import com.kitchenai.admin.config.loadFirebaseConfig
 import com.kitchenai.admin.core.catchingFailures
+import com.kitchenai.admin.di.adminModule
 import com.kitchenai.admin.firebase.initializeAdminFirebase
 import kotlinx.coroutines.launch
+import org.koin.core.Koin
+import org.koin.dsl.koinApplication
 
 @Composable
 fun AdminApp() {
@@ -21,11 +24,13 @@ fun AdminApp() {
     // The last sign-in or sign-out failure, shown on whichever page offered the button.
     var authError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    var koin by remember { mutableStateOf<Koin?>(null) }
 
     LaunchedEffect(Unit) {
         loadFirebaseConfig().fold(
             onSuccess = { config ->
                 initializeAdminFirebase(config)
+                koin = koinApplication { modules(adminModule(config)) }.koin
                 adminSessions().collect { session -> screen = screenFor(session) }
             },
             onFailure = { failure -> screen = AdminScreen.ConfigError(failure.message ?: "Could not load the config") },
@@ -52,6 +57,7 @@ fun AdminApp() {
         is AdminScreen.ConfigError -> CenteredMessage(current.message)
         AdminScreen.SignIn -> SignInPage(error = authError, onSignIn = signIn)
         is AdminScreen.NotAdmin -> NotAdminPage(email = current.email, error = authError, onSignOut = signOut)
-        is AdminScreen.Shell -> ShellPage(email = current.email, error = authError, onSignOut = signOut)
+        // A session exists only once Firebase, and with it the graph, is up.
+        is AdminScreen.Shell -> koin?.let { graph -> ShellPage(current.email, authError, graph, onSignOut = signOut) }
     }
 }

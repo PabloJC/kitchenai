@@ -6,6 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.kitchenai.admin.ingredients.IngredientsModel
+import com.kitchenai.admin.ingredients.IngredientsSection
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.B
@@ -17,12 +19,14 @@ import org.jetbrains.compose.web.dom.Nav
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Ul
+import org.koin.core.Koin
 import org.w3c.dom.events.Event
 
 @Composable
 fun ShellPage(
     email: String?,
     error: String?,
+    koin: Koin,
     onSignOut: () -> Unit,
 ) {
     // Hash routing: the page is one file on Hosting, and a hash never reaches the server.
@@ -50,7 +54,12 @@ fun ShellPage(
             }
         }
         Main({ classes("shell-content") }) {
-            PlaceholderSection(section)
+            when (section.path) {
+                INGREDIENTS -> IngredientsSection(remember(koin) { koin.get<IngredientsModel>() })
+                else -> PlaceholderSection(section)
+            }
         }
     }
 }
+
+private const val INGREDIENTS = "ingredients"

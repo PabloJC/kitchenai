@@ -243,6 +243,27 @@ class ShoppingAddViewModelTest : ShoppingViewModelHarness() {
         }
 
     @Test
+    fun `an archived catalogue entry is neither suggested nor matched by name`() =
+        runTest(dispatcher) {
+            val viewModel = started()
+            items.emit(emptyList())
+            catalogue.emit(
+                listOf(Ingredient(ingredientId, mapOf("en" to "Catalogued"), null, emptyList(), archived = true)),
+            )
+            advanceUntilIdle()
+
+            viewModel.onDraftChange("catalogued")
+            advanceUntilIdle()
+            assertTrue(viewModel.state.value.draft.suggestions.isEmpty())
+            viewModel.add()
+            advanceUntilIdle()
+
+            val added = items.upserts.last().single()
+            assertNull(added.ingredient)
+            assertEquals("catalogued", added.freeText)
+        }
+
+    @Test
     fun `a typed name that only starts like a catalogue entry stays free text`() =
         runTest(dispatcher) {
             val viewModel = started()

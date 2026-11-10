@@ -462,6 +462,22 @@ class PantryViewModelTest {
         }
 
     @Test
+    fun `an archived ingredient is not offered but still names the rows that hold it`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.start(userId, languageTags, "List")
+            catalogue.emit(listOf(ingredient.copy(archived = true), otherIngredient))
+            taxonomies.terms.emit(listOf(unitTerm, locationTerm))
+            pantry.items.emit(listOf(item))
+            advanceUntilIdle()
+
+            val state = viewModel.state.value
+            assertEquals(listOf(otherIngredient.id), state.ingredients.map { option -> option.id })
+            assertEquals(listOf(INGREDIENT_LABEL), state.items.map { row -> row.name })
+            assertTrue(state.recent.isEmpty())
+        }
+
+    @Test
     fun `recent lists what the pantry touched last and nothing the catalogue lacks`() =
         runTest(dispatcher) {
             val viewModel = viewModel()

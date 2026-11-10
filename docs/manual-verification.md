@@ -1118,6 +1118,33 @@ in the pantry, and so is one with no picture and one typed by hand.*
 4. Turn the network off and reopen the app.
    - Rows keep their names; a picture not yet cached shows as a tonal square, never an error.
 
+### 49. Catalogue ingredients from the admin web: create, picture, archive, delete
+
+*The admin web deployed to the project (`firebase deploy --only hosting:admin`, see `admin/README.md`),
+signed in with an account holding the `admin` claim. Run it against the project, not the emulators:
+the Storage emulator hands out `http` download URLs, which `writeCatalogue` refuses as `imageUrl`.
+The phone steps use either platform.*
+
+1. Ingredients › New ingredient: type an id with a space.
+   - "id must not contain free text" shows and Save is disabled. Clear both names: "labels needs 1 to
+     20 languages".
+2. Give it a valid id, an English and a Spanish name, a default unit, one tag and a picture larger
+   than 1024 px. Save.
+   - The row appears with its thumbnail. In Storage, `catalogue/ingredients/` holds one new `.webp`
+     for it, no larger than 1024 px on either side.
+3. On the phone, add a pantry item and type the start of the new name.
+   - It is offered, with its picture (scenario 48). Add it.
+4. Back in the admin, edit it, pick a different picture and save.
+   - Storage still holds exactly one file for that id, the new one; the phone row shows the new picture.
+5. Archive it.
+   - It leaves the default list and appears under the Archived filter. On the phone it is no longer
+     offered when adding a pantry or shopping item, and the pantry row from step 3 keeps its name.
+6. Edit an ingredient a catalogue recipe uses and press Check catalogue recipes.
+   - It names the recipes and offers no delete.
+7. Restore the new ingredient, remove the phone's pantry item, then delete the ingredient: check
+   recipes, type its id, Delete for good.
+   - The row and its Storage file are gone.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -1148,3 +1175,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 20. Preferences autosave |  |  |  |  |
 | 21. Appearance setting |  |  |  |  |
 | 48. Catalogue pictures |  |  |  |  |
+| 49. Admin: catalogue ingredients |  |  |  |  |

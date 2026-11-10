@@ -288,6 +288,7 @@ class OnboardingViewModel(
         val resolver = LabelResolver(ingredients = catalogue, languageTags = languageTags)
         val staples =
             catalogue
+                .filterNot { ingredient -> ingredient.archived }
                 .map { ingredient -> StapleUi(ingredient.id, resolver.nameOf(ingredient), ingredient.id in chosen) }
                 .sortedBy { it.label.lowercase() }
         internalState.update { it.copy(staples = staples) }

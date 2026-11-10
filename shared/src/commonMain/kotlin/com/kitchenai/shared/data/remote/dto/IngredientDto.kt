@@ -17,4 +17,5 @@ data class IngredientDto(
     val tags: Map<String, List<String>> = emptyMap(),
     val purchasedWhole: Boolean = false,
     val imageUrl: String? = null,
+    val archived: Boolean = false,
 )

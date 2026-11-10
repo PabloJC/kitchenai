@@ -15,4 +15,6 @@ data class Ingredient(
     val purchasedWhole: Boolean = false,
     /** The catalogue's own picture (#401), a Storage download URL; null when it has none. */
     val imageUrl: String? = null,
+    /** Retired by the admin (#403): never offered for something new, still resolved for what uses it. */
+    val archived: Boolean = false,
 )
