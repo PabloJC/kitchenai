@@ -27,6 +27,10 @@ iosApp/GoogleService-Info.plist
 iosApp/iosApp/GoogleService-Info.plist
 firebase-debug.log
 .firebase/
+# Maps hosting targets to this project's site ids, set with `firebase target:apply`.
+.firebaserc
+# The admin web's local Firebase config (#399); admin/firebase-config.local.json.example lists the fields.
+admin/src/jsMain/resources/firebase-config.local.json
 
 # Signing
 *.keystore

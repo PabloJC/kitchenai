@@ -108,6 +108,8 @@ androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navi
 # The @Preview annotation alone. The `compose.components.uiToolingPreview` accessor is
 # deprecated in Compose Multiplatform 1.11 in favour of the coordinates.
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+# The admin web's DOM UI (#399): Compose for the browser without a canvas.
+compose-html-core = { module = "org.jetbrains.compose.html:html-core", version.ref = "composeMultiplatform" }
 
 # Credential Manager: the Android side of Google Sign-In. `play-services-auth` is the backend
 # that actually talks to Google; `credentials` alone throws NoCredentialException on a real device.
