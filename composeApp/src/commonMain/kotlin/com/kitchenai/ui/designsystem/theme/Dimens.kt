@@ -18,6 +18,9 @@ object Dimens {
     /** Material's small top app bar, which recipe detail lays its photo under. */
     val topBar = 64.dp
 
+    /** An ingredient's picture at the start of a list row (#401), Material's leading-image size. */
+    val thumbnail = 40.dp
+
     /** Minimum touch target; below this the gesture is unreliable on a phone held in one hand. */
     val touchTarget = 48.dp
 

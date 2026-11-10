@@ -169,10 +169,10 @@ again. Writing documents day to day is `tools/catalogue.mjs`; both are described
 ```
 
 - `ingredient`: `labels` (language tag to non-empty text, required), `defaultUnitTaxonomy` and
-  `defaultUnitTerm` (both or neither), `tags` (taxonomy id to list of term ids), `purchasedWhole`.
-  The seed file is one of the test inputs, so the two cannot drift.
+  `defaultUnitTerm` (both or neither), `tags` (taxonomy id to list of term ids), `purchasedWhole`,
+  `imageUrl` (an `https://` URL of at most 2000 characters) and `archived` (boolean). The seed file is one of the test inputs, so the two cannot drift.
 - `recipe`: `title`, `servings`, `ingredients`, `steps` (both non-empty), and optional `summary`,
-  `totalMinutes` and `tags` (`[{ taxonomy, term }]`). Each line carries exactly one of
+  `totalMinutes`, `tags` (`[{ taxonomy, term }]`) and `imageUrl`. Each line carries exactly one of
   `ingredientId` / `freeText`, plus optional `amount`, `unitTaxonomy` + `unitTerm` (only with an
   amount) and `optional`. `source` is not accepted: the function writes `{ "type": "catalogue" }`.
 - `id` uses the same alphabet as the rest of the contract, at most 128 characters, and is never

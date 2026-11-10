@@ -403,7 +403,12 @@ class PantryViewModel(
         val now = writes.time.now()
         val options =
             ingredients.map { ingredient ->
-                IngredientOption(ingredient.id, resolver.nameOf(ingredient), ingredient.defaultUnit)
+                IngredientOption(
+                    id = ingredient.id,
+                    label = resolver.nameOf(ingredient),
+                    defaultUnit = ingredient.defaultUnit,
+                    imageUrl = ingredient.imageUrl,
+                )
             }
         _state.update { current ->
             current.copy(

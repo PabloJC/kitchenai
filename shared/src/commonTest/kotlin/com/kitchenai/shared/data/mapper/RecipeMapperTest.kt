@@ -54,6 +54,17 @@ class RecipeMapperTest {
     }
 
     @Test
+    fun `a catalogue recipe carries the picture the admin uploaded and no image key`() {
+        val document = recipeDocument().copy(imageUrl = "https://storage.example/picture-1")
+
+        val mapped = document.toDomain("recipe-1")
+
+        val recipe = (mapped as AppResult.Success).data
+        assertEquals("https://storage.example/picture-1", recipe.imageUrl)
+        assertEquals(null, recipe.imageKey)
+    }
+
+    @Test
     fun `stamps the moment a recipe was saved so the library can be ordered by it`() {
         val document = recipe().toDto(SAVED_AT)
 

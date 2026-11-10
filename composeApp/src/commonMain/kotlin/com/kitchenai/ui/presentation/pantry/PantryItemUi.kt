@@ -29,4 +29,6 @@ data class PantryItemUi(
     val freshness: Freshness,
     /** "Expires tomorrow", "Expired 2 days ago"; null when the item has no date. */
     val expiryLabel: UiText? = null,
+    /** The catalogue ingredient's picture; always null for a free-text holding. */
+    val imageUrl: String? = null,
 )

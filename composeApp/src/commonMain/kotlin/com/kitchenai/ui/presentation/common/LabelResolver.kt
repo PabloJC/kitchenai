@@ -27,6 +27,8 @@ class LabelResolver(
     private val termLabels = terms.associate { term -> term.ref to term.labels }
     private val termPlurals = terms.associate { term -> term.ref to term.pluralLabels }
     private val ingredientLabels = ingredients.associate { ingredient -> ingredient.id to ingredient.labels }
+    private val ingredientImages =
+        ingredients.mapNotNull { ingredient -> ingredient.imageUrl?.let { url -> ingredient.id to url } }.toMap()
     private val fallbackTags = taxonomies.associate { taxonomy -> taxonomy.id to taxonomy.defaultLanguageTag }
 
     /** Rides along with the labels because every quantity it labels is printed in the same locale. */
@@ -44,6 +46,9 @@ class LabelResolver(
     }
 
     fun label(id: IngredientId): String? = ingredientLabels[id]?.resolve(languageTags)
+
+    /** The catalogue's picture for [id] (#401), from the same snapshot as its label. */
+    fun imageUrl(id: IngredientId): String? = ingredientImages[id]
 }
 
 /** A miss renders the identifier: ugly and honest beats a placeholder hiding a missing label. */
