@@ -22,6 +22,7 @@ fun sharedModules(
         agentModule,
         authModule(emulators),
         coreModule,
+        crashReportingModule,
         crossFeatureModule,
         databaseModule,
         firebaseModule(emulators),

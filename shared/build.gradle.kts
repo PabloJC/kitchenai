@@ -1,4 +1,6 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -33,6 +35,27 @@ kotlin {
         }
     }
 
+    // The admin web (#413 spike): only what the browser can run compiles here.
+    // commonTest runs on Node: the same code as the browser, without a headless browser in CI.
+    js {
+        browser { testTask { enabled = false } }
+        nodejs {
+            // Mocha's 2 s default: the first test that names a zone loads js-joda's rules, 4 s on CI.
+            testTask { useMocha { timeout = "10s" } }
+        }
+    }
+
+    // mobileMain: Android and iOS only. Room's cache and Crashlytics have no browser artefact.
+    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+    applyDefaultHierarchyTemplate {
+        common {
+            group("mobile") {
+                withCompilations { it.target.platformType == KotlinPlatformType.androidJvm }
+                group("ios") { withIos() }
+            }
+        }
+    }
+
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
@@ -40,15 +63,22 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.koin.core)
 
-            implementation(libs.androidx.room3.runtime)
-            implementation(libs.androidx.sqlite.bundled)
-
             // api: the iOS framework needs to see these types
             api(libs.gitlive.firebase.app)
             api(libs.gitlive.firebase.common)
             api(libs.gitlive.firebase.auth)
             api(libs.gitlive.firebase.firestore)
             api(libs.gitlive.firebase.functions)
+        }
+        jsMain.dependencies {
+            // kotlinx-datetime's JS target has no zone rules of its own: without them every named
+            // zone throws IllegalTimeZoneException. Loaded by JsJodaTimeZone.kt.
+            // 2.23.0 is the last release whose peer range accepts the @js-joda/core 3.x kotlinx-datetime ships.
+            implementation(npm("@js-joda/timezone", "2.23.0"))
+        }
+        getByName("mobileMain").dependencies {
+            implementation(libs.androidx.room3.runtime)
+            implementation(libs.androidx.sqlite.bundled)
             implementation(libs.gitlive.firebase.crashlytics)
         }
         commonTest.dependencies {
