@@ -19,11 +19,14 @@ kitchenInvites/{joinCode}                       { kitchenId } only — resolves 
                                                  kitchen without reading the kitchen document;
                                                  the id is a lower-case UUID, and a join also
                                                  tries its upper-case spelling (older iOS codes)
-taxonomies/{taxonomyId}                         read-only catalogue
-taxonomies/{taxonomyId}/terms/{termId}
-ingredients/{ingredientId}                      read-only catalogue
-recipes/{recipeId}                              read-only catalogue
+taxonomies/{taxonomyId}                         catalogue: read by any signed-in user,
+taxonomies/{taxonomyId}/terms/{termId}            written only with the `admin` claim
+ingredients/{ingredientId}                        (the admin web) or by the backend
+recipes/{recipeId}
 ```
+
+Catalogue pictures live in Storage under `catalogue/{ingredients|recipes}/`, with the same split:
+any signed-in user reads, only the `admin` claim writes (#400).
 
 The profile stays user-owned, under `users/{uid}`; everything a kitchen's members share —
 pantry, shopping lists, saved recipes — hangs off `kitchens/{kitchenId}` instead. Before

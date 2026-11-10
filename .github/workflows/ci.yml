@@ -212,16 +212,16 @@ jobs:
       - run: ./gradlew :composeApp:linkReleaseFrameworkIosArm64
 
   # ---------------------------------------------------------------- #
-  # Firestore rules, executed against the emulator. No secret and no real project: the
+  # Firestore and Storage rules, executed against the emulators. No secret and no real project: the
   # `demo-` project id keeps the emulator from ever reaching a Firebase backend.
   # ---------------------------------------------------------------- #
   firestore-rules:
-    name: Firestore rules (emulator)
+    name: Firestore and Storage rules (emulator)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
-      # The Firestore emulator is a Java process.
+      # The Firestore and Storage emulators are Java processes.
       - uses: actions/setup-java@v5
         with:
           distribution: temurin

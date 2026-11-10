@@ -205,13 +205,42 @@ describe('unauthenticated access', () => {
   });
 });
 
-describe('read-only catalogues', () => {
+describe('catalogues', () => {
+  // Opaque ids, as everywhere in these fixtures: nothing here names a real ingredient or unit.
+  const catalogueIngredient = (overrides = {}) => ({
+    labels: { en: 'label' },
+    defaultUnitTaxonomy: 'taxonomy-units',
+    defaultUnitTerm: 'term-1',
+    tags: { 'taxonomy-2': ['term-2'] },
+    purchasedWhole: true,
+    ...overrides,
+  });
+
+  const catalogueRecipe = (overrides = {}) => ({
+    title: 'recipe title',
+    servings: 2,
+    totalMinutes: 30,
+    ingredients: [{ ingredientId: 'ingredient-1', amount: 1 }],
+    steps: ['step one'],
+    tags: [{ taxonomy: 'taxonomy-2', term: 'term-2' }],
+    source: { type: 'catalogue' },
+    ...overrides,
+  });
+
+  const taxonomy = (overrides = {}) => ({ labels: { en: 'label' }, purpose: 'UNITS', ...overrides });
+  const term = (overrides = {}) => ({ labels: { en: 'label' }, order: 1, ...overrides });
+
+  let admin;
+  let stringClaim;
+
   beforeEach(async () => {
+    admin = testEnv.authenticatedContext('user-admin', { admin: true }).firestore();
+    stringClaim = testEnv.authenticatedContext('user-string-claim', { admin: 'true' }).firestore();
     await seed(async (db) => {
-      await setDoc(doc(db, 'taxonomies/taxonomy-1'), { labels: {} });
-      await setDoc(doc(db, 'taxonomies/taxonomy-1/terms/term-1'), { labels: {} });
-      await setDoc(doc(db, 'ingredients/ingredient-1'), { labels: {} });
-      await setDoc(doc(db, 'recipes/recipe-1'), { title: 'recipe title' });
+      await setDoc(doc(db, 'taxonomies/taxonomy-1'), taxonomy());
+      await setDoc(doc(db, 'taxonomies/taxonomy-1/terms/term-1'), term());
+      await setDoc(doc(db, 'ingredients/ingredient-1'), catalogueIngredient());
+      await setDoc(doc(db, 'recipes/recipe-1'), catalogueRecipe());
     });
   });
 
@@ -222,11 +251,72 @@ describe('read-only catalogues', () => {
     await assertSucceeds(getDoc(doc(alice, 'recipes/recipe-1')));
   });
 
-  it('is writable by nobody', async () => {
-    await assertFails(setDoc(doc(alice, 'taxonomies/taxonomy-2'), { labels: {} }));
-    await assertFails(setDoc(doc(alice, 'taxonomies/taxonomy-1/terms/term-2'), { labels: {} }));
-    await assertFails(setDoc(doc(alice, 'ingredients/ingredient-2'), { labels: {} }));
-    await assertFails(setDoc(doc(alice, 'recipes/recipe-2'), { title: 'recipe title' }));
+  it('is writable by no client without the admin claim', async () => {
+    for (const db of [alice, stringClaim]) {
+      await assertFails(setDoc(doc(db, 'taxonomies/taxonomy-2'), taxonomy()));
+      await assertFails(setDoc(doc(db, 'taxonomies/taxonomy-1/terms/term-2'), term()));
+      await assertFails(setDoc(doc(db, 'ingredients/ingredient-2'), catalogueIngredient()));
+      await assertFails(setDoc(doc(db, 'recipes/recipe-2'), catalogueRecipe()));
+      await assertFails(deleteDoc(doc(db, 'ingredients/ingredient-1')));
+      await assertFails(deleteDoc(doc(db, 'recipes/recipe-1')));
+      await assertFails(deleteDoc(doc(db, 'taxonomies/taxonomy-1/terms/term-1')));
+    }
+  });
+
+  it('lets the admin create, update and delete every catalogue document', async () => {
+    await assertSucceeds(setDoc(doc(admin, 'taxonomies/taxonomy-2'), taxonomy({ purpose: null })));
+    await assertSucceeds(setDoc(doc(admin, 'taxonomies/taxonomy-2/terms/term-2'), term({
+      conversion: { dimension: 'MASS', factor: 1000 },
+      pluralLabels: { en: 'labels' },
+    })));
+    await assertSucceeds(setDoc(doc(admin, 'ingredients/ingredient-2'), catalogueIngredient({
+      imageUrl: 'https://storage.example/picture',
+      archived: false,
+    })));
+    await assertSucceeds(setDoc(doc(admin, 'recipes/recipe-2'), catalogueRecipe({
+      summary: 'summary',
+      imageUrl: 'https://storage.example/picture',
+    })));
+    await assertSucceeds(updateDoc(doc(admin, 'ingredients/ingredient-1'), { archived: true }));
+    await assertSucceeds(updateDoc(doc(admin, 'recipes/recipe-1'), { title: 'another title' }));
+    await assertSucceeds(deleteDoc(doc(admin, 'recipes/recipe-1')));
+    await assertSucceeds(deleteDoc(doc(admin, 'ingredients/ingredient-1')));
+    await assertSucceeds(deleteDoc(doc(admin, 'taxonomies/taxonomy-1/terms/term-1')));
+    await assertSucceeds(deleteDoc(doc(admin, 'taxonomies/taxonomy-1')));
+  });
+
+  it('refuses an ingredient the catalogue validator would refuse, even from the admin', async () => {
+    const write = (data) => setDoc(doc(admin, 'ingredients/ingredient-2'), data);
+    await assertFails(write(catalogueIngredient({ labels: {} })));
+    await assertFails(write(catalogueIngredient({ defaultUnitTerm: null })));
+    await assertFails(write(catalogueIngredient({ imageUrl: 'http://storage.example/picture' })));
+    await assertFails(write(catalogueIngredient({ archived: 'yes' })));
+    await assertFails(write(catalogueIngredient({ unknown: 1 })));
+  });
+
+  it('refuses a recipe the catalogue validator would refuse, even from the admin', async () => {
+    const write = (data) => setDoc(doc(admin, 'recipes/recipe-2'), data);
+    await assertFails(write(catalogueRecipe({ source: { type: 'agent' } })));
+    await assertFails(write(catalogueRecipe({ steps: [] })));
+    await assertFails(write(catalogueRecipe({ ingredients: [] })));
+    await assertFails(write(catalogueRecipe({ servings: 0 })));
+    await assertFails(write(catalogueRecipe({ totalMinutes: 2000 })));
+    await assertFails(write(catalogueRecipe({ title: '' })));
+    await assertFails(write(catalogueRecipe({ imageKey: 'a'.repeat(64) })));
+  });
+
+  it('refuses a taxonomy or term of the wrong shape, even from the admin', async () => {
+    await assertFails(setDoc(doc(admin, 'taxonomies/taxonomy-2'), taxonomy({ purpose: 'ANYTHING' })));
+    await assertFails(setDoc(doc(admin, 'taxonomies/taxonomy-2'), taxonomy({ terms: {} })));
+    await assertFails(setDoc(doc(admin, 'taxonomies/taxonomy-1/terms/term-2'), term({ conversion: { factor: 1 } })));
+    await assertFails(setDoc(doc(admin, 'taxonomies/taxonomy-1/terms/term-2'), term({ labels: {} })));
+  });
+
+  it('gives the admin nothing outside the catalogue', async () => {
+    await seedKitchens();
+    await assertFails(getDocs(collection(admin, `kitchens/${KITCHEN_1}/pantry`)));
+    await assertFails(getDoc(doc(admin, 'recipeImageSources/key-1')));
+    await assertFails(getDoc(doc(admin, `users/${ALICE}`)));
   });
 });
 
