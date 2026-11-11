@@ -23,6 +23,9 @@ taxonomies/{taxonomyId}                         catalogue: read by any signed-in
 taxonomies/{taxonomyId}/terms/{termId}            written only with the `admin` claim
 ingredients/{ingredientId}                        (the admin web) or by the backend
 recipes/{recipeId}
+ingredientRequests/{requestId}                  anonymous queue of hand-typed ingredients:
+                                                 read and closed only with the `admin` claim,
+                                                 counted only by a function (#402)
 ```
 
 Catalogue pictures live in Storage under `catalogue/{ingredients|recipes}/`, with the same split:
@@ -73,6 +76,21 @@ even in test fixtures.
 **Catalogue pictures.** An ingredient or a catalogue recipe may carry `imageUrl`, the download
 URL of a picture the admin uploaded under `catalogue/` in Storage (#401). Without one, a recipe
 shows its dish-type photo and an ingredient row shows no picture.
+
+**Ingredient requests.** What people type by hand instead of picking a catalogue ingredient.
+Two triggers, one for pantry items and one for shopping items, count it in
+`ingredientRequests/{requestId}`. A document holds:
+- `text`, as first typed;
+- `count`, items ever written with it;
+- `activeCount`, items carrying it now;
+- `firstSeenMillis` and `lastSeenMillis`;
+- `status` (`open`, `promoted`, `aliased`, `dismissed`) and, once it points at the catalogue,
+  `ingredientId`.
+
+It never holds a kitchen id, a user id or an amount, so the admin learns what is missing without
+reading anyone's kitchen. Texts that differ only in case, accents or spacing are one request; the id
+is a hash of that comparison form, never the text. Delivery is at least once, so the counts are a
+signal, not a ledger. `tools/backfill-ingredient-requests.mjs` builds the queue from existing items.
 
 **Plural labels.** A countable unit (`piece`) may carry `pluralLabels`, a language-keyed map like
 `labels`, shown for any amount but exactly one ("1 unidad", "2 unidades"). Abbreviations such as

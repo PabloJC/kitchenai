@@ -502,6 +502,19 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // The anonymous queue of hand-typed ingredients (#402), counted by a function through the Admin
+    // SDK. The admin reads it and closes requests; nobody creates or deletes one, and the text and
+    // counts are the function's alone.
+    match /ingredientRequests/{requestId} {
+      allow read: if isAdmin();
+      allow create, delete: if false;
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'ingredientId'])
+                    && request.resource.data.status in ['open', 'promoted', 'aliased', 'dismissed']
+                    && (request.resource.data.status in ['open', 'dismissed']
+                        || isId(request.resource.data.get('ingredientId', null)));
+    }
+
     // Anything not declared stays closed. This block must remain last.
     // The agent's per-account call counter. Written by the function through the Admin SDK,
     // which bypasses these rules; denied here because a quota a caller can edit is not a quota.

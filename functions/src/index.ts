@@ -4,11 +4,13 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import { deleteAccount as deleteAccountData } from './accountDeletion.js';
 import { writeCatalogueEntry } from './catalogueAdmin.js';
 import { loadCatalogue, resolve, toReadable } from './catalogue.js';
 import { BadRequest, parseRequest, SCHEMA_VERSION } from './contract.js';
+import { freeTextChange, recordFreeTextChange } from './ingredientRequests.js';
 import { IMAGES, QuotaExceeded, chargeCall, mealSlot, withMealSlot } from './quota.js';
 import {
   IMAGE_SCHEMA_VERSION,
@@ -189,6 +191,27 @@ export const writeCatalogue = onCall(
     return result;
   },
 );
+
+/**
+ * The anonymous queue of hand-typed ingredients (#402): one trigger per collection that holds free
+ * text. Delivery is at least once, so a retried event can count twice; the counts are a signal.
+ */
+function countFreeText(document: string) {
+  return onDocumentWritten(
+    { document, region: process.env.FUNCTIONS_REGION ?? 'europe-southwest1', maxInstances: 5 },
+    async (event) => {
+      const change = freeTextChange(event.data?.before.data(), event.data?.after.data());
+      if (change === null) return;
+      await recordFreeTextChange(db, change, Date.now());
+      // Never the text: it is the user's own words.
+      logger.info('free text counted', { added: change.added !== null, removed: change.removed !== null });
+    },
+  );
+}
+
+export const countPantryFreeText = countFreeText('kitchens/{kitchenId}/pantry/{itemId}');
+
+export const countShoppingFreeText = countFreeText('kitchens/{kitchenId}/shoppingLists/{listId}/items/{itemId}');
 
 /**
  * In-app account deletion, which both stores require (#252). App Check on, like every call the app

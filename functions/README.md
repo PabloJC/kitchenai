@@ -126,8 +126,8 @@ firebase deploy --only functions --project <your-project-id>
 Deploy functions **last**: rules and indexes first, then the seed, then this (the order, and the
 smoke check that proves it, are in `firebase/README.md`). The functions read the catalogue the seed
 writes, and a deployment that lags the code is invisible to CI. After it,
-`firebase functions:list --project <your-project-id>` must show both `suggestRecipes` and
-`writeCatalogue` in the region above.
+`firebase functions:list --project <your-project-id>` must show `suggestRecipes`, `writeCatalogue`,
+`countPantryFreeText` and `countShoppingFreeText` in the region above.
 
 ## Proving it end to end
 
@@ -181,6 +181,24 @@ again. Writing documents day to day is `tools/catalogue.mjs`; both are described
 **Write semantics** match the seed script: `set` without merge, so the document becomes exactly the
 payload and an existing id is replaced. The result is `{ kind, id, created }`. Nothing here checks
 that a referenced taxonomy term or ingredient exists.
+
+## Ingredient requests
+
+`countPantryFreeText` and `countShoppingFreeText` are Firestore triggers. They fire on every write to
+a pantry or shopping item. When the item gains, loses or changes its `freeText`, they update
+`ingredientRequests/{requestId}` in a transaction: the anonymous queue the admin turns into catalogue
+ingredients (#402, layout in `docs/data-model.md`).
+
+- They copy only the text, never a kitchen, user or amount, and never log it.
+- They never change a request's `status`, so a request the admin closed stays closed.
+- Delivery is at least once: a retried event counts twice, so the counts are a signal.
+
+Items that existed before the triggers are added once with the backfill, a dry run unless `--write`
+is passed:
+
+```bash
+node --experimental-strip-types tools/backfill-ingredient-requests.mjs --project <projectId> --write
+```
 
 ## Tests
 
