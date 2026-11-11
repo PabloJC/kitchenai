@@ -320,6 +320,64 @@ describe('catalogues', () => {
   });
 });
 
+describe('ingredient requests', () => {
+  const request = (overrides = {}) => ({
+    text: 'Tomate cherry',
+    count: 2,
+    activeCount: 1,
+    firstSeenMillis: 1,
+    lastSeenMillis: 2,
+    status: 'open',
+    ...overrides,
+  });
+
+  let admin;
+  let stringClaim;
+
+  beforeEach(async () => {
+    admin = testEnv.authenticatedContext('user-admin', { admin: true }).firestore();
+    stringClaim = testEnv.authenticatedContext('user-string-claim', { admin: 'true' }).firestore();
+    await seed(async (db) => {
+      await setDoc(doc(db, 'ingredientRequests/request-1'), request());
+    });
+  });
+
+  it('is readable by the admin alone', async () => {
+    await assertSucceeds(getDoc(doc(admin, 'ingredientRequests/request-1')));
+    await assertSucceeds(getDocs(collection(admin, 'ingredientRequests')));
+    for (const db of [alice, stringClaim, anonymous]) {
+      await assertFails(getDoc(doc(db, 'ingredientRequests/request-1')));
+      await assertFails(getDocs(collection(db, 'ingredientRequests')));
+    }
+  });
+
+  it('cannot be created or deleted by any client, the admin included', async () => {
+    for (const db of [admin, alice]) {
+      await assertFails(setDoc(doc(db, 'ingredientRequests/request-2'), request()));
+      await assertFails(deleteDoc(doc(db, 'ingredientRequests/request-1')));
+    }
+  });
+
+  it('lets the admin close a request, and only through its status and ingredient', async () => {
+    const ref = doc(admin, 'ingredientRequests/request-1');
+    // Promoted or aliased needs the ingredient it now points at.
+    await assertFails(updateDoc(ref, { status: 'aliased' }));
+    await assertSucceeds(updateDoc(ref, { status: 'dismissed' }));
+    await assertSucceeds(updateDoc(ref, { status: 'promoted', ingredientId: 'cherry-tomato' }));
+    await assertSucceeds(updateDoc(ref, { status: 'open' }));
+    await assertFails(updateDoc(ref, { status: 'closed' }));
+    await assertFails(updateDoc(ref, { count: 100 }));
+    await assertFails(updateDoc(ref, { text: 'something else' }));
+    await assertFails(updateDoc(ref, { status: 'dismissed', kitchenId: 'kitchen-1' }));
+  });
+
+  it('cannot be changed by a client without the claim', async () => {
+    for (const db of [alice, stringClaim]) {
+      await assertFails(updateDoc(doc(db, 'ingredientRequests/request-1'), { status: 'dismissed' }));
+    }
+  });
+});
+
 describe('function-only collections', () => {
   beforeEach(async () => {
     await seed(async (db) => {
