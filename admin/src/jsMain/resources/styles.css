@@ -221,6 +221,18 @@ button:disabled {
   color: var(--error);
 }
 
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filters .short-input,
+.editor .short-input {
+  width: 4rem;
+  flex: none;
+}
+
 @media (max-width: 720px) {
   .shell {
     grid-template-columns: 1fr;
@@ -235,4 +247,13 @@ button:disabled {
     padding: 1rem 16px;
     overflow-x: auto;
   }
+}
+
+/* Up to four actions per request: let them wrap rather than widen the page. */
+.requests .row-actions {
+  white-space: normal;
+}
+
+.requests .row-actions button {
+  margin: 0.125rem;
 }

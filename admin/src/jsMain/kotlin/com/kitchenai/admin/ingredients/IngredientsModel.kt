@@ -37,6 +37,9 @@ class IngredientsModel(
     private var savedPicture: String? = null
     private val uploaded = mutableListOf<String>()
 
+    // What opened the editor wants once the ingredient exists: the request queue closes its request (#404).
+    private var afterSave: (suspend (String) -> Unit)? = null
+
     fun start(scope: CoroutineScope) {
         scope.launch {
             ingredients.observeIngredients().collect { loaded ->
@@ -58,9 +61,13 @@ class IngredientsModel(
 
     fun onQueryChange(query: IngredientQuery) = _state.update { it.copy(query = query) }
 
-    fun create() = open(IngredientDraft())
+    /** [then] runs only after `writeCatalogue` accepted the new ingredient, with its id. */
+    fun create(
+        draft: IngredientDraft = IngredientDraft(),
+        then: (suspend (String) -> Unit)? = null,
+    ) = open(draft, then)
 
-    fun edit(ingredient: Ingredient) = open(ingredient.toDraft())
+    fun edit(ingredient: Ingredient) = open(ingredient.toDraft(), then = null)
 
     /** A change to the latest draft, not a whole draft: two events before a recomposition must not undo each other. */
     fun updateDraft(change: (IngredientDraft) -> IngredientDraft) =
@@ -73,6 +80,7 @@ class IngredientsModel(
     /** Discards the edit, and with it every picture uploaded for it. */
     suspend fun close() {
         val keep = savedPicture
+        afterSave = null
         _state.update { it.copy(editor = null) }
         cleanUp(keep = keep)
     }
@@ -98,10 +106,17 @@ class IngredientsModel(
     suspend fun save() {
         val draft = busy() ?: return
         draft.problem()?.let { problem -> return fail(problem) }
+        // The callable replaces an existing id, so a new ingredient must not land on one.
+        if (draft.isNew && _state.value.ingredients.any { it.id.value == draft.id }) {
+            return fail("${draft.id} already exists: pick another id, or edit that ingredient")
+        }
         writer.writeIngredient(draft.id, draft.toDto()).fold(
             onSuccess = {
+                val then = afterSave
+                afterSave = null
                 _state.update { it.copy(editor = null) }
                 cleanUp(keep = draft.imageUrl)
+                then?.invoke(draft.id)
             },
             onFailure = { failure -> fail(failure.message ?: "Could not save") },
         )
@@ -131,6 +146,7 @@ class IngredientsModel(
         busy() ?: return
         writer.deleteIngredient(editor.draft.id).fold(
             onSuccess = {
+                afterSave = null
                 _state.update { it.copy(editor = null) }
                 cleanUp(keep = null)
             },
@@ -138,7 +154,11 @@ class IngredientsModel(
         )
     }
 
-    private fun open(draft: IngredientDraft) {
+    private fun open(
+        draft: IngredientDraft,
+        then: (suspend (String) -> Unit)?,
+    ) {
+        afterSave = then
         savedPicture = draft.imageUrl
         uploaded.clear()
         _state.update { it.copy(editor = IngredientEditorState(draft)) }

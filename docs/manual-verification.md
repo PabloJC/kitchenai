@@ -1145,6 +1145,27 @@ The phone steps use either platform.*
    recipes, type its id, Delete for good.
    - The row and its Storage file are gone.
 
+### 50. The free-text queue in the admin web: promote, alias, dismiss
+
+*The admin web deployed and signed in with the `admin` claim, as in scenario 49, and the
+`countPantryFreeText` and `countShoppingFreeText` functions deployed. Two phones (or accounts) in
+different kitchens.*
+
+1. On each phone, add a pantry item by typing a name the catalogue lacks, spelled "Tomate cherry"
+   on one and "tomate  cherry" on the other. On one phone, also add a shopping item "Coca-Cola".
+   - In the admin, Free-text queue shows one "Tomate cherry" row with Typed 2, and a "Coca-Cola" row.
+2. Dismiss "Coca-Cola".
+   - It leaves the default list. Under the Dismissed filter, it is there with Reopen. Reopen it: it is
+     back under Open.
+3. Promote "Tomate cherry". Change the id to `cherry-tomato`, add an English name and save.
+   - The ingredient appears under Ingredients, and the request shows "Promoted → cherry-tomato" under
+     the Promoted filter. On a phone, typing "cherry" offers the new ingredient.
+4. On a phone, add a pantry item typed "Jitomate". In the admin, alias it to `tomato`, tick "Also
+   name it", language `es-MX`.
+   - The request shows "Aliased → tomato", and the tomato ingredient lists the new `es-MX` name.
+5. Promote any open request and type the id of an existing ingredient.
+   - Save refuses it with "already exists", and the request stays open.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -1176,3 +1197,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 21. Appearance setting |  |  |  |  |
 | 48. Catalogue pictures |  |  |  |  |
 | 49. Admin: catalogue ingredients |  |  |  |  |
+| 50. Admin: free-text queue |  |  |  |  |
