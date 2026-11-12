@@ -26,6 +26,7 @@ fun RequestsSection(model: RequestsModel) {
             Text("What people typed instead of picking an ingredient. No kitchen or person is stored with it.")
         }
         (state.error ?: ingredients.error)?.let { message -> P({ classes("error") }) { Text(message) } }
+        state.notice?.let { message -> P({ classes("notice") }) { Text(message) } }
         RequestFilters(state, model)
         when {
             state.isLoading -> P { Text("Loading…") }
@@ -37,7 +38,12 @@ fun RequestsSection(model: RequestsModel) {
                     onAlias = model::startAlias,
                     onDismiss = { request -> scope.launch { model.dismiss(request) } },
                     onReopen = { request -> scope.launch { model.reopen(request) } },
+                    onConvert = { request -> scope.launch { model.previewConversion(request) } },
                 )
+        }
+        state.conversion?.let {
+                conversion ->
+            ConversionPanel(conversion, catalogueName(conversion, ingredients), model, scope)
         }
         state.alias?.let { alias -> AliasEditor(alias, ingredients.ingredients, model, scope) }
         ingredients.editor?.let { editor -> IngredientEditor(editor, ingredients, model.ingredients, scope) }

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import org.jetbrains.compose.web.attributes.disabled
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Code
+import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Table
 import org.jetbrains.compose.web.dom.Tbody
 import org.jetbrains.compose.web.dom.Td
@@ -12,7 +13,7 @@ import org.jetbrains.compose.web.dom.Th
 import org.jetbrains.compose.web.dom.Thead
 import org.jetbrains.compose.web.dom.Tr
 
-private const val CONVERT_HINT = "Moves the items still holding this text onto the ingredient; arrives with #405"
+private const val CONVERT_HINT = "Moves the pantry and shopping items still holding this text onto the ingredient"
 
 private val HEADINGS = listOf("Text", "Typed", "Now in use", "First seen", "Last seen", "Status", "")
 
@@ -23,6 +24,7 @@ fun RequestsTable(
     onAlias: (IngredientRequest) -> Unit,
     onDismiss: (IngredientRequest) -> Unit,
     onReopen: (IngredientRequest) -> Unit,
+    onConvert: (IngredientRequest) -> Unit,
 ) {
     Table({ classes("catalogue-table") }) {
         Thead { Tr { HEADINGS.forEach { heading -> Th { Text(heading) } } } }
@@ -41,6 +43,9 @@ fun RequestsTable(
                             Text(" → ")
                             Code { Text(id) }
                         }
+                        request.migratedAtMillis?.let { millis ->
+                            Div({ classes("muted") }) { Text("Items converted ${shortDate(millis)}") }
+                        }
                     }
                     Td({ classes("row-actions") }) {
                         if (request.status == RequestStatus.OPEN) {
@@ -58,8 +63,9 @@ fun RequestsTable(
                         }
                         if (request.status.needsIngredient) {
                             Button({
-                                disabled()
+                                if (busy) disabled()
                                 attr("title", CONVERT_HINT)
+                                onClick { onConvert(request) }
                             }) { Text("Convert items") }
                         }
                     }

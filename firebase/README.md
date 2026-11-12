@@ -198,6 +198,10 @@ the query scope and the fields in query order:
 Nothing else in the file changes, so two branches adding an index conflict only as two
 sibling objects.
 
+`fieldOverrides` holds one exception: `freeText` on `pantry` and `items` also gets a
+collection-group index, for `migrateFreeText`'s query across every kitchen (#405). An override
+replaces the field's automatic indexes, so it lists the two collection-scope ones as well.
+
 ## Local configuration
 
 `google-services.json` and `GoogleService-Info.plist` are never committed; CI restores them

@@ -10,4 +10,6 @@ data class IngredientRequest(
     val lastSeenMillis: Long,
     val status: RequestStatus,
     val ingredientId: String? = null,
+    /** When its items were last converted (#405). */
+    val migratedAtMillis: Long? = null,
 )

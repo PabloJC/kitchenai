@@ -11,10 +11,21 @@ data class IngredientRequestDto(
     val lastSeenMillis: Long = 0,
     val status: String = "",
     val ingredientId: String? = null,
+    val migratedAtMillis: Long? = null,
 )
 
 /** Null for a status the rules would not have let in; such a document is left out rather than guessed at. */
 fun IngredientRequestDto.toRequest(id: String): IngredientRequest? =
     RequestStatus.fromWire(status)?.let { known ->
-        IngredientRequest(id, text, count, activeCount, firstSeenMillis, lastSeenMillis, known, ingredientId)
+        IngredientRequest(
+            id,
+            text,
+            count,
+            activeCount,
+            firstSeenMillis,
+            lastSeenMillis,
+            known,
+            ingredientId,
+            migratedAtMillis,
+        )
     }

@@ -1166,6 +1166,23 @@ different kitchens.*
 5. Promote any open request and type the id of an existing ingredient.
    - Save refuses it with "already exists", and the request stays open.
 
+### 51. Converting typed-in items to a catalogue ingredient
+
+*As scenario 50, with `migrateFreeText` and the `firestore.indexes.json` field overrides deployed.*
+
+1. On two phones in different kitchens, add a pantry item typed "Tomate cherry", with an amount and
+   a place, on one, and "tomate cherry" on the other. Add a shopping item "Tomate cherry" on one.
+2. In the admin, alias the request to an existing ingredient (or promote it), then press Convert items.
+   - A panel says "2 pantry and 1 shopping items will become …". Cancel: on the phones, nothing changed.
+3. Convert items again and confirm.
+   - "Converted 2 pantry and 1 shopping items." The row reads Now in use 0 and "Items converted"
+     with today's date. On both phones the rows show the catalogue ingredient's name and picture,
+     with the same amount and place, and the shopping item is still unchecked.
+4. Convert items once more.
+   - "No item still holds …", and nothing asks for confirmation.
+5. In the Cloud Functions logs, find the `free text converted` entries.
+   - They hold counts and `dryRun` only: no text, kitchen or id.
+
 ## Results
 
 Fill one row per scenario and platform pass. Leave a cell empty until you have run it; write the
@@ -1198,3 +1215,4 @@ Do not edit the scenarios to match a result: open an issue.
 | 48. Catalogue pictures |  |  |  |  |
 | 49. Admin: catalogue ingredients |  |  |  |  |
 | 50. Admin: free-text queue |  |  |  |  |
+| 51. Admin: convert typed-in items |  |  |  |  |

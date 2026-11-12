@@ -38,6 +38,10 @@ button {
   color: var(--error);
 }
 
+.notice {
+  color: var(--accent);
+}
+
 .shell {
   display: grid;
   grid-template-columns: 220px 1fr;
