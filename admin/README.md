@@ -60,6 +60,22 @@ only accepts `https`.
   `catalogue/ingredients/`. A file replaced or discarded during an edit is removed when the edit
   ends.
 
+## Free-text queue (#404)
+
+What people typed instead of picking an ingredient, counted by the functions of #402. Each request
+can be closed one of three ways:
+
+- **Promote** opens the ingredient form pre-filled: an id from the text and the text as the name in
+  the "Typed in" language. The request closes only after `writeCatalogue` accepts the ingredient, so
+  a refused save leaves it open. A new ingredient can never take an existing id, since the callable
+  would replace that document.
+- **Alias** points the request at an existing ingredient. When the text is a new spelling, it can also
+  become the ingredient's name in a language it has no name in yet. That name is written first.
+- **Dismiss** is for what is not food, a typo or a brand.
+
+Any closed request can be reopened. "Convert items", which moves pantry and shopping items onto the
+catalogue ingredient, stays disabled until #405.
+
 ## Checks
 
 ```bash

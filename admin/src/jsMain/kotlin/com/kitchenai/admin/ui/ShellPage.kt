@@ -8,6 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.kitchenai.admin.ingredients.IngredientsModel
 import com.kitchenai.admin.ingredients.IngredientsSection
+import com.kitchenai.admin.requests.RequestsModel
+import com.kitchenai.admin.requests.RequestsSection
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.B
@@ -56,6 +58,7 @@ fun ShellPage(
         Main({ classes("shell-content") }) {
             when (section.path) {
                 INGREDIENTS -> IngredientsSection(remember(koin) { koin.get<IngredientsModel>() })
+                FREE_TEXT -> RequestsSection(remember(koin) { koin.get<RequestsModel>() })
                 else -> PlaceholderSection(section)
             }
         }
@@ -63,3 +66,4 @@ fun ShellPage(
 }
 
 private const val INGREDIENTS = "ingredients"
+private const val FREE_TEXT = "free-text"

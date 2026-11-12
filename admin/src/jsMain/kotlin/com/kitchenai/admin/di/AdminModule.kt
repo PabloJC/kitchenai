@@ -8,6 +8,9 @@ import com.kitchenai.admin.catalogue.resizeToWebp
 import com.kitchenai.admin.config.AdminFirebaseConfig
 import com.kitchenai.admin.firebase.adminFirestore
 import com.kitchenai.admin.ingredients.IngredientsModel
+import com.kitchenai.admin.requests.FirestoreIngredientRequestStore
+import com.kitchenai.admin.requests.IngredientRequestStore
+import com.kitchenai.admin.requests.RequestsModel
 import com.kitchenai.shared.core.DefaultDispatcherProvider
 import com.kitchenai.shared.core.DispatcherProvider
 import com.kitchenai.shared.data.remote.firebase.FirestorePaths
@@ -29,10 +32,14 @@ fun adminModule(config: AdminFirebaseConfig): Module =
         single<DispatcherProvider> { DefaultDispatcherProvider() }
         single<TimeProvider> { SystemTimeProvider() }
         // Not `:shared`'s firebaseModule: the admin needs no offline cache, and owns its emulator wiring.
-        single { FirestorePaths(adminFirestore(config)) }
+        single { adminFirestore(config) }
+        single { FirestorePaths(get()) }
         single<IngredientRepositoryContract> { FirestoreIngredientRepository(get(), get()) }
         single<TaxonomyRepositoryContract> { FirestoreTaxonomyRepository(get(), get()) }
         single<CatalogueWriter> { FirebaseCatalogueWriter(Firebase.functions(config.functionsRegion), get()) }
         single<PictureStore> { FirebasePictureStore(Firebase.storage, get()) }
+        single<IngredientRequestStore> { FirestoreIngredientRequestStore(get()) }
         factory { IngredientsModel(get(), get(), get(), get(), resize = ::resizeToWebp) }
+        // Its own IngredientsModel: the editor it opens is not the ingredients section's.
+        factory { RequestsModel(get(), get(), get()) }
     }
