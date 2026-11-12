@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 class RequestsModel(
     private val store: IngredientRequestStore,
     private val writer: CatalogueWriter,
+    private val converter: ItemConverter,
     val ingredients: IngredientsModel,
 ) {
     private val _state = MutableStateFlow(RequestsUiState())
@@ -50,14 +51,21 @@ class RequestsModel(
 
     /** The request closes only once the ingredient is written: a refused save leaves it open. */
     fun promote(request: IngredientRequest) {
-        _state.update { it.copy(alias = null, error = null) }
+        _state.update { it.copy(alias = null, conversion = null, error = null, notice = null) }
         ingredients.create(request.toIngredientDraft(_state.value.typedLanguage)) { id ->
             close(request, RequestStatus.PROMOTED, id, done = "Created $id")
         }
     }
 
     fun startAlias(request: IngredientRequest) =
-        _state.update { it.copy(alias = AliasState(request, language = it.typedLanguage), error = null) }
+        _state.update {
+            it.copy(
+                alias = AliasState(request, language = it.typedLanguage),
+                conversion = null,
+                error = null,
+                notice = null,
+            )
+        }
 
     fun updateAlias(change: (AliasState) -> AliasState) =
         _state.update { current -> current.copy(alias = current.alias?.let { change(it).copy(message = null) }) }
@@ -76,6 +84,47 @@ class RequestsModel(
         _state.update { it.copy(alias = null) }
         close(alias.request, RequestStatus.ALIASED, target.id.value, done = "Added ${target.id.value}'s new name")
     }
+
+    /** A dry run first: the admin confirms against the number of items it will change. */
+    suspend fun previewConversion(request: IngredientRequest) {
+        if (_state.value.working != null) return
+        _state.update { it.copy(working = request.id, error = null, notice = null, alias = null) }
+        val preview = converter.convert(request.id, dryRun = true)
+        _state.update { current ->
+            preview.fold(
+                onSuccess = { counts ->
+                    if (counts.total == 0) {
+                        current.copy(working = null, notice = "No item still holds \"${request.text}\".")
+                    } else {
+                        current.copy(working = null, conversion = ConversionState(request, counts))
+                    }
+                },
+                onFailure = { failure ->
+                    current.copy(working = null, error = "Could not count the items: ${failure.message}")
+                },
+            )
+        }
+    }
+
+    suspend fun convert() {
+        val conversion = _state.value.conversion?.takeUnless { it.isBusy } ?: return
+        updateConversion { it.copy(isBusy = true, message = null) }
+        converter.convert(conversion.request.id, dryRun = false).fold(
+            onSuccess = { counts ->
+                _state.update {
+                    it.copy(
+                        conversion = null,
+                        notice = "Converted ${counts.pantryItems} pantry and ${counts.shoppingItems} shopping items.",
+                    )
+                }
+            },
+            onFailure = { failure ->
+                updateConversion { it.copy(isBusy = false, message = "Could not convert: ${failure.message}") }
+            },
+        )
+    }
+
+    fun cancelConversion() = _state.update { it.copy(conversion = null) }
 
     suspend fun dismiss(request: IngredientRequest) = setStatus(request, RequestStatus.DISMISSED, ingredientId = null)
 
@@ -113,7 +162,7 @@ class RequestsModel(
         ingredientId: String?,
     ) {
         if (_state.value.working != null) return
-        _state.update { it.copy(working = request.id, error = null) }
+        _state.update { it.copy(working = request.id, error = null, notice = null) }
         val result = store.setStatus(request.id, status, ingredientId)
         _state.update {
             it.copy(
@@ -126,6 +175,9 @@ class RequestsModel(
             )
         }
     }
+
+    private fun updateConversion(change: (ConversionState) -> ConversionState) =
+        _state.update { current -> current.copy(conversion = current.conversion?.let(change)) }
 
     private fun failAlias(message: String) =
         _state.update { current -> current.copy(alias = current.alias?.copy(isBusy = false, message = message)) }

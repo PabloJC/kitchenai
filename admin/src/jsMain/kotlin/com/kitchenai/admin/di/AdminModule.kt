@@ -8,8 +8,10 @@ import com.kitchenai.admin.catalogue.resizeToWebp
 import com.kitchenai.admin.config.AdminFirebaseConfig
 import com.kitchenai.admin.firebase.adminFirestore
 import com.kitchenai.admin.ingredients.IngredientsModel
+import com.kitchenai.admin.requests.FirebaseItemConverter
 import com.kitchenai.admin.requests.FirestoreIngredientRequestStore
 import com.kitchenai.admin.requests.IngredientRequestStore
+import com.kitchenai.admin.requests.ItemConverter
 import com.kitchenai.admin.requests.RequestsModel
 import com.kitchenai.shared.core.DefaultDispatcherProvider
 import com.kitchenai.shared.core.DispatcherProvider
@@ -39,7 +41,8 @@ fun adminModule(config: AdminFirebaseConfig): Module =
         single<CatalogueWriter> { FirebaseCatalogueWriter(Firebase.functions(config.functionsRegion), get()) }
         single<PictureStore> { FirebasePictureStore(Firebase.storage, get()) }
         single<IngredientRequestStore> { FirestoreIngredientRequestStore(get()) }
+        single<ItemConverter> { FirebaseItemConverter(Firebase.functions(config.functionsRegion)) }
         factory { IngredientsModel(get(), get(), get(), get(), resize = ::resizeToWebp) }
         // Its own IngredientsModel: the editor it opens is not the ingredients section's.
-        factory { RequestsModel(get(), get(), get()) }
+        factory { RequestsModel(get(), get(), get(), get()) }
     }

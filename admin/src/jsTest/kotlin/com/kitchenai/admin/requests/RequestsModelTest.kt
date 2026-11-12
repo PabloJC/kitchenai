@@ -20,7 +20,8 @@ class RequestsModelTest {
     private val writer = FakeWriter()
     private val queue = FakeRequestStore(request("r1", "Tomate cherry"), request("r2", "Jitomate"))
     private val ingredients = IngredientsModel(catalogue, FakeTaxonomies(), writer, FakePictures(), resize = { it })
-    private val model = RequestsModel(queue.store, writer, ingredients)
+    private val converter = FakeConverter()
+    private val model = RequestsModel(queue.store, writer, converter, ingredients)
 
     private val tomato = ingredient("tomato", "en" to "Tomato", "es" to "Tomate")
 
@@ -186,5 +187,72 @@ class RequestsModelTest {
 
             assertEquals(RequestStatus.OPEN, queue.status("r1").status)
             assertEquals("Could not update \"Tomate cherry\": permission denied", model.state.value.error)
+        }
+
+    @Test
+    fun `converting counts first, and writes only once confirmed`() =
+        runTest {
+            started()
+            val promoted = request("p", "Tomate cherry", status = RequestStatus.PROMOTED, ingredientId = "tomato")
+
+            model.previewConversion(promoted)
+
+            assertEquals(listOf("p" to true), converter.calls)
+            assertEquals(3, model.state.value.conversion?.preview?.total)
+
+            model.convert()
+
+            assertEquals(listOf("p" to true, "p" to false), converter.calls)
+            assertNull(model.state.value.conversion)
+            assertEquals("Converted 2 pantry and 1 shopping items.", model.state.value.notice)
+        }
+
+    @Test
+    fun `cancelling after the count writes nothing`() =
+        runTest {
+            started()
+            model.previewConversion(
+                request("p", "Tomate cherry", status = RequestStatus.ALIASED, ingredientId = "tomato"),
+            )
+
+            model.cancelConversion()
+
+            assertEquals(listOf("p" to true), converter.calls)
+            assertNull(model.state.value.conversion)
+        }
+
+    @Test
+    fun `nothing to convert asks for no confirmation`() =
+        runTest {
+            started()
+            converter.counts = ConversionCounts(pantryItems = 0, shoppingItems = 0, dryRun = false)
+
+            model.previewConversion(
+                request("p", "Tomate cherry", status = RequestStatus.PROMOTED, ingredientId = "tomato"),
+            )
+
+            assertNull(model.state.value.conversion)
+            assertEquals("No item still holds \"Tomate cherry\".", model.state.value.notice)
+        }
+
+    @Test
+    fun `a refused count or conversion is reported`() =
+        runTest {
+            started()
+            val promoted = request("p", "Tomate cherry", status = RequestStatus.PROMOTED, ingredientId = "tomato")
+            converter.dryRunRefusal = "the ingredient is missing or archived"
+
+            model.previewConversion(promoted)
+
+            assertEquals("Could not count the items: the ingredient is missing or archived", model.state.value.error)
+            assertNull(model.state.value.working)
+
+            converter.dryRunRefusal = null
+            converter.refusal = "deadline exceeded"
+            model.previewConversion(promoted)
+            model.convert()
+
+            assertEquals("Could not convert: deadline exceeded", model.state.value.conversion?.message)
+            assertEquals(false, model.state.value.conversion?.isBusy)
         }
 }

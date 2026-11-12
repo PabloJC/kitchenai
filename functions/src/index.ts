@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
@@ -11,6 +11,7 @@ import { writeCatalogueEntry } from './catalogueAdmin.js';
 import { loadCatalogue, resolve, toReadable } from './catalogue.js';
 import { BadRequest, parseRequest, SCHEMA_VERSION } from './contract.js';
 import { freeTextChange, recordFreeTextChange } from './ingredientRequests.js';
+import { migrateFreeText as migrateItems } from './migrateFreeText.js';
 import { IMAGES, QuotaExceeded, chargeCall, mealSlot, withMealSlot } from './quota.js';
 import {
   IMAGE_SCHEMA_VERSION,
@@ -212,6 +213,26 @@ function countFreeText(document: string) {
 export const countPantryFreeText = countFreeText('kitchens/{kitchenId}/pantry/{itemId}');
 
 export const countShoppingFreeText = countFreeText('kitchens/{kitchenId}/shoppingLists/{listId}/items/{itemId}');
+
+/**
+ * Moves the items still holding a promoted or aliased request's text onto its ingredient (#405).
+ * Admin claim only, like `writeCatalogue`; `dryRun` counts without writing.
+ */
+export const migrateFreeText = onCall(
+  {
+    region: process.env.FUNCTIONS_REGION ?? 'europe-southwest1',
+    // It reads every free-text item, so it gets room; one at a time is plenty for an admin.
+    timeoutSeconds: 300,
+    memory: '512MiB',
+    maxInstances: 1,
+  },
+  async (call) => {
+    const result = await migrateItems(db, call, { deleteField: FieldValue.delete(), nowMillis: Date.now() });
+    // Counts only: no request id, which would let a log reader look up the text.
+    logger.info('free text converted', result);
+    return result;
+  },
+);
 
 /**
  * In-app account deletion, which both stores require (#252). App Check on, like every call the app

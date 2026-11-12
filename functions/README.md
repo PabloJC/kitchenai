@@ -127,7 +127,7 @@ Deploy functions **last**: rules and indexes first, then the seed, then this (th
 smoke check that proves it, are in `firebase/README.md`). The functions read the catalogue the seed
 writes, and a deployment that lags the code is invisible to CI. After it,
 `firebase functions:list --project <your-project-id>` must show `suggestRecipes`, `writeCatalogue`,
-`countPantryFreeText` and `countShoppingFreeText` in the region above.
+`countPantryFreeText`, `countShoppingFreeText` and `migrateFreeText` in the region above.
 
 ## Proving it end to end
 
@@ -199,6 +199,27 @@ is passed:
 ```bash
 node --experimental-strip-types tools/backfill-ingredient-requests.mjs --project <projectId> --write
 ```
+
+## `migrateFreeText`
+
+The admin's "Convert items" (#405). Once a request is promoted or aliased, it rewrites the pantry and
+shopping items that still hold its text onto the request's ingredient.
+
+- **Who may call it.** The `admin` claim, checked as in `writeCatalogue`, before the payload.
+- **Payload.** `{ requestId, dryRun? }`. The request must be `promoted` or `aliased`, and its
+  ingredient must exist and not be archived.
+- **What it changes.** Each matching item gets `ingredientId`, loses `freeText` and has
+  `updatedAtMillis` set. Amount, unit, place, expiry and `checked` stay. The request then gets
+  `activeCount: 0` and `migratedAtMillis`. A second run finds nothing to change.
+- **What it returns and logs.** `{ pantryItems, shoppingItems, dryRun }`: no kitchen, item or
+  request id.
+- **What it reads.** Every free-text item, through a collection-group query on `freeText`; the
+  field override is in `firebase/firestore.indexes.json`. Items do not store the queue's key, so
+  the comparison runs here. The cost is one read per free-text item in the project on each call,
+  dry runs included. That is acceptable while free text is a small share of items. If it grows,
+  the alternative is a `freeTextKey` field that the triggers stamp on each item.
+- **Out of scope.** Saved recipes keep their lines, since they are snapshots. A kitchen that
+  already had the ingredient ends up with two rows for it.
 
 ## Tests
 

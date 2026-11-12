@@ -85,7 +85,8 @@ Two triggers, one for pantry items and one for shopping items, count it in
 - `activeCount`, items carrying it now;
 - `firstSeenMillis` and `lastSeenMillis`;
 - `status` (`open`, `promoted`, `aliased`, `dismissed`) and, once it points at the catalogue,
-  `ingredientId`.
+  `ingredientId`;
+- `migratedAtMillis`, once `migrateFreeText` has moved its items onto that ingredient (#405).
 
 It never holds a kitchen id, a user id or an amount, so the admin learns what is missing without
 reading anyone's kitchen. Texts that differ only in case, accents or spacing are one request; the id

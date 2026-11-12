@@ -73,8 +73,12 @@ can be closed one of three ways:
   become the ingredient's name in a language it has no name in yet. That name is written first.
 - **Dismiss** is for what is not food, a typo or a brand.
 
-Any closed request can be reopened. "Convert items", which moves pantry and shopping items onto the
-catalogue ingredient, stays disabled until #405.
+Any closed request can be reopened.
+
+**Convert items** (#405) is offered on promoted and aliased requests. It moves the pantry and
+shopping items that still hold the text onto the ingredient, through the `migrateFreeText` callable.
+A dry run comes first and shows how many items will change; nothing is written until that is
+confirmed. The admin never sees which kitchens hold them.
 
 ## Checks
 
