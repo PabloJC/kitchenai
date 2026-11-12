@@ -85,9 +85,6 @@ class FirestorePaths(
 
     fun recipe(recipeId: RecipeId): DocumentReference = recipes().document(recipeId.value)
 
-    // Admin-only (rules): the queue of hand-typed ingredients, counted by a function (#402).
-    fun ingredientRequests(): CollectionReference = firestore.collection(INGREDIENT_REQUESTS)
-
     private companion object {
         const val USERS = "users"
         const val KITCHENS = "kitchens"
@@ -100,6 +97,5 @@ class FirestorePaths(
         const val TERMS = "terms"
         const val INGREDIENTS = "ingredients"
         const val RECIPES = "recipes"
-        const val INGREDIENT_REQUESTS = "ingredientRequests"
     }
 }

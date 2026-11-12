@@ -1,19 +1,21 @@
 package com.kitchenai.admin.requests
 
 import com.kitchenai.admin.core.catchingFailures
-import com.kitchenai.shared.data.remote.firebase.FirestorePaths
 import dev.gitlive.firebase.firestore.FieldValue
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
+/** Admin-only, so the collection is named here rather than in `:shared`'s FirestorePaths. */
 class FirestoreIngredientRequestStore(
-    private val paths: FirestorePaths,
+    private val firestore: FirebaseFirestore,
 ) : IngredientRequestStore {
+    private fun requests() = firestore.collection(COLLECTION)
+
     override fun observeRequests(): Flow<Result<List<IngredientRequest>>> =
-        paths
-            .ingredientRequests()
+        requests()
             .snapshots
             .map { snapshot ->
                 Result.success(
@@ -32,8 +34,7 @@ class FirestoreIngredientRequestStore(
         ingredientId: String?,
     ): Result<Unit> =
         catchingFailures {
-            paths
-                .ingredientRequests()
+            requests()
                 .document(id)
                 .updateFields {
                     STATUS to status.wire
@@ -42,6 +43,7 @@ class FirestoreIngredientRequestStore(
         }
 
     private companion object {
+        const val COLLECTION = "ingredientRequests"
         const val STATUS = "status"
         const val INGREDIENT_ID = "ingredientId"
     }

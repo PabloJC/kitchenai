@@ -32,7 +32,8 @@ fun adminModule(config: AdminFirebaseConfig): Module =
         single<DispatcherProvider> { DefaultDispatcherProvider() }
         single<TimeProvider> { SystemTimeProvider() }
         // Not `:shared`'s firebaseModule: the admin needs no offline cache, and owns its emulator wiring.
-        single { FirestorePaths(adminFirestore(config)) }
+        single { adminFirestore(config) }
+        single { FirestorePaths(get()) }
         single<IngredientRepositoryContract> { FirestoreIngredientRepository(get(), get()) }
         single<TaxonomyRepositoryContract> { FirestoreTaxonomyRepository(get(), get()) }
         single<CatalogueWriter> { FirebaseCatalogueWriter(Firebase.functions(config.functionsRegion), get()) }
